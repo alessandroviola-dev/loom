@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Pi validated as primary local agent harness; Agentic 001 frozen; memory-retention question practically resolved; Qwen Code deprioritized; llama.cpp Phase 4 setup blocked only by missing CMake prerequisite
-Checkpoint: LLAMA_CPP_SETUP_001_BLOCKED_MISSING_CMAKE
+Status: ACTIVE — Pi validated as primary local agent harness; Agentic 001 frozen; memory-retention question practically resolved; Qwen Code deprioritized; llama.cpp Phase 4 setup probe corrected after identifying a LOOM target-configuration defect
+Checkpoint: LLAMA_CPP_SETUP_002_PROBE_FIXED_RERUN_READY
 
 ## Mission
 
@@ -53,18 +53,6 @@ Run id: `20260818-214848`
 Record:
 - `research/agents/pi-agentic-benchmark-001.md`
 
-Configuration:
-- Coding Benchmark 01 v1.0.1
-- Pi 0.84.2
-- Ollama / `qwen3.5:4b-mlx`
-- context 4096
-- max output 2048
-- tools `read,write,edit`
-- no bash/test feedback
-- hidden tests excluded
-- isolated run-local Pi directory
-- no retries/rescue/manual repair
-
 Canonical scores:
 - artifact **77.15/100**
 - delivery-adjusted **77.15/100**
@@ -86,8 +74,6 @@ Provider usage across task sessions: **19,556 input + 653 output = 20,209 total*
 Primary agent conclusion:
 > Pi is the current primary local agent harness for LOOM. At context 4096 it completes real read/edit/test loops and delivers all six benchmark tasks, while Qwen Code cannot form its first 4096-token request even in safe mode.
 
-Do not generalize this to Pi being globally superior; it is the practical harness for the current constrained-machine research path.
-
 ## Agentic memory investigation — practical conclusion
 
 Historical Agentic 001 post-task Ollama SIZE:
@@ -98,14 +84,11 @@ Historical Agentic 001 post-task Ollama SIZE:
 - T05 6.8 GB
 - T06 7.2 GB
 
-Historical swap:
-- start 1544.12 MB
-- final 4823.12 MB
-- delta +3279.00 MB
+Historical swap delta: **+3279 MB**.
 
 Controlled findings:
 1. Four identical small warm Pi calls only produced **4.1 -> 4.5 GB**; cold controls reset to 4.1 GB.
-2. Direct Ollama prompt pressure without Pi produced **4.1 -> 4.5 GB** and retained a 4.6 GB warm high-water after returning to a small prompt.
+2. Direct Ollama prompt pressure without Pi produced **4.1 -> 4.5 GB** and retained a 4.6 GB warm high-water.
 3. Valid synthetic true-depth evidence from 1 to 4 model/tool turns produced only about **+0.1 to +0.2 GB**.
 4. Exact-workload cold replay T01-T05 kept individual tasks at **4.3-4.9 GB**, while historical warm sequence reached 6.8 GB by T05.
 5. T03-T05 cold replay used equal/more tool activity or provider usage than historical runs yet remained **1.1-2.3 GB** below historical warm SIZE.
@@ -114,35 +97,19 @@ Controlled findings:
 Canonical practical conclusion:
 > Cross-task retained warm runtime high-water is a **major contributor** to sustained memory growth in Agentic 001. Individual cold workloads T01-T05 do not independently require the later 6-7 GB reported state.
 
-Internal mechanism remains unidentified. Do not call it a memory leak, KV-cache effect, MLX allocator bug or fragmentation without lower-level evidence.
-
-Practical implication:
-> Periodic model unload/reload is a plausible long-session memory-pressure mitigation on 8 GB, with reload latency to measure later.
-
-Records:
-- `research/agents/pi-memory-retention-probe-001.md`
-- `research/runtime/ollama-context-retention-probe-001.md`
-- `research/agents/pi-multiturn-memory-probe-001.md`
-- `research/agents/pi-multiturn-memory-probe-002.md`
-- `research/agents/pi-multiturn-memory-probe-003.md`
-- `research/agents/pi-agentic-cold-replay-001.md`
+Internal mechanism remains unidentified. Do not label it a leak, KV-cache effect, allocator bug or fragmentation without lower-level evidence.
 
 ## Qwen Code — SECONDARY / DEPRIORITIZED
 
 Normal-config 4096 smoke:
 - estimated prompt ~4474 tokens
-- hard limit 4096
 - no tool call
-- model not loaded
 
-Safe-mode diagnostic:
-- run id `qwen-safe-20260818-233219`
-- Qwen Code 0.21.13
-- customizations disabled
+Safe-mode diagnostic run `qwen-safe-20260818-233219`:
 - estimated prompt **4363 tokens**
 - hard limit **4096**
-- still **267 tokens over limit**
-- safe mode recovers only **111 tokens** versus normal config
+- **267 tokens over limit**
+- safe mode recovers only **111 tokens**
 - compression `NOOP`
 - no tool call
 - working tree unchanged
@@ -151,7 +118,7 @@ Record:
 - `research/agents/qwen-code-safe-mode-4096.md`
 
 Decision:
-> Optional project/custom context is not the main 4096 bottleneck. Qwen Code's core safe-mode request remains too large. Further minimization and 8192 rescue are deferred because Pi already serves the primary agent role.
+> Qwen Code remains a secondary comparator. No 8192 rescue/minimization work is blocking the main LOOM path because Pi already provides the primary agent harness.
 
 ## Phase 4 — llama.cpp — ACTIVE
 
@@ -164,78 +131,107 @@ Setup runner:
 Official source:
 - `ggml-org/llama.cpp`
 
-Pinned initial source commit:
+Pinned source commit:
 - `60addddf3c567c43ec3caf70fc953fba3572d96f`
 
-### Setup Probe 001 — BLOCKED ON PREREQUISITE
+### Setup Probe 001 — BLOCKED_MISSING_CMAKE
 
-Run summary path from reference Mac:
-- `results-local/llama-cpp/setup/20260818-233856/setup-summary.json`
+Run id: `20260818-233856`.
 
-Terminal classification:
-- `Prerequisites: FAIL — missing cmake`
+- `cmake` missing on PATH.
+- Probe stopped before clone/configure/build.
+- Record: `research/runtime/llama-cpp-setup-probe-001.md`.
+
+CMake was subsequently installed through Homebrew:
+- CMake **4.4.2**
+- `/opt/homebrew/Cellar/cmake/4.4.2`
+
+### Setup Probe 002 — PROBE CONFIGURATION DEFECT
+
+Run id: `20260818-234152`.
+
+Observed:
+- pinned commit matched actual checkout exactly
+- prerequisites PASS
+- configure PASS
+- `GGML_METAL=ON`
+- `GGML_METAL_EMBED_LIBRARY=ON`
+- build failed: `make: *** No rule to make target 'llama-cli'. Stop.`
+
+Root cause verified against the exact pinned llama.cpp source:
+- `tools/CMakeLists.txt` adds `tools/cli` only inside `if (LLAMA_BUILD_SERVER)`;
+- original LOOM runner set `-DLLAMA_BUILD_SERVER=OFF`;
+- therefore CMake correctly omitted the `llama-cli` target.
+
+This is a **LOOM probe defect**, not a llama.cpp/Metal/M1 build failure.
 
 Record:
-- `research/runtime/llama-cpp-setup-probe-001.md`
+- `research/runtime/llama-cpp-setup-probe-002.md`
 
-Interpretation:
-> This is not a llama.cpp build failure. The probe stopped before clone/configure/build because `cmake` was not available on PATH. No evidence has yet been gathered about Metal compatibility, compiler compatibility or llama.cpp runtime feasibility.
+### Setup Probe revision 2 — READY
 
-Do **not** change the pinned source commit, Metal flags or probe protocol. Install CMake, verify it is on PATH, then rerun the exact same setup probe unchanged.
+Runner patched without changing pinned source commit or Metal configuration:
+- `LLAMA_BUILD_SERVER=ON`
+- `LLAMA_BUILD_UI=OFF`
+- `LLAMA_BUILD_COMMON=ON`
+- `LLAMA_BUILD_TOOLS=ON`
+- `GGML_METAL=ON`
+- `GGML_METAL_EMBED_LIBRARY=ON`
+- tests OFF
 
-### Phase 4 planned sequence
+Rationale:
+> At the pinned source commit `llama-cli` depends on the server/tool subtree being enabled. The embedded Web UI is not needed for LOOM and remains disabled.
 
-1. **Setup / build verification**
-   - install/verify CMake
-   - rerun exact setup probe
-   - check git/cmake/xcrun/clang
-   - clone/fetch pinned source under `results-local/llama-cpp/`
-   - Release build with `GGML_METAL=ON`
-   - verify `llama-cli` and `llama-bench`
+### Planned sequence after setup PASS
 
-2. **4B runtime control**
-   - official `Qwen/Qwen3-4B-GGUF`
+1. **4B runtime control**
+   - `Qwen/Qwen3-4B-GGUF`
    - `Q4_K_M`
-   - instrumentation/runtime validation; not an apples-to-apples quality comparison with Qwen3.5 MLX
+   - instrumentation/runtime validation
 
-3. **8B Q4 main capability test**
-   - official `Qwen/Qwen3-8B-GGUF`
+2. **8B Q4 main capability test**
+   - `Qwen/Qwen3-8B-GGUF`
    - `Q4_K_M`
-   - initial context 4096
+   - context 4096
    - maximum practical Metal/GPU offload first
    - capture load time, prompt/gen throughput, memory/swap and stability
 
-4. Later:
+3. Later:
    - Q3 variants
    - ~9B Q3/Q2 where feasible
    - partial CPU/GPU offload comparisons
 
 ## Exact next step
 
-On the reference Mac, first install CMake using the existing package manager if available, then rerun the unchanged setup probe.
-
-Preferred Homebrew path:
+On the reference Mac:
 
 ```bash
-brew install cmake
-cmake --version
-
 cd "<repository-root>"
 git pull
+python3 -m py_compile scripts/llama_cpp_setup_probe.py
 python3 scripts/llama_cpp_setup_probe.py
 ```
 
-If `brew` itself is not available, preserve that exact terminal output before installing another package manager or changing the experiment environment.
+No model download should occur in this setup step.
 
-No model download should happen in this setup step.
+Preserve complete output, especially:
+- Configure / Build
+- `llama-cli` / `llama-bench`
+- `GGML_METAL`
+- `GGML_METAL_EMBED_LIBRARY`
+- `LLAMA_BUILD_COMMON`
+- `LLAMA_BUILD_TOOLS`
+- `LLAMA_BUILD_SERVER`
+- `LLAMA_BUILD_UI`
+- any build stderr
 
 ## Roadmap state
 
 - Phase 0 foundation: DONE
 - Phase 1 baseline: DONE
 - Phase 2 Coding Benchmark/Baseline: DONE / FROZEN
-- Phase 3 agent/runtime investigation: materially complete for current needs; Pi primary, Qwen Code secondary
-- **Phase 4 llama.cpp: ACTIVE — setup blocked only by missing CMake prerequisite**
+- Phase 3 agent/runtime investigation: materially complete; Pi primary, Qwen Code secondary
+- **Phase 4 llama.cpp: ACTIVE — corrected setup probe ready**
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD/MoE: queued
 - Phase 7 extended runtimes: queued
