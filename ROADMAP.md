@@ -59,9 +59,11 @@
 - [x] Ingest Pi edit+test smoke memory/swap/runtime metrics — ~114 s, +655.31 MB swap, Ollama 4.8 GB / 100% GPU / context 4096 after run
 - [x] Build isolated Pi Coding Benchmark 01 agentic adapter with hidden tests excluded from agent workspaces
 - [x] Preregister Pi agentic benchmark protocol and scoring in `research/agents/pi-agentic-benchmark-001-plan.md`
-- [ ] Run Coding Benchmark 01 in Pi file-agentic mode at context 4096
-- [ ] Ingest and freeze Pi agentic benchmark result
-- [ ] Compare agentic artifact/delivery/strict scores, protocol reliability, latency and memory against Baseline 001
+- [x] Run Coding Benchmark 01 in Pi file-agentic mode at context 4096 — preliminary artifact/delivery **77.15**, strict **60.00**, delivery **6/6**, protocol **4/6**
+- [x] Record preliminary result in `research/agents/pi-agentic-benchmark-001-preliminary.md`
+- [ ] Ingest full Pi agentic `run-summary.json`: task scores, protocol failures, tool/final-text events, runtime and memory/swap
+- [ ] Validate adapter/isolation and freeze canonical Pi Agentic Coding Benchmark 001 result
+- [ ] Compare canonical agentic artifact/delivery/strict scores, protocol reliability, latency and memory against Baseline 001
 - [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
 - [ ] Measure Qwen Code context scaling to 8192 only if it still adds research value
 - [ ] Add reproducible agent validation/retry workflow for real-world daily-use profile
