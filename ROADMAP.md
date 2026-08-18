@@ -41,7 +41,9 @@
 - [x] Verify Node/npm prerequisites
 - [x] Install Qwen Code — `0.21.13`
 - [x] Add reproducible project configuration for Ollama / `qwen3.5:4b-mlx` at context 4096
-- [ ] Pull project config onto reference Mac and verify Qwen Code resolves local model
+- [x] Pull project config onto reference Mac and verify config contents
+- [x] Correct local provider placeholder auth and set first smoke run to `approvalMode: plan`
+- [x] Add reproducible read-only smoke-test runner with memory/swap and working-tree checks
 - [ ] Run sandboxed read-only tool smoke test
 - [ ] Run targeted edit + test smoke test
 - [ ] Measure agent-layer memory/swap overhead
