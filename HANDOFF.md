@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Pi 0.84.2 inventory complete; no custom models.json exists; non-destructive Ollama merge and matched read-only smoke scripts ready
-Checkpoint: PI_OLLAMA_SAFE_MERGE_READY
+Status: ACTIVE — Pi Ollama provider added successfully without altering existing OpenAI/Codex setup; matched 4096 read-only smoke ready
+Checkpoint: PI_OLLAMA_PROVIDER_ADDED_SMOKE_READY
 
 ## Mission
 
@@ -20,7 +20,7 @@ Study, test and improve ways to run capable local language models and self-hoste
 - Ollama: `0.32.14`
 - Qwen Code: `0.21.13`
 - Pi: `0.84.2`
-- Existing Pi is production tooling with OpenAI API access, OpenAI/Codex account auth, persistent sessions and user customizations that must be preserved
+- Existing Pi remains production tooling with OpenAI API access, OpenAI/Codex account auth, persistent sessions and user customizations
 
 Installed Ollama models:
 - `qwen3.5:4b-mlx` — 4.0 GB — canonical baseline/agent model
@@ -69,34 +69,9 @@ Conclusion:
 
 Pi is the matched comparator at context 4096.
 
-### Local Pi inventory completed
+### HARD CONSTRAINT — preserve existing Pi setup
 
-Observed on reference Mac:
-- Pi version: `0.84.2`;
-- `~/.pi/agent/models.json`: **NOT PRESENT**;
-- `~/.pi/agent/sessions/`: present with multiple persistent project sessions;
-- `~/.pi/agent/extensions/`: directory present;
-- prior inventory command listed only extension/skill subdirectories, so empty printed lists MUST NOT be interpreted as proof that no extension/skill resources exist;
-- no write has been made to the user's Pi configuration yet.
-
-Important consequence:
-> Ollama can be added by creating a new `~/.pi/agent/models.json`. Existing OpenAI/Codex authentication and settings live separately and do not need to be replaced.
-
-### Verified Pi behavior relevant to LOOM
-
-Current official Pi docs confirm:
-- custom providers/models use `~/.pi/agent/models.json`;
-- Ollama example uses `http://localhost:11434/v1`, API `openai-completions`, and placeholder API key `ollama`;
-- `contextWindow` and `maxTokens` are per-model settings;
-- `/model` reloads `models.json`;
-- CLI supports `--provider <name> --model <id>`;
-- `--no-session` makes a run ephemeral;
-- `--tools read` can expose only the read tool for a read-only benchmark;
-- JSON event mode reports `tool_execution_start` / `tool_execution_end` events.
-
-### HARD CONSTRAINT — preserve existing Pi installation/configuration
-
-LOOM must never reset or replace the user's existing Pi setup.
+LOOM must not reset or replace the user's existing Pi installation/configuration.
 
 Do not delete, overwrite or invalidate:
 - OpenAI API credentials/configuration;
@@ -110,33 +85,34 @@ Do not delete, overwrite or invalidate:
 
 Ollama/Qwen is only an additional selectable provider/model.
 
-## New reproducible tooling
+## Pi Ollama provider addition — COMPLETED
 
-Committed:
+Observed on reference Mac:
+
+```text
+LOOM Pi Ollama provider merge complete
+models.json: <user-home>/.pi/agent/models.json
+backup: not needed (file did not previously exist)
+- added providers.ollama
+Untouched: auth.json, settings.json, sessions, skills, extensions, packages
+```
+
+`pi --list-models ollama` now reports:
+
+```text
+provider  model           context  max-out  thinking  images
+ollama    qwen3.5:4b-mlx  4.1K     2.0K     no        no
+```
+
+Research consequence:
+- Pi resolves the local Ollama provider/model successfully;
+- no existing custom `models.json` had to be merged;
+- existing OpenAI/Codex auth/settings were not touched by the LOOM setup script;
+- the LOOM model is available as an additional selectable model at context 4096 and max output 2048.
+
+Committed tooling:
 - `scripts/pi_add_ollama_provider.py`
 - `scripts/pi_readonly_smoke.py`
-
-### `pi_add_ollama_provider.py`
-
-Safety properties:
-- touches only `$PI_CODING_AGENT_DIR/models.json` or `~/.pi/agent/models.json`;
-- if an existing models.json appears later, backs it up before writing;
-- preserves every existing provider and field;
-- if an Ollama provider already exists, adds missing LOOM values/model without overwriting existing values;
-- never touches `auth.json`, `settings.json`, sessions, skills, extensions or packages;
-- writes atomically.
-
-LOOM model entry:
-- provider: `ollama`
-- base URL: `http://localhost:11434/v1`
-- API: `openai-completions`
-- placeholder key: `ollama`
-- model: `qwen3.5:4b-mlx`
-- context: **4096**
-- max output: **2048**
-- reasoning: false
-- cost: zero
-- compatibility disables developer-role/reasoning-effort fields for local Ollama shim reliability.
 
 ### `pi_readonly_smoke.py`
 
@@ -147,37 +123,29 @@ Runs Pi with:
 - `--no-session`
 - `--mode json`
 
-Therefore the smoke does not change the user's saved default model and does not create a normal persistent Pi session. It asks Pi to read LOOM `README.md` and return exactly `# LOOM`, while recording JSON events, read-tool use, Git status, memory pressure, swap and `ollama ps`.
+The run is intentionally ephemeral and does not change the user's saved default model or normal persistent sessions. It asks Pi to use the read tool on LOOM `README.md` and return the first Markdown heading, while recording JSON events, Git status, memory pressure, swap and `ollama ps`.
 
 ## Exact next step
 
-On reference Mac:
+Run the matched Pi 4096 read-only smoke:
 
 ```bash
 cd "<repository-root>"
-git pull
-python3 scripts/pi_add_ollama_provider.py
-pi --list-models ollama
-```
-
-Verify that `ollama/qwen3.5:4b-mlx` is listed. Existing OpenAI/Codex providers should remain available because no auth/settings files are modified.
-
-Then run:
-
-```bash
 python3 scripts/pi_readonly_smoke.py
 ```
 
 Interpretation:
-- if Pi succeeds at 4096 while Qwen Code normal config fails, agent-harness context overhead is a measured LOOM result;
+- if Pi succeeds at 4096 while Qwen Code normal config fails, agent-harness context overhead becomes a measured LOOM result;
 - if Pi also fails at 4096, context scaling becomes the next controlled experiment.
+
+After the smoke, ingest the exact tool-call result, latency, memory/swap and Git-status outcome before changing context.
 
 ## Roadmap state
 
 - Phase 0 foundation: DONE
 - Phase 1 inference baseline: DONE
 - Phase 2 Coding Benchmark + Baseline 001: DONE / FROZEN
-- Phase 3 local coding agent: ACTIVE — Pi safe Ollama merge + 4096 matched smoke ready
+- Phase 3 local coding agent: ACTIVE — Pi Ollama provider added successfully; matched 4096 read-only smoke next
 - Phase 4 llama.cpp: queued
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD streaming / MoE: queued
