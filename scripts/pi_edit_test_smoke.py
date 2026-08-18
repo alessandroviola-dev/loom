@@ -4,6 +4,10 @@
 Creates a disposable ignored workspace under results-local, asks Pi/Ollama/Qwen
 to inspect and fix one Python file, requires read/edit/bash tool use, runs tests,
 and verifies no tracked LOOM file changed.
+
+Reports two outcomes:
+- functional_success: the coding/tool/test workflow succeeded;
+- strict_success: functional success plus exact final-output compliance.
 """
 
 from __future__ import annotations
@@ -213,7 +217,7 @@ def main() -> int:
     repo_unchanged = repo_status_before == repo_status_after
     answer_ok = pi_summary["text"].strip() == "PASS"
 
-    success = (
+    functional_success = (
         proc.returncode == 0
         and tools_ok
         and tests_pass
@@ -222,6 +226,7 @@ def main() -> int:
         and repo_unchanged
         and not pi_summary["errors"]
     )
+    strict_success = functional_success and answer_ok
 
     summary = {
         "run_id": f"pi-edit-{run_id}",
@@ -233,10 +238,13 @@ def main() -> int:
         "workspace": str(workspace),
         "command": command,
         "exit_code": proc.returncode,
-        "success": success,
+        "functional_success": functional_success,
+        "strict_success": strict_success,
+        "success": strict_success,
         "tool_names": pi_summary["tool_names"],
         "models_seen_in_events": pi_summary["models"],
         "final_text": pi_summary["text"],
+        "answer_exact_pass": answer_ok,
         "event_errors": pi_summary["errors"],
         "jsonl_parse_errors": parse_errors,
         "tests_unchanged": tests_unchanged,
@@ -262,11 +270,13 @@ def main() -> int:
     print("Provider/model: ollama/qwen3.5:4b-mlx")
     print(f"Tools: {pi_summary['tool_names'] or 'not detected'}")
     print(f"Final text: {pi_summary['text']!r}")
+    print(f"Exact PASS response: {answer_ok}")
     print(f"Solution changed: {solution_changed}")
     print(f"Tests unchanged: {tests_unchanged}")
     print(f"External tests pass: {tests_pass}")
     print(f"LOOM tracked tree unchanged: {repo_unchanged}")
-    print(f"Success: {success}")
+    print(f"Functional success: {functional_success}")
+    print(f"Strict success: {strict_success}")
     if parse_errors:
         print(f"JSONL parse errors: {parse_errors}")
     if pi_summary["errors"]:
@@ -277,7 +287,7 @@ def main() -> int:
     print(f"Run directory: {out_dir}")
     print(f"Summary: {out_dir / 'smoke-summary.json'}")
 
-    return 0 if success else 1
+    return 0 if strict_success else 1
 
 
 if __name__ == "__main__":
