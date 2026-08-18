@@ -17,14 +17,20 @@
 - [ ] Repeat throughput test to validate prompt-processing measurement
 
 ## Phase 2 — Benchmark framework
-- [x] Define Coding Benchmark 01 v1.0.0
-- [x] Validate and freeze Coding Benchmark 01
-- [ ] Define reasoning benchmark
+- [x] Define Coding Benchmark 01
+- [x] Validate and freeze task prompts/fixtures/tests
 - [x] Define coding measurement runner
 - [x] Define coding scoring rubric
 - [x] Define machine-readable coding result format
 - [x] Build Ollama single-shot benchmark adapter
-- [ ] Run Qwen 3.5 4B MLX on Coding Benchmark 01
+- [x] Run Qwen 3.5 4B MLX on Coding Benchmark 01
+- [x] Detect v1.0.0 subtest-counting scoring defect
+- [x] Patch scorer as Coding Benchmark 01 v1.0.1
+- [x] Add deterministic rescoring utility
+- [ ] Rescore the existing Qwen run without regenerating model outputs
+- [ ] Ingest `run-summary.json` timing/token/memory and adapter-status data
+- [ ] Freeze Coding Baseline 001 official result
+- [ ] Define reasoning benchmark
 
 ## Phase 3 — Local coding agent
 - [ ] Select agent layer
