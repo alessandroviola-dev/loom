@@ -56,13 +56,15 @@
 - [x] Detect Pi edit-smoke validator defect: exact final-output compliance was computed but omitted from aggregate success
 - [x] Patch Pi edit-smoke runner to separate `functional_success` and `strict_success`
 - [x] Record `research/agents/pi-edit-test-smoke-001.md` — functional PASS / strict output FAIL
-- [ ] Ingest Pi edit+test smoke memory/swap/runtime metrics from `pi-edit-20260818-213432/smoke-summary.json`
-- [ ] Run Qwen Code safe-mode 4096 diagnostic
-- [ ] Measure Qwen Code context scaling to 8192 only as a separate experiment if still useful
-- [ ] Add reproducible agent validation/retry workflow
-- [ ] Adapt Coding Benchmark 01 to Pi agentic mode with separate functional/protocol scoring
-- [ ] Run Coding Benchmark 01 in Pi `agentic` mode
-- [ ] Compare agentic score, protocol reliability, latency and memory against Baseline 001
+- [x] Ingest Pi edit+test smoke memory/swap/runtime metrics — ~114 s, +655.31 MB swap, Ollama 4.8 GB / 100% GPU / context 4096 after run
+- [x] Build isolated Pi Coding Benchmark 01 agentic adapter with hidden tests excluded from agent workspaces
+- [x] Preregister Pi agentic benchmark protocol and scoring in `research/agents/pi-agentic-benchmark-001-plan.md`
+- [ ] Run Coding Benchmark 01 in Pi file-agentic mode at context 4096
+- [ ] Ingest and freeze Pi agentic benchmark result
+- [ ] Compare agentic artifact/delivery/strict scores, protocol reliability, latency and memory against Baseline 001
+- [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
+- [ ] Measure Qwen Code context scaling to 8192 only if it still adds research value
+- [ ] Add reproducible agent validation/retry workflow for real-world daily-use profile
 - [ ] Decide whether Qwen Code remains a primary comparator after safe-mode/context tests
 - [ ] Test Aider as later comparator if it adds research value
 - [ ] Evaluate OpenCode if context requirements are practical on 8 GB
