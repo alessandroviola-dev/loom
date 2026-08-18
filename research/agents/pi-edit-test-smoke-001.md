@@ -35,18 +35,27 @@ All required tool families were used: `read`, `edit`, `bash`.
 
 ## Functional outcome
 
-Terminal-reported checks:
-
 - Pi process exit code: `0`
 - solution changed: **true**
 - tests unchanged: **true**
 - independent external tests pass: **true**
 - tracked LOOM working tree unchanged: **true**
-- no reported Pi error in terminal
+- Pi event errors: **none**
+- JSONL parse errors: **none**
 
-The model diagnosed the bug correctly: the clamping expression had its outer `max()` bound reversed. The produced edit fixed the implementation and the independent runner confirmed all tests passed.
+Independent unittest result:
 
-Therefore the coding workflow itself is a **functional pass** at context 4096.
+```text
+test_above ... ok
+test_below ... ok
+test_inside ... ok
+test_invalid_bounds ... ok
+
+Ran 4 tests in 0.000s
+OK
+```
+
+The model diagnosed the bug correctly: `max(high, min(low, value))` needed to become `max(low, min(high, value))`. The coding workflow itself is therefore a **functional pass** at context 4096.
 
 ## Strict instruction-following outcome
 
@@ -64,14 +73,60 @@ Now I understand the bug. The return statement is wrong: `max(high, min(low, val
 
 Therefore exact final-output compliance is **false**.
 
-The original smoke runner contained a validation defect: it computed `answer_ok` but did not include it in the aggregate `success` condition. This caused the terminal to print `Success: True` despite the strict output-format failure.
+The original smoke runner contained a validation defect: it computed `answer_ok` but did not include it in aggregate `success`. This caused the historical run summary to contain `"success": true`. The run is canonically reclassified as:
 
-The runner was subsequently patched so future runs expose both:
+- functional success: **PASS**
+- strict output/protocol success: **FAIL**
 
-- `functional_success`
-- `strict_success`
+The runner was subsequently patched so future runs expose `functional_success`, `strict_success`, and `answer_exact_pass`, and aggregate `success` follows strict success.
 
-and `success` now follows strict success.
+## Resource metrics
+
+### Before
+
+- PhysMem: `5622M used`, `2008M unused`
+- wired: `1737M`
+- compressor: `295M`
+- system-wide memory free: **73%**
+- swap: **1503.88 MB used**
+- `ollama ps`: model not loaded
+
+### After
+
+- PhysMem: `7495M used`, `137M unused`
+- wired: `1680M`
+- compressor: `1238M`
+- system-wide memory free: **61%**
+- swap: **2159.19 MB used**
+- `ollama ps`: `qwen3.5:4b-mlx`, **4.8 GB**, **100% GPU**, context **4096**
+
+### Deltas / elapsed
+
+- PhysMem used: **+1873 MB**
+- swap used: **+655.31 MB**
+- compressor: **+943 MB**
+- memory-free percentage: **73% -> 61%**
+- elapsed from first snapshot to final timestamp: approximately **114.0 s**
+
+## Comparison with Pi Read-only Smoke 001
+
+Read-only run `pi-20260818-212407`:
+- elapsed ~34.0 s
+- swap delta **+651.87 MB**
+- final Ollama resident report **4.2 GB**
+- context 4096, 100% GPU
+
+Edit+test run:
+- elapsed ~114.0 s
+- swap delta **+655.31 MB**
+- final Ollama resident report **4.8 GB**
+- context 4096, 100% GPU
+
+Interpretation:
+- the edit/test loop took about **3.35x** as long as the minimal read-only smoke;
+- observed swap growth was nearly identical (difference about **3.44 MB**), so the extra tool-loop complexity did not produce a proportionally larger swap delta in these two runs;
+- Ollama's final resident-size report was larger in the edit/test run (4.8 vs 4.2 GB), but the cause is unresolved and must not yet be attributed to KV cache, tool count, or any single mechanism;
+- memory snapshots started from materially different host states, so absolute PhysMem/free-percentage values are not a controlled apples-to-apples comparison.
 
 ## Research interpretation
 
@@ -81,20 +136,9 @@ This run establishes that Pi + Qwen 3.5 4B MLX can perform a complete minimal ag
 read -> diagnose -> edit -> test -> verified pass
 ```
 
-At the same time, it reveals that instruction-following around final response formatting remains imperfect. This mirrors the broader Baseline 001 finding: semantic/code quality can be stronger than protocol/delivery reliability.
+At the same time, instruction-following around exact response formatting remains imperfect. This mirrors the broader Baseline 001 finding: semantic/code quality can be stronger than protocol/delivery reliability.
 
-This distinction must remain explicit in the full agentic benchmark. Functional correctness and protocol/instruction adherence should be scored separately rather than collapsed into one binary result.
-
-## Pending ingestion
-
-The run's `smoke-summary.json` still needs to be ingested for:
-
-- memory before/after;
-- swap before/after;
-- Ollama resident size/context;
-- total elapsed time;
-- event/JSONL metadata;
-- exact unittest output.
+Functional correctness and protocol/instruction adherence must therefore remain separately scored in the full agentic benchmark.
 
 Run directory:
 
