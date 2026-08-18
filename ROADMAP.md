@@ -23,7 +23,7 @@
 - [x] Define coding measurement runner
 - [x] Define coding scoring rubric
 - [x] Define machine-readable coding result format
-- [ ] Build Ollama single-shot benchmark adapter
+- [x] Build Ollama single-shot benchmark adapter
 - [ ] Run Qwen 3.5 4B MLX on Coding Benchmark 01
 
 ## Phase 3 — Local coding agent
