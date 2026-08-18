@@ -1,7 +1,7 @@
 # Coding Baseline 001 — Qwen 3.5 4B MLX
 
 Date: 2026-08-18
-Status: **PENDING CORRECTED RESCORE**
+Status: **QUALITY RESCORED — FULL INGESTION PENDING**
 
 ## Configuration
 
@@ -16,63 +16,71 @@ Status: **PENDING CORRECTED RESCORE**
 - Reference hardware: Apple M1 / 8 GB unified memory
 - Local run id: `20260818-203156`
 
-## Original raw result
+## Corrected quality score
 
-The v1.0.0 runner reported **39.82 / 100**.
+The exact first-run outputs were rescored with Benchmark 01 v1.0.1 without calling Ollama again.
 
-This number is preserved for auditability but is **not an official baseline score** because a scoring defect was discovered during ingestion.
+**Corrected score: 40.71 / 100**
 
-Raw per-task report:
-
-| Task | Skill | Raw points | Runner passed/total |
+| Task | Skill | Points | Tests passed |
 |---|---|---:|---:|
 | T01 | generation | 15.00 / 15 | 6 / 6 |
 | T02 | debugging | 6.43 / 15 | 3 / 7 |
 | T03 | comprehension | 8.57 / 15 | 4 / 7 |
 | T04 | refactoring | 8.57 / 15 | 4 / 7 |
-| T05 | multi-file reasoning | 0.00 / 25 | 0 / 11 |
-| T06 | instruction following | 1.25 / 15 | 1 / 12 |
+| T05 | multi-file reasoning | 0.00 / 25 | 0 / 7 |
+| T06 | instruction following | 2.14 / 15 | 1 / 7 |
 
-## Scoring defect
+The original v1.0.0 score of **39.82 / 100** is preserved only as an auditable historical artifact because its test denominator was affected by failing subtests.
 
-The v1.0.0 runner regex-parsed verbose `unittest` result lines. Failing `subTest` cases emitted extra result lines and were incorrectly counted as additional tests.
+## Quality interpretation
 
-Evidence from the first real run:
+### T01 — generation
+Complete success. All six tests passed. This is strong evidence that the 4B model can produce a correct small implementation from a focused specification in strict single-shot mode.
 
-- T05 runner field: 11 tests, while `unittest` reported `Ran 7 tests`.
-- T06 runner field: 12 tests, while `unittest` reported `Ran 7 tests`.
+### T02 — debugging
+Partial success. Four of seven top-level tests failed. The generated fix retained incorrect rolling-window update behavior for floats, multiple windows and size-one cases, and did not reject boolean `True` as an invalid size.
 
-The denominator therefore depended on how tests failed. This violates reproducibility and invalidates the original aggregate score.
+### T03 — comprehension
+Partial success. Four of seven tests passed. The model correctly identified the broad strategy and produced valid structured output, but it misclassified input mutation/state and the unassigned sentinel. It also returned `O(n*m)` even though the prompt explicitly required Big-O notation in terms of `len(capacities)` and `len(jobs)`; therefore this is a legitimate instruction-following miss rather than a scorer defect.
 
-The scorer was patched in Benchmark 01 v1.0.1 so each top-level `unittest.TestCase` method counts exactly once. Prompts, fixtures, tests, expected behavior and task weights were not changed.
+### T04 — constrained refactoring
+Partial success. Four of seven tests passed. Functional behavior was partly preserved, but the required `_coerce_score` helper was absent and `summarize` did not use the required helper contract.
 
-## Quality observations before corrected rescore
+### T05 — multi-file reasoning
+0/7. The isolated working copy still contains the original `NotImplementedError`, so no functional test passed. This cannot yet be classified as a pure model-reasoning failure because the corrected quality-result file does not contain adapter-status or raw-response information.
 
-These observations are independent of the aggregate scoring bug:
+### T06 — implementation constraints
+1/7. The isolated working copy still contains the original `NotImplementedError` for the implementation. As with T05, adapter-status/raw-response data are required before classifying the failure mechanism.
 
-- **T01 generation:** complete success, 6/6 top-level tests passed.
-- **T02 debugging:** partial success; rolling-window logic remained incorrect for several cases and boolean `True` was not rejected as an invalid window size.
-- **T03 comprehension:** partial success; strategy recognition was correct, but input mutation, unassigned sentinel and complexity notation/contract were answered incorrectly under the benchmark's expected schema.
-- **T04 refactoring:** functional behavior partly passed, but the required `_coerce_score` helper was missing and `summarize` therefore did not satisfy the required refactoring structure.
-- **T05 multi-file reasoning:** generated working tree still contained the original `NotImplementedError`, so no functional tests passed. The quality-result JSON alone cannot determine whether this came from a model failure or an adapter/output-parsing failure.
-- **T06 instruction following:** generated working tree still contained the original `NotImplementedError` for most checks. The quality-result JSON alone cannot determine whether this came from a model failure or an adapter/output-parsing failure.
+## Scoring defect history
 
-## Missing ingestion data
+Benchmark 01 v1.0.0 regex-parsed verbose `unittest` output. Failing `subTest` cases emitted extra result lines and were incorrectly counted as extra tests, making the denominator depend on failure shape.
 
-The uploaded quality-result JSON does not contain the adapter records from `run-summary.json`, so the following remain pending:
+Observed in the original result:
+- T05 was reported as 11 tests although there are 7 top-level tests.
+- T06 was reported as 12 tests although there are 7 top-level tests.
+
+Benchmark 01 v1.0.1 fixes only the scoring mechanism. Task prompts, fixtures, tests, expected semantics and weights remain unchanged.
+
+## What is still missing
+
+The uploaded rescored file is a quality-result artifact, not the adapter's original `run-summary.json`. Full baseline ingestion still requires:
 
 - adapter status for T01–T06;
-- malformed JSON/output errors;
-- raw Ollama responses;
-- prompt and generation token counts;
-- prompt and generation tok/s;
-- wall times;
+- parse/output-format errors;
+- raw Ollama response status;
+- prompt token counts and prompt tok/s;
+- generation token counts and generation tok/s;
+- wall time per task and total run duration;
 - memory, compression and swap snapshots.
+
+These data are especially necessary to classify why T05 and T06 remained unimplemented.
 
 ## Next action
 
-1. Pull the v1.0.1 scoring patch.
-2. Rescore the exact existing run with `scripts/rescore_coding_run.py`; do **not** rerun the model.
-3. Ingest the corrected score.
-4. Ingest the original `run-summary.json` to classify T05/T06 as model-quality vs adapter-format failures and add speed/memory metrics.
-5. Only then freeze Coding Baseline 001 as an official result.
+Ingest the original file:
+
+`<repository-root>/results-local/coding-single-shot/20260818-203156/run-summary.json`
+
+After that ingestion, freeze Coding Baseline 001 as the first official full quality/performance/memory reference for LOOM.
