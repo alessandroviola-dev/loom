@@ -58,16 +58,17 @@
 - [x] Ingest Pi edit+test metrics — ~114 s, +655.31 MB swap, Ollama 4.8 GB / 100% GPU / context 4096
 - [x] Build isolated Pi Coding Benchmark 01 agentic adapter with hidden tests excluded from agent workspaces
 - [x] Preregister Pi agentic benchmark protocol and scoring in `research/agents/pi-agentic-benchmark-001-plan.md`
-- [x] Run Coding Benchmark 01 in Pi file-agentic mode at context 4096 — artifact/delivery **77.15**, strict **60.00**, delivery **6/6**, protocol **4/6**
-- [x] Record preliminary result in `research/agents/pi-agentic-benchmark-001-preliminary.md`
+- [x] Run Coding Benchmark 01 in Pi file-agentic mode at context 4096
 - [x] Ingest full Pi agentic run-summary: per-task scores, protocol failures, runtime and memory/swap trajectory
+- [x] Validate raw Pi tool paths remain within per-task temporary workspaces — PASS
+- [x] Ingest provider-reported usage from saved Pi JSONL — 19,556 input + 653 output = 20,209 total across six task sessions
+- [x] Freeze canonical `research/agents/pi-agentic-benchmark-001.md`
+- [x] Canonical Pi Agentic 001 scores: artifact/delivery **77.15**, strict **60.00**, delivery **6/6**, protocol **4/6**
 - [x] Classify remaining 22.85 artifact points as genuine frozen-test deficits and 17.15 additional strict points as final-output protocol-only loss
 - [x] Identify sustained memory-pressure finding: swap +3.279 GB and Ollama reported allocation 4.4 -> 7.2 GB across tasks at context 4096
-- [x] Add retrospective raw JSONL inspector for tool-path isolation and provider usage
-- [ ] Validate all Pi Agentic 001 raw tool paths stay inside task workspaces
-- [ ] Freeze canonical `research/agents/pi-agentic-benchmark-001.md`
-- [ ] Mark preliminary Agentic 001 record superseded
-- [ ] Run lightweight repeated-call memory-retention probe to investigate 4.4 -> 7.2 GB growth
+- [x] Mark preliminary Agentic 001 record superseded
+- [ ] Preregister and run lightweight repeated-call memory-retention probe at context 4096
+- [ ] Determine whether Ollama 4.4 -> 7.2 GB growth is reproducible accumulation across separate calls or task-specific high-water behavior
 - [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
 - [ ] Measure Qwen Code context scaling to 8192 only if it still adds research value
 - [ ] Add reproducible agent validation/retry workflow for real-world daily-use profile
