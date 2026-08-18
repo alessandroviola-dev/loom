@@ -52,10 +52,15 @@
 - [x] Inspect Qwen Code settings delta — only automatic schema marker `"$version": 4`
 - [x] Adopt Qwen Code settings schema version 4 in the versioned LOOM config
 - [x] Add isolated reproducible Pi edit+test smoke runner at context 4096
-- [ ] Run Pi targeted edit + test smoke at context 4096
+- [x] Run Pi targeted edit + test smoke at context 4096 — **functional PASS**: read/edit/bash used, solution fixed, independent tests pass, tests unchanged, tracked LOOM tree unchanged
+- [x] Detect Pi edit-smoke validator defect: exact final-output compliance was computed but omitted from aggregate success
+- [x] Patch Pi edit-smoke runner to separate `functional_success` and `strict_success`
+- [x] Record `research/agents/pi-edit-test-smoke-001.md` — functional PASS / strict output FAIL
+- [ ] Ingest Pi edit+test smoke memory/swap/runtime metrics from `pi-edit-20260818-213432/smoke-summary.json`
 - [ ] Run Qwen Code safe-mode 4096 diagnostic
 - [ ] Measure Qwen Code context scaling to 8192 only as a separate experiment if still useful
 - [ ] Add reproducible agent validation/retry workflow
+- [ ] Adapt Coding Benchmark 01 to Pi agentic mode with separate functional/protocol scoring
 - [ ] Run Coding Benchmark 01 in Pi `agentic` mode
 - [ ] Compare agentic score, protocol reliability, latency and memory against Baseline 001
 - [ ] Decide whether Qwen Code remains a primary comparator after safe-mode/context tests
