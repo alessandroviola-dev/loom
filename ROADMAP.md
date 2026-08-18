@@ -14,7 +14,7 @@
 - [x] Confirm 100% GPU execution
 - [x] Measure initial generation throughput
 - [x] Compare memory state with model ON/OFF
-- [x] Re-evaluate prompt-processing throughput using real benchmark prompts — weighted 177.29 tok/s across T01–T03
+- [x] Re-evaluate prompt-processing throughput using real benchmark prompts — weighted 186.46 tok/s across T01–T06
 
 ## Phase 2 — Benchmark framework
 - [x] Define Coding Benchmark 01
@@ -27,21 +27,24 @@
 - [x] Detect v1.0.0 subtest-counting scoring defect
 - [x] Patch scorer as Coding Benchmark 01 v1.0.1
 - [x] Add deterministic rescoring utility
-- [x] Rescore the existing Qwen run without regenerating model outputs — artifact score 40.71/100
+- [x] Rescore existing Qwen run — artifact score 40.71/100
 - [x] Ingest `run-summary.json` timing/token/memory and adapter-status data
 - [x] Define delivery-adjusted strict single-shot scoring — first run 30.00/100
 - [x] Harden Ollama adapter telemetry, progress and delivery accounting
-- [ ] Inspect preserved raw T04–T06 Ollama responses
-- [ ] Freeze Coding Baseline 001 official full result
+- [x] Inspect preserved raw T04–T06 Ollama responses
+- [x] Recover malformed envelopes without editing model code and test semantic content — recovered diagnostic score 82.86/100
+- [x] Freeze Coding Baseline 001 official full result
 - [ ] Define reasoning benchmark
 
 ## Phase 3 — Local coding agent
-- [ ] Select agent layer
-- [ ] Connect to Ollama
-- [ ] Read repository files
-- [ ] Modify code
+- [ ] Research/select agent layer suitable for Ollama + local repository editing
+- [ ] Connect agent to Ollama / `qwen3.5:4b-mlx`
+- [ ] Read repository files safely
+- [ ] Modify code using robust file/patch operations rather than fragile JSON full-file transport
 - [ ] Execute commands/tests safely
-- [ ] Benchmark end-to-end agent tasks
+- [ ] Add validation/retry loop
+- [ ] Run Coding Benchmark 01 in `agentic` mode
+- [ ] Compare agentic score, protocol reliability, latency and memory against Baseline 001
 
 ## Phase 4 — llama.cpp
 - [ ] Install/build optimized Apple Silicon version
