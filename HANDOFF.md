@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Pi Agentic Coding Benchmark 001 frozen; identical-call memory probe completed; direct Ollama context-pressure probe preregistered and ready
-Checkpoint: PI_MEMORY_RETENTION_001_COMPLETE_OLLAMA_CONTEXT_PROBE_READY
+Status: ACTIVE — Pi Agentic Coding Benchmark 001 frozen; runtime prompt-pressure/high-water retention confirmed; Pi multi-turn memory probe preregistered and ready
+Checkpoint: OLLAMA_CONTEXT_RETENTION_001_COMPLETE_PI_MULTITURN_PROBE_READY
 
 ## Mission
 
@@ -25,7 +25,7 @@ The user's normal Pi setup contains real OpenAI API/Codex authentication, sessio
 
 LOOM added Ollama only as an additional provider. Do not reset or overwrite normal Pi state.
 
-Controlled experiments use run-local isolation where appropriate.
+Controlled experiments use run-local `PI_CODING_AGENT_DIR` isolation where appropriate.
 
 ## Frozen Coding Baseline 001
 
@@ -132,7 +132,7 @@ After:
 - memory free 24%
 
 Ollama trajectory by task:
-- 4.4 -> 5.2 -> 5.6 -> 6.4 -> 6.8 -> 7.2 GB
+- **4.4 -> 5.2 -> 5.6 -> 6.4 -> 6.8 -> 7.2 GB**
 
 Observed but not causally explained. Do not call this a leak, KV-cache effect or MLX bug without controlled evidence.
 
@@ -143,70 +143,91 @@ Canonical record:
 
 Run id: `20260818-223251`
 
-Question:
-> Does simple repetition of identical Pi calls reproduce the Agentic 001 4.4 -> 7.2 GB growth?
+Four identical tiny warm Pi calls:
+- **4.1 -> 4.3 -> 4.4 -> 4.5 GB**
+- swap **2050.06 -> 1922.06 MB** rather than accumulating
 
-Warm arm, four identical calls without unloading:
+Cold controls with unload:
+- cold-01 **4.1 GB**
+- cold-02 **4.1 GB**
 
-| Iteration | Ollama size | Swap | Free | Usage | Wall |
-|---|---:|---:|---:|---:|---:|
-| warm-01 | 4.1 GB | 2050.06 MB | 22% | 1008 | 17.638 s |
-| warm-02 | 4.3 GB | 1954.06 MB | 14% | 1015 | 9.874 s |
-| warm-03 | 4.4 GB | 1930.06 MB | 17% | 1010 | 9.329 s |
-| warm-04 | 4.5 GB | 1922.06 MB | 16% | 986 | 7.505 s |
+Conclusion:
+> Some warm retention exists, but simple invocation count alone is far too small to explain Agentic 001's 7.2 GB trajectory.
 
-Cold controls with `ollama stop` before every call:
-- cold-01: **4.1 GB**, swap 1984.31 MB
-- cold-02: **4.1 GB**, swap 2056.12 MB
+## Ollama Context Retention Probe 001 — COMPLETED / VALID
+
+Canonical result:
+- `research/runtime/ollama-context-retention-probe-001.md`
+
+Preregistered plan:
+- `research/runtime/ollama-context-retention-probe-001-plan.md`
+
+Run id: `20260818-223909`
+Run directory:
+- `results-local/ollama-context-retention/20260818-223909`
+
+Direct Ollama `/api/generate`, Pi absent, context 4096:
+
+| Condition | Prompt tokens | Ollama SIZE | Swap | Free |
+|---|---:|---:|---:|---:|
+| warm-low | 418 | 4.1 GB | 1925.50 MB | 15% |
+| warm-medium | 1618 | 4.3 GB | 2374.12 MB | 17% |
+| warm-high | 3018 | 4.5 GB | 2407.56 MB | 20% |
+| warm-low-after-high | 418 | 4.6 GB | 2205.38 MB | 12% |
+| cold-low | 418 | 4.1 GB | 2189.38 MB | 17% |
+| cold-high | 3018 | 4.2 GB | 2386.62 MB | 23% |
+
+All calls succeeded.
 
 ### Canonical interpretation
 
-1. Some warm retention exists: **4.1 -> 4.5 GB** across four identical calls.
-2. It is small relative to Agentic 001's **4.4 -> 7.2 GB**.
-3. Warm swap did **not** accumulate; it declined ~128 MB across the arm.
-4. `ollama stop` resets observed post-call allocation to **4.1 GB**.
-5. Therefore **invocation count alone is insufficient** to explain Agentic 001.
-6. Evidence is consistent with retained warm allocation plus workload-dependent high-water behavior, but the causal mechanism remains unknown.
+1. **Runtime-level prompt/context-pressure allocation is confirmed.** Pi is not required for Ollama SIZE to grow.
+2. Warm prompt pressure produced **4.1 -> 4.3 -> 4.5 GB** as prompt tokens rose 418 -> 1618 -> 3018.
+3. **Retained high-water behavior is confirmed:** after warm-high, a later 418-token call remained at **4.6 GB** rather than returning to 4.1 GB.
+4. `ollama stop` resets the observed low-pressure baseline: cold-low = **4.1 GB**.
+5. Prompt pressure alone remains **insufficient** to explain Agentic 001's **7.2 GB**. Even cold-high at 3018 tokens was only **4.2 GB**.
+6. `ollama ps` SIZE and macOS swap are not equivalent metrics; warm-low-after-high retained higher SIZE while swap decreased.
 
-## Ollama Context Retention Probe 001 — PREREGISTERED / READY
+Do not infer the internal cause. Leak/KV-cache/allocator-fragmentation claims remain unsupported.
+
+## Pi Multi-turn Memory Probe 001 — PREREGISTERED / READY
 
 Plan:
-- `research/runtime/ollama-context-retention-probe-001-plan.md`
+- `research/agents/pi-multiturn-memory-probe-001-plan.md`
 
 Runner:
-- `scripts/ollama_context_retention_probe.py`
+- `scripts/pi_multiturn_memory_probe.py`
 
-Purpose:
-> Remove Pi entirely and test whether direct Ollama/MLX allocation scales with prompt pressure and retains a high-water mark.
+Question:
+> Is within-session model/tool round-trip depth the missing factor that materially raises Ollama high-water allocation beyond the ~4.5–4.6 GB seen from invocation count and direct prompt pressure?
 
-Frozen design:
-- direct `/api/generate`
-- model `qwen3.5:4b-mlx`
-- context 4096
-- think false
-- temperature 0
-- output budget 8 tokens
+Design uses forced sequential file chains: each read result reveals the exact filename of the next file, so Pi cannot know later paths in advance.
 
-Warm sequence:
-1. low prompt pressure
-2. medium
-3. high
-4. low-after-high
+Cold-start conditions:
+1. `cold-1turn` — exactly 1 sequential read
+2. `cold-4turn` — exactly 4 sequential reads
+3. `cold-8turn` — exactly 8 sequential reads
 
-Cold controls:
-1. cold-low after unload
-2. cold-high after unload
+Then, without unloading after the deepest valid condition:
+4. `warm-1turn-after-8` — tiny one-read session to test retained high-water
 
-Authoritative pressure measurement is Ollama `prompt_eval_count`, not nominal repetition count.
+Validation requires:
+- exit 0
+- exact `DONE`
+- exact expected number/order of read paths
+- all paths safe/relative
+- no parse/event errors
+
+Metrics:
+- wall time
+- provider usage
+- PhysMem/free%
+- swap
+- Ollama SIZE/context/processor
 
 Guardrails:
-- abort warm arm if memory free <8%
-- abort warm arm if swap >5600 MB
-
-Interpretation goals:
-- determine whether allocation scales with prompt pressure even without Pi;
-- determine whether a high-pressure call leaves a retained high-water allocation for a later small call;
-- separate runtime behavior from agent-harness/tool-turn effects.
+- free memory <8% => stop/unload
+- swap >5600 MB => stop/unload
 
 ## Exact next step
 
@@ -215,16 +236,25 @@ On the reference Mac:
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/ollama_context_retention_probe.py
-python3 scripts/ollama_context_retention_probe.py
+python3 -m py_compile scripts/pi_multiturn_memory_probe.py
+python3 scripts/pi_multiturn_memory_probe.py
 ```
 
 Preserve complete terminal output.
 
+Expected sections:
+- `=== COLD DEPTH ARM ===`
+- `cold-1turn`
+- `cold-4turn`
+- `cold-8turn`
+- `=== WARM RETENTION ARM ===`
+- `warm-1turn-after-8`
+- `=== COMPLETE ===`
+
 After that:
-1. ingest direct warm/cold prompt-pressure results;
-2. decide whether retention is runtime-level or requires Pi/multi-turn behavior;
-3. if needed isolate multi-turn/tool-round-trip effects;
+1. classify size vs tool-depth relationship;
+2. decide whether multi-turn explains a substantial part of Agentic 001's 7.2 GB;
+3. if still insufficient, move to a lower-level/runtime probe closer to benchmark workload shape;
 4. then return to Qwen Code safe-mode 4096 as secondary harness diagnostic.
 
 ## Roadmap state
@@ -232,7 +262,7 @@ After that:
 - Phase 0 foundation: DONE
 - Phase 1 inference baseline: DONE
 - Phase 2 Coding Benchmark + Baseline 001: DONE / FROZEN
-- Phase 3 local coding agent/runtime investigation: ACTIVE — Pi Agentic 001 frozen; Pi memory retention probe complete; direct Ollama context probe ready
+- Phase 3 local coding agent/runtime investigation: ACTIVE — Agentic 001 frozen; invocation and direct context probes complete; forced multi-turn probe ready
 - Phase 4 llama.cpp: queued
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD streaming / MoE: queued
@@ -241,9 +271,9 @@ After that:
 
 ## Open research questions
 
-- Does direct Ollama/MLX allocation scale with prompt pressure at fixed context 4096?
-- Does a high-pressure direct call leave a retained high-water allocation for later small calls?
-- If direct Ollama remains flat, are Pi multi-turn/tool round trips responsible for the larger Agentic 001 growth?
+- How strongly does Ollama SIZE scale with forced within-session tool/turn depth at fixed context 4096?
+- Does a deep tool loop leave a retained high-water visible to a subsequent tiny session?
+- If multi-turn remains insufficient, what workload property differentiates the full benchmark from all reduced probes?
 - What real-world validation/retry strategy best improves Pi reliability?
 - How much of Qwen Code's 4096 failure is always-on context vs core/tool surface?
 
