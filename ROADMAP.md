@@ -44,30 +44,26 @@
 - [x] Pi Multi-turn Probe 001 — invalidate causal depth inference due speculative filename reads
 - [x] Pi Multi-turn Probe 002 — valid depth 1/4 = 4.2/4.3 GB; depth 8 invalid due token protocol failures
 - [x] Pi Multi-turn Probe 003 — valid depth 1/4 = 4.1/4.3 GB; depth 8 invalid because model terminated after first valid turn
-- [x] Verify Probe 003 target-depth plumbing is correct; `1/3` final text was model-generated protocol error, not runner mismatch
 - [x] Stop iterating artificial deep-turn protocols; valid 1->4 evidence shows only small SIZE effect
-- [x] Preregister Pi Agentic Cold Replay 001 using exact frozen T01-T06 workloads
-- [x] Add `scripts/pi_agentic_cold_replay.py`
-- [x] Run Pi Agentic Cold Replay 001 — `ollama stop` before each real benchmark task
-- [x] Record `research/agents/pi-agentic-cold-replay-001.md`
-- [x] Validate T01-T05 cold replay; T06 replay timed out before tool use and is excluded from causal comparison
-- [x] Cold T01-T05 SIZE stayed 4.3-4.9 GB while historical warm sequence reached 6.8 GB by T05
+- [x] Run Pi Agentic Cold Replay 001 using exact frozen T01-T06 workloads
+- [x] Validate T01-T05 cold replay; T06 timed out before tool use and is excluded from causal comparison
 - [x] Classify cumulative retained warm high-water as a major contributor to Agentic 001 memory growth
-- [x] Establish strongest evidence: T03-T05 cold replay used equal/more tools or provider usage yet remained 1.1-2.3 GB below historical warm SIZE
 - [x] Close synthetic memory investigation as sufficient for practical conclusion; exact internal runtime mechanism remains unknown
-- [x] Preregister Qwen Code safe-mode 4096 diagnostic
-- [x] Add `scripts/qwen_code_safe_mode_smoke.py`
-- [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
-- [ ] Decide whether Qwen Code core safe-mode harness fits 4096 once optional context/customizations are removed
-- [ ] Measure Qwen Code context scaling to 8192 only if still useful
-- [ ] Add reproducible agent validation/retry workflow for daily-use profile
-- [ ] Decide whether Qwen Code remains a primary comparator
-- [ ] Test Aider if it adds research value
-- [ ] Evaluate OpenCode if context requirements are practical on 8 GB
+- [x] Run Qwen Code safe-mode 4096 diagnostic
+- [x] Safe mode reduces initial estimate only ~4474 -> 4363 tokens; still 267 tokens above 4096 and fails before first tool call
+- [x] Record `research/agents/qwen-code-safe-mode-4096.md`
+- [x] Deprioritize Qwen Code as secondary harness comparator; no 8192 rescue required for main research path
+- [ ] Add reproducible agent validation/retry workflow for daily-use profile later
+- [ ] Test Aider/OpenCode later only if they add research value
 
-## Phase 4 — llama.cpp
-- [ ] Install/build optimized Apple Silicon version
-- [ ] Test 7B/8B Q4
+## Phase 4 — llama.cpp — ACTIVE
+- [x] Preregister first reproducible Apple Silicon/Metal setup in `research/runtime/llama-cpp-phase4-plan.md`
+- [x] Pin initial llama.cpp source commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
+- [x] Add `scripts/llama_cpp_setup_probe.py`
+- [ ] Run setup probe: prerequisites + Release Metal build + `llama-cli`/`llama-bench`
+- [ ] Validate 4B GGUF runtime control (`Qwen/Qwen3-4B-GGUF`, Q4_K_M)
+- [ ] Test 8B Q4_K_M as first main capability step
+- [ ] Measure throughput, memory pressure, load time and Metal/GPU offload
 - [ ] Test Q3 variants
 - [ ] Test ~9B Q3/Q2 where feasible
 - [ ] Compare CPU/GPU offload strategies
