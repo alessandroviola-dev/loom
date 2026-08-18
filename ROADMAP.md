@@ -2,96 +2,66 @@
 
 ## Phase 0 — Project foundation
 - [x] Choose project name: LOOM
-- [x] Define research mission
-- [x] Define handoff discipline
-- [x] Create private GitHub repository `Ilcoach/loom`
+- [x] Define research mission and handoff discipline
+- [x] Create private repository `Ilcoach/loom`
 
 ## Phase 1 — Baseline
 - [x] Update Ollama
-- [x] Install Qwen 3.5 4B MLX
-- [x] Confirm MLX runner
-- [x] Confirm 100% GPU execution
-- [x] Measure initial generation throughput
-- [x] Compare memory state with model ON/OFF
-- [x] Re-evaluate prompt-processing throughput using real benchmark prompts — weighted 186.46 tok/s across T01–T06
+- [x] Install/validate Qwen 3.5 4B MLX
+- [x] Confirm MLX runner and 100% GPU execution
+- [x] Measure baseline throughput and memory
+- [x] Weighted prompt throughput: 186.46 tok/s; generation: 16.01 tok/s
 
 ## Phase 2 — Benchmark framework
-- [x] Define Coding Benchmark 01
-- [x] Validate/freeze prompts, fixtures and tests
-- [x] Build/validate scoring and single-shot adapter
-- [x] Fix scorer defect as Coding Benchmark 01 v1.0.1
-- [x] Freeze Coding Baseline 001
-- [x] Baseline canonical: artifact 40.71, strict 30.00, delivery 3/6
-- [x] Recover malformed raw envelopes diagnostically — semantic-content 82.86
+- [x] Define/freeze Coding Benchmark 01 v1.0.1
+- [x] Freeze single-shot Coding Baseline 001
+- [x] Canonical baseline: artifact 40.71, strict 30.00, delivery 3/6
+- [x] Recovered semantic diagnostic: 82.86
 - [ ] Define reasoning benchmark
 
 ## Phase 3 — Local coding agent / runtime investigation
-- [x] Install/configure Qwen Code 0.21.13 for Ollama
-- [x] Qwen Code normal-config 4096 smoke — blocked before first tool call by 4474-token initial prompt
-- [x] Add Ollama/Qwen to existing Pi non-destructively
-- [x] Pi 4096 read-only smoke — PASS
-- [x] Pi edit+test smoke — functional PASS / strict output FAIL
-- [x] Build/preregister/run isolated Pi Coding Benchmark 01 agentic adapter
-- [x] Freeze canonical Pi Agentic Coding Benchmark 001
-- [x] Canonical Pi Agentic 001: artifact/delivery 77.15, strict 60.00, delivery 6/6, protocol 4/6
-- [x] Validate raw tool paths — PASS
-- [x] Ingest provider usage — 20,209 total tokens across six sessions
-- [x] Identify Agentic 001 memory trajectory: Ollama SIZE 4.4 -> 7.2 GB; swap +3.279 GB
-- [x] Pi Memory Retention Probe 001 — identical warm calls only 4.1 -> 4.5 GB; cold reset 4.1 GB
-- [x] Ollama Context Retention Probe 001 — direct prompt pressure 4.1 -> 4.5 GB; retained warm high-water 4.6 GB
-- [x] Determine invocation count and prompt pressure alone are insufficient to explain 7.2 GB
-- [x] Pi Multi-turn Probe 001 — invalidate causal depth inference due speculative filename reads
-- [x] Pi Multi-turn Probe 002 — valid depth 1/4 = 4.2/4.3 GB; depth 8 invalid due token protocol failures
-- [x] Pi Multi-turn Probe 003 — valid depth 1/4 = 4.1/4.3 GB; depth 8 invalid because model terminated after first valid turn
-- [x] Stop iterating artificial deep-turn protocols; valid 1->4 evidence shows only small SIZE effect
-- [x] Run Pi Agentic Cold Replay 001 using exact frozen T01-T06 workloads
-- [x] Validate T01-T05 cold replay; T06 timed out before tool use and is excluded from causal comparison
-- [x] Classify cumulative retained warm high-water as a major contributor to Agentic 001 memory growth
-- [x] Close synthetic memory investigation as sufficient for practical conclusion; exact internal runtime mechanism remains unknown
-- [x] Run Qwen Code safe-mode 4096 diagnostic
-- [x] Safe mode reduces initial estimate only ~4474 -> 4363 tokens; still 267 tokens above 4096 and fails before first tool call
-- [x] Record `research/agents/qwen-code-safe-mode-4096.md`
-- [x] Deprioritize Qwen Code as secondary harness comparator; no 8192 rescue required for main research path
-- [ ] Add reproducible agent validation/retry workflow for daily-use profile later
-- [ ] Test Aider/OpenCode later only if they add research value
+- [x] Qwen Code 0.21.13 normal-config 4096 blocked before first request (~4474 tokens)
+- [x] Pi 0.84.2 configured non-destructively for Ollama
+- [x] Pi 4096 read-only and edit/test smoke tests
+- [x] Freeze Pi Agentic Coding Benchmark 001
+- [x] Pi Agentic 001: artifact/delivery 77.15, strict 60.00, delivery 6/6, protocol 4/6
+- [x] Investigate sustained warm memory trajectory 4.4 -> 7.2 GB
+- [x] Invocation, context-pressure, multi-turn and cold-replay probes
+- [x] Conclude cumulative retained warm high-water is a major contributor; internal mechanism unresolved
+- [x] Qwen Code safe mode still 4363 > 4096; deprioritize Qwen Code
+- [ ] Add daily-use validation/retry workflow later
+- [ ] Test Aider/OpenCode only if later research value justifies it
 
 ## Phase 4 — llama.cpp — ACTIVE
-- [x] Preregister first reproducible Apple Silicon/Metal setup in `research/runtime/llama-cpp-phase4-plan.md`
-- [x] Pin initial llama.cpp source commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
-- [x] Add `scripts/llama_cpp_setup_probe.py`
-- [x] Run Setup Probe 001 prerequisite gate — blocked because `cmake` was missing
-- [x] Install CMake 4.4.2 via Homebrew and verify prerequisites PASS
-- [x] Run Setup Probe 002 — configure PASS, Metal ON; build invalidated by LOOM probe setting `LLAMA_BUILD_SERVER=OFF`, which omitted the `llama-cli` target at the pinned source commit
-- [x] Record `research/runtime/llama-cpp-setup-probe-002.md`
-- [x] Patch setup probe revision 2: `LLAMA_BUILD_SERVER=ON`, `LLAMA_BUILD_UI=OFF`, `LLAMA_BUILD_COMMON=ON`, `LLAMA_BUILD_TOOLS=ON`; pinned commit and Metal settings unchanged
-- [x] Run corrected Setup Probe 003 — full PASS: configure/build, `llama-cli`, `llama-bench`, Metal ON
-- [x] Record canonical setup result in `research/runtime/llama-cpp-setup-probe-003.md`
-- [x] Preregister 4B runtime control in `research/runtime/llama-cpp-4b-control-001-plan.md`
-- [x] Add `scripts/llama_cpp_4b_control.py` with exact model SHA256 verification and memory telemetry
-- [ ] Run/validate 4B GGUF runtime control (`Qwen/Qwen3-4B-GGUF`, Q4_K_M)
-- [ ] Test 8B Q4_K_M as first main capability step
-- [ ] Measure throughput, memory pressure, load time and Metal/GPU offload
-- [ ] Test Q3 variants
+- [x] Preregister Phase 4 and pin llama.cpp commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
+- [x] Install CMake 4.4.2
+- [x] Resolve initial LOOM build-target defect
+- [x] Setup Probe 003 canonical PASS: Release build, `llama-cli`, `llama-bench`, Metal ON
+- [x] Preregister/run 4B GGUF Runtime Control 001
+- [x] Record `research/runtime/llama-cpp-4b-control-001.md`
+- [x] 4B control PASS: Qwen3 4B Q4_K_M, 2.326 GiB, Metal, pp512 230.85 t/s, tg128 22.33 t/s
+- [x] 4B telemetry: peak process RSS 1914.91 MB, peak swap 1097.19 MB, minimum free memory 22%
+- [x] Preregister `research/runtime/llama-cpp-8b-q4-001-plan.md`
+- [ ] Perform explicit disk-capacity preflight before fresh 8B download
+- [ ] Run Qwen3 8B Q4_K_M Capability 001 at context 4096 smoke, then throughput if stable
+- [ ] Compare 4B -> 8B throughput/memory scaling
+- [ ] Test 8B Q3 variant according to observed headroom
 - [ ] Test ~9B Q3/Q2 where feasible
-- [ ] Compare CPU/GPU offload strategies
+- [ ] Compare partial CPU/GPU offload where useful
 
 ## Phase 5 — Direct MLX
-- [ ] Set up MLX environment
+- [ ] Set up direct MLX environment
 - [ ] Run equivalent model directly
-- [ ] Compare throughput
-- [ ] Compare memory pressure
-- [ ] Compare context scaling
+- [ ] Compare throughput, memory pressure and context scaling
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
-- [ ] Install Colibrì
+- [ ] Install/evaluate Colibrì
 - [ ] Identify 8 GB-compatible candidates
 - [ ] Measure resident memory vs disk traffic
-- [ ] Test practical throughput
 - [ ] Determine largest useful model
 
 ## Phase 7 — Extended runtime research
-- [ ] Evaluate new Apple Silicon runtimes
-- [ ] Test only if evidence suggests material advantage
+- [ ] Evaluate other Apple Silicon runtimes only when evidence suggests a material advantage
 
 ## Phase 8 — Synthesis
 - [ ] Daily-use profile
