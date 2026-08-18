@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — Pi validated as primary local agent harness; Agentic 001 frozen; practical memory-retention question resolved; Qwen Code deprioritized; llama.cpp Phase 4 Metal setup fully validated; 4B GGUF runtime control preregistered and running/ready
-Checkpoint: LLAMA_CPP_4B_CONTROL_001_READY
+Status: ACTIVE — Pi remains the primary local agent harness; memory-retention investigation practically resolved; Qwen Code deprioritized; llama.cpp Metal setup and 4B GGUF control both validated; 8B Q4 capability test preregistered pending disk preflight
+Checkpoint: `LLAMA_CPP_8B_Q4_001_DISK_PREFLIGHT`
 
 ## Mission
 
@@ -10,176 +10,93 @@ Study practical local LLM/agent execution on constrained consumer hardware, init
 
 Tagline: **Big models. Small machines.**
 
-Reference repo: `Ilcoach/loom`
+Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 
-Reference stack before Phase 4:
+Reference stack:
 - Apple M1, 8 GB unified memory
 - Ollama 0.32.14
 - Pi 0.84.2
 - Qwen Code 0.21.13
 - canonical Ollama model `qwen3.5:4b-mlx`
-- canonical context 4096 unless an experiment explicitly changes it
+- canonical context 4096 unless a separately preregistered experiment changes it
 
 ## Production Pi constraint
 
-The user's normal Pi installation contains real OpenAI API/Codex auth, sessions and customizations. LOOM added Ollama only as an additional provider.
+Normal Pi contains real auth, sessions and customizations. LOOM must not reset or replace it. Controlled experiments use isolated/run-local Pi configuration where required.
 
-Do not reset/overwrite normal Pi state. Controlled experiments use run-local `PI_CODING_AGENT_DIR` and explicit per-run resources.
+## Storage hygiene
 
-## Storage hygiene rule
-
-LOOM will accumulate multi-GB model artifacts during Phase 4-6. Treat free disk capacity as a standard operational metric.
+Phase 4-6 will accumulate multi-GB models/builds. Free disk is now a standard operational metric.
 
 Rules:
-- record free disk space before and after each new model download / large runtime experiment where practical;
-- periodically inspect total size of `results-local/models/`, llama.cpp source/build trees and other model/runtime caches;
-- do not silently delete verified models or prior experiment artifacts; classify what is disposable first;
-- flag low-space conditions before starting another multi-GB download;
-- prefer reusing already verified artifacts instead of redownloading them;
-- when storage becomes materially constrained, prepare an explicit cleanup list separating reproducible caches/builds from canonical research records.
+- record disk free before/after new multi-GB models where practical;
+- periodically inspect `results-local/models/`, llama.cpp source/build trees and related caches;
+- reuse verified artifacts rather than redownloading;
+- never silently delete models/results;
+- before cleanup, separate reproducible caches/builds from canonical research records.
 
-Current `scripts/llama_cpp_4b_control.py` already records `disk_free_gib_before` and refuses a fresh model download if less than 4 GiB is free. Future Phase 4+ runners should preserve/strengthen this telemetry, including post-run free space where practical.
+The 8B Q4 plan requires at least **12 GiB free** before a fresh download.
 
-## Frozen Coding Baseline 001
+## Frozen baseline / agent results
 
-Run id: `20260818-203156`
-Benchmark: Coding Benchmark 01 v1.0.1
-Model/runtime: `qwen3.5:4b-mlx`, Ollama/MLX, context 4096
+### Coding Baseline 001
+
+Run `20260818-203156`, Coding Benchmark 01 v1.0.1, Ollama/MLX `qwen3.5:4b-mlx`, context 4096.
 
 Canonical:
-- artifact **40.71/100**
-- strict delivery-adjusted **30.00/100**
-- structured delivery **3/6**
-- recovered semantic diagnostic **82.86/100**
-- weighted prompt throughput **186.46 tok/s**
-- weighted generation **16.01 tok/s**
+- artifact 40.71/100
+- strict 30.00/100
+- delivery 3/6
+- recovered semantic diagnostic 82.86/100
+- weighted prompt throughput 186.46 tok/s
+- weighted generation 16.01 tok/s
 
-Record:
-- `benchmarks/results/coding-baseline-001-qwen35-4b-mlx.md`
+### Pi Agentic Coding Benchmark 001
 
-Key finding:
-> Full-file JSON delivery was a major bottleneck; recovered code quality was much stronger than strict end-to-end delivery.
+Run `20260818-214848`.
 
-## Pi Agentic Coding Benchmark 001 — FROZEN / CANONICAL
+Canonical:
+- artifact/delivery 77.15/100
+- strict 60.00/100
+- delivery 6/6
+- protocol 4/6
+- provider usage 20,209 total tokens
 
-Run id: `20260818-214848`
-Record:
-- `research/agents/pi-agentic-benchmark-001.md`
+Conclusion:
+> Pi is the current primary local agent harness for LOOM at context 4096. Qwen Code remains secondary because its core request does not fit 4096 even in safe mode.
 
-Canonical scores:
-- artifact **77.15/100**
-- delivery-adjusted **77.15/100**
-- strict protocol-adjusted **60.00/100**
-- delivery **6/6**
-- protocol **4/6**
+## Memory investigation — practical conclusion
 
-Versus single-shot:
-- artifact **40.71 -> 77.15** (+36.44)
-- strict **30.00 -> 60.00** (+30.00)
-- delivery **3/6 -> 6/6**
+Historical warm Agentic 001 Ollama SIZE rose 4.4 -> 7.2 GB and swap increased by about 3.279 GB.
 
-Correctness deficit from 100 artifact: **22.85 points**.
-Additional strict-only protocol loss: **17.15 points**, entirely T02/T03 final-output noncompliance.
+Controlled work showed:
+- identical warm calls only 4.1 -> 4.5 GB;
+- direct prompt pressure only 4.1 -> 4.5 GB, with warm high-water retention;
+- valid synthetic 1 -> 4 true turns added only ~0.1-0.2 GB;
+- exact-workload cold T01-T05 stayed 4.3-4.9 GB, while the historical warm sequence reached 6.8 GB by T05;
+- T03-T05 cold replays were equal/heavier by tool or token activity yet 1.1-2.3 GB below warm historical SIZE.
 
-Workspace/tool-path safety: PASS.
-Provider usage across task sessions: **19,556 input + 653 output = 20,209 total**.
+Canonical conclusion:
+> Cross-task retained warm runtime high-water is a major contributor to sustained memory growth. The lower-level internal mechanism is unresolved; do not call it a leak, KV effect, allocator bug or fragmentation without further evidence.
 
-Primary agent conclusion:
-> Pi is the current primary local agent harness for LOOM. At context 4096 it completes real agentic file work and delivers all six benchmark tasks, while Qwen Code cannot form its first 4096-token request even in safe mode.
+## Qwen Code — deprioritized
 
-## Agentic memory investigation — practical conclusion
+Normal-config initial estimate: ~4474 tokens at hard limit 4096.
+Safe-mode run `qwen-safe-20260818-233219`: 4363 tokens, still 267 over, no first tool call.
 
-Historical Agentic 001 post-task Ollama SIZE:
-- T01 4.4 GB
-- T02 5.2 GB
-- T03 5.6 GB
-- T04 6.4 GB
-- T05 6.8 GB
-- T06 7.2 GB
+No 8192 rescue is required for the main research path while Pi works.
 
-Historical swap delta: **+3279 MB**.
+# Phase 4 — llama.cpp
 
-Controlled findings:
-1. identical small warm Pi calls only produced **4.1 -> 4.5 GB**; cold controls reset to 4.1 GB;
-2. direct Ollama prompt pressure without Pi produced **4.1 -> 4.5 GB** and retained a 4.6 GB warm high-water;
-3. valid synthetic depth 1 -> 4 changed reported SIZE only about **+0.1 to +0.2 GB**;
-4. exact-workload cold replay T01-T05 kept individual tasks at **4.3-4.9 GB**, while the historical warm sequence reached 6.8 GB by T05;
-5. T03-T05 cold replay used equal/more tool activity or provider usage yet remained **1.1-2.3 GB** below historical warm SIZE;
-6. T06 cold replay timed out before tool use and is excluded from workload comparison.
+Pinned official llama.cpp source commit:
+`60addddf3c567c43ec3caf70fc953fba3572d96f`
 
-Canonical practical conclusion:
-> Cross-task retained warm runtime high-water is a **major contributor** to sustained memory growth in Agentic 001. Individual cold workloads T01-T05 do not independently require the later 6-7 GB reported state.
+## Setup Probe 003 — CANONICAL PASS
 
-Internal mechanism remains unidentified. Do not label it a leak, KV-cache effect, allocator bug or fragmentation without lower-level evidence.
+Run `20260818-234628`.
 
-## Qwen Code — SECONDARY / DEPRIORITIZED
-
-Normal-config 4096 smoke:
-- estimated prompt ~4474 tokens
-- no tool call
-
-Safe-mode diagnostic run `qwen-safe-20260818-233219`:
-- estimated prompt **4363 tokens**
-- hard limit **4096**
-- **267 tokens over limit**
-- safe mode recovers only **111 tokens**
-- no tool call
-
-Record:
-- `research/agents/qwen-code-safe-mode-4096.md`
-
-Decision:
-> No further Qwen Code minimization/8192 rescue is required for the main research path while Pi already provides a viable local agent harness.
-
-## Phase 4 — llama.cpp — ACTIVE
-
-Official source:
-- `ggml-org/llama.cpp`
-
-Pinned source commit:
-- `60addddf3c567c43ec3caf70fc953fba3572d96f`
-
-Phase plan:
-- `research/runtime/llama-cpp-phase4-plan.md`
-
-### Setup Probe 001 — BLOCKED_MISSING_CMAKE
-
-Run id `20260818-233856`.
-- stopped at prerequisite gate because CMake was absent;
-- no build inference.
-
-Record:
-- `research/runtime/llama-cpp-setup-probe-001.md`
-
-CMake subsequently installed through Homebrew:
-- CMake **4.4.2**.
-
-### Setup Probe 002 — INVALID BUILD RESULT / LOOM DEFECT
-
-Run id `20260818-234152`.
-- prerequisites PASS;
-- exact pinned checkout;
-- configure PASS;
-- Metal ON;
-- target build failed because the LOOM probe set `LLAMA_BUILD_SERVER=OFF`, which at the pinned source commit omits `llama-cli`.
-
-Record:
-- `research/runtime/llama-cpp-setup-probe-002.md`
-
-Correction:
-- `LLAMA_BUILD_SERVER=ON`
-- `LLAMA_BUILD_UI=OFF`
-- `LLAMA_BUILD_COMMON=ON`
-- `LLAMA_BUILD_TOOLS=ON`
-- Metal settings and pinned commit unchanged.
-
-### Setup Probe 003 — PASS / CANONICAL SETUP RESULT
-
-Run id: `20260818-234628`.
-
-Observed:
-- pinned commit exact match
+- exact pinned commit
 - prerequisites PASS
 - configure PASS
 - build PASS
@@ -191,66 +108,86 @@ Observed:
 - `LLAMA_BUILD_TOOLS=ON`
 - `LLAMA_BUILD_SERVER=ON`
 - `LLAMA_BUILD_UI=OFF`
-- overall success `True`
 
-Local build:
-- source: `results-local/llama-cpp/source-60addddf3c56`
-- build: `results-local/llama-cpp/source-60addddf3c56/build-loom-metal`
+Record: `research/runtime/llama-cpp-setup-probe-003.md`.
 
-Record:
-- `research/runtime/llama-cpp-setup-probe-003.md`
+## 4B Runtime Control 001 — CANONICAL PASS
 
-Conclusion:
-> The reference Apple M1 / 8 GB machine can build the pinned llama.cpp Release binaries with Metal enabled. Phase 4 runtime/model testing is authorized.
+Run id: `20260818-235812`
+Record: `research/runtime/llama-cpp-4b-control-001.md`
+Plan: `research/runtime/llama-cpp-4b-control-001-plan.md`
+Runner: `scripts/llama_cpp_4b_control.py`
 
-## llama.cpp 4B Runtime Control 001 — PREREGISTERED / READY
+Frozen artifact:
+- `Qwen/Qwen3-4B-GGUF`
+- `Qwen3-4B-Q4_K_M.gguf`
+- SHA256 `7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5`
+- observed size 2.326 GiB
 
-Plan:
-- `research/runtime/llama-cpp-4b-control-001-plan.md`
+Device evidence:
+- `MTL0: Apple M1 (5461 MiB, 5460 MiB free)`
+- BLAS Accelerate
+- unified memory true
+- embedded Metal library loaded
+- recommended Metal max working set 5726.63 MB
 
-Runner:
-- `scripts/llama_cpp_4b_control.py`
+Benchmark, `-ngl -1`, flash-attn auto, 3 repetitions:
+- pp512: **230.85 t/s ± 0.12**
+- tg128: **22.33 t/s ± 0.02**
+- backend `MTL,BLAS`
+- Metal evidence true
+- peak process RSS **1914.91 MB**
+- peak observed swap **1097.19 MB**
+- minimum observed free memory **22%**
+- success true
 
-Frozen model artifact:
-- official repo `Qwen/Qwen3-4B-GGUF`
-- file `Qwen3-4B-Q4_K_M.gguf`
-- quantization `Q4_K_M`
-- expected SHA256 `7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5`
-- published size about 2.5 GB
+Interpretation:
+> GGUF download/hash verification, pinned llama.cpp, Metal execution and telemetry are all validated. This is not an apples-to-apples performance claim versus the different `qwen3.5:4b-mlx` model.
 
-Runner behavior:
-- uses the exact pinned llama.cpp build;
-- unloads the canonical Ollama model first if Ollama is available;
-- downloads/resumes the model into ignored `results-local/models/`;
-- verifies SHA256 before execution;
-- records free disk space before the download/run;
-- records `llama-bench --list-devices`;
-- runs `llama-bench` at `-ngl -1`, flash-attn auto, pp512, tg128, 3 repetitions;
-- records JSON throughput output, backend/device evidence and offload log lines;
-- samples process RSS, swap and memory-pressure free percentage while the benchmark runs.
+## 8B Q4 Capability 001 — PREREGISTERED
 
-This control is **not** an apples-to-apples model quality comparison with `qwen3.5:4b-mlx`. It validates the llama.cpp/GGUF/Metal measurement path.
+Plan: `research/runtime/llama-cpp-8b-q4-001-plan.md`
 
-Success authorizes the next main experiment:
-- Qwen3 8B Q4_K_M
-- initial context 4096
-- maximum practical Metal/GPU offload first.
+Frozen artifact:
+- official repo `Qwen/Qwen3-8B-GGUF`
+- `Qwen3-8B-Q4_K_M.gguf`
+- remote size `5,027,783,488` bytes (~4.68 GiB)
+- SHA256 `d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785`
+
+Because this is close to the observed Metal working-set frontier, the experiment is staged:
+1. verify free disk and model storage footprint;
+2. download + SHA256 only if >=12 GiB free for a fresh artifact;
+3. context-4096 `llama-cli` launch smoke, maximum Metal offload;
+4. only if smoke passes, run the same pp512/tg128 throughput shape as the 4B control;
+5. monitor RSS, swap and memory pressure;
+6. abort child process if observed free memory <5% or swap >5600 MB;
+7. no same-run parameter rescue.
 
 ## Exact next step
 
-If the 4B control is currently downloading, let the current run complete; do not restart it merely for the storage-policy documentation update.
+Do **not** start the 8B download yet. On the reference Mac run:
 
-After completion, preserve complete output from `LOOM llama.cpp 4B Runtime Control 001` through the final `Summary:` line, including device and benchmark sections. Then inspect remaining disk space before authorizing the 8B download.
+```bash
+cd "<repository-root>"
+git pull
+
+df -h /
+du -sh results-local/models results-local/llama-cpp 2>/dev/null
+```
+
+Paste the full output.
+
+If free disk is comfortably above the frozen 12 GiB guard, create/finalize the 8B runner and execute Capability 001 exactly as preregistered.
 
 ## Roadmap state
 
-- Phase 0 foundation: DONE
-- Phase 1 baseline: DONE
-- Phase 2 Coding Benchmark/Baseline: DONE / FROZEN
-- Phase 3 agent/runtime investigation: materially complete; Pi primary, Qwen Code secondary
-- **Phase 4 llama.cpp: ACTIVE — Metal setup validated, 4B runtime control running/ready**
-- Phase 5 direct MLX: queued
-- Phase 6 Colibrì / SSD/MoE: queued
+- Phase 0: DONE
+- Phase 1: DONE
+- Phase 2: DONE / FROZEN
+- Phase 3: materially complete for current needs
+- **Phase 4: ACTIVE — 4B control PASS, 8B Q4 waiting disk preflight**
+- Phase 5 Direct MLX: queued
+- Phase 6 Colibrì / SSD / MoE: queued
 - Phase 7 extended runtimes: queued
 - Phase 8 synthesis: queued
 
