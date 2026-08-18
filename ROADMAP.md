@@ -59,10 +59,12 @@
 - [x] Preregister first reproducible Apple Silicon/Metal setup in `research/runtime/llama-cpp-phase4-plan.md`
 - [x] Pin initial llama.cpp source commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
 - [x] Add `scripts/llama_cpp_setup_probe.py`
-- [x] Run Setup Probe 001 prerequisite gate — correctly blocked before build because `cmake` is missing
-- [x] Record `research/runtime/llama-cpp-setup-probe-001.md` as `BLOCKED_MISSING_CMAKE`
-- [ ] Install/verify CMake, then rerun the exact same setup probe unchanged
-- [ ] Complete Release Metal build + verify `llama-cli`/`llama-bench`
+- [x] Run Setup Probe 001 prerequisite gate — blocked because `cmake` was missing
+- [x] Install CMake 4.4.2 via Homebrew and verify prerequisites PASS
+- [x] Run Setup Probe 002 — configure PASS, Metal ON; build invalidated by LOOM probe setting `LLAMA_BUILD_SERVER=OFF`, which omitted the `llama-cli` target at the pinned source commit
+- [x] Record `research/runtime/llama-cpp-setup-probe-002.md`
+- [x] Patch setup probe revision 2: `LLAMA_BUILD_SERVER=ON`, `LLAMA_BUILD_UI=OFF`, `LLAMA_BUILD_COMMON=ON`, `LLAMA_BUILD_TOOLS=ON`; pinned commit and Metal settings unchanged
+- [ ] Rerun corrected setup probe and complete Release Metal build + verify `llama-cli`/`llama-bench`
 - [ ] Validate 4B GGUF runtime control (`Qwen/Qwen3-4B-GGUF`, Q4_K_M)
 - [ ] Test 8B Q4_K_M as first main capability step
 - [ ] Measure throughput, memory pressure, load time and Metal/GPU offload
