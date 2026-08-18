@@ -37,14 +37,17 @@
 - [ ] Define reasoning benchmark
 
 ## Phase 3 — Local coding agent
-- [ ] Research/select agent layer suitable for Ollama + local repository editing
-- [ ] Connect agent to Ollama / `qwen3.5:4b-mlx`
-- [ ] Read repository files safely
-- [ ] Modify code using robust file/patch operations rather than fragile JSON full-file transport
-- [ ] Execute commands/tests safely
-- [ ] Add validation/retry loop
+- [x] Research/select first agent layer — **Qwen Code**
+- [ ] Verify Node/npm prerequisites
+- [ ] Install Qwen Code
+- [ ] Configure local Ollama / `qwen3.5:4b-mlx` at context 4096
+- [ ] Run sandboxed read/edit/test smoke test
+- [ ] Measure agent-layer memory/swap overhead
+- [ ] Add reproducible validation/retry workflow
 - [ ] Run Coding Benchmark 01 in `agentic` mode
 - [ ] Compare agentic score, protocol reliability, latency and memory against Baseline 001
+- [ ] Test Aider as second agentic comparator
+- [ ] Evaluate OpenCode if context requirements are practical on 8 GB
 
 ## Phase 4 — llama.cpp
 - [ ] Install/build optimized Apple Silicon version
