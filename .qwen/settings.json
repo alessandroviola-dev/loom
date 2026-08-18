@@ -1,0 +1,32 @@
+{
+  "modelProviders": {
+    "openai": [
+      {
+        "id": "qwen3.5:4b-mlx",
+        "name": "Qwen 3.5 4B MLX (Ollama)",
+        "baseUrl": "http://localhost:11434/v1",
+        "description": "LOOM reference local agent model via Ollama",
+        "generationConfig": {
+          "timeout": 300000,
+          "contextWindowSize": 4096,
+          "samplingParams": {
+            "temperature": 0,
+            "max_tokens": 2048
+          }
+        }
+      }
+    ]
+  },
+  "security": {
+    "auth": {
+      "selectedType": "openai"
+    }
+  },
+  "model": {
+    "name": "qwen3.5:4b-mlx"
+  },
+  "tools": {
+    "sandbox": true,
+    "approvalMode": "default"
+  }
+}
