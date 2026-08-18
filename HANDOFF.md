@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Qwen Code 4096 context limit found; Pi elevated as immediate comparator; Pi configuration must be preserved non-destructively
-Checkpoint: PI_NONDESTRUCTIVE_OLLAMA_MERGE_REQUIRED
+Status: ACTIVE — Pi 0.84.2 inventory complete; no custom models.json exists; non-destructive Ollama merge and matched read-only smoke scripts ready
+Checkpoint: PI_OLLAMA_SAFE_MERGE_READY
 
 ## Mission
 
@@ -19,7 +19,8 @@ Study, test and improve ways to run capable local language models and self-hoste
 - npm: `11.12.1`
 - Ollama: `0.32.14`
 - Qwen Code: `0.21.13`
-- Existing user coding agent: Pi (`earendil-works/pi`), already used with OpenAI API access and OpenAI/Codex account authentication, persistent sessions, installed skills and extensions
+- Pi: `0.84.2`
+- Existing Pi is production tooling with OpenAI API access, OpenAI/Codex account auth, persistent sessions and user customizations that must be preserved
 
 Installed Ollama models:
 - `qwen3.5:4b-mlx` — 4.0 GB — canonical baseline/agent model
@@ -45,106 +46,138 @@ Canonical baseline views:
 - peak observed swap: **2486.94 MB**
 
 Main baseline finding:
-
 > The 4B model's generated code was substantially better than its strict delivery score; fragile structured-output transport was a major bottleneck.
 
-Detailed baseline record:
-- `benchmarks/results/coding-baseline-001-qwen35-4b-mlx.md`
+## Qwen Code experiment
 
-## Phase 3 — local coding agent
+Qwen Code was selected first as a controlled agent-layer test because it supports local Ollama, real filesystem/shell tools, approval modes and macOS Seatbelt.
 
-### Qwen Code first candidate
-
-Qwen Code was selected as the first controlled agent-layer experiment because it supports local Ollama endpoints, filesystem/shell tools, approval modes and macOS Seatbelt. The choice was experimental and never implied superiority over Pi.
-
-Current Qwen Code config:
-- model: `qwen3.5:4b-mlx`
-- base URL: `http://localhost:11434/v1`
-- context: **4096**
-- temperature: **0**
-- max output: **2048**
-- sandbox: enabled
-- approval mode: `plan`
-
-### Qwen Code read-only smoke 001 — failed before tool call
-
-Run id: `20260818-211009`
-
-Observed:
+Read-only smoke 001 (`20260818-211009`) result:
 - model resolved correctly: `qwen3.5:4b-mlx`;
-- macOS Seatbelt activated with `permissive-open`;
-- no tool call was reached;
-- estimated initial prompt: **4474 tokens** against **4096** hard limit;
-- approximately **378 tokens over limit**;
-- always-on Qwen Code context warning: approximately **1429 tokens**;
-- process returned exit code 0 despite semantic API error;
-- runner reported working-tree status delta that still needs exact local inspection.
+- Seatbelt active (`permissive-open`);
+- no tool call reached;
+- estimated initial prompt: **4474 tokens** against **4096** limit;
+- approximately **378 tokens over**;
+- always-on context warning: approximately **1429 tokens**;
+- process exit code was 0 despite semantic API error;
+- working-tree status delta still needs exact local inspection.
 
-Research conclusion:
-
-> Qwen Code in normal configuration does not fit inside context 4096 on the reference setup before even the first minimal tool call.
+Conclusion:
+> Qwen Code in normal configuration does not fit inside context 4096 on the reference setup before the first minimal tool call.
 
 ## Pi comparator — immediate priority
 
-Pi is now the matched comparator at context 4096.
+Pi is the matched comparator at context 4096.
 
-Current official Pi behavior relevant to LOOM:
-- default core tools: `read`, `write`, `edit`, `bash`;
-- built-in providers such as OpenAI/Codex coexist with custom providers;
-- custom providers/models can be added via `~/.pi/agent/models.json`;
-- Ollama can be added as a separate provider at `http://localhost:11434/v1` using `openai-completions` and a placeholder API key;
-- `/model` lists provider/model options and reloads custom model configuration;
-- per-model context window is configurable.
+### Local Pi inventory completed
+
+Observed on reference Mac:
+- Pi version: `0.84.2`;
+- `~/.pi/agent/models.json`: **NOT PRESENT**;
+- `~/.pi/agent/sessions/`: present with multiple persistent project sessions;
+- `~/.pi/agent/extensions/`: directory present;
+- prior inventory command listed only extension/skill subdirectories, so empty printed lists MUST NOT be interpreted as proof that no extension/skill resources exist;
+- no write has been made to the user's Pi configuration yet.
+
+Important consequence:
+> Ollama can be added by creating a new `~/.pi/agent/models.json`. Existing OpenAI/Codex authentication and settings live separately and do not need to be replaced.
+
+### Verified Pi behavior relevant to LOOM
+
+Current official Pi docs confirm:
+- custom providers/models use `~/.pi/agent/models.json`;
+- Ollama example uses `http://localhost:11434/v1`, API `openai-completions`, and placeholder API key `ollama`;
+- `contextWindow` and `maxTokens` are per-model settings;
+- `/model` reloads `models.json`;
+- CLI supports `--provider <name> --model <id>`;
+- `--no-session` makes a run ephemeral;
+- `--tools read` can expose only the read tool for a read-only benchmark;
+- JSON event mode reports `tool_execution_start` / `tool_execution_end` events.
 
 ### HARD CONSTRAINT — preserve existing Pi installation/configuration
 
-The user's current Pi setup is already important production tooling and MUST NOT be replaced, reset or simplified for LOOM.
+LOOM must never reset or replace the user's existing Pi setup.
 
 Do not delete, overwrite or invalidate:
-- OpenAI API configuration/credentials;
+- OpenAI API credentials/configuration;
 - OpenAI/Codex account authentication;
 - existing provider/model settings;
 - installed skills;
 - installed extensions;
 - packages;
-- session history/persistent sessions;
-- any unrelated Pi customizations.
+- session history;
+- unrelated Pi customizations.
 
-LOOM may only ADD Ollama/Qwen as an additional selectable provider/model.
+Ollama/Qwen is only an additional selectable provider/model.
 
-Implementation rule:
-1. inspect the existing local Pi configuration first without printing secrets;
-2. if `~/.pi/agent/models.json` already exists, merge only a new `providers.ollama` entry while preserving every existing key/value;
-3. if it does not exist, create only the minimal Ollama provider file;
-4. make a timestamped local backup before any write;
-5. do not touch auth storage, `settings.json`, skills or extensions unless a later experiment explicitly requires it;
-6. verify after the change that existing OpenAI/Codex models remain selectable alongside Ollama in `/model`.
+## New reproducible tooling
+
+Committed:
+- `scripts/pi_add_ollama_provider.py`
+- `scripts/pi_readonly_smoke.py`
+
+### `pi_add_ollama_provider.py`
+
+Safety properties:
+- touches only `$PI_CODING_AGENT_DIR/models.json` or `~/.pi/agent/models.json`;
+- if an existing models.json appears later, backs it up before writing;
+- preserves every existing provider and field;
+- if an Ollama provider already exists, adds missing LOOM values/model without overwriting existing values;
+- never touches `auth.json`, `settings.json`, sessions, skills, extensions or packages;
+- writes atomically.
+
+LOOM model entry:
+- provider: `ollama`
+- base URL: `http://localhost:11434/v1`
+- API: `openai-completions`
+- placeholder key: `ollama`
+- model: `qwen3.5:4b-mlx`
+- context: **4096**
+- max output: **2048**
+- reasoning: false
+- cost: zero
+- compatibility disables developer-role/reasoning-effort fields for local Ollama shim reliability.
+
+### `pi_readonly_smoke.py`
+
+Runs Pi with:
+- `--provider ollama`
+- `--model qwen3.5:4b-mlx`
+- `--tools read`
+- `--no-session`
+- `--mode json`
+
+Therefore the smoke does not change the user's saved default model and does not create a normal persistent Pi session. It asks Pi to read LOOM `README.md` and return exactly `# LOOM`, while recording JSON events, read-tool use, Git status, memory pressure, swap and `ollama ps`.
 
 ## Exact next step
 
-Perform a read-only inventory of the user's existing Pi setup, intentionally avoiding secret values. Determine:
-- Pi version;
-- whether `~/.pi/agent/models.json` exists;
-- existing provider IDs and model IDs only;
-- top-level Pi configuration files/directories;
-- installed skill/extension directories.
+On reference Mac:
 
-Only after that inventory, construct a non-destructive merge plan for Ollama `qwen3.5:4b-mlx` at context 4096.
+```bash
+cd "<repository-root>"
+git pull
+python3 scripts/pi_add_ollama_provider.py
+pi --list-models ollama
+```
 
-Then run a matched Pi read-only smoke:
-- model: `qwen3.5:4b-mlx`;
-- Ollama endpoint: local;
-- context: 4096;
-- task: read LOOM `README.md` and return the first Markdown heading;
-- no edits;
-- measure tool success, latency, memory pressure and swap.
+Verify that `ollama/qwen3.5:4b-mlx` is listed. Existing OpenAI/Codex providers should remain available because no auth/settings files are modified.
+
+Then run:
+
+```bash
+python3 scripts/pi_readonly_smoke.py
+```
+
+Interpretation:
+- if Pi succeeds at 4096 while Qwen Code normal config fails, agent-harness context overhead is a measured LOOM result;
+- if Pi also fails at 4096, context scaling becomes the next controlled experiment.
 
 ## Roadmap state
 
 - Phase 0 foundation: DONE
 - Phase 1 inference baseline: DONE
 - Phase 2 Coding Benchmark + Baseline 001: DONE / FROZEN
-- Phase 3 local coding agent: ACTIVE — Pi non-destructive configuration inventory next
+- Phase 3 local coding agent: ACTIVE — Pi safe Ollama merge + 4096 matched smoke ready
 - Phase 4 llama.cpp: queued
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD streaming / MoE: queued
@@ -153,7 +186,7 @@ Then run a matched Pi read-only smoke:
 
 ## Open research questions
 
-- Can Pi + Qwen 3.5 4B perform the same tool task at context 4096 while preserving the user's production Pi configuration?
+- Can Pi + Qwen 3.5 4B complete the same read-tool task at context 4096?
 - How much context overhead does Pi consume versus Qwen Code?
 - What caused the Qwen smoke working-tree status delta?
 - Does Qwen Code safe-mode fit at 4096?
