@@ -64,8 +64,11 @@
 - [x] Run Setup Probe 002 — configure PASS, Metal ON; build invalidated by LOOM probe setting `LLAMA_BUILD_SERVER=OFF`, which omitted the `llama-cli` target at the pinned source commit
 - [x] Record `research/runtime/llama-cpp-setup-probe-002.md`
 - [x] Patch setup probe revision 2: `LLAMA_BUILD_SERVER=ON`, `LLAMA_BUILD_UI=OFF`, `LLAMA_BUILD_COMMON=ON`, `LLAMA_BUILD_TOOLS=ON`; pinned commit and Metal settings unchanged
-- [ ] Rerun corrected setup probe and complete Release Metal build + verify `llama-cli`/`llama-bench`
-- [ ] Validate 4B GGUF runtime control (`Qwen/Qwen3-4B-GGUF`, Q4_K_M)
+- [x] Run corrected Setup Probe 003 — full PASS: configure/build, `llama-cli`, `llama-bench`, Metal ON
+- [x] Record canonical setup result in `research/runtime/llama-cpp-setup-probe-003.md`
+- [x] Preregister 4B runtime control in `research/runtime/llama-cpp-4b-control-001-plan.md`
+- [x] Add `scripts/llama_cpp_4b_control.py` with exact model SHA256 verification and memory telemetry
+- [ ] Run/validate 4B GGUF runtime control (`Qwen/Qwen3-4B-GGUF`, Q4_K_M)
 - [ ] Test 8B Q4_K_M as first main capability step
 - [ ] Measure throughput, memory pressure, load time and Metal/GPU offload
 - [ ] Test Q3 variants
