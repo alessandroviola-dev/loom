@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Coding Benchmark 01 frozen; Ollama execution adapter is next
-Checkpoint: CODING_BENCHMARK_01_FROZEN
+Status: ACTIVE — Ollama single-shot adapter implemented; first benchmark run required on reference Mac
+Checkpoint: OLLAMA_SINGLE_SHOT_ADAPTER_READY
 
 ## Mission
 
@@ -27,13 +27,12 @@ Study, test and eventually improve ways to run capable local language models and
 ## Completed work
 
 ### 0. Project foundation
-- Project name frozen as `LOOM`.
-- Tagline frozen as `Big models. Small machines.`
-- Private GitHub repository created: `Ilcoach/loom`.
-- Repository visibility: private.
+- Project name: `LOOM`.
+- Tagline: `Big models. Small machines.`
+- Private GitHub repository: `Ilcoach/loom`.
 - Default branch: `main`.
 - Initial project scaffold committed.
-- Canonical handoff discipline defined: this file must be updated after every meaningful project step.
+- `HANDOFF.md` is the canonical project state and is updated after every meaningful step.
 
 ### 1. Ollama baseline setup
 - Ollama updated from 0.31.2 to a current MLX-capable build.
@@ -78,39 +77,63 @@ Observed delta while model is resident:
 - Swap used: +~1976.62 MB.
 - Memory-pressure free percentage: -30 points.
 
-Interpretation: the 4B MLX configuration is practical at roughly 15 tok/s, but the 8 GB machine is already near its normal full-resident memory ceiling. Larger-model research must therefore focus on quantization, offload, memory mapping, SSD streaming and/or sparse/MoE techniques.
+Interpretation: Qwen 3.5 4B MLX is practical at roughly 15 tok/s, but the 8 GB reference system is already close to its normal full-resident memory ceiling. Larger-model research must use more aggressive memory techniques.
 
 ### 4. Coding Benchmark 01 v1.0.0
 
-Created and frozen at `benchmarks/coding/v1`.
+Frozen at `benchmarks/coding/v1`.
 
-Coverage:
-- T01 code generation — 15 points.
-- T02 debugging — 15 points.
-- T03 code comprehension — 15 points.
-- T04 constrained refactoring — 15 points.
-- T05 multi-file reasoning — 25 points.
-- T06 instruction-following under implementation constraints — 15 points.
-- Total: 100 points.
+Coverage and weights:
+- T01 generation — 15.
+- T02 debugging — 15.
+- T03 comprehension — 15.
+- T04 constrained refactoring — 15.
+- T05 multi-file reasoning — 25.
+- T06 implementation constraints — 15.
+- Total — 100.
 
-Benchmark infrastructure:
-- exact versioned prompts;
-- deterministic Python standard-library fixtures;
-- automated unittest suites;
+Infrastructure:
+- exact prompts and fixtures;
+- deterministic standard-library tests;
 - `manifest.json`;
-- machine-readable `result-schema.json`;
-- `runner.py` for scoring and JSON output;
-- separate `single_shot` and `agentic` benchmark modes.
+- `result-schema.json`;
+- `runner.py`;
+- explicit `single_shot` and `agentic` modes.
 
-Validation:
-- private reference implementations were used only for QA and were not committed;
-- 41 / 41 tests passed;
-- reference score: 100 / 100;
-- runner aggregation validated at 100 / 100;
-- T03 was corrected before freeze to accept equivalent Big-O multiplication order;
-- validation record committed as `benchmarks/coding/v1/VALIDATION.md`.
+Validation before freeze:
+- 41 / 41 tests passed with private reference implementations;
+- runner returned 100 / 100;
+- reference solutions were not committed;
+- validation recorded in `benchmarks/coding/v1/VALIDATION.md`.
 
-Freeze rule: v1 prompts, fixtures, tests and scoring are now immutable except for a documented critical defect. Semantic changes require a new benchmark version.
+### 5. Ollama single-shot adapter
+
+Implemented at `scripts/ollama_single_shot.py`.
+
+Behavior:
+- copies the frozen benchmark to an isolated directory under `results-local/`;
+- never edits the frozen v1 tree;
+- stops the selected Ollama model before the run by default, producing a cold first task and warm subsequent tasks;
+- sends every task exactly once to the local `/api/generate` endpoint;
+- does not expose tests to the model;
+- supplies only the exact task prompt and allowed source/context files;
+- requests JSON-only complete file replacements;
+- writes only the task's permitted editable files;
+- records raw Ollama API responses;
+- records per-task prompt/generation token metrics and durations;
+- records macOS memory/swap/`ollama ps` snapshots;
+- executes the frozen benchmark runner after all tasks;
+- writes `run-summary.json` under the ignored `results-local/` tree.
+
+Reference invocation:
+
+```bash
+python3 scripts/ollama_single_shot.py \
+  --model qwen3.5:4b-mlx \
+  --context 4096
+```
+
+The adapter is implemented in the repository. Its first real end-to-end run must happen on the reference M1/8 GB Mac because this environment cannot access that machine's local Ollama daemon.
 
 ## Decisions frozen so far
 
@@ -119,52 +142,57 @@ Freeze rule: v1 prompts, fixtures, tests and scoring are now immutable except fo
 - Repository: `Ilcoach/loom`, private initially.
 - Reference hardware: Apple M1 / 8 GB unified memory.
 - Baseline runtime/model: Ollama + Qwen 3.5 4B MLX.
-- Benchmark quality must be measured separately from speed and memory behavior.
-- `single_shot` and `agentic` scores are separate experimental conditions.
-- Failed runs must be retained.
+- Coding Benchmark 01 v1.0.0 is frozen.
+- Benchmark quality, speed and memory are separate measurement dimensions.
+- `single_shot` and `agentic` results are distinct experimental conditions.
+- Failed or malformed model runs must be retained rather than silently retried.
+- Tests are hidden from the model in `single_shot` mode.
 - `HANDOFF.md` is the canonical project state.
 
 ## Roadmap state
 
 1. Baseline 001. [DONE]
 2. GitHub repository + scaffold. [DONE]
-3. Coding Benchmark 01 v1.0.0 design. [DONE]
+3. Coding Benchmark 01 design. [DONE]
 4. Coding Benchmark 01 validation/freeze. [DONE]
-5. Build Ollama single-shot execution adapter. [NEXT]
-6. Run Qwen 3.5 4B MLX through Coding Benchmark 01.
-7. Repeat throughput test to investigate low prompt-processing measurement.
-8. Select and connect a local coding agent to Ollama.
-9. Run the same benchmark in `agentic` mode.
-10. Test llama.cpp with larger Q4/Q3/Q2 configurations.
-11. Test direct MLX.
-12. Test Colibrì / MoE / SSD expert streaming.
-13. Evaluate other Apple Silicon runtimes only when technically justified.
-14. Synthesize daily-use, maximum-capability and experimental profiles.
+5. Ollama single-shot adapter. [DONE]
+6. Run Qwen 3.5 4B MLX on Coding Benchmark 01. [NEXT]
+7. Store and analyze baseline coding result.
+8. Repeat throughput test to investigate prompt-processing measurement.
+9. Select a local coding-agent layer.
+10. Connect the agent to Ollama and run Coding Benchmark 01 in `agentic` mode.
+11. Test llama.cpp with larger Q4/Q3/Q2 configurations.
+12. Test direct MLX.
+13. Test Colibrì / SSD streaming / sparse MoE candidates.
+14. Evaluate other Apple Silicon runtimes when justified.
+15. Synthesize daily-use, maximum-capability and experimental profiles.
 
 ## Exact next step
 
-Build an Ollama `single_shot` benchmark adapter that:
+On the reference M1/8 GB Mac:
 
-1. reads each frozen task prompt and allowed source files;
-2. constructs a deterministic request for `qwen3.5:4b-mlx`;
-3. sends it to the local Ollama API;
-4. requires machine-parseable file outputs;
-5. writes only the task's permitted target files into an isolated working copy;
-6. records Ollama timing/token metrics for every task;
-7. runs `runner.py` after all six tasks;
-8. stores raw model outputs separately from benchmark scores;
-9. never edits the frozen benchmark source tree.
+1. clone or update `Ilcoach/loom` locally;
+2. ensure Ollama is running and `qwen3.5:4b-mlx` is installed;
+3. from the LOOM repository root run:
 
-After the adapter is validated, run it on the reference M1/8 GB machine and commit only the resulting summarized benchmark record, not transient working files.
+```bash
+python3 scripts/ollama_single_shot.py --model qwen3.5:4b-mlx --context 4096
+```
+
+4. preserve the printed run directory and `run-summary.json`;
+5. inspect the score, per-task failures, token throughput and memory snapshots;
+6. add a summarized result under `benchmarks/results/`;
+7. update this handoff before proceeding to agentic mode.
 
 ## Open questions
 
-- Is the low measured 4.36 tok/s prompt-processing result repeatable or a short-prompt measurement artifact?
-- How strong is Qwen 3.5 4B MLX on the frozen coding benchmark in single-shot mode?
+- What score does Qwen 3.5 4B MLX achieve on Coding Benchmark 01 in strict single-shot mode?
+- Does the adapter reveal prompt-processing throughput materially different from the earlier 4.36 tok/s short-prompt result?
+- Which task class is the dominant weakness of the 4B baseline?
 - How much does an agent layer improve correctness, and at what latency/memory cost?
-- What is the best quality/memory tradeoff for 7B–9B-class quantized models on this 8 GB M1?
+- What is the best quality/memory tradeoff for 7B–9B quantized models on 8 GB?
 - Can direct MLX materially improve memory behavior versus Ollama MLX?
-- How much useful model capacity can SSD-backed or MoE expert streaming unlock before latency becomes impractical?
+- How much useful capacity can SSD-backed or MoE expert streaming unlock before latency becomes impractical?
 
 ## Continuation rule
 
