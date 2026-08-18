@@ -49,7 +49,9 @@
 - [x] Ingest Qwen Code + Pi smoke summaries and compare memory/swap/runtime/tool metadata
 - [x] Record `research/agents/harness-comparison-001.md`
 - [x] Harden Qwen Code smoke runner to detect semantic API errors and capture `.qwen/settings.json` diffs
-- [ ] Inspect exact local `git diff -- .qwen/settings.json` from first Qwen Code run
+- [x] Inspect Qwen Code settings delta — only automatic schema marker `"$version": 4`
+- [x] Adopt Qwen Code settings schema version 4 in the versioned LOOM config
+- [x] Add isolated reproducible Pi edit+test smoke runner at context 4096
 - [ ] Run Pi targeted edit + test smoke at context 4096
 - [ ] Run Qwen Code safe-mode 4096 diagnostic
 - [ ] Measure Qwen Code context scaling to 8192 only as a separate experiment if still useful
