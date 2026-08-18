@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Pi validated as primary local agent harness; Agentic 001 frozen; memory-retention question practically resolved; Qwen Code deprioritized; llama.cpp Phase 4 setup probe corrected after identifying a LOOM target-configuration defect
-Checkpoint: LLAMA_CPP_SETUP_002_PROBE_FIXED_RERUN_READY
+Status: ACTIVE — Pi validated as primary local agent harness; Agentic 001 frozen; practical memory-retention question resolved; Qwen Code deprioritized; llama.cpp Phase 4 Metal setup fully validated; 4B GGUF runtime control preregistered and ready
+Checkpoint: LLAMA_CPP_4B_CONTROL_001_READY
 
 ## Mission
 
@@ -72,7 +72,7 @@ Workspace/tool-path safety: PASS.
 Provider usage across task sessions: **19,556 input + 653 output = 20,209 total**.
 
 Primary agent conclusion:
-> Pi is the current primary local agent harness for LOOM. At context 4096 it completes real read/edit/test loops and delivers all six benchmark tasks, while Qwen Code cannot form its first 4096-token request even in safe mode.
+> Pi is the current primary local agent harness for LOOM. At context 4096 it completes real agentic file work and delivers all six benchmark tasks, while Qwen Code cannot form its first 4096-token request even in safe mode.
 
 ## Agentic memory investigation — practical conclusion
 
@@ -87,11 +87,11 @@ Historical Agentic 001 post-task Ollama SIZE:
 Historical swap delta: **+3279 MB**.
 
 Controlled findings:
-1. Four identical small warm Pi calls only produced **4.1 -> 4.5 GB**; cold controls reset to 4.1 GB.
-2. Direct Ollama prompt pressure without Pi produced **4.1 -> 4.5 GB** and retained a 4.6 GB warm high-water.
-3. Valid synthetic true-depth evidence from 1 to 4 model/tool turns produced only about **+0.1 to +0.2 GB**.
-4. Exact-workload cold replay T01-T05 kept individual tasks at **4.3-4.9 GB**, while historical warm sequence reached 6.8 GB by T05.
-5. T03-T05 cold replay used equal/more tool activity or provider usage than historical runs yet remained **1.1-2.3 GB** below historical warm SIZE.
+1. identical small warm Pi calls only produced **4.1 -> 4.5 GB**; cold controls reset to 4.1 GB;
+2. direct Ollama prompt pressure without Pi produced **4.1 -> 4.5 GB** and retained a 4.6 GB warm high-water;
+3. valid synthetic depth 1 -> 4 changed reported SIZE only about **+0.1 to +0.2 GB**;
+4. exact-workload cold replay T01-T05 kept individual tasks at **4.3-4.9 GB**, while the historical warm sequence reached 6.8 GB by T05;
+5. T03-T05 cold replay used equal/more tool activity or provider usage yet remained **1.1-2.3 GB** below historical warm SIZE;
 6. T06 cold replay timed out before tool use and is excluded from workload comparison.
 
 Canonical practical conclusion:
@@ -110,23 +110,15 @@ Safe-mode diagnostic run `qwen-safe-20260818-233219`:
 - hard limit **4096**
 - **267 tokens over limit**
 - safe mode recovers only **111 tokens**
-- compression `NOOP`
 - no tool call
-- working tree unchanged
 
 Record:
 - `research/agents/qwen-code-safe-mode-4096.md`
 
 Decision:
-> Qwen Code remains a secondary comparator. No 8192 rescue/minimization work is blocking the main LOOM path because Pi already provides the primary agent harness.
+> No further Qwen Code minimization/8192 rescue is required for the main research path while Pi already provides a viable local agent harness.
 
 ## Phase 4 — llama.cpp — ACTIVE
-
-Plan:
-- `research/runtime/llama-cpp-phase4-plan.md`
-
-Setup runner:
-- `scripts/llama_cpp_setup_probe.py`
 
 Official source:
 - `ggml-org/llama.cpp`
@@ -134,72 +126,100 @@ Official source:
 Pinned source commit:
 - `60addddf3c567c43ec3caf70fc953fba3572d96f`
 
+Phase plan:
+- `research/runtime/llama-cpp-phase4-plan.md`
+
 ### Setup Probe 001 — BLOCKED_MISSING_CMAKE
 
-Run id: `20260818-233856`.
+Run id `20260818-233856`.
+- stopped at prerequisite gate because CMake was absent;
+- no build inference.
 
-- `cmake` missing on PATH.
-- Probe stopped before clone/configure/build.
-- Record: `research/runtime/llama-cpp-setup-probe-001.md`.
+Record:
+- `research/runtime/llama-cpp-setup-probe-001.md`
 
-CMake was subsequently installed through Homebrew:
-- CMake **4.4.2**
-- `/opt/homebrew/Cellar/cmake/4.4.2`
+CMake subsequently installed through Homebrew:
+- CMake **4.4.2**.
 
-### Setup Probe 002 — PROBE CONFIGURATION DEFECT
+### Setup Probe 002 — INVALID BUILD RESULT / LOOM DEFECT
 
-Run id: `20260818-234152`.
-
-Observed:
-- pinned commit matched actual checkout exactly
-- prerequisites PASS
-- configure PASS
-- `GGML_METAL=ON`
-- `GGML_METAL_EMBED_LIBRARY=ON`
-- build failed: `make: *** No rule to make target 'llama-cli'. Stop.`
-
-Root cause verified against the exact pinned llama.cpp source:
-- `tools/CMakeLists.txt` adds `tools/cli` only inside `if (LLAMA_BUILD_SERVER)`;
-- original LOOM runner set `-DLLAMA_BUILD_SERVER=OFF`;
-- therefore CMake correctly omitted the `llama-cli` target.
-
-This is a **LOOM probe defect**, not a llama.cpp/Metal/M1 build failure.
+Run id `20260818-234152`.
+- prerequisites PASS;
+- exact pinned checkout;
+- configure PASS;
+- Metal ON;
+- target build failed because the LOOM probe set `LLAMA_BUILD_SERVER=OFF`, which at the pinned source commit omits `llama-cli`.
 
 Record:
 - `research/runtime/llama-cpp-setup-probe-002.md`
 
-### Setup Probe revision 2 — READY
-
-Runner patched without changing pinned source commit or Metal configuration:
+Correction:
 - `LLAMA_BUILD_SERVER=ON`
 - `LLAMA_BUILD_UI=OFF`
 - `LLAMA_BUILD_COMMON=ON`
 - `LLAMA_BUILD_TOOLS=ON`
+- Metal settings and pinned commit unchanged.
+
+### Setup Probe 003 — PASS / CANONICAL SETUP RESULT
+
+Run id: `20260818-234628`.
+
+Observed:
+- pinned commit exact match
+- prerequisites PASS
+- configure PASS
+- build PASS
+- `llama-cli` PASS
+- `llama-bench` PASS
 - `GGML_METAL=ON`
 - `GGML_METAL_EMBED_LIBRARY=ON`
-- tests OFF
+- `LLAMA_BUILD_COMMON=ON`
+- `LLAMA_BUILD_TOOLS=ON`
+- `LLAMA_BUILD_SERVER=ON`
+- `LLAMA_BUILD_UI=OFF`
+- overall success `True`
 
-Rationale:
-> At the pinned source commit `llama-cli` depends on the server/tool subtree being enabled. The embedded Web UI is not needed for LOOM and remains disabled.
+Local build:
+- source: `results-local/llama-cpp/source-60addddf3c56`
+- build: `results-local/llama-cpp/source-60addddf3c56/build-loom-metal`
 
-### Planned sequence after setup PASS
+Record:
+- `research/runtime/llama-cpp-setup-probe-003.md`
 
-1. **4B runtime control**
-   - `Qwen/Qwen3-4B-GGUF`
-   - `Q4_K_M`
-   - instrumentation/runtime validation
+Conclusion:
+> The reference Apple M1 / 8 GB machine can build the pinned llama.cpp Release binaries with Metal enabled. Phase 4 runtime/model testing is authorized.
 
-2. **8B Q4 main capability test**
-   - `Qwen/Qwen3-8B-GGUF`
-   - `Q4_K_M`
-   - context 4096
-   - maximum practical Metal/GPU offload first
-   - capture load time, prompt/gen throughput, memory/swap and stability
+## llama.cpp 4B Runtime Control 001 — PREREGISTERED / READY
 
-3. Later:
-   - Q3 variants
-   - ~9B Q3/Q2 where feasible
-   - partial CPU/GPU offload comparisons
+Plan:
+- `research/runtime/llama-cpp-4b-control-001-plan.md`
+
+Runner:
+- `scripts/llama_cpp_4b_control.py`
+
+Frozen model artifact:
+- official repo `Qwen/Qwen3-4B-GGUF`
+- file `Qwen3-4B-Q4_K_M.gguf`
+- quantization `Q4_K_M`
+- expected SHA256 `7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5`
+- published size about 2.5 GB
+
+Runner behavior:
+- uses the exact pinned llama.cpp build;
+- unloads the canonical Ollama model first if Ollama is available;
+- downloads/resumes the model into ignored `results-local/models/`;
+- verifies SHA256 before execution;
+- records `llama-bench --list-devices`;
+- runs `llama-bench` at `-ngl -1`, flash-attn auto, pp512, tg128, 3 repetitions;
+- records JSON throughput output, backend/device evidence and offload log lines;
+- samples process RSS, swap and memory-pressure free percentage while the benchmark runs.
+
+This control is **not** an apples-to-apples model quality comparison with `qwen3.5:4b-mlx`. It validates the llama.cpp/GGUF/Metal measurement path.
+
+Success authorizes the next main experiment:
+- Qwen3 8B Q4_K_M
+- initial context 4096
+- maximum practical Metal/GPU offload first.
 
 ## Exact next step
 
@@ -208,22 +228,13 @@ On the reference Mac:
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/llama_cpp_setup_probe.py
-python3 scripts/llama_cpp_setup_probe.py
+python3 -m py_compile scripts/llama_cpp_4b_control.py
+python3 scripts/llama_cpp_4b_control.py
 ```
 
-No model download should occur in this setup step.
+The first run will download approximately 2.5 GB if the verified GGUF is not already present. The download is resumable.
 
-Preserve complete output, especially:
-- Configure / Build
-- `llama-cli` / `llama-bench`
-- `GGML_METAL`
-- `GGML_METAL_EMBED_LIBRARY`
-- `LLAMA_BUILD_COMMON`
-- `LLAMA_BUILD_TOOLS`
-- `LLAMA_BUILD_SERVER`
-- `LLAMA_BUILD_UI`
-- any build stderr
+Preserve complete output from `LOOM llama.cpp 4B Runtime Control 001` through the final `Summary:` line, including device and benchmark sections.
 
 ## Roadmap state
 
@@ -231,7 +242,7 @@ Preserve complete output, especially:
 - Phase 1 baseline: DONE
 - Phase 2 Coding Benchmark/Baseline: DONE / FROZEN
 - Phase 3 agent/runtime investigation: materially complete; Pi primary, Qwen Code secondary
-- **Phase 4 llama.cpp: ACTIVE — corrected setup probe ready**
+- **Phase 4 llama.cpp: ACTIVE — Metal setup validated, 4B runtime control ready**
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD/MoE: queued
 - Phase 7 extended runtimes: queued
