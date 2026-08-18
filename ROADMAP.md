@@ -18,67 +18,44 @@
 
 ## Phase 2 — Benchmark framework
 - [x] Define Coding Benchmark 01
-- [x] Validate and freeze task prompts/fixtures/tests
-- [x] Define coding measurement runner
-- [x] Define coding scoring rubric
-- [x] Define machine-readable coding result format
-- [x] Build Ollama single-shot benchmark adapter
-- [x] Run Qwen 3.5 4B MLX on Coding Benchmark 01
-- [x] Detect v1.0.0 subtest-counting scoring defect
-- [x] Patch scorer as Coding Benchmark 01 v1.0.1
-- [x] Add deterministic rescoring utility
-- [x] Rescore existing Qwen run — artifact score 40.71/100
-- [x] Ingest `run-summary.json` timing/token/memory and adapter-status data
-- [x] Define delivery-adjusted strict single-shot scoring — first run 30.00/100
-- [x] Harden Ollama adapter telemetry, progress and delivery accounting
-- [x] Inspect preserved raw T04–T06 Ollama responses
-- [x] Recover malformed envelopes without editing model code and test semantic content — recovered diagnostic score 82.86/100
-- [x] Freeze Coding Baseline 001 official full result
+- [x] Validate/freeze prompts, fixtures and tests
+- [x] Build/validate scoring and single-shot adapter
+- [x] Fix scorer defect as Coding Benchmark 01 v1.0.1
+- [x] Freeze Coding Baseline 001
+- [x] Baseline canonical: artifact 40.71, strict 30.00, delivery 3/6
+- [x] Recover malformed raw envelopes diagnostically — semantic-content 82.86
 - [ ] Define reasoning benchmark
 
 ## Phase 3 — Local coding agent / runtime investigation
-- [x] Research/select first controlled agent layer — Qwen Code
-- [x] Verify Node/npm prerequisites
-- [x] Install Qwen Code — `0.21.13`
-- [x] Add reproducible project configuration for Ollama / `qwen3.5:4b-mlx` at context 4096
-- [x] Run Qwen Code normal-config read-only smoke at 4096 — failed before first tool call because initial prompt estimated 4474 tokens
-- [x] Elevate existing Pi installation as immediate matched comparator
-- [x] Add Ollama/Qwen to Pi non-destructively while preserving OpenAI/Codex setup
-- [x] Run Pi read-only smoke at 4096 — PASS
-- [x] Establish first harness-overhead result: Pi minimal harness fits 4096 where Qwen Code normal config does not
-- [x] Run Pi targeted edit + test smoke at 4096 — functional PASS / strict output FAIL
-- [x] Build, preregister and run isolated Pi Coding Benchmark 01 agentic adapter with hidden tests excluded
-- [x] Validate raw Pi tool paths stay inside temporary workspaces — PASS
-- [x] Freeze canonical `research/agents/pi-agentic-benchmark-001.md`
-- [x] Canonical Pi Agentic 001: artifact/delivery **77.15**, strict **60.00**, delivery **6/6**, protocol **4/6**
-- [x] Classify 22.85 artifact points as genuine frozen-test deficits and 17.15 additional strict points as final-output protocol-only loss
-- [x] Identify sustained memory-pressure finding in Agentic 001: swap +3.279 GB and Ollama reported allocation 4.4 -> 7.2 GB at context 4096
-- [x] Preregister/run Pi Memory Retention Probe 001 with identical warm/cold calls
-- [x] Determine invocation count alone is insufficient: identical warm calls only 4.1 -> 4.5 GB; cold calls reset to 4.1 GB
-- [x] Preregister/run direct Ollama Context Retention Probe 001
-- [x] Record `research/runtime/ollama-context-retention-probe-001.md`
-- [x] Confirm runtime-level prompt-pressure allocation: direct warm 418 -> 1618 -> 3018 prompt tokens produced 4.1 -> 4.3 -> 4.5 GB at fixed context 4096
-- [x] Confirm retained warm high-water: low-after-high remained 4.6 GB while cold-low reset to 4.1 GB
-- [x] Determine prompt pressure alone is still insufficient to explain Agentic 001 7.2 GB; cold-high was only 4.2 GB
-- [x] Run Pi Multi-turn Memory Probe 001
-- [x] Classify Probe 001 invalid for causal depth inference because speculative filename reads broke requested depth
-- [x] Preserve Probe 001 in `research/agents/pi-multiturn-memory-probe-001.md`
-- [x] Preregister/run token-gated Pi Multi-turn Memory Probe 002
-- [x] Record Probe 002 result in `research/agents/pi-multiturn-memory-probe-002.md`
-- [x] Validate Probe 002 depth 1 and 4: 4.2 GB and 4.3 GB; only +0.1 GB
-- [x] Classify Probe 002 depth 8 invalid: 7 calls, only 1 advanced, 6 invalid token calls; warm follow-up skipped
-- [x] Identify copied-token protocol as a new model-control bottleneck at depth 8
-- [x] Design no-argument turn-gated custom tool using Pi `turn_start` and blockable `tool_call`
-- [x] Preregister Pi Multi-turn Memory Probe 003 in `research/agents/pi-multiturn-memory-probe-003-plan.md`
-- [x] Add `scripts/pi_probe_step_extension_v3.ts` and `scripts/pi_multiturn_memory_probe_v3.py`
-- [ ] Run Pi Multi-turn Memory Probe 003: cold 1/4/8 true distinct-turn tool loops + warm 1-turn after valid 8
-- [ ] Determine whether controlled within-session round-trip depth materially raises Ollama high-water allocation
-- [ ] If depth remains insufficient, design workload-shape probe closer to Agentic 001
+- [x] Install/configure Qwen Code 0.21.13 for Ollama
+- [x] Qwen Code normal-config 4096 smoke — blocked before first tool call by 4474-token initial prompt
+- [x] Add Ollama/Qwen to existing Pi non-destructively
+- [x] Pi 4096 read-only smoke — PASS
+- [x] Pi edit+test smoke — functional PASS / strict output FAIL
+- [x] Build/preregister/run isolated Pi Coding Benchmark 01 agentic adapter
+- [x] Freeze canonical Pi Agentic Coding Benchmark 001
+- [x] Canonical Pi Agentic 001: artifact/delivery 77.15, strict 60.00, delivery 6/6, protocol 4/6
+- [x] Validate raw tool paths — PASS
+- [x] Ingest provider usage — 20,209 total tokens across six sessions
+- [x] Identify Agentic 001 memory trajectory: Ollama SIZE 4.4 -> 7.2 GB; swap +3.279 GB
+- [x] Pi Memory Retention Probe 001 — identical warm calls only 4.1 -> 4.5 GB; cold reset 4.1 GB
+- [x] Ollama Context Retention Probe 001 — direct prompt pressure 4.1 -> 4.5 GB; retained warm high-water 4.6 GB
+- [x] Determine invocation count and prompt pressure alone are insufficient to explain 7.2 GB
+- [x] Pi Multi-turn Probe 001 — invalidate causal depth inference due speculative filename reads
+- [x] Pi Multi-turn Probe 002 — valid depth 1/4 = 4.2/4.3 GB; depth 8 invalid due token protocol failures
+- [x] Pi Multi-turn Probe 003 — valid depth 1/4 = 4.1/4.3 GB; depth 8 invalid because model terminated after first valid turn
+- [x] Verify Probe 003 target-depth plumbing is correct; `1/3` final text was model-generated protocol error, not runner mismatch
+- [x] Stop iterating artificial deep-turn protocols; valid 1->4 evidence shows only small SIZE effect
+- [x] Preregister Pi Agentic Cold Replay 001 using exact frozen T01-T06 workloads
+- [x] Add `scripts/pi_agentic_cold_replay.py`
+- [ ] Run Pi Agentic Cold Replay 001 — `ollama stop` before each real benchmark task
+- [ ] Compare per-task cold SIZE/tool count/usage with historical warm Agentic 001 values
+- [ ] Classify workload-specific high-water vs cumulative warm retention
 - [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
-- [ ] Measure Qwen Code context scaling to 8192 only if it still adds research value
-- [ ] Add reproducible agent validation/retry workflow for real-world daily-use profile
-- [ ] Decide whether Qwen Code remains a primary comparator after safe-mode/context tests
-- [ ] Test Aider as later comparator if it adds research value
+- [ ] Measure Qwen Code context scaling to 8192 only if still useful
+- [ ] Add reproducible agent validation/retry workflow for daily-use profile
+- [ ] Decide whether Qwen Code remains a primary comparator
+- [ ] Test Aider if it adds research value
 - [ ] Evaluate OpenCode if context requirements are practical on 8 GB
 
 ## Phase 4 — llama.cpp
