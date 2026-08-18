@@ -48,10 +48,17 @@
 - [x] Stop iterating artificial deep-turn protocols; valid 1->4 evidence shows only small SIZE effect
 - [x] Preregister Pi Agentic Cold Replay 001 using exact frozen T01-T06 workloads
 - [x] Add `scripts/pi_agentic_cold_replay.py`
-- [ ] Run Pi Agentic Cold Replay 001 — `ollama stop` before each real benchmark task
-- [ ] Compare per-task cold SIZE/tool count/usage with historical warm Agentic 001 values
-- [ ] Classify workload-specific high-water vs cumulative warm retention
+- [x] Run Pi Agentic Cold Replay 001 — `ollama stop` before each real benchmark task
+- [x] Record `research/agents/pi-agentic-cold-replay-001.md`
+- [x] Validate T01-T05 cold replay; T06 replay timed out before tool use and is excluded from causal comparison
+- [x] Cold T01-T05 SIZE stayed 4.3-4.9 GB while historical warm sequence reached 6.8 GB by T05
+- [x] Classify cumulative retained warm high-water as a major contributor to Agentic 001 memory growth
+- [x] Establish strongest evidence: T03-T05 cold replay used equal/more tools or provider usage yet remained 1.1-2.3 GB below historical warm SIZE
+- [x] Close synthetic memory investigation as sufficient for practical conclusion; exact internal runtime mechanism remains unknown
+- [x] Preregister Qwen Code safe-mode 4096 diagnostic
+- [x] Add `scripts/qwen_code_safe_mode_smoke.py`
 - [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
+- [ ] Decide whether Qwen Code core safe-mode harness fits 4096 once optional context/customizations are removed
 - [ ] Measure Qwen Code context scaling to 8192 only if still useful
 - [ ] Add reproducible agent validation/retry workflow for daily-use profile
 - [ ] Decide whether Qwen Code remains a primary comparator
