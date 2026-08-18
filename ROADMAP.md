@@ -60,11 +60,15 @@
 - [x] Confirm runtime-level prompt-pressure allocation: direct warm 418 -> 1618 -> 3018 prompt tokens produced 4.1 -> 4.3 -> 4.5 GB at fixed context 4096
 - [x] Confirm retained warm high-water: low-after-high remained 4.6 GB while cold-low reset to 4.1 GB
 - [x] Determine prompt pressure alone is still insufficient to explain Agentic 001 7.2 GB; cold-high was only 4.2 GB
-- [x] Preregister Pi Multi-turn Memory Probe 001 with forced sequential file-chain round trips
-- [x] Add `scripts/pi_multiturn_memory_probe.py`
-- [ ] Run Pi Multi-turn Memory Probe 001: cold 1/4/8 sequential reads + warm 1-read after 8
-- [ ] Determine whether within-session tool/turn depth materially raises Ollama high-water allocation
-- [ ] If multi-turn remains insufficient, design lower-level/runtime probe closer to benchmark task shape
+- [x] Run Pi Multi-turn Memory Probe 001
+- [x] Classify Probe 001 invalid for causal depth inference: nominal 1-turn produced 3 reads; nominal 8-turn produced 14 reads; only 4-turn matched target
+- [x] Preserve exploratory Probe 001 result in `research/agents/pi-multiturn-memory-probe-001.md`
+- [x] Design token-gated custom `probe_step` extension to mechanically control sequential round trips
+- [x] Preregister corrected Pi Multi-turn Memory Probe 002 in `research/agents/pi-multiturn-memory-probe-002-plan.md`
+- [x] Add `scripts/pi_probe_step_extension.ts` and `scripts/pi_multiturn_memory_probe_v2.py`
+- [ ] Run controlled Pi Multi-turn Memory Probe 002: cold 1/4/8 sequential tool turns + warm 1-turn after 8
+- [ ] Determine whether controlled within-session tool/turn depth materially raises Ollama high-water allocation
+- [ ] If multi-turn remains insufficient, design workload-shape probe closer to Agentic 001
 - [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
 - [ ] Measure Qwen Code context scaling to 8192 only if it still adds research value
 - [ ] Add reproducible agent validation/retry workflow for real-world daily-use profile
