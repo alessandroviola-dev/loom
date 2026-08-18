@@ -1,0 +1,14 @@
+{
+  "benchmark": "LOOM Coding Benchmark 01",
+  "version": "1.0.0",
+  "language": "python",
+  "total_points": 100,
+  "tasks": [
+    {"id": "T01", "path": "tasks/t01_generation", "points": 15, "skill": "generation"},
+    {"id": "T02", "path": "tasks/t02_debugging", "points": 15, "skill": "debugging"},
+    {"id": "T03", "path": "tasks/t03_comprehension", "points": 15, "skill": "comprehension"},
+    {"id": "T04", "path": "tasks/t04_refactor", "points": 15, "skill": "refactoring"},
+    {"id": "T05", "path": "tasks/t05_multifile", "points": 25, "skill": "multi_file_reasoning"},
+    {"id": "T06", "path": "tasks/t06_constraints", "points": 15, "skill": "instruction_following"}
+  ]
+}
