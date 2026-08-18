@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Pi 4096 completes real read/edit/test loop; functional correctness passes, exact final-output protocol fails; validator patched
-Checkpoint: PI_4096_EDIT_LOOP_FUNCTIONAL_PASS_STRICT_OUTPUT_FAIL
+Status: ACTIVE — Pi 4096 read/edit workflow validated; full Coding Benchmark 01 Pi agentic adapter built and preregistered
+Checkpoint: PI_AGENTIC_BENCHMARK_001_PREREGISTERED_READY_TO_RUN
 
 ## Mission
 
@@ -20,46 +20,37 @@ Study, test and improve ways to run capable local language models and self-hoste
 - Ollama: `0.32.14`
 - Qwen Code: `0.21.13`
 - Pi: `0.84.2`
-- Pi remains production tooling with existing OpenAI API/Codex auth, sessions and user customizations preserved
-
-Installed Ollama models:
-- `qwen3.5:4b-mlx` — canonical baseline/agent model
-- `qwen3.5:2b` — retained, not active baseline
+- canonical local agent model: `qwen3.5:4b-mlx`
 
 ## Frozen Coding Baseline 001
 
 Run id: `20260818-203156`
+Benchmark: Coding Benchmark 01 v1.0.1
 Model/runtime: `qwen3.5:4b-mlx`, Ollama/MLX, context 4096
 
-Canonical metrics:
-- strict delivery-adjusted score: **30.00/100**
+Canonical score views:
+- strict single-shot delivery-adjusted: **30.00/100**
 - structured-output delivery success: **3/6 = 50%**
 - artifact score: **40.71/100**
-- recovered semantic-content score: **82.86/100**
+- recovered semantic-content diagnostic: **82.86/100**
+
+Performance:
 - weighted prompt processing: **186.46 tok/s**
 - weighted generation: **16.01 tok/s**
 - peak observed swap: **2486.94 MB**
 
 Main baseline finding:
-> Generated code quality was much better than strict delivery score; protocol/transport reliability was a major bottleneck.
+> Code/semantic quality was materially stronger than strict delivery. JSON/full-file transport and protocol reliability were major bottlenecks.
 
-## Pi configuration rule
+## Pi production-configuration constraint
 
-LOOM added Ollama only as an additional provider in `~/.pi/agent/models.json`.
+The user's normal Pi installation is production tooling with existing OpenAI API/Codex auth, sessions, skills/extensions/packages and customizations.
 
-Must remain untouched:
-- OpenAI API credentials/configuration
-- OpenAI/Codex account authentication
-- saved defaults
-- sessions
-- skills/extensions/packages
-- unrelated Pi customizations
+LOOM previously added Ollama only as an additional provider in `~/.pi/agent/models.json`.
 
-Pi LOOM model:
-- provider: `ollama`
-- model: `qwen3.5:4b-mlx`
-- context: 4096
-- max output: 2048
+Do not reset, delete or replace the user's normal Pi configuration.
+
+For controlled benchmark runs, prefer a run-local `PI_CODING_AGENT_DIR` so production Pi state is neither loaded nor modified.
 
 ## Harness Comparison 001
 
@@ -70,36 +61,31 @@ Canonical record:
 
 Run id: `20260818-211009`
 
-Result:
-- no tool call reached;
-- estimated initial prompt: **4474 tokens** vs hard limit **4096**;
-- ~378 tokens over;
-- always-on context warning ~1429 tokens;
-- Ollama model never loaded;
-- semantic API failure despite process exit code 0.
+- context: 4096
+- estimated initial prompt: **4474 tokens**
+- hard limit: **4096**
+- no tool call reached
+- semantic API failure before Ollama model load
+- always-on context warning: ~1429 tokens
+- the only Git delta was automatic settings schema marker `"$version": 4`, now adopted in versioned config
 
-The only repository delta was Qwen Code automatically adding `"$version": 4` to `.qwen/settings.json`. This was classified as a harmless schema migration and adopted in the versioned config.
+Conclusion:
+> Normal Qwen Code harness is not feasible at context 4096 on this setup before the first tool call.
 
 ### Pi minimal read-only smoke
 
 Run id: `pi-20260818-212407`
 
-Result:
-- `read` used;
-- final text exactly `# LOOM`;
-- tracked repository unchanged;
-- Ollama after run: **4.2 GB, 100% GPU, context 4096**;
-- swap **1356.69M -> 2008.56M** (+651.87M);
-- memory free **73% -> 31%**;
-- elapsed ~34 s.
+- context: 4096
+- tool: `read`
+- result exactly `# LOOM`
+- working tree unchanged
+- Ollama after: **4.2 GB, 100% GPU, context 4096**
+- swap: **1356.69 -> 2008.56 MB** (+651.87 MB)
+- elapsed: ~34 s
 
-Research finding:
-> The tested minimal Pi harness is operational at context 4096 where the tested normal Qwen Code harness cannot reach the first tool call. Harness/context overhead is therefore a practical feasibility constraint on the 8 GB reference machine.
-
-Scope limitation:
-- Pi exposed only `read` in the first smoke;
-- Qwen Code used its normal larger harness;
-- this does not prove Pi is globally better under fully matched tool surfaces.
+Conclusion:
+> A minimal Pi file-tool harness works at 4096 where normal Qwen Code does not. Harness overhead is a practical feasibility constraint on the 8 GB machine.
 
 ## Pi Edit+Test Smoke 001
 
@@ -107,21 +93,13 @@ Canonical record:
 - `research/agents/pi-edit-test-smoke-001.md`
 
 Run id: `pi-edit-20260818-213432`
+Status: **FUNCTIONAL PASS / STRICT OUTPUT FAIL**
 
 Configuration:
-- provider/model: `ollama/qwen3.5:4b-mlx`
 - context: 4096
-- exposed tools: `read,edit,bash`
+- tools: `read,edit,bash`
 - ephemeral `--no-session`
-- disposable ignored workspace under `results-local/agent-smoke/.../workspace`
-- tracked LOOM source intentionally excluded from the task
-
-Task:
-- inspect deliberately broken `range_utils.py` and deterministic tests;
-- edit only the solution;
-- run `python3 -m unittest -v`;
-- leave tests unchanged;
-- reply exactly `PASS` after success.
+- disposable ignored workspace
 
 Observed tool sequence:
 
@@ -129,101 +107,144 @@ Observed tool sequence:
 ['read', 'read', 'bash', 'read', 'read', 'bash', 'edit', 'bash']
 ```
 
-Functional checks from the run:
-- Pi process exit code: 0
-- required tools `read`, `edit`, `bash`: observed
-- solution changed: **true**
-- test file unchanged: **true**
-- independent external tests: **PASS**
-- tracked LOOM working tree: **unchanged**
+Functional result:
+- solution changed: true
+- tests unchanged: true
+- independent unittest: 4/4 pass
+- tracked LOOM tree unchanged
+- event errors: none
+- JSONL parse errors: none
 
-The model correctly diagnosed the clamp bug and repaired it.
+Strict output result:
+- required final text: `PASS`
+- model added explanation before `PASS`
+- therefore strict output/protocol: **FAIL**
 
-### Functional result
+Historical run-summary caveat:
+- original summary contains `"success": true` because the old runner computed but omitted `answer_ok` from aggregate success
+- runner has been patched; canonical classification remains functional PASS / strict FAIL
 
-**PASS**
+Resource metrics:
+- elapsed: ~**114.0 s**
+- PhysMem used: **5622M -> 7495M** (+1873M)
+- system-wide memory free: **73% -> 61%**
+- swap: **1503.88 -> 2159.19 MB** (**+655.31 MB**)
+- compressor: **295M -> 1238M** (+943M)
+- Ollama after: **4.8 GB, 100% GPU, context 4096**
 
-This proves Pi + Qwen 3.5 4B MLX can perform a real minimal agentic coding loop at context 4096:
+Comparison to Pi read-only:
+- runtime increased ~34 s -> ~114 s (~3.35x)
+- swap delta remained nearly unchanged: +651.87 vs +655.31 MB
+- Ollama final resident report increased 4.2 -> 4.8 GB
+- cause of resident-size difference is unresolved; do not attribute it yet
+- host memory baselines differed, so absolute PhysMem/free-percentage values are not a controlled apples-to-apples comparison
 
-```text
-read -> diagnose -> edit -> test -> externally verified pass
-```
+## Pi Agentic Coding Benchmark 001 — PREREGISTERED
 
-### Strict protocol result
+Protocol record:
+- `research/agents/pi-agentic-benchmark-001-plan.md`
 
-**FAIL**
+Adapter:
+- `scripts/pi_agentic_benchmark.py`
 
-Required final response:
+Frozen benchmark:
+- Coding Benchmark 01 v1.0.1
+- prompts/fixtures/tests/task weights/scoring semantics unchanged
 
-```text
-PASS
-```
+Reference run configuration:
+- Pi `0.84.2`
+- Ollama / `qwen3.5:4b-mlx`
+- context **4096**
+- max output **2048**
+- one agent attempt per task
+- no hidden-test feedback
+- tools exposed: `read,write,edit`
+- no bash in this first full agentic benchmark
 
-Observed final text:
+### Agent/test isolation
 
-```text
-Now I understand the bug. The return statement is wrong: `max(high, min(low, value))` should be `max(low, min(high, value))`. Let me fix it:PASS
-```
+For every task:
+- agent workspace is a temporary directory outside the repository tree
+- workspace contains only frozen prompt text plus supplied context/editable starter files
+- hidden tests are never copied into the agent workspace
+- only permitted editable outputs are copied afterward into a separate scoring tree
+- frozen `runner.py` performs scoring only after Pi exits
 
-Therefore exact final-output compliance failed even though the code workflow succeeded.
+Pi has no built-in OS sandbox. This run therefore relies on workspace separation, restricted tools and explicit no-outside-access instruction. Evidence of out-of-workspace access would invalidate the affected task and require a stronger sandboxed rerun.
 
-### Runner validation defect found and patched
+### Production Pi isolation
 
-The original `scripts/pi_edit_test_smoke.py` computed `answer_ok` but accidentally omitted it from aggregate `success`, so the terminal printed `Success: True` despite strict output noncompliance.
+The benchmark adapter creates a run-local `PI_CODING_AGENT_DIR` with only a minimal Ollama `models.json`.
 
-The runner is now patched to report separately:
-- `functional_success`
-- `strict_success`
-- `answer_exact_pass`
+Per-run customization loading is disabled:
+- `--no-extensions`
+- `--no-skills`
+- `--no-prompt-templates`
+- `--no-themes`
+- `--no-context-files`
+- `--no-approve`
+- `--no-session`
 
-and aggregate `success` now follows strict success.
+Environment:
+- `PI_OFFLINE=1`
+- `PI_SKIP_VERSION_CHECK=1`
+- `PI_TELEMETRY=0`
 
-Research consequence:
-> Full agentic benchmarking must keep functional correctness and protocol/instruction adherence separate. This mirrors Baseline 001, where semantic/code quality was materially stronger than delivery/protocol reliability.
+The user's normal OpenAI/Codex Pi state must remain untouched.
 
-## Current reproducible tooling
+### Frozen score views
 
-Committed:
-- `.qwen/settings.json`
-- `scripts/qwen_code_readonly_smoke.py`
-- `scripts/pi_add_ollama_provider.py`
-- `scripts/pi_readonly_smoke.py`
-- `scripts/pi_edit_test_smoke.py`
-- `research/agents/harness-comparison-001.md`
-- `research/agents/pi-edit-test-smoke-001.md`
+1. **artifact_score** — raw frozen runner score of resulting scoring tree.
+2. **delivery_adjusted_score** — task points count only when Pi exits cleanly and every permitted editable file is actually created/changed.
+3. **strict_protocol_adjusted_score** — delivery points additionally require non-editable inputs unchanged, no unexpected persistent files, and final assistant text exactly `DONE`.
+
+No rule changes after observing results.
+
+### Failure policy
+
+- no retries from hidden-test feedback
+- no prompt rescue after seeing task results
+- no manual code repair
+- no JSON/envelope salvage
+- material adapter defect => preserve failed run, fix adapter, document defect, rerun under new run ID
 
 ## Exact next step
 
-Ingest the Pi edit+test run metrics from:
-
-`results-local/agent-smoke/pi-edit-20260818-213432/smoke-summary.json`
-
-Required fields:
-- memory before/after;
-- swap before/after;
-- `ollama ps` before/after;
-- elapsed time;
-- event/JSONL errors;
-- external unittest output.
-
-On the reference Mac:
+Pull the preregistered adapter and run the full Pi agentic Coding Benchmark 01:
 
 ```bash
-python3 -m json.tool "<repository-root>/results-local/agent-smoke/pi-edit-20260818-213432/smoke-summary.json"
+cd "<repository-root>"
+git pull
+python3 scripts/pi_agentic_benchmark.py
 ```
 
-After metric ingestion:
-1. run Qwen Code safe-mode 4096 diagnostic to isolate always-on context overhead;
-2. decide whether Qwen Code 8192 is still worth measuring;
-3. adapt Coding Benchmark 01 to Pi agentic mode at context 4096 with separate functional and strict protocol scoring;
-4. run the full agentic benchmark.
+Preserve the complete terminal output.
+
+Expected final summary format:
+
+```text
+LOOM Coding Benchmark 01 — Pi agentic complete
+Artifact score: .../100
+Delivery-adjusted score: .../100
+Strict protocol-adjusted score: .../100
+Delivery success: .../6; protocol success: .../6
+Run directory: ...
+Summary: .../run-summary.json
+```
+
+After the run:
+1. ingest per-task output/tool/protocol/result metrics;
+2. inspect any adapter defects before interpreting score;
+3. freeze the Pi agentic result if valid;
+4. compare against single-shot 30.00 strict / 40.71 artifact / 82.86 recovered-semantic baselines;
+5. only then return to Qwen Code safe-mode 4096 as a secondary harness diagnostic.
 
 ## Roadmap state
 
 - Phase 0 foundation: DONE
 - Phase 1 inference baseline: DONE
 - Phase 2 Coding Benchmark + Baseline 001: DONE / FROZEN
-- Phase 3 local coding agent: ACTIVE — Pi 4096 real edit/test loop functionally validated; strict final-output compliance issue identified; metric ingestion next
+- Phase 3 local coding agent: ACTIVE — Pi agentic benchmark preregistered and ready to run
 - Phase 4 llama.cpp: queued
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD streaming / MoE: queued
@@ -232,11 +253,12 @@ After metric ingestion:
 
 ## Open research questions
 
-- What memory/swap cost did the Pi edit+test loop add over the read-only smoke?
-- How often will Qwen 4B violate exact final/protocol instructions in longer agentic tasks?
-- How much of Qwen Code's 4096 failure is always-on context vs tool schema/core prompt?
-- What is the minimum practical Qwen Code context on M1/8 GB?
-- How much can Pi agentic mode close the strict 30.00 -> recovered 82.86 gap?
+- How much does filesystem delivery close the strict 30.00 -> recovered 82.86 single-shot gap?
+- Which benchmark failures remain genuine coding/comprehension errors after transport is removed?
+- How often does Qwen 4B violate strict protocol even when artifacts are correct?
+- Does context 4096 remain sufficient for all six benchmark tasks under minimal Pi file tools?
+- What are the total runtime, swap and Ollama resident-size costs of the full agentic benchmark?
+- Why did Ollama report 4.2 GB after the Pi read smoke and 4.8 GB after the longer edit/test loop at the same 4096 context?
 
 ## Continuation rule
 
