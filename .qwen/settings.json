@@ -4,10 +4,12 @@
       {
         "id": "qwen3.5:4b-mlx",
         "name": "Qwen 3.5 4B MLX (Ollama)",
+        "envKey": "OPENAI_API_KEY",
         "baseUrl": "http://localhost:11434/v1",
         "description": "LOOM reference local agent model via Ollama",
         "generationConfig": {
           "timeout": 300000,
+          "maxRetries": 1,
           "contextWindowSize": 4096,
           "samplingParams": {
             "temperature": 0,
@@ -16,6 +18,9 @@
         }
       }
     ]
+  },
+  "env": {
+    "OPENAI_API_KEY": "ollama"
   },
   "security": {
     "auth": {
@@ -27,6 +32,6 @@
   },
   "tools": {
     "sandbox": true,
-    "approvalMode": "default"
+    "approvalMode": "plan"
   }
 }
