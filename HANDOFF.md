@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Pi 4096 minimal harness validated; Qwen Code settings mutation classified as harmless schema migration; Pi edit+test smoke ready
-Checkpoint: PI_EDIT_TEST_4096_READY_QWEN_SETTINGS_MIGRATION_CLOSED
+Status: ACTIVE — Pi 4096 completes real read/edit/test loop; functional correctness passes, exact final-output protocol fails; validator patched
+Checkpoint: PI_4096_EDIT_LOOP_FUNCTIONAL_PASS_STRICT_OUTPUT_FAIL
 
 ## Mission
 
@@ -23,7 +23,7 @@ Study, test and improve ways to run capable local language models and self-hoste
 - Pi remains production tooling with existing OpenAI API/Codex auth, sessions and user customizations preserved
 
 Installed Ollama models:
-- `qwen3.5:4b-mlx` — 4.0 GB — canonical baseline/agent model
+- `qwen3.5:4b-mlx` — canonical baseline/agent model
 - `qwen3.5:2b` — retained, not active baseline
 
 ## Frozen Coding Baseline 001
@@ -40,8 +40,8 @@ Canonical metrics:
 - weighted generation: **16.01 tok/s**
 - peak observed swap: **2486.94 MB**
 
-Main finding:
-> Generated code quality was much better than strict delivery score; fragile structured-output transport was a major bottleneck.
+Main baseline finding:
+> Generated code quality was much better than strict delivery score; protocol/transport reliability was a major bottleneck.
 
 ## Pi configuration rule
 
@@ -55,7 +55,7 @@ Must remain untouched:
 - skills/extensions/packages
 - unrelated Pi customizations
 
-Pi model available:
+Pi LOOM model:
 - provider: `ollama`
 - model: `qwen3.5:4b-mlx`
 - context: 4096
@@ -66,84 +66,120 @@ Pi model available:
 Canonical record:
 - `research/agents/harness-comparison-001.md`
 
-### Qwen Code read-only smoke 001
+### Qwen Code normal-config read-only smoke
 
 Run id: `20260818-211009`
 
 Result:
 - no tool call reached;
-- estimated initial prompt: **4474 tokens**;
-- hard limit: **4096**;
-- ~**378 tokens over limit**;
-- always-on context warning: ~**1429 tokens**;
+- estimated initial prompt: **4474 tokens** vs hard limit **4096**;
+- ~378 tokens over;
+- always-on context warning ~1429 tokens;
 - Ollama model never loaded;
 - semantic API failure despite process exit code 0.
 
-Memory snapshots:
-- PhysMem used: **6675M -> 6741M** (+66M)
-- memory free: **73% -> 73%**
-- swap: **1380.69M -> 1380.69M** (+0M)
-- elapsed: ~**2.08 s**
+The only repository delta was Qwen Code automatically adding `"$version": 4` to `.qwen/settings.json`. This was classified as a harmless schema migration and adopted in the versioned config.
 
-### Pi read-only smoke 001
+### Pi minimal read-only smoke
 
 Run id: `pi-20260818-212407`
 
-Conditions:
-- `ollama/qwen3.5:4b-mlx`
-- context 4096
-- only `read` exposed
-- `--no-session`
-
 Result:
-- exit 0;
 - `read` used;
-- final text `# LOOM`;
-- success true;
-- tracked repository status unchanged relative to start;
-- Ollama after run: **4.2 GB, 100% GPU, context 4096**.
-
-Memory snapshots:
-- PhysMem used: **7207M -> 7462M** (+255M)
-- memory free: **73% -> 31%**
-- swap: **1356.69M -> 2008.56M** (**+651.87M**)
-- compressor: **289M -> 3483M** (+3194M)
-- elapsed: ~**34.00 s**
+- final text exactly `# LOOM`;
+- tracked repository unchanged;
+- Ollama after run: **4.2 GB, 100% GPU, context 4096**;
+- swap **1356.69M -> 2008.56M** (+651.87M);
+- memory free **73% -> 31%**;
+- elapsed ~34 s.
 
 Research finding:
-> The tested minimal Pi harness is operational at context 4096 where the tested normal Qwen Code harness cannot reach the first tool call. This proves harness/context overhead is a practical feasibility constraint on the 8 GB reference machine.
+> The tested minimal Pi harness is operational at context 4096 where the tested normal Qwen Code harness cannot reach the first tool call. Harness/context overhead is therefore a practical feasibility constraint on the 8 GB reference machine.
 
 Scope limitation:
-- Pi exposed only `read`; Qwen Code used its normal larger harness.
-- This does not prove Pi is globally better or inherently lower-overhead under matched tool surfaces.
+- Pi exposed only `read` in the first smoke;
+- Qwen Code used its normal larger harness;
+- this does not prove Pi is globally better under fully matched tool surfaces.
 
-## Qwen Code settings mutation — CLOSED
+## Pi Edit+Test Smoke 001
 
-The first Qwen Code smoke changed only `.qwen/settings.json`.
+Canonical record:
+- `research/agents/pi-edit-test-smoke-001.md`
 
-Exact local diff:
+Run id: `pi-edit-20260818-213432`
 
-```diff
-   "tools": {
-     "sandbox": true,
-     "approvalMode": "plan"
--  }
-+  },
-+  "$version": 4
- }
+Configuration:
+- provider/model: `ollama/qwen3.5:4b-mlx`
+- context: 4096
+- exposed tools: `read,edit,bash`
+- ephemeral `--no-session`
+- disposable ignored workspace under `results-local/agent-smoke/.../workspace`
+- tracked LOOM source intentionally excluded from the task
+
+Task:
+- inspect deliberately broken `range_utils.py` and deterministic tests;
+- edit only the solution;
+- run `python3 -m unittest -v`;
+- leave tests unchanged;
+- reply exactly `PASS` after success.
+
+Observed tool sequence:
+
+```text
+['read', 'read', 'bash', 'read', 'read', 'bash', 'edit', 'bash']
 ```
 
-Classification:
-- automatic Qwen Code settings-schema migration;
-- no model/provider/endpoint/security/tool behavior changed;
-- not an agent-generated project edit;
-- safe to adopt in the versioned LOOM config.
+Functional checks from the run:
+- Pi process exit code: 0
+- required tools `read`, `edit`, `bash`: observed
+- solution changed: **true**
+- test file unchanged: **true**
+- independent external tests: **PASS**
+- tracked LOOM working tree: **unchanged**
 
-Action completed:
-- committed `"$version": 4` into `.qwen/settings.json`.
+The model correctly diagnosed the clamp bug and repaired it.
 
-Consequence:
-> The prior `Working tree unchanged: False` from Qwen Code is not evidence that the model attempted a repository modification. It was Qwen Code normalizing its own settings schema.
+### Functional result
+
+**PASS**
+
+This proves Pi + Qwen 3.5 4B MLX can perform a real minimal agentic coding loop at context 4096:
+
+```text
+read -> diagnose -> edit -> test -> externally verified pass
+```
+
+### Strict protocol result
+
+**FAIL**
+
+Required final response:
+
+```text
+PASS
+```
+
+Observed final text:
+
+```text
+Now I understand the bug. The return statement is wrong: `max(high, min(low, value))` should be `max(low, min(high, value))`. Let me fix it:PASS
+```
+
+Therefore exact final-output compliance failed even though the code workflow succeeded.
+
+### Runner validation defect found and patched
+
+The original `scripts/pi_edit_test_smoke.py` computed `answer_ok` but accidentally omitted it from aggregate `success`, so the terminal printed `Success: True` despite strict output noncompliance.
+
+The runner is now patched to report separately:
+- `functional_success`
+- `strict_success`
+- `answer_exact_pass`
+
+and aggregate `success` now follows strict success.
+
+Research consequence:
+> Full agentic benchmarking must keep functional correctness and protocol/instruction adherence separate. This mirrors Baseline 001, where semantic/code quality was materially stronger than delivery/protocol reliability.
 
 ## Current reproducible tooling
 
@@ -154,64 +190,40 @@ Committed:
 - `scripts/pi_readonly_smoke.py`
 - `scripts/pi_edit_test_smoke.py`
 - `research/agents/harness-comparison-001.md`
-
-Qwen smoke runner now:
-- treats `[API Error: ...]` as failure even when process exit is 0;
-- requires expected answer and observed tool call for success;
-- captures `.qwen/settings.json` diff before/after;
-- preserves memory/swap/Git diagnostics.
-
-## Pi edit+test smoke — READY
-
-Script:
-- `scripts/pi_edit_test_smoke.py`
-
-Design:
-- context: **4096**;
-- provider/model: `ollama/qwen3.5:4b-mlx`;
-- ephemeral `--no-session`;
-- exposed tools: `read,edit,bash`;
-- disposable workspace under ignored `results-local/agent-smoke/pi-edit-<run-id>/workspace`;
-- no tracked LOOM source file is intentionally editable;
-- task contains a deliberately broken `range_utils.py` plus deterministic `unittest` tests;
-- Pi must inspect both files, edit only `range_utils.py`, run `python3 -m unittest -v`, and finish after tests pass;
-- runner independently reruns tests after Pi exits;
-- runner verifies test file unchanged, solution changed, required tool calls observed, repository tracked status unchanged, and captures memory/swap/Ollama state.
-
-Success means Pi can perform a minimal **read -> edit -> test** loop at context 4096, not merely a read-only call.
+- `research/agents/pi-edit-test-smoke-001.md`
 
 ## Exact next step
 
-On the reference Mac, the local `.qwen/settings.json` already contains the same `"$version": 4` now committed remotely. To avoid pull conflicts, first discard only that now-redundant local schema delta, then pull:
+Ingest the Pi edit+test run metrics from:
+
+`results-local/agent-smoke/pi-edit-20260818-213432/smoke-summary.json`
+
+Required fields:
+- memory before/after;
+- swap before/after;
+- `ollama ps` before/after;
+- elapsed time;
+- event/JSONL errors;
+- external unittest output.
+
+On the reference Mac:
 
 ```bash
-cd "<repository-root>"
-git restore -- .qwen/settings.json
-git pull
-python3 scripts/pi_edit_test_smoke.py
+python3 -m json.tool "<repository-root>/results-local/agent-smoke/pi-edit-20260818-213432/smoke-summary.json"
 ```
 
-Do not reset any Pi configuration or session files.
-
-After the run, ingest:
-- tool sequence;
-- final answer;
-- external unittest result;
-- solution/test integrity checks;
-- memory pressure, swap and Ollama resident state;
-- total elapsed time.
-
-If Pi passes, next steps are:
-1. Qwen Code safe-mode 4096 diagnostic to isolate always-on context overhead;
-2. then decide whether Qwen Code 8192 remains worth testing;
-3. start adapting Coding Benchmark 01 to Pi agentic mode at context 4096.
+After metric ingestion:
+1. run Qwen Code safe-mode 4096 diagnostic to isolate always-on context overhead;
+2. decide whether Qwen Code 8192 is still worth measuring;
+3. adapt Coding Benchmark 01 to Pi agentic mode at context 4096 with separate functional and strict protocol scoring;
+4. run the full agentic benchmark.
 
 ## Roadmap state
 
 - Phase 0 foundation: DONE
 - Phase 1 inference baseline: DONE
 - Phase 2 Coding Benchmark + Baseline 001: DONE / FROZEN
-- Phase 3 local coding agent: ACTIVE — Pi 4096 read-only passed; Qwen settings migration closed; Pi isolated edit+test smoke ready
+- Phase 3 local coding agent: ACTIVE — Pi 4096 real edit/test loop functionally validated; strict final-output compliance issue identified; metric ingestion next
 - Phase 4 llama.cpp: queued
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD streaming / MoE: queued
@@ -220,8 +232,8 @@ If Pi passes, next steps are:
 
 ## Open research questions
 
-- Can Pi perform reliable read/edit/bash loops at context 4096?
-- How much additional swap does an edit+test loop cost versus the read-only Pi smoke?
+- What memory/swap cost did the Pi edit+test loop add over the read-only smoke?
+- How often will Qwen 4B violate exact final/protocol instructions in longer agentic tasks?
 - How much of Qwen Code's 4096 failure is always-on context vs tool schema/core prompt?
 - What is the minimum practical Qwen Code context on M1/8 GB?
 - How much can Pi agentic mode close the strict 30.00 -> recovered 82.86 gap?
