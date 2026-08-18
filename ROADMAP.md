@@ -27,7 +27,7 @@
 - [x] Detect v1.0.0 subtest-counting scoring defect
 - [x] Patch scorer as Coding Benchmark 01 v1.0.1
 - [x] Add deterministic rescoring utility
-- [ ] Rescore the existing Qwen run without regenerating model outputs
+- [x] Rescore the existing Qwen run without regenerating model outputs — 40.71/100
 - [ ] Ingest `run-summary.json` timing/token/memory and adapter-status data
 - [ ] Freeze Coding Baseline 001 official result
 - [ ] Define reasoning benchmark
