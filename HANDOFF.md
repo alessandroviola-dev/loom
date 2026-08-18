@@ -1,20 +1,20 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — first coding run deterministically rescored; full adapter/performance ingestion pending
-Checkpoint: CODING_BASELINE_001_RESCORED_PENDING_RUN_SUMMARY
+Status: ACTIVE — first coding run quality/performance/memory ingested; raw failed outputs pending
+Checkpoint: CODING_BASELINE_001_RUN_SUMMARY_INGESTED_RAW_RESPONSES_PENDING
 
 ## Mission
 
-Study, test and eventually improve ways to run capable local language models and self-hosted AI agents on resource-constrained consumer computers, with particular focus on making larger models usable on machines that normally cannot hold them entirely in RAM.
+Study, test and improve ways to run capable local language models and self-hosted AI agents on resource-constrained consumer computers, with particular focus on making larger models useful on machines that normally cannot hold them entirely in RAM.
 
 ## Long-term destination
 
 1. Build a practical self-hosted local coding agent with no per-token cloud usage limits.
-2. Establish reproducible benchmarks for local inference on constrained hardware.
+2. Establish reproducible quality/performance/memory benchmarks for local inference.
 3. Explore quantization, offloading, unified memory, memory mapping, swap, SSD streaming and MoE expert streaming.
 4. Compare Ollama, MLX, llama.cpp, Colibrì and other promising runtimes.
-5. Determine the largest useful, not merely launchable, model configurations on small consumer machines.
+5. Determine the largest *useful*, not merely launchable, model configurations on small consumer machines.
 6. If research reveals a useful gap, prototype LOOM-specific tooling/runtime techniques.
 
 ## Reference hardware
@@ -22,7 +22,7 @@ Study, test and eventually improve ways to run capable local language models and
 - Apple M1
 - 8 GB unified memory
 - macOS
-- Canonical local repository path: `<repository-root>`
+- Canonical local repository: `<repository-root>`
 
 ## Frozen project decisions
 
@@ -31,11 +31,13 @@ Study, test and eventually improve ways to run capable local language models and
 - Repository: `Ilcoach/loom` (private)
 - Default branch: `main`
 - Baseline runtime/model: Ollama + `qwen3.5:4b-mlx`
-- Coding Benchmark 01 task prompts, fixtures, tests, task weights and semantics are frozen.
-- `single_shot` and `agentic` results are separate experimental conditions.
-- Benchmark quality, speed and memory are separate measurement dimensions.
-- Failed or malformed runs are preserved, not silently retried.
-- `HANDOFF.md` is canonical and must be updated after every meaningful project step.
+- Coding Benchmark 01 prompts, fixtures, tests, expected semantics and task weights are frozen.
+- Benchmark 01 scorer version is currently `1.0.1` after a scoring-only defect fix.
+- `single_shot` and `agentic` are distinct experimental conditions.
+- Quality, speed and memory are separate measurement dimensions.
+- Failed/malformed runs are retained; no silent retries.
+- Strict single-shot quality requires successful output delivery, not merely starter-file test passes.
+- `HANDOFF.md` is canonical and must be updated after every meaningful step.
 
 ## Completed checkpoints
 
@@ -45,138 +47,172 @@ Study, test and eventually improve ways to run capable local language models and
 
 ### BASELINE 001 — inference
 - MLX runner confirmed from Ollama logs.
-- Ollama reports 100% GPU execution.
+- Ollama reported 100% GPU execution.
 - Context: 4096.
-- Model resident size: 4.3 GB.
+- Model resident size in initial test: ~4.3 GB.
 - Initial generation throughput: 15.02 tok/s.
-- Short-prompt measurement: 4.36 prompt tok/s; repeat validation still pending.
-- Total request time: 30.01 s.
-- Model load time: 0.07 s.
+- Initial short-prompt throughput result of 4.36 prompt tok/s was later shown to be non-representative by the coding benchmark.
 
-Memory without model:
-- PhysMem used: 6529 MB
-- compressed: 811 MB
-- unused: 1101 MB
-- memory_pressure free: 62%
-- swap used: 1857.19 MB
-
-Memory with model:
-- PhysMem used: 7500 MB
-- compressed: 3131 MB
-- unused: 130 MB
-- memory_pressure free: 32%
-- swap used: 3833.81 MB
-
-Interpretation: Qwen 3.5 4B MLX is usable on the reference 8 GB machine but already pushes it close to the practical full-resident memory ceiling.
+Initial memory comparison:
+- model OFF: PhysMem 6529 MB used, 811 MB compressed, 1101 MB unused, swap 1857.19 MB, pressure-free 62%.
+- model ON: PhysMem 7500 MB used, 3131 MB compressed, 130 MB unused, swap 3833.81 MB, pressure-free 32%.
 
 ### CODING BENCHMARK 01
-- Six task classes: generation, debugging, comprehension, constrained refactoring, multi-file reasoning, explicit implementation constraints.
+- Six task classes: generation, debugging, comprehension, constrained refactoring, multi-file reasoning, implementation constraints.
 - Total weight: 100 points.
 - 41 top-level deterministic unittest methods.
-- Private reference validation: 41/41 tests passed, 100/100.
+- Private reference validation: 41/41 tests, 100/100.
 - Machine-readable result schema and runner included.
 
-### OLLAMA SINGLE-SHOT ADAPTER
-- Implemented at `scripts/ollama_single_shot.py`.
-- Uses isolated working copies under ignored `results-local/`.
-- Hides tests from the model.
-- Gives each task one attempt.
-- Records raw Ollama responses, token/timing metrics, memory snapshots and benchmark score.
+### CRITICAL SCORING DEFECT — v1.0.0
+The first real run exposed a scorer bug:
+- verbose `unittest` subtest-failure lines were counted as additional tests;
+- T05 appeared as 11 tests although it contains 7 top-level tests;
+- T06 appeared as 12 tests although it contains 7 top-level tests.
+
+The original 39.82/100 is preserved only as a historical raw result.
+
+### CODING BENCHMARK 01 v1.0.1 PATCH
+- runner now counts each top-level unittest method exactly once;
+- failing subtests fail the parent test but do not alter the denominator;
+- prompts, fixtures, tests and weights are unchanged;
+- deterministic rescoring utility added at `scripts/rescore_coding_run.py`.
 
 ### CODING BASELINE 001 — FIRST REAL RUN
-Reference invocation:
+Run id: `20260818-203156`
 
-```bash
-python3 scripts/ollama_single_shot.py --model qwen3.5:4b-mlx --context 4096
-```
-
-Run identity:
+Configuration:
 - model: `qwen3.5:4b-mlx`
-- runtime: Ollama / MLX
+- runtime/backend: Ollama / MLX
 - mode: `single_shot`
 - context: 4096
 - local run directory: `<repository-root>/results-local/coding-single-shot/20260818-203156`
-- original adapter summary: `<repository-root>/results-local/coding-single-shot/20260818-203156/run-summary.json`
 
-The original Benchmark 01 v1.0.0 runner reported **39.82 / 100**.
+The exact first-run files were rescored with v1.0.1 without regenerating model outputs.
 
-### CRITICAL SCORING DEFECT — v1.0.0
-During first-result ingestion, the scorer was found to count verbose `unittest` subtest failure lines as extra tests. That made the denominator depend on failure shape.
-
-Observed evidence:
-- T05 was reported as 11 tests although the suite contains 7 top-level tests.
-- T06 was reported as 12 tests although the suite contains 7 top-level tests.
-
-Conclusion:
-- 39.82/100 is preserved only as a raw historical artifact;
-- it is not the official corrected quality score.
-
-### CODING BENCHMARK 01 v1.0.1 SCORING PATCH
-Completed:
-- runner now counts each top-level unittest method exactly once;
-- failing subtests mark the parent test failed without increasing the denominator;
-- prompts, fixtures, tests, expected behavior and weights were unchanged;
-- manifest patch version incremented to `1.0.1`;
-- defect documented in `benchmarks/coding/v1/VALIDATION.md`;
-- deterministic rescoring utility added at `scripts/rescore_coding_run.py`.
-
-### CODING BASELINE 001 — CORRECTED RESCORE
-The exact generated files from run `20260818-203156` were rescored with v1.0.1 without calling Ollama again.
-
-**Corrected quality score: 40.71 / 100**
+#### Artifact score
+**40.71 / 100**
 
 Per task:
 - T01 generation: 15.00/15 — 6/6.
 - T02 debugging: 6.43/15 — 3/7.
 - T03 comprehension: 8.57/15 — 4/7.
 - T04 refactoring: 8.57/15 — 4/7.
-- T05 multi-file reasoning: 0.00/25 — 0/7.
-- T06 instruction following: 2.14/15 — 1/7.
+- T05 multi-file: 0.00/25 — 0/7.
+- T06 constraints: 2.14/15 — 1/7.
 
-Quality interpretation currently supported:
-- T01 is a complete success.
-- T02 is a genuine partial debugging failure: rolling-window update behavior remains wrong in several cases and boolean-size validation is missed.
-- T03 is a genuine partial comprehension/instruction-following failure. The prompt explicitly required complexity notation in terms of `len(capacities)` and `len(jobs)`, while the model returned `O(n*m)`; mutation/state and sentinel interpretation were also wrong.
-- T04 is a genuine partial constrained-refactor failure: required helper contract was not implemented.
-- T05 and T06 working copies retained their original `NotImplementedError`; these cannot yet be classified as pure reasoning failures because adapter-status/raw-response fields are not present in the rescored quality artifact.
+#### Adapter-status ingestion
+Original `run-summary.json` confirms:
+- T01: `written`.
+- T02: `written`.
+- T03: `written`.
+- T04: `failed` — JSON invalid control character at column 340.
+- T05: `failed` — JSON missing delimiter at column 584.
+- T06: `failed` — JSON missing delimiter at column 1493.
 
-Corrected result record:
+Therefore T04–T06 never wrote the model-generated file to the working tree. Their residual starter-file test passes cannot be credited to Qwen.
+
+#### Delivery-adjusted strict single-shot score
+Only tasks successfully parsed/written contribute:
+
+- T01: 15.00
+- T02: 6.43
+- T03: 8.57
+- T04: 0
+- T05: 0
+- T06: 0
+
+**Strict end-to-end score: 30.00 / 100**
+
+This is the primary quality score for strict single-shot delivery on the first run. The 40.71 artifact score is retained as a diagnostic secondary metric.
+
+### Successful-task performance telemetry
+Complete Ollama metrics exist in the old run summary for T01–T03:
+
+- T01: 301 prompt tokens @ 151.511 tok/s; 98 output tokens @ 16.549 tok/s; wall 12.613 s.
+- T02: 406 prompt tokens @ 165.932 tok/s; 118 output tokens @ 15.917 tok/s; wall 9.976 s.
+- T03: 390 prompt tokens @ 222.342 tok/s; 50 output tokens @ 15.724 tok/s; wall 5.056 s.
+
+Weighted across T01–T03:
+- prompt: 1,097 tokens @ **177.29 tok/s**;
+- generation: 266 tokens @ **16.11 tok/s**.
+
+Conclusion: the earlier 4.36 prompt tok/s short-prompt measurement was not representative of normal benchmark prompt processing.
+
+Full run elapsed time: approximately **91.25 s**.
+
+For T04–T06 the old adapter failed to retain token metrics because it stored metrics only after successful JSON extraction. Their raw API files still exist locally and must be inspected.
+
+### Memory/swap during Coding Baseline 001
+Before run:
+- PhysMem: 7551 MB used, 1027 MB compressed, 79 MB unused.
+- swap used: 885.69 MB.
+- `ollama ps`: no loaded model.
+
+After T01:
+- model: 4.1 GB, 100% GPU.
+- swap: 1983.31 MB.
+- memory-pressure free: 17%.
+
+Resident size reported across tasks:
+- T01 4.1 GB
+- T02 4.2 GB
+- T03 4.4 GB
+- T04 4.5 GB
+- T05 4.7 GB
+- T06/final 4.8 GB
+
+Peak observed swap: **2486.94 MB** after T05.
+Final swap: **2403.44 MB**, roughly +1517.75 MB versus run start.
+
+Interpretation: generation remains responsive, but sustained multi-task use creates substantial memory pressure/swap on the M1/8 GB. The reported resident-size growth needs a later controlled memory experiment.
+
+### ADAPTER HARDENING AFTER FIRST RUN
+`scripts/ollama_single_shot.py` has been updated to:
+- record Ollama metrics before attempting model-output parsing;
+- preserve metrics even when JSON/file extraction fails;
+- preserve raw API responses;
+- read benchmark version from `manifest.json` rather than hard-code 1.0.0;
+- print T01–T06 progress live;
+- report `artifact_score` separately from `delivery_adjusted_score`;
+- count adapter/output-format failures as zero for strict end-to-end delivery.
+
+Result record updated at:
 - `benchmarks/results/coding-baseline-001-qwen35-4b-mlx.md`
 
 ## Current checkpoint interpretation
 
-The quality score is now valid and reproducible at **40.71/100** for the exact first output set. Coding Baseline 001 is **not yet fully frozen** because the original adapter `run-summary.json` has not been ingested.
+We now know the first run's quality, successful-task throughput, memory behavior and exact adapter failure mode.
 
-The remaining ingestion is important for two reasons:
-1. classify T05/T06 as model output/reasoning failures vs adapter JSON/output-format failures;
-2. attach prompt/generation throughput, latency and memory/swap behavior to the same run.
+Important conclusion:
+- Qwen 3.5 4B MLX can generate correct small code in strict single-shot mode (T01 100%).
+- It is partially capable at debugging/comprehension.
+- Its main first-run end-to-end failure is not only coding reasoning: on the longer/later tasks it failed the required JSON transport format three times in a row.
+- Strict delivered baseline is **30.00/100**.
+
+Coding Baseline 001 is not yet fully closed because the preserved raw T04–T06 API responses have not been inspected. Those files can reveal whether useful code exists inside malformed JSON and provide the missing token metrics for failed-delivery tasks.
 
 ## Exact next step
 
-Upload or inspect this exact local file:
+Inspect these local files from run `20260818-203156`:
 
-`<repository-root>/results-local/coding-single-shot/20260818-203156/run-summary.json`
+- `<repository-root>/results-local/coding-single-shot/20260818-203156/raw/T04-api.json`
+- `<repository-root>/results-local/coding-single-shot/20260818-203156/raw/T05-api.json`
+- `<repository-root>/results-local/coding-single-shot/20260818-203156/raw/T06-api.json`
 
-Required extraction:
-1. `adapter_status` and error for every task;
-2. prompt token counts and prompt tok/s;
-3. generation token counts and generation tok/s;
-4. wall time and Ollama durations;
-5. memory snapshots before, after each task and after the run;
-6. raw-response availability and parse failures;
-7. definitive T05/T06 failure classification.
-
-After that:
-- update the result record with full quality/performance/memory data;
-- freeze Coding Baseline 001 official result;
-- update this handoff to `CODING_BASELINE_001_FROZEN`;
-- then proceed to the next experiment, likely the local coding-agent layer before larger-runtime comparisons.
+Required analysis:
+1. recover prompt/output token metrics for T04–T06;
+2. inspect the raw `response` strings;
+3. determine whether malformed JSON contains otherwise valid/near-valid code;
+4. classify each failure as transport-only, coding-only, or mixed;
+5. finalize and freeze `CODING_BASELINE_001`;
+6. only then move to local agent selection/agentic mode.
 
 ## Open research questions
 
-- Why did T05 and T06 remain unimplemented: reasoning failure, JSON/output-format failure, adapter rejection, or a combination?
-- Is the earlier 4.36 prompt tok/s short-prompt measurement reproducible?
-- How much does an agent layer improve correctness over the 40.71/100 strict single-shot baseline, and at what latency/memory cost?
+- Are T04–T06 primarily JSON serialization failures or also code-quality failures?
+- Why does Ollama's reported resident size grow from ~4.1 to ~4.8 GB across this six-task run?
+- How much does an agent layer improve strict delivery/correctness over 30.00/100, and at what latency/memory cost?
 - What is the best quality/memory tradeoff for 7B–9B quantized models on 8 GB?
 - Can direct MLX materially improve memory behavior versus Ollama MLX?
 - How much useful capacity can SSD-backed or MoE expert streaming unlock before latency becomes impractical?
