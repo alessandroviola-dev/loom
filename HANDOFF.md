@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — first coding run completed; v1.0.0 scoring defect patched; deterministic rescore pending
-Checkpoint: CODING_BENCHMARK_01_SCORER_PATCHED_V1_0_1
+Status: ACTIVE — first coding run deterministically rescored; full adapter/performance ingestion pending
+Checkpoint: CODING_BASELINE_001_RESCORED_PENDING_RUN_SUMMARY
 
 ## Mission
 
@@ -35,7 +35,7 @@ Study, test and eventually improve ways to run capable local language models and
 - `single_shot` and `agentic` results are separate experimental conditions.
 - Benchmark quality, speed and memory are separate measurement dimensions.
 - Failed or malformed runs are preserved, not silently retried.
-- `HANDOFF.md` is canonical and must be updated after each meaningful project step.
+- `HANDOFF.md` is canonical and must be updated after every meaningful project step.
 
 ## Completed checkpoints
 
@@ -67,7 +67,7 @@ Memory with model:
 - memory_pressure free: 32%
 - swap used: 3833.81 MB
 
-Interpretation: the 4B MLX model is usable but already pushes the 8 GB machine close to its practical full-resident memory ceiling.
+Interpretation: Qwen 3.5 4B MLX is usable on the reference 8 GB machine but already pushes it close to the practical full-resident memory ceiling.
 
 ### CODING BENCHMARK 01
 - Six task classes: generation, debugging, comprehension, constrained refactoring, multi-file reasoning, explicit implementation constraints.
@@ -84,13 +84,11 @@ Interpretation: the 4B MLX model is usable but already pushes the 8 GB machine c
 - Records raw Ollama responses, token/timing metrics, memory snapshots and benchmark score.
 
 ### CODING BASELINE 001 — FIRST REAL RUN
-Reference command:
+Reference invocation:
 
 ```bash
 python3 scripts/ollama_single_shot.py --model qwen3.5:4b-mlx --context 4096
 ```
-
-Run completed on the reference M1/8 GB Mac.
 
 Run identity:
 - model: `qwen3.5:4b-mlx`
@@ -98,91 +96,87 @@ Run identity:
 - mode: `single_shot`
 - context: 4096
 - local run directory: `<repository-root>/results-local/coding-single-shot/20260818-203156`
-- original local summary: `<repository-root>/results-local/coding-single-shot/20260818-203156/run-summary.json`
+- original adapter summary: `<repository-root>/results-local/coding-single-shot/20260818-203156/run-summary.json`
 
-The original v1.0.0 scorer reported **39.82 / 100**.
+The original Benchmark 01 v1.0.0 runner reported **39.82 / 100**.
 
-Uploaded quality-result observations:
-- T01 generation: 15.00/15, 6/6 reported tests passed.
-- T02 debugging: 6.43/15, 3/7 reported tests passed.
-- T03 comprehension: 8.57/15, 4/7 reported tests passed.
-- T04 refactoring: 8.57/15, 4/7 reported tests passed.
-- T05 multi-file reasoning: 0/25; working tree retained `NotImplementedError`.
-- T06 instruction following: 1.25/15 under the defective scorer; working tree retained `NotImplementedError` for most checks.
+### CRITICAL SCORING DEFECT — v1.0.0
+During first-result ingestion, the scorer was found to count verbose `unittest` subtest failure lines as extra tests. That made the denominator depend on failure shape.
 
-Quality observations independent of scoring defect:
-- T01 was a complete success.
-- T02 retained incorrect rolling-window update behavior and failed boolean-size validation.
-- T03 recognized some structure correctly but missed input-mutation state, unassigned sentinel and expected complexity representation.
-- T04 preserved some behavior but failed the required helper/refactoring contract.
-- T05 and T06 cannot yet be classified as pure model failures because the uploaded quality-result file does not include adapter-status/raw-response fields.
-
-### CRITICAL BENCHMARK DEFECT — v1.0.0
-During result ingestion a scoring bug was discovered.
-
-Root cause:
-- v1.0.0 regex-parsed verbose `unittest` output;
-- failing `subTest` cases emit additional result lines;
-- those extra lines were incorrectly counted as additional tests;
-- therefore the denominator depended on failure shape.
-
-Concrete evidence:
-- T05 result field claimed 11 tests while unittest reported `Ran 7 tests`.
-- T06 result field claimed 12 tests while unittest reported `Ran 7 tests`.
+Observed evidence:
+- T05 was reported as 11 tests although the suite contains 7 top-level tests.
+- T06 was reported as 12 tests although the suite contains 7 top-level tests.
 
 Conclusion:
-- **39.82/100 is not a valid official baseline score**;
-- it is preserved only as an auditable raw historical result.
+- 39.82/100 is preserved only as a raw historical artifact;
+- it is not the official corrected quality score.
 
 ### CODING BENCHMARK 01 v1.0.1 SCORING PATCH
 Completed:
-- runner changed to execute/count each top-level `unittest.TestCase` method exactly once;
-- any failing subtest marks its enclosing top-level test failed without increasing the denominator;
-- prompts, fixtures, tests, expected semantics and weights were not changed;
+- runner now counts each top-level unittest method exactly once;
+- failing subtests mark the parent test failed without increasing the denominator;
+- prompts, fixtures, tests, expected behavior and weights were unchanged;
 - manifest patch version incremented to `1.0.1`;
 - defect documented in `benchmarks/coding/v1/VALIDATION.md`;
-- preliminary result record created at `benchmarks/results/coding-baseline-001-qwen35-4b-mlx.md`;
 - deterministic rescoring utility added at `scripts/rescore_coding_run.py`.
+
+### CODING BASELINE 001 — CORRECTED RESCORE
+The exact generated files from run `20260818-203156` were rescored with v1.0.1 without calling Ollama again.
+
+**Corrected quality score: 40.71 / 100**
+
+Per task:
+- T01 generation: 15.00/15 — 6/6.
+- T02 debugging: 6.43/15 — 3/7.
+- T03 comprehension: 8.57/15 — 4/7.
+- T04 refactoring: 8.57/15 — 4/7.
+- T05 multi-file reasoning: 0.00/25 — 0/7.
+- T06 instruction following: 2.14/15 — 1/7.
+
+Quality interpretation currently supported:
+- T01 is a complete success.
+- T02 is a genuine partial debugging failure: rolling-window update behavior remains wrong in several cases and boolean-size validation is missed.
+- T03 is a genuine partial comprehension/instruction-following failure. The prompt explicitly required complexity notation in terms of `len(capacities)` and `len(jobs)`, while the model returned `O(n*m)`; mutation/state and sentinel interpretation were also wrong.
+- T04 is a genuine partial constrained-refactor failure: required helper contract was not implemented.
+- T05 and T06 working copies retained their original `NotImplementedError`; these cannot yet be classified as pure reasoning failures because adapter-status/raw-response fields are not present in the rescored quality artifact.
+
+Corrected result record:
+- `benchmarks/results/coding-baseline-001-qwen35-4b-mlx.md`
 
 ## Current checkpoint interpretation
 
-The model outputs from run `20260818-203156` must be preserved. We must **not rerun Qwen yet**. The next operation is to apply the corrected v1.0.1 scorer to the exact same generated files, isolating scoring correction from model variance.
+The quality score is now valid and reproducible at **40.71/100** for the exact first output set. Coding Baseline 001 is **not yet fully frozen** because the original adapter `run-summary.json` has not been ingested.
 
-The uploaded file was the benchmark quality result, not the full adapter `run-summary.json`. Therefore speed, token and memory ingestion is still pending.
+The remaining ingestion is important for two reasons:
+1. classify T05/T06 as model output/reasoning failures vs adapter JSON/output-format failures;
+2. attach prompt/generation throughput, latency and memory/swap behavior to the same run.
 
 ## Exact next step
 
-On the reference Mac, from the LOOM repository:
+Upload or inspect this exact local file:
 
-```bash
-cd "<repository-root>"
-git pull
-python3 scripts/rescore_coding_run.py \
-  --run-dir "<repository-root>/results-local/coding-single-shot/20260818-203156" \
-  --model qwen3.5:4b-mlx \
-  --runtime ollama \
-  --backend mlx \
-  --mode single_shot \
-  --context 4096
-```
+`<repository-root>/results-local/coding-single-shot/20260818-203156/run-summary.json`
 
-This rescoring does not call Ollama and does not regenerate model answers. It reuses the exact existing generated files.
+Required extraction:
+1. `adapter_status` and error for every task;
+2. prompt token counts and prompt tok/s;
+3. generation token counts and generation tok/s;
+4. wall time and Ollama durations;
+5. memory snapshots before, after each task and after the run;
+6. raw-response availability and parse failures;
+7. definitive T05/T06 failure classification.
 
-After rescoring:
-1. ingest the corrected v1.0.1 quality score;
-2. update `benchmarks/results/coding-baseline-001-qwen35-4b-mlx.md`;
-3. ingest the original `run-summary.json` for adapter status, token/s, timing and memory;
-4. classify T05/T06 model-vs-adapter failure mode;
-5. freeze Coding Baseline 001;
-6. update this handoff before proceeding to agentic mode.
+After that:
+- update the result record with full quality/performance/memory data;
+- freeze Coding Baseline 001 official result;
+- update this handoff to `CODING_BASELINE_001_FROZEN`;
+- then proceed to the next experiment, likely the local coding-agent layer before larger-runtime comparisons.
 
 ## Open research questions
 
-- What is the corrected v1.0.1 score of the exact first Qwen output set?
-- Were T05/T06 failures caused by model reasoning, output formatting/JSON parsing, or both?
-- Is the earlier 4.36 prompt tok/s result reproducible?
-- Which coding task class is the dominant weakness of the 4B baseline after valid scoring?
-- How much does an agent layer improve correctness, and at what latency/memory cost?
+- Why did T05 and T06 remain unimplemented: reasoning failure, JSON/output-format failure, adapter rejection, or a combination?
+- Is the earlier 4.36 prompt tok/s short-prompt measurement reproducible?
+- How much does an agent layer improve correctness over the 40.71/100 strict single-shot baseline, and at what latency/memory cost?
 - What is the best quality/memory tradeoff for 7B–9B quantized models on 8 GB?
 - Can direct MLX materially improve memory behavior versus Ollama MLX?
 - How much useful capacity can SSD-backed or MoE expert streaming unlock before latency becomes impractical?
