@@ -1,7 +1,7 @@
 # Coding Baseline 001 — Qwen 3.5 4B MLX
 
 Date: 2026-08-18
-Status: **QUALITY + RUN SUMMARY INGESTED; RAW FAILED OUTPUTS PENDING**
+Status: **FROZEN — COMPLETE**
 
 ## Configuration
 
@@ -16,132 +16,195 @@ Status: **QUALITY + RUN SUMMARY INGESTED; RAW FAILED OUTPUTS PENDING**
 - Reference hardware: Apple M1 / 8 GB unified memory
 - Local run id: `20260818-203156`
 
-## Score interpretation
+## Primary conclusion
 
-The original v1.0.0 runner reported **39.82 / 100**, but that value is invalid because the original scorer over-counted failing subtests.
+The first LOOM coding baseline exposed a major distinction between **semantic coding ability** and **structured-output delivery reliability**.
 
-The exact same generated working tree was deterministically rescored with the corrected v1.0.1 scorer:
+Qwen 3.5 4B MLX produced useful code for all six tasks, but only three responses were valid enough for the strict adapter to write automatically. The three failed deliveries contained recoverable code; two of those recovered implementations passed all tests.
 
-- **Artifact score: 40.71 / 100**
-- **Delivery-adjusted strict single-shot score: 30.00 / 100**
+Therefore LOOM records three separate quality views rather than collapsing them into one number.
 
-The artifact score measures whatever files were present in the isolated working tree after the run. It is not the correct end-to-end score when an adapter/output-format failure leaves starter files untouched.
+## Frozen score views
 
-The delivery-adjusted score is the primary strict single-shot quality metric: a task contributes points only if the model output was successfully parsed and written by the adapter. Under the original run, T04, T05 and T06 all failed JSON parsing and therefore count as zero for strict delivery.
+### 1. Strict delivery-adjusted score — primary end-to-end metric
 
-## Corrected per-task quality
+A task scores only if the original model response is successfully parsed and written with no repair or retry.
 
-| Task | Skill | Artifact score | Tests | Adapter | Strict delivered score |
-|---|---|---:|---:|---|---:|
-| T01 | generation | 15.00 / 15 | 6 / 6 | written | 15.00 |
-| T02 | debugging | 6.43 / 15 | 3 / 7 | written | 6.43 |
-| T03 | comprehension | 8.57 / 15 | 4 / 7 | written | 8.57 |
-| T04 | refactoring | 8.57 / 15 | 4 / 7 | **failed JSON parse** | 0.00 |
-| T05 | multi-file reasoning | 0.00 / 25 | 0 / 7 | **failed JSON parse** | 0.00 |
-| T06 | instruction following | 2.14 / 15 | 1 / 7 | **failed JSON parse** | 0.00 |
-| **Total** |  | **40.71 / 100** |  | 3/6 written | **30.00 / 100** |
+**30.00 / 100**
 
-## Adapter failure classification
+This is the canonical strict single-shot end-to-end score for Baseline 001.
 
-The run summary resolves the previous ambiguity:
+### 2. Artifact score — diagnostic only
 
-- **T01:** `written`.
-- **T02:** `written`.
-- **T03:** `written`.
-- **T04:** `failed` — `JSONDecodeError: Invalid control character at line 1 column 340`.
-- **T05:** `failed` — `JSONDecodeError: Expecting ',' delimiter at line 1 column 584`.
-- **T06:** `failed` — `JSONDecodeError: Expecting ',' delimiter at line 1 column 1493`.
+The corrected v1.0.1 scorer applied to the original isolated working tree produced:
 
-Therefore T04–T06 are end-to-end instruction/output-format failures. Their starter files remained in the working tree; any tests passed by those starter files cannot be credited to Qwen in strict single-shot mode.
+**40.71 / 100**
 
-The raw Ollama API files for T04–T06 are still required to determine whether the underlying code content was otherwise useful and merely escaped/serialized incorrectly, or whether the generated code itself was also wrong.
+This is not a valid end-to-end score because failed deliveries left starter files in place and those starter files could still pass some tests.
 
-## Successful-task inference performance
+### 3. Recovered semantic-content score — diagnostic model-capability view
 
-The original adapter recorded complete Ollama metrics for T01–T03 before the old telemetry path failed to retain metrics for JSON-parse failures.
+For T04–T06, only deterministic transport repair was applied to the preserved raw `response` strings:
+
+- literal unescaped newline/control characters were escaped where necessary;
+- the missing final outer JSON brace was restored;
+- no generated Python code was edited;
+- no retry, test feedback or new model call occurred.
+
+The recovered code was then executed against the original frozen tests.
+
+Recovered results:
+- T04 refactoring: **7/7** — 15.00/15.
+- T05 multi-file reasoning: **7/7** — 25.00/25.
+- T06 implementation constraints: **6/7** — 12.86/15; only boolean `True` validation failed.
+
+Combining these recovered raw contents with the original valid deliveries T01–T03 gives a diagnostic semantic-content score of:
+
+**82.86 / 100**
+
+This score is **not** the strict benchmark result. It measures how good the underlying generated code was after minimal deterministic envelope repair and is retained specifically to separate coding ability from protocol reliability.
+
+## Per-task frozen interpretation
+
+| Task | Skill | Original delivery | Strict score | Recovered semantic score | Interpretation |
+|---|---|---|---:|---:|---|
+| T01 | generation | valid / written | 15.00 | 15.00 | Complete success |
+| T02 | debugging | valid / written | 6.43 | 6.43 | Genuine coding/debugging miss |
+| T03 | comprehension | valid / written | 8.57 | 8.57 | Genuine comprehension/instruction miss |
+| T04 | refactoring | malformed JSON | 0.00 | 15.00 | Transport failure; recovered code is fully correct |
+| T05 | multi-file reasoning | malformed JSON | 0.00 | 25.00 | Transport failure; recovered code is fully correct |
+| T06 | instruction following | malformed JSON | 0.00 | 12.86 | Mixed: transport failure plus one real boolean-validation miss |
+| **Total** |  | **3/6 valid deliveries** | **30.00** | **82.86** |  |
+
+Structured-output delivery success rate: **3 / 6 = 50%**.
+
+## Raw-response failure analysis
+
+### T04
+Original adapter error:
+- `JSONDecodeError: Invalid control character at line 1 column 340`.
+
+Raw response contained a complete `_coerce_score` helper and `summarize_scores` implementation. The JSON string included literal unescaped newline/control characters and also lacked the final outer closing brace.
+
+After envelope-only repair, the unchanged Python implementation passed **7/7** frozen tests.
+
+Classification: **transport/serialization failure only**.
+
+### T05
+Original adapter error:
+- `JSONDecodeError: Expecting ',' delimiter at line 1 column 584`.
+
+The generated `order.py` used `pricing.line_subtotal` for each line, validated tax rate, accumulated subtotals and applied tax. The response was missing the final outer JSON closing brace.
+
+After envelope-only repair, the unchanged Python implementation passed **7/7** frozen tests.
+
+Classification: **transport/serialization failure only**.
+
+### T06
+Original adapter error:
+- `JSONDecodeError: Expecting ',' delimiter at line 1 column 1493`.
+
+The generated implementation was recoverable after restoring the missing outer JSON closing brace. It passed **6/7** frozen tests. The only failed top-level test was invalid-`k` handling because Python `bool` is a subclass of `int`; the model checked `isinstance(k, int)` but did not explicitly reject booleans.
+
+Classification: **mixed transport + coding edge-case failure**.
+
+## Inference performance — full six-task raw telemetry
+
+All six preserved raw API files include Ollama timing metrics, including the three deliveries whose parsing failed.
+
+Per-task values:
 
 | Task | Prompt tokens | Prompt tok/s | Output tokens | Generation tok/s | API wall time |
 |---|---:|---:|---:|---:|---:|
 | T01 | 301 | 151.511 | 98 | 16.549 | 12.613 s |
 | T02 | 406 | 165.932 | 118 | 15.917 | 9.976 s |
 | T03 | 390 | 222.342 | 50 | 15.724 | 5.056 s |
+| T04 | 526 | 171.478 | 262 | 15.962 | 19.602 s |
+| T05 | 537 | 197.201 | 168 | 15.714 | 13.535 s |
+| T06 | 360 | 234.249 | 372 | 16.101 | 24.753 s |
 
-Weighted across the three fully recorded successful tasks:
+Weighted across all six API calls:
 
-- prompt tokens: 1,097;
-- weighted prompt throughput: **177.29 tok/s**;
-- output tokens: 266;
-- weighted generation throughput: **16.11 tok/s**.
+- prompt tokens: **2,520**;
+- weighted prompt throughput: **186.46 tok/s**;
+- generated tokens: **1,068**;
+- weighted generation throughput: **16.01 tok/s**;
+- summed API wall time: **85.535 s**.
 
-This strongly suggests the earlier isolated **4.36 prompt tok/s** result was not representative of normal prompt processing for this model/runtime configuration.
+The full benchmark process lasted about **91.25 s**, so adapter/test overhead outside API inference was relatively small.
 
-The full benchmark process lasted approximately **91.25 s** from run start to finish. T04–T06 elapsed approximately 19.61 s, 13.54 s and 24.76 s respectively, but their per-token Ollama metrics are absent from the old run summary because the original adapter stored metrics only after successful JSON extraction.
+The earlier isolated 4.36 prompt tok/s measurement is rejected as non-representative for ordinary benchmark prompts.
 
 ## Memory / swap behavior
 
-Before the run, with no model reported by `ollama ps`:
-
+Before the benchmark run:
 - PhysMem: 7551 MB used;
 - compressed: 1027 MB;
 - unused: 79 MB;
-- swap used: **885.69 MB**;
-- memory-pressure free percentage: 61%.
+- swap used: 885.69 MB;
+- `ollama ps`: no loaded model.
 
 After T01:
+- model reported by Ollama: 4.1 GB, 100% GPU;
+- swap: 1983.31 MB;
+- memory-pressure free: 17%.
 
-- Ollama model resident: 4.1 GB, 100% GPU;
-- swap used: **1983.31 MB**;
-- memory-pressure free percentage: 17%.
+Reported Ollama resident size increased across the sequence:
+- T01 4.1 GB;
+- T02 4.2 GB;
+- T03 4.4 GB;
+- T04 4.5 GB;
+- T05 4.7 GB;
+- T06/final 4.8 GB.
 
-During subsequent tasks the resident size reported by Ollama increased:
+Peak observed swap: **2486.94 MB** after T05.
+Final swap: **2403.44 MB**, about **+1517.75 MB** versus run start.
 
-- T02: 4.2 GB;
-- T03: 4.4 GB;
-- T04: 4.5 GB;
-- T05: 4.7 GB;
-- T06/final: 4.8 GB.
+Interpretation: the model is fast enough for interactive coding, but sustained use on 8 GB creates substantial memory pressure and SSD swap activity. The resident-size growth requires a later controlled memory experiment.
 
-Peak observed swap usage was **2486.94 MB** after T05. Final swap usage was **2403.44 MB**, an increase of about **1517.75 MB** versus the beginning of the run.
+## Benchmark / adapter defects discovered and patched
 
-Interpretation: Qwen 3.5 4B MLX is computationally responsive on the M1/8 GB, but sustained multi-task execution creates meaningful memory pressure and swap activity. The increasing Ollama resident-size report across tasks should be investigated in later controlled memory experiments rather than assumed to be model-weight growth.
+Baseline 001 exposed two LOOM infrastructure issues.
 
-## Quality observations
+### Scorer defect in Benchmark 01 v1.0.0
+Verbose failing `unittest` subtest lines were incorrectly counted as additional tests. Patched in v1.0.1 so each top-level test method counts exactly once.
 
-- **T01 generation:** complete success.
-- **T02 debugging:** partial; rolling-window update logic remained wrong and boolean `True` was not rejected as an invalid size.
-- **T03 comprehension:** partial; strategy recognition succeeded but mutation semantics, unassigned sentinel and the requested complexity representation were wrong.
-- **T04:** cannot be scored as model code quality from the working tree because delivery failed before the generated file was written.
-- **T05:** same; strict score is zero due failed delivery.
-- **T06:** same; strict score is zero due failed delivery.
+The original raw score **39.82/100** is retained only for audit history.
 
-## Adapter defects discovered from this run
+### Adapter delivery/telemetry defect
+The original adapter:
+- recorded metrics only after successful response parsing;
+- allowed untouched starter files to receive artifact points after delivery failures;
+- hard-coded benchmark version 1.0.0;
+- provided no per-task progress output.
 
-Two instrumentation/scoring issues were found and patched after the first run:
+The hardened adapter now:
+- records metrics before parsing;
+- preserves raw responses;
+- distinguishes artifact score and delivery-adjusted strict score;
+- assigns zero strict points to failed deliveries;
+- loads benchmark version from the manifest;
+- prints per-task progress.
 
-1. **v1.0.0 scorer subtest-counting defect** — patched in benchmark v1.0.1.
-2. **Adapter telemetry/delivery accounting defect** — the old adapter:
-   - recorded task metrics only after successful JSON parsing;
-   - allowed untouched starter files to receive artifact points after adapter failure;
-   - hard-coded benchmark version 1.0.0;
-   - provided no per-task progress output.
+## Research finding from Baseline 001
 
-The adapter is now hardened to:
+For this model/runtime/hardware combination, structured-output reliability is a much larger end-to-end bottleneck than the raw code-content score suggests:
 
-- save metrics before output parsing;
-- preserve raw API responses;
-- report `artifact_score` separately from `delivery_adjusted_score`;
-- count failed delivery tasks as zero in the strict end-to-end score;
-- load benchmark version from the manifest;
-- print task progress.
+- strict delivery: **30.00/100**;
+- deterministic raw-content recovery: **82.86/100**.
 
-## Remaining ingestion
+The 52.86-point gap is primarily caused by malformed JSON transport on T04–T06, not by absent code generation.
 
-To fully close Coding Baseline 001, inspect the preserved raw Ollama responses:
+This finding directly motivates agentic-mode work: a practical local coding agent should not rely on a fragile JSON-encoded full-file payload when it can instead use robust file tools, patches, validation and retry loops.
 
-- `raw/T04-api.json`
-- `raw/T05-api.json`
-- `raw/T06-api.json`
+## Frozen status
 
-This will determine whether malformed JSON was merely a transport/escaping failure or accompanied by incorrect generated code.
+`CODING_BASELINE_001` is now frozen as the first complete LOOM quality/performance/memory reference.
 
-After that analysis, freeze Coding Baseline 001 and proceed to agentic-mode design.
+Any future run must retain the distinction among:
+- strict end-to-end delivery score;
+- artifact score;
+- optional explicitly labeled semantic/recovery analysis;
+- protocol success rate;
+- throughput;
+- memory/swap behavior.
