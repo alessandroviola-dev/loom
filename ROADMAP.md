@@ -14,7 +14,7 @@
 - [x] Confirm 100% GPU execution
 - [x] Measure initial generation throughput
 - [x] Compare memory state with model ON/OFF
-- [ ] Repeat throughput test to validate prompt-processing measurement
+- [x] Re-evaluate prompt-processing throughput using real benchmark prompts — weighted 177.29 tok/s across T01–T03
 
 ## Phase 2 — Benchmark framework
 - [x] Define Coding Benchmark 01
@@ -27,9 +27,12 @@
 - [x] Detect v1.0.0 subtest-counting scoring defect
 - [x] Patch scorer as Coding Benchmark 01 v1.0.1
 - [x] Add deterministic rescoring utility
-- [x] Rescore the existing Qwen run without regenerating model outputs — 40.71/100
-- [ ] Ingest `run-summary.json` timing/token/memory and adapter-status data
-- [ ] Freeze Coding Baseline 001 official result
+- [x] Rescore the existing Qwen run without regenerating model outputs — artifact score 40.71/100
+- [x] Ingest `run-summary.json` timing/token/memory and adapter-status data
+- [x] Define delivery-adjusted strict single-shot scoring — first run 30.00/100
+- [x] Harden Ollama adapter telemetry, progress and delivery accounting
+- [ ] Inspect preserved raw T04–T06 Ollama responses
+- [ ] Freeze Coding Baseline 001 official full result
 - [ ] Define reasoning benchmark
 
 ## Phase 3 — Local coding agent
