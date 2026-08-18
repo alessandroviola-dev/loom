@@ -2,8 +2,9 @@
 """LOOM Qwen Code read-only smoke test.
 
 Runs Qwen Code headlessly in plan mode against the project-local Ollama config,
-forces a read_file-style repository read, captures raw JSON output, verifies the
-working tree is unchanged, and records memory/swap/Ollama state before/after.
+forces a repository read, captures raw JSON output, distinguishes semantic API
+failure from process exit status, verifies repository deltas, and records
+memory/swap/Ollama state before/after.
 
 Standard library only.
 """
@@ -16,6 +17,8 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+EXPECTED_TEXT = "# LOOM"
 
 
 def utc_now() -> str:
@@ -63,6 +66,10 @@ def git_status(repo_root: Path) -> str:
     return run(["git", "status", "--porcelain"], repo_root).get("stdout", "")
 
 
+def git_diff(repo_root: Path) -> str:
+    return run(["git", "diff", "--", ".qwen/settings.json"], repo_root).get("stdout", "")
+
+
 def summarize_qwen_output(parsed) -> dict:
     models: list[str] = []
     tool_names: list[str] = []
@@ -88,7 +95,7 @@ def summarize_qwen_output(parsed) -> dict:
                         continue
                     if block.get("type") in {"tool_use", "tool_call"}:
                         name = block.get("name")
-                        if isinstance(name, str):
+                        if isinstance(name, str) and name not in tool_names:
                             tool_names.append(name)
 
         if item.get("type") == "result":
@@ -99,6 +106,10 @@ def summarize_qwen_output(parsed) -> dict:
         "tool_names": tool_names,
         "final_result": final_result,
     }
+
+
+def semantic_api_error(final_result) -> bool:
+    return isinstance(final_result, str) and final_result.lstrip().startswith("[API Error:")
 
 
 def main() -> int:
@@ -112,6 +123,7 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     before_status = git_status(repo_root)
+    before_diff = git_diff(repo_root)
     before_memory = memory_snapshot(repo_root)
 
     prompt = (
@@ -159,21 +171,37 @@ def main() -> int:
 
     after_memory = memory_snapshot(repo_root)
     after_status = git_status(repo_root)
+    after_diff = git_diff(repo_root)
+
+    api_error = semantic_api_error(qwen_summary["final_result"])
+    working_tree_unchanged = before_status == after_status and before_diff == after_diff
+    success = (
+        proc.returncode == 0
+        and parsed is not None
+        and not api_error
+        and qwen_summary["final_result"] == EXPECTED_TEXT
+        and bool(qwen_summary["tool_names"])
+        and working_tree_unchanged
+    )
 
     summary = {
         "run_id": run_id,
-        "started_with_clean_or_known_status": before_status,
         "qwen_exit_code": proc.returncode,
         "qwen_version": run(["qwen", "--version"], repo_root).get("stdout", "").strip(),
         "command": command,
         "parsed_output": parsed is not None,
         "parse_error": parse_error,
+        "semantic_api_error": api_error,
+        "success": success,
         "models": qwen_summary["models"],
         "tool_names": qwen_summary["tool_names"],
         "final_result": qwen_summary["final_result"],
+        "expected_text": EXPECTED_TEXT,
         "git_status_before": before_status,
         "git_status_after": after_status,
-        "working_tree_unchanged": before_status == after_status,
+        "qwen_settings_diff_before": before_diff,
+        "qwen_settings_diff_after": after_diff,
+        "working_tree_unchanged": working_tree_unchanged,
         "memory_before": before_memory,
         "memory_after": after_memory,
         "stderr": proc.stderr,
@@ -186,7 +214,11 @@ def main() -> int:
     print(f"Models: {qwen_summary['models'] or 'not detected'}")
     print(f"Tools: {qwen_summary['tool_names'] or 'not detected'}")
     print(f"Result: {qwen_summary['final_result']!r}")
-    print(f"Working tree unchanged: {before_status == after_status}")
+    print(f"Semantic API error: {api_error}")
+    print(f"Working tree unchanged: {working_tree_unchanged}")
+    print(f"Success: {success}")
+    if before_diff != after_diff:
+        print("Qwen settings diff changed during run: True")
     if parse_error:
         print(f"Output parse error: {parse_error}")
     if proc.stderr.strip():
@@ -195,7 +227,7 @@ def main() -> int:
     print(f"Run directory: {out_dir}")
     print(f"Summary: {out_dir / 'smoke-summary.json'}")
 
-    return 0 if proc.returncode == 0 and before_status == after_status else 1
+    return 0 if success else 1
 
 
 if __name__ == "__main__":
