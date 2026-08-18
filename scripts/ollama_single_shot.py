@@ -5,6 +5,11 @@ The frozen benchmark tree is never modified. A complete working copy is created 
 results-local/, each task is sent once without test visibility, permitted output files
 are written into that isolated copy, and the frozen benchmark runner scores the result.
 
+The adapter reports two quality scores:
+- artifact_score: raw score of files present in the isolated working tree;
+- delivery_adjusted_score: task points count only when the model output was successfully
+  parsed and written by the adapter. Adapter/output-format failures score zero.
+
 Standard library only.
 """
 
@@ -233,6 +238,9 @@ def main() -> int:
     if not frozen.exists():
         raise SystemExit(f"Frozen benchmark not found: {frozen}")
 
+    manifest = json.loads((frozen / "manifest.json").read_text())
+    benchmark_version = manifest["version"]
+
     run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = repo_root / "results-local" / "coding-single-shot" / run_id
     working = run_dir / "benchmarks" / "coding" / "v1"
@@ -247,7 +255,7 @@ def main() -> int:
         "run_id": run_id,
         "started_at_utc": utc_now(),
         "benchmark": "LOOM Coding Benchmark 01",
-        "benchmark_version": "1.0.0",
+        "benchmark_version": benchmark_version,
         "mode": "single_shot",
         "runtime": "ollama",
         "model": args.model,
@@ -257,7 +265,9 @@ def main() -> int:
         "tasks": [],
     }
 
-    for task in TASKS:
+    total_tasks = len(TASKS)
+    for index, task in enumerate(TASKS, start=1):
+        print(f"[{index}/{total_tasks}] {task['id']} running...", flush=True)
         task_dir = working / task["path"]
         prompt = build_prompt(task_dir, task)
         task_record = {
@@ -265,20 +275,24 @@ def main() -> int:
             "editable": task["editable"],
             "started_at_utc": utc_now(),
         }
+        response = None
         try:
             response = ollama_generate(args.base_url, args.model, prompt, args.context)
             (raw_dir / f"{task['id']}-api.json").write_text(json.dumps(response, indent=2) + "\n")
+            task_record["metrics"] = metric_summary(response)
             files = extract_files(response, task["editable"])
             for name, content in files.items():
                 (task_dir / name).write_text(content)
             task_record["adapter_status"] = "written"
-            task_record["metrics"] = metric_summary(response)
         except Exception as exc:  # benchmark must continue so failures are scored
+            if response is not None and "metrics" not in task_record:
+                task_record["metrics"] = metric_summary(response)
             task_record["adapter_status"] = "failed"
             task_record["error"] = f"{type(exc).__name__}: {exc}"
         task_record["finished_at_utc"] = utc_now()
         task_record["memory_after_task"] = memory_snapshot()
         summary["tasks"].append(task_record)
+        print(f"[{index}/{total_tasks}] {task['id']} {task_record['adapter_status']}", flush=True)
 
     env = dict(**__import__("os").environ)
     env.update({
@@ -299,15 +313,32 @@ def main() -> int:
     if proc.returncode != 0:
         summary["runner_error"] = {"exit_code": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr}
     else:
-        summary["benchmark_result"] = json.loads(proc.stdout)
+        result = json.loads(proc.stdout)
+        summary["benchmark_result"] = result
+        summary["artifact_score"] = result.get("score")
+
+        status_by_id = {task["id"]: task.get("adapter_status") for task in summary["tasks"]}
+        delivery_adjusted_score = round(
+            sum(
+                item.get("points_earned", 0)
+                for item in result.get("tasks", [])
+                if status_by_id.get(item.get("id")) == "written"
+            ),
+            2,
+        )
+        summary["delivery_adjusted_score"] = delivery_adjusted_score
+        summary["adapter_success_count"] = sum(1 for status in status_by_id.values() if status == "written")
+        summary["adapter_task_count"] = len(status_by_id)
 
     summary["memory_after"] = memory_snapshot()
     summary["finished_at_utc"] = utc_now()
     summary_path = run_dir / "run-summary.json"
     summary_path.write_text(json.dumps(summary, indent=2) + "\n")
 
-    score = summary.get("benchmark_result", {}).get("score", "N/A")
-    print(f"LOOM Coding Benchmark 01 complete — score: {score}/100")
+    artifact_score = summary.get("artifact_score", "N/A")
+    delivery_score = summary.get("delivery_adjusted_score", "N/A")
+    print(f"LOOM Coding Benchmark 01 complete — artifact score: {artifact_score}/100")
+    print(f"Delivery-adjusted single-shot score: {delivery_score}/100")
     print(f"Run directory: {run_dir}")
     print(f"Summary: {summary_path}")
     return 0
