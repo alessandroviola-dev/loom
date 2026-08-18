@@ -5,7 +5,6 @@
 - [x] Define research mission
 - [x] Define handoff discipline
 - [x] Create private GitHub repository `Ilcoach/loom`
-- [x] Push initial project structure
 
 ## Phase 1 — Baseline
 - [x] Update Ollama
@@ -60,7 +59,10 @@
 - [x] Preregister first reproducible Apple Silicon/Metal setup in `research/runtime/llama-cpp-phase4-plan.md`
 - [x] Pin initial llama.cpp source commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
 - [x] Add `scripts/llama_cpp_setup_probe.py`
-- [ ] Run setup probe: prerequisites + Release Metal build + `llama-cli`/`llama-bench`
+- [x] Run Setup Probe 001 prerequisite gate — correctly blocked before build because `cmake` is missing
+- [x] Record `research/runtime/llama-cpp-setup-probe-001.md` as `BLOCKED_MISSING_CMAKE`
+- [ ] Install/verify CMake, then rerun the exact same setup probe unchanged
+- [ ] Complete Release Metal build + verify `llama-cli`/`llama-bench`
 - [ ] Validate 4B GGUF runtime control (`Qwen/Qwen3-4B-GGUF`, Q4_K_M)
 - [ ] Test 8B Q4_K_M as first main capability step
 - [ ] Measure throughput, memory pressure, load time and Metal/GPU offload
