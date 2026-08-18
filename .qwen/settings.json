@@ -33,5 +33,6 @@
   "tools": {
     "sandbox": true,
     "approvalMode": "plan"
-  }
+  },
+  "$version": 4
 }
