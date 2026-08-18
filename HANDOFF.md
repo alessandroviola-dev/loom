@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Pi Agentic Coding Benchmark 001 summary fully ingested; scores/task failures/memory trajectory classified; raw tool-path validation is the last prerequisite to canonical freeze
-Checkpoint: PI_AGENTIC_001_SUMMARY_INGESTED_RAW_PATH_VALIDATION_PENDING
+Status: ACTIVE — Pi Agentic Coding Benchmark 001 frozen canonical; repeated-call memory-retention probe preregistered and ready
+Checkpoint: PI_AGENTIC_001_FROZEN_MEMORY_RETENTION_PROBE_READY
 
 ## Mission
 
@@ -13,7 +13,7 @@ Study, test and improve ways to run capable local language models and self-hoste
 - Apple M1
 - 8 GB unified memory
 - macOS
-- Canonical local repo: `<repository-root>`
+- canonical local repo: `<repository-root>`
 - GitHub: `Ilcoach/loom` (private)
 - Ollama: `0.32.14`
 - Qwen Code: `0.21.13`
@@ -28,7 +28,7 @@ LOOM added Ollama only as an additional provider in `~/.pi/agent/models.json`.
 
 Do not reset, delete or replace the user's normal Pi configuration.
 
-Controlled benchmark runs use a run-local `PI_CODING_AGENT_DIR`, so production Pi state is neither loaded nor modified.
+Controlled LOOM benchmark/probe runs use a run-local `PI_CODING_AGENT_DIR`, so production Pi state is neither loaded nor modified.
 
 ## Frozen Coding Baseline 001
 
@@ -45,10 +45,10 @@ Canonical score views:
 - weighted generation: **16.01 tok/s**
 - peak observed swap: **2486.94 MB**
 
-Main baseline finding:
+Main finding:
 > Code/semantic quality was materially stronger than strict delivery. JSON/full-file transport and protocol reliability were major bottlenecks.
 
-Detailed baseline record:
+Detailed record:
 - `benchmarks/results/coding-baseline-001-qwen35-4b-mlx.md`
 
 ## Harness Comparison 001
@@ -56,19 +56,19 @@ Detailed baseline record:
 Canonical record:
 - `research/agents/harness-comparison-001.md`
 
-Qwen Code normal-config read-only at context 4096:
-- estimated initial prompt **4474 tokens** vs hard limit **4096**;
-- no tool call reached;
-- semantic API failure before model load;
-- only Git delta was automatic `"$version": 4` settings migration, now adopted.
+Qwen Code normal-config read-only at 4096:
+- estimated initial prompt **4474 tokens** vs hard limit **4096**
+- no tool call reached
+- semantic API failure before model load
+- only Git delta was automatic `"$version": 4` settings migration, now adopted
 
-Pi minimal read-only at context 4096:
-- `read` succeeded;
-- final response exactly `# LOOM`;
-- tracked tree unchanged;
-- Ollama after **4.2 GB, 100% GPU, context 4096**;
-- swap delta **+651.87 MB**;
-- elapsed ~34 s.
+Pi minimal read-only at 4096:
+- `read` succeeded
+- final response exactly `# LOOM`
+- tracked tree unchanged
+- Ollama after **4.2 GB, 100% GPU, context 4096**
+- swap delta **+651.87 MB**
+- elapsed ~34 s
 
 Conclusion:
 > A minimal Pi tool harness is operational at 4096 where normal Qwen Code is not. Harness/context overhead is a practical feasibility constraint on the 8 GB machine.
@@ -89,18 +89,21 @@ Status: **FUNCTIONAL PASS / STRICT OUTPUT FAIL**
 - swap delta **+655.31 MB**
 - Ollama after **4.8 GB, 100% GPU, context 4096**
 
-Historical validator defect was patched so functional and strict outcomes are now separate.
+Historical validator defect was patched so functional and strict outcomes are separate.
 
-## Pi Agentic Coding Benchmark 001 — COMPLETED / VALIDATION NEAR COMPLETE
+## Pi Agentic Coding Benchmark 001 — FROZEN / CANONICAL
 
-Preregistered protocol:
+Canonical record:
+- `research/agents/pi-agentic-benchmark-001.md`
+
+Preregistered plan:
 - `research/agents/pi-agentic-benchmark-001-plan.md`
+
+Historical preliminary record:
+- `research/agents/pi-agentic-benchmark-001-preliminary.md` — **SUPERSEDED**
 
 Adapter:
 - `scripts/pi_agentic_benchmark.py`
-
-Preliminary record:
-- `research/agents/pi-agentic-benchmark-001-preliminary.md`
 
 Run id: `20260818-214848`
 Run directory:
@@ -113,18 +116,17 @@ Summary:
 - Coding Benchmark 01 v1.0.1
 - Pi 0.84.2
 - Ollama / `qwen3.5:4b-mlx`
-- context **4096**
-- max output **2048**
+- context 4096
+- max output 2048
 - one attempt per task
 - no hidden-test feedback
 - tools: `read,write,edit`
 - no bash/test feedback
-- run-local isolated `PI_CODING_AGENT_DIR`
+- isolated run-local `PI_CODING_AGENT_DIR`
 - extensions/skills/prompt templates/themes/context files disabled
-- hidden tests excluded from agent workspaces and applied only afterward in a separate scoring tree
 - no retries, prompt rescue, JSON salvage or manual repair
 
-### Score views
+### Canonical scores
 
 - **artifact_score: 77.15/100**
 - **delivery_adjusted_score: 77.15/100**
@@ -132,13 +134,13 @@ Summary:
 - **delivery success: 6/6 = 100%**
 - **protocol success: 4/6 = 66.7%**
 
-Versus frozen single-shot baseline:
+Versus Frozen Coding Baseline 001:
 - artifact: **40.71 -> 77.15** = **+36.44**
 - strict: **30.00 -> 60.00** = **+30.00**, exactly 2x
 - delivery: **3/6 -> 6/6**, 50% -> 100%
-- agentic artifact remains **5.71** below recovered semantic diagnostic 82.86; recovered semantic remains diagnostic, not end-to-end.
+- agentic artifact remains **5.71** below recovered semantic diagnostic 82.86; recovered semantic remains diagnostic, not end-to-end
 
-### Per-task canonical summary from run-summary.json
+### Per-task result
 
 | Task | Score | Tests | Delivery | Protocol | Wall time |
 |---|---:|---:|---|---|---:|
@@ -149,79 +151,123 @@ Versus frozen single-shot baseline:
 | T05 | 21.43/25 | 6/7 | PASS | PASS | 48.690 s |
 | T06 | 15.00/15 | 7/7 | PASS | PASS | 138.960 s |
 
-Task wall time sum: **606.827 s**.
-Whole run elapsed from summary timestamps: approximately **612.14 s (~10m12s)**.
+Task wall-time sum: **606.827 s**.
+Whole run elapsed: approximately **612.14 s (~10m12s)**.
 
-### Remaining correctness deficit
+### Correctness vs protocol loss
 
-Artifact score is missing **22.85 points** from 100. These are genuine frozen-test correctness/comprehension deficits:
-- T02: **10.71 points missing** (2/7 tests pass)
-- T03: **2.14 points missing** (6/7)
-- T04: **6.43 points missing** (4/7)
-- T05: **3.57 points missing** (6/7)
-- T01/T06: full credit
+Artifact score is missing **22.85 points** from 100. These are genuine frozen-test deficits:
+- T02: -10.71
+- T03: -2.14
+- T04: -6.43
+- T05: -3.57
 
-No hidden-test feedback was available to the agent.
+The additional artifact-to-strict gap is **17.15 points**, exactly T02 + T03 earned artifact points.
 
-### Strict-protocol deficit
+For T02 and T03:
+- delivery succeeded
+- non-editable inputs unchanged
+- no unexpected files
+- no event/JSONL errors
+- strict failure came only from final text not being exactly `DONE`
 
-The additional gap from artifact 77.15 to strict 60.00 is **17.15 points**.
+Therefore the 17.15 strict-only loss is **final-output protocol noncompliance**, not delivery failure.
 
-That equals the earned artifact points of T02 + T03:
-- T02: 4.29
-- T03: 12.86
-- total: **17.15**
+### Raw workspace isolation — VALIDATED
 
-For both T02 and T03:
-- delivery succeeded;
-- non-editable inputs remained unchanged;
-- no unexpected files persisted;
-- no event errors;
-- no JSONL parse errors;
-- protocol failure was caused by final assistant text not being exactly `DONE`.
+Retrospective inspector:
+- `scripts/inspect_pi_agentic_run.py`
 
-T02 final text included an explanation of the bool/int issue followed by `DONE`.
-T03 final text included a long source-code analysis followed by `DONE`.
+Result:
+- `workspace_path_safety: PASS`
+- all explicit tool paths were relative task-workspace paths
+- no absolute paths
+- no `..` parent traversal
+- session cwd values were task-specific temporary directories
+- no out-of-workspace file access observed
 
-Therefore T02/T03 strict failures are **final-output protocol failures**, not delivery failures.
+T02 emitted one `write` tool-start with empty args (`path=None`), followed by a valid write to `buggy.py`. It created no unexpected file and does not invalidate workspace safety.
 
-### Resource trajectory
+### Provider-reported usage
 
-Memory before run:
-- PhysMem used: **5318M**
-- system-wide memory free: **73%**
-- swap used: **1544.12M** / 3072M total
+Last non-zero cumulative usage snapshot per task:
+
+| Task | Input | Output | Total |
+|---|---:|---:|---:|
+| T01 | 2349 | 125 | 2474 |
+| T02 | 4177 | 63 | 4240 |
+| T03 | 2891 | 32 | 2923 |
+| T04 | 4093 | 120 | 4213 |
+| T05 | 2439 | 142 | 2581 |
+| T06 | 3607 | 171 | 3778 |
+| **Total** | **19556** | **653** | **20209** |
+
+These are cumulative provider-reported session usage totals. Do not interpret values above 4096 as simultaneous prompt context occupancy.
+
+### Resource trajectory — key new problem
+
+Before run:
+- PhysMem used **5318M**
+- memory free **73%**
+- swap used **1544.12M / 3072M**
 - Ollama model unloaded
 
 After tasks:
-- T01: Ollama **4.4 GB**, swap **1999.06M**, free 16%
-- T02: Ollama **5.2 GB**, swap **2517.12M**, free 14%
-- T03: Ollama **5.6 GB**, swap **3274.75M**, swap capacity auto-expanded to 4096M
-- T04: Ollama **6.4 GB**, swap **3790.12M**, capacity 5120M
-- T05: Ollama **6.8 GB**, swap **4215.06M**, capacity 5120M
-- T06: Ollama **7.2 GB**, swap **4839.12M**, capacity 6144M
+- T01: Ollama **4.4 GB**, swap **1999.06M**
+- T02: Ollama **5.2 GB**, swap **2517.12M**
+- T03: Ollama **5.6 GB**, swap **3274.75M**; swap capacity 4096M
+- T04: Ollama **6.4 GB**, swap **3790.12M**; capacity 5120M
+- T05: Ollama **6.8 GB**, swap **4215.06M**
+- T06: Ollama **7.2 GB**, swap **4839.12M**; capacity 6144M
 
-Final snapshot:
-- PhysMem used: **7352M** (+2034M vs start)
-- system-wide memory free: **24%**
-- swap used: **4823.12M** (+3279.00M vs start)
-- Ollama: **7.2 GB, 100% GPU, context 4096**
+Final:
+- PhysMem used **7352M**
+- memory free **24%**
+- swap used **4823.12M** = **+3279.00M** vs start
+- Ollama **7.2 GB, 100% GPU, context 4096**
 
-Important interpretation:
-> Sustained multi-task agentic use creates severe memory/swap pressure on the 8 GB reference Mac. Ollama's reported model allocation rose monotonically from 4.4 to 7.2 GB while configured context remained 4096.
+Finding:
+> Pi + Qwen 3.5 4B MLX can perform full file-agentic coding work at 4096 on M1/8 GB, but sustained use creates severe memory/swap pressure.
 
-Do **not** yet attribute that growth to a leak, KV cache, tool history or MLX/Ollama retention. The cause is unmeasured.
+The monotonic Ollama reported-size growth **4.4 -> 7.2 GB** at fixed context 4096 is observed but not causally explained. Do not call it a leak, KV-cache growth, tool-history retention or runtime bug without controlled evidence.
 
-## Final validation still pending — raw tool paths
+## Pi Memory Retention Probe 001 — PREREGISTERED / READY
 
-The summary records tool names but not tool arguments. The preregistered isolation rule forbids parent/absolute/out-of-workspace access. Non-editable files and persistent outputs are clean, but read/write/edit paths from raw JSONL must still be checked before canonical freeze.
+Plan:
+- `research/agents/pi-memory-retention-probe-001-plan.md`
 
-Official Pi JSON mode documents `tool_execution_start` as containing `toolName` and `args`, and `message_update` as containing provider `usage`.
+Runner:
+- `scripts/pi_memory_retention_probe.py`
 
-New retrospective inspector:
-- `scripts/inspect_pi_agentic_run.py`
+Question:
+> Does Ollama reported allocation grow across repeated identical small Pi calls when the model remains warm, or was Agentic 001's 4.4 -> 7.2 GB trajectory mainly task/high-water dependent?
 
-It reads the already-saved raw JSONL, prints every tool path, rejects absolute or `..` paths, and also prints the last non-zero provider usage per task when available. It does **not** rerun the model.
+Frozen design:
+
+### Warm arm
+- stop model once before arm
+- 4 separate identical Pi/read calls
+- no `ollama stop` between calls
+- same tiny file, same prompt, same tool surface, context 4096
+
+### Cold control
+- 2 identical calls
+- `ollama stop` before each call
+
+Metrics per iteration:
+- Pi success/final text/read tool
+- provider usage
+- wall time
+- PhysMem
+- memory free percentage
+- swap used
+- Ollama reported size/context/processor
+
+Guardrails:
+- abort warm arm and stop model if memory free falls below 8%
+- abort warm arm and stop model if swap used exceeds 5600 MB
+
+This probe does not modify any frozen benchmark score.
 
 ## Exact next step
 
@@ -230,24 +276,24 @@ On the reference Mac:
 ```bash
 cd "<repository-root>"
 git pull
-python3 scripts/inspect_pi_agentic_run.py \
-  --run-dir "<repository-root>/results-local/coding-agentic-pi/20260818-214848"
+python3 -m py_compile scripts/pi_memory_retention_probe.py
+python3 scripts/pi_memory_retention_probe.py
 ```
 
-Preserve the complete output.
+Preserve the complete terminal output.
 
-If `workspace_path_safety: PASS` and no other raw anomaly appears:
-1. freeze `Pi Agentic Coding Benchmark 001` as canonical;
-2. create final result record `research/agents/pi-agentic-benchmark-001.md`;
-3. mark preliminary record superseded;
-4. then run a lightweight repeated-call memory-retention probe before returning to Qwen Code safe-mode.
+After the probe:
+1. ingest warm vs cold size/swap trajectory;
+2. classify whether simple repeated-call accumulation is supported;
+3. if needed add a lower-level Ollama/MLX probe;
+4. only then return to Qwen Code safe-mode 4096 as a secondary harness diagnostic.
 
 ## Roadmap state
 
 - Phase 0 foundation: DONE
 - Phase 1 inference baseline: DONE
 - Phase 2 Coding Benchmark + Baseline 001: DONE / FROZEN
-- Phase 3 local coding agent: ACTIVE — Pi Agentic 001 summary ingested; raw tool-path isolation validation pending before canonical freeze
+- Phase 3 local coding agent: ACTIVE — Pi Agentic 001 frozen canonical; memory-retention probe ready
 - Phase 4 llama.cpp: queued
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD streaming / MoE: queued
@@ -256,12 +302,11 @@ If `workspace_path_safety: PASS` and no other raw anomaly appears:
 
 ## Open research questions
 
-- Did any Pi file tool attempt an absolute or parent-directory path during Agentic 001?
-- What provider token/usage telemetry exists in the raw Pi JSONL?
-- Why did Ollama reported allocation grow 4.4 -> 7.2 GB across separate Pi invocations at context 4096?
-- Is that growth reproducible with identical repeated calls, or is it a task/context high-water effect?
+- Is the 4.4 -> 7.2 GB Ollama size trajectory reproducible with identical repeated calls?
+- Does `ollama stop` reset the post-call allocation to a stable cold baseline?
+- Is further lower-level Ollama/MLX instrumentation needed?
 - What validation/retry strategy best improves daily-use reliability without changing benchmark results?
-- How much of Qwen Code's 4096 failure is always-on context versus its normal tool/core prompt surface?
+- How much of Qwen Code's 4096 failure is always-on context versus normal tool/core prompt surface?
 
 ## Continuation rule
 
