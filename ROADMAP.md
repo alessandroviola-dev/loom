@@ -52,18 +52,22 @@
 - [x] Inspect Qwen Code settings delta — only automatic schema marker `"$version": 4`
 - [x] Adopt Qwen Code settings schema version 4 in the versioned LOOM config
 - [x] Add isolated reproducible Pi edit+test smoke runner at context 4096
-- [x] Run Pi targeted edit + test smoke at context 4096 — **functional PASS**: read/edit/bash used, solution fixed, independent tests pass, tests unchanged, tracked LOOM tree unchanged
-- [x] Detect Pi edit-smoke validator defect: exact final-output compliance was computed but omitted from aggregate success
-- [x] Patch Pi edit-smoke runner to separate `functional_success` and `strict_success`
-- [x] Record `research/agents/pi-edit-test-smoke-001.md` — functional PASS / strict output FAIL
-- [x] Ingest Pi edit+test smoke memory/swap/runtime metrics — ~114 s, +655.31 MB swap, Ollama 4.8 GB / 100% GPU / context 4096 after run
+- [x] Run Pi targeted edit + test smoke at context 4096 — functional PASS, strict output FAIL
+- [x] Patch Pi edit-smoke runner to separate functional and strict success
+- [x] Record `research/agents/pi-edit-test-smoke-001.md`
+- [x] Ingest Pi edit+test metrics — ~114 s, +655.31 MB swap, Ollama 4.8 GB / 100% GPU / context 4096
 - [x] Build isolated Pi Coding Benchmark 01 agentic adapter with hidden tests excluded from agent workspaces
 - [x] Preregister Pi agentic benchmark protocol and scoring in `research/agents/pi-agentic-benchmark-001-plan.md`
-- [x] Run Coding Benchmark 01 in Pi file-agentic mode at context 4096 — preliminary artifact/delivery **77.15**, strict **60.00**, delivery **6/6**, protocol **4/6**
+- [x] Run Coding Benchmark 01 in Pi file-agentic mode at context 4096 — artifact/delivery **77.15**, strict **60.00**, delivery **6/6**, protocol **4/6**
 - [x] Record preliminary result in `research/agents/pi-agentic-benchmark-001-preliminary.md`
-- [ ] Ingest full Pi agentic `run-summary.json`: task scores, protocol failures, tool/final-text events, runtime and memory/swap
-- [ ] Validate adapter/isolation and freeze canonical Pi Agentic Coding Benchmark 001 result
-- [ ] Compare canonical agentic artifact/delivery/strict scores, protocol reliability, latency and memory against Baseline 001
+- [x] Ingest full Pi agentic run-summary: per-task scores, protocol failures, runtime and memory/swap trajectory
+- [x] Classify remaining 22.85 artifact points as genuine frozen-test deficits and 17.15 additional strict points as final-output protocol-only loss
+- [x] Identify sustained memory-pressure finding: swap +3.279 GB and Ollama reported allocation 4.4 -> 7.2 GB across tasks at context 4096
+- [x] Add retrospective raw JSONL inspector for tool-path isolation and provider usage
+- [ ] Validate all Pi Agentic 001 raw tool paths stay inside task workspaces
+- [ ] Freeze canonical `research/agents/pi-agentic-benchmark-001.md`
+- [ ] Mark preliminary Agentic 001 record superseded
+- [ ] Run lightweight repeated-call memory-retention probe to investigate 4.4 -> 7.2 GB growth
 - [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
 - [ ] Measure Qwen Code context scaling to 8192 only if it still adds research value
 - [ ] Add reproducible agent validation/retry workflow for real-world daily-use profile
