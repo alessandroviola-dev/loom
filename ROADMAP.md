@@ -38,10 +38,12 @@
 
 ## Phase 3 — Local coding agent
 - [x] Research/select first agent layer — **Qwen Code**
-- [ ] Verify Node/npm prerequisites
-- [ ] Install Qwen Code
-- [ ] Configure local Ollama / `qwen3.5:4b-mlx` at context 4096
-- [ ] Run sandboxed read/edit/test smoke test
+- [x] Verify Node/npm prerequisites
+- [x] Install Qwen Code — `0.21.13`
+- [x] Add reproducible project configuration for Ollama / `qwen3.5:4b-mlx` at context 4096
+- [ ] Pull project config onto reference Mac and verify Qwen Code resolves local model
+- [ ] Run sandboxed read-only tool smoke test
+- [ ] Run targeted edit + test smoke test
 - [ ] Measure agent-layer memory/swap overhead
 - [ ] Add reproducible validation/retry workflow
 - [ ] Run Coding Benchmark 01 in `agentic` mode
