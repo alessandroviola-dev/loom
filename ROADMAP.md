@@ -61,14 +61,19 @@
 - [x] Confirm retained warm high-water: low-after-high remained 4.6 GB while cold-low reset to 4.1 GB
 - [x] Determine prompt pressure alone is still insufficient to explain Agentic 001 7.2 GB; cold-high was only 4.2 GB
 - [x] Run Pi Multi-turn Memory Probe 001
-- [x] Classify Probe 001 invalid for causal depth inference: nominal 1-turn produced 3 reads; nominal 8-turn produced 14 reads; only 4-turn matched target
-- [x] Preserve exploratory Probe 001 result in `research/agents/pi-multiturn-memory-probe-001.md`
-- [x] Design token-gated custom `probe_step` extension to mechanically control sequential round trips
-- [x] Preregister corrected Pi Multi-turn Memory Probe 002 in `research/agents/pi-multiturn-memory-probe-002-plan.md`
-- [x] Add `scripts/pi_probe_step_extension.ts` and `scripts/pi_multiturn_memory_probe_v2.py`
-- [ ] Run controlled Pi Multi-turn Memory Probe 002: cold 1/4/8 sequential tool turns + warm 1-turn after 8
-- [ ] Determine whether controlled within-session tool/turn depth materially raises Ollama high-water allocation
-- [ ] If multi-turn remains insufficient, design workload-shape probe closer to Agentic 001
+- [x] Classify Probe 001 invalid for causal depth inference because speculative filename reads broke requested depth
+- [x] Preserve Probe 001 in `research/agents/pi-multiturn-memory-probe-001.md`
+- [x] Preregister/run token-gated Pi Multi-turn Memory Probe 002
+- [x] Record Probe 002 result in `research/agents/pi-multiturn-memory-probe-002.md`
+- [x] Validate Probe 002 depth 1 and 4: 4.2 GB and 4.3 GB; only +0.1 GB
+- [x] Classify Probe 002 depth 8 invalid: 7 calls, only 1 advanced, 6 invalid token calls; warm follow-up skipped
+- [x] Identify copied-token protocol as a new model-control bottleneck at depth 8
+- [x] Design no-argument turn-gated custom tool using Pi `turn_start` and blockable `tool_call`
+- [x] Preregister Pi Multi-turn Memory Probe 003 in `research/agents/pi-multiturn-memory-probe-003-plan.md`
+- [x] Add `scripts/pi_probe_step_extension_v3.ts` and `scripts/pi_multiturn_memory_probe_v3.py`
+- [ ] Run Pi Multi-turn Memory Probe 003: cold 1/4/8 true distinct-turn tool loops + warm 1-turn after valid 8
+- [ ] Determine whether controlled within-session round-trip depth materially raises Ollama high-water allocation
+- [ ] If depth remains insufficient, design workload-shape probe closer to Agentic 001
 - [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
 - [ ] Measure Qwen Code context scaling to 8192 only if it still adds research value
 - [ ] Add reproducible agent validation/retry workflow for real-world daily-use profile
