@@ -1,6 +1,6 @@
 {
   "benchmark": "LOOM Coding Benchmark 01",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "language": "python",
   "total_points": 100,
   "tasks": [
