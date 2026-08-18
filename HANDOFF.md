@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Pi Agentic Coding Benchmark 001 frozen; synthetic memory probes have isolated invocation/context effects but deep synthetic control is unreliable; exact-workload cold replay preregistered and ready
-Checkpoint: PI_MULTITURN_003_PARTIAL_AGENTIC_COLD_REPLAY_001_READY
+Status: ACTIVE — Pi Agentic Coding Benchmark 001 frozen; practical cause of sustained memory growth narrowed to cumulative warm runtime high-water; Qwen Code safe-mode 4096 diagnostic preregistered and ready
+Checkpoint: PI_COLD_REPLAY_001_COMPLETE_QWEN_SAFE_MODE_4096_READY
 
 ## Mission
 
@@ -31,7 +31,7 @@ Run id: `20260818-203156`
 Benchmark: Coding Benchmark 01 v1.0.1
 Model/runtime: `qwen3.5:4b-mlx`, Ollama/MLX, context 4096
 
-Canonical:
+Canonical views:
 - artifact **40.71/100**
 - strict delivery-adjusted **30.00/100**
 - structured delivery **3/6**
@@ -39,25 +39,28 @@ Canonical:
 - weighted prompt throughput **186.46 tok/s**
 - weighted generation **16.01 tok/s**
 
-Key finding:
-> Full-file JSON delivery was a major bottleneck; recovered code quality was much stronger than strict end-to-end delivery.
-
 Record:
 - `benchmarks/results/coding-baseline-001-qwen35-4b-mlx.md`
 
+Key finding:
+> Full-file JSON delivery was a major bottleneck; recovered code quality was much stronger than strict end-to-end delivery.
+
 ## Harness comparison
 
-Qwen Code normal config at 4096:
-- initial prompt estimated ~4474 tokens
+Historical Qwen Code normal-config read-only at context 4096:
+- Qwen Code 0.21.13
+- estimated initial prompt ~4474 tokens
 - hard limit 4096
-- fails before first tool call
+- always-on context warning ~1429 tokens
+- no tool call
+- model never loaded
 
 Pi minimal read-only at 4096:
 - succeeds with `read`
 - returns `# LOOM`
 
 Conclusion:
-> Harness/context overhead can determine feasibility on the 8 GB machine.
+> Harness/context packaging can determine feasibility on the 8 GB machine.
 
 Record:
 - `research/agents/harness-comparison-001.md`
@@ -99,9 +102,9 @@ Additional strict-only protocol loss: **17.15 points**, entirely T02/T03 final-o
 Workspace/tool-path safety: PASS.
 Provider usage across task sessions: **19,556 input + 653 output = 20,209 total**.
 
-### Agentic 001 memory trajectory
+### Historical sustained memory trajectory
 
-Historical post-task Ollama SIZE:
+Post-task Ollama SIZE:
 - T01 4.4 GB
 - T02 5.2 GB
 - T03 5.6 GB
@@ -116,29 +119,23 @@ Swap:
 
 Context remained 4096 and processor 100% GPU.
 
-Observed but not causally explained. Do not label as leak/KV-cache/MLX bug without evidence.
+## Memory investigation — current canonical conclusion
 
-## Memory investigation summary
+### 1. Invocation-count probe
 
-### Pi Memory Retention Probe 001
+`Pi Memory Retention Probe 001`, run `20260818-223251`:
+- four identical small warm Pi calls: **4.1 -> 4.3 -> 4.4 -> 4.5 GB**
+- warm swap did not accumulate
+- cold controls reset to **4.1 GB**
 
-Run `20260818-223251`.
-Four identical small warm Pi calls:
-- SIZE **4.1 -> 4.3 -> 4.4 -> 4.5 GB**
-- swap did not accumulate; it declined 2050.06 -> 1922.06 MB
-
-Cold controls both returned 4.1 GB.
-
-Conclusion:
-> Invocation count alone is insufficient.
+Conclusion: invocation count alone is insufficient.
 
 Record:
 - `research/agents/pi-memory-retention-probe-001.md`
 
-### Ollama Context Retention Probe 001
+### 2. Direct Ollama context-pressure probe
 
-Run `20260818-223909`, Pi absent, direct `/api/generate`, context 4096.
-
+`Ollama Context Retention Probe 001`, run `20260818-223909`, Pi absent:
 - 418 prompt tokens -> 4.1 GB
 - 1618 -> 4.3 GB
 - 3018 -> 4.5 GB
@@ -147,98 +144,115 @@ Run `20260818-223909`, Pi absent, direct `/api/generate`, context 4096.
 - cold-high 3018 -> 4.2 GB
 
 Conclusion:
-> Runtime-level prompt-pressure allocation and warm high-water retention are real, but prompt pressure alone remains insufficient to explain 7.2 GB.
+> Runtime-level prompt-pressure allocation and warm high-water retention are real, but prompt pressure alone is insufficient to explain 7.2 GB.
 
 Record:
 - `research/runtime/ollama-context-retention-probe-001.md`
 
-### Pi Multi-turn Memory Probe 001
+### 3. Synthetic multi-turn probes
 
-Run `20260818-224524`.
-Invalid for causal depth inference because speculative filename reads broke requested 1/8 depths. Only nominal 4-turn was exact at 4.3 GB.
+Probe 001:
+- invalid at nominal depth 1/8 because built-in read allowed speculative filename guesses
+- only exact 4-read condition valid at 4.3 GB
 
-Record:
-- `research/agents/pi-multiturn-memory-probe-001.md`
+Probe 002:
+- valid depth 1: 4.2 GB
+- valid depth 4: 4.3 GB
+- depth 8 invalid due opaque-token protocol failures
 
-### Pi Multi-turn Memory Probe 002
+Probe 003:
+- valid depth 1: 4.1 GB
+- valid depth 4: 4.3 GB
+- depth 8 invalid because model terminated after first valid turn
+- runner/extension plumbing verified correct; model-generated final text incorrectly said `Step 1/3`
 
-Run `20260818-225330`.
-Token-gated custom tool.
-
-Valid subset:
-- depth 1: 4.2 GB
-- depth 4: 4.3 GB
-
-Depth 8 invalid: 7 tool calls, only 1 valid advance, 6 token failures.
-
-Record:
-- `research/agents/pi-multiturn-memory-probe-002.md`
-
-### Pi Multi-turn Memory Probe 003
-
-Run `20260818-230129`.
-Turn-gated no-argument custom tool; target depth stored inside extension; one tool call max per Pi turn.
-
-Observed:
-- `cold-1turn`: VALID, calls=1, advanced=1, distinct turns, SIZE **4.1 GB**, swap 2036.69 MB, usage 927
-- `cold-4turn`: VALID, calls=4, advanced=4, distinct turns, SIZE **4.3 GB**, swap 2061.81 MB, usage 1245
-- `cold-8turn`: INVALID, target=8 but model stopped after first valid tool turn; SIZE 4.3 GB
-- warm follow-up skipped
-
-Depth-8 final text was `Done! Step 1/3 completed successfully.`
-
-Code verification confirms runner passes `LOOM_PROBE_DEPTH=str(depth)` and extension reads that variable. For depth 8 the tool would have returned `STEP 1/8` + `CONTINUE`; therefore `1/3` is model-generated protocol error, not configuration mismatch.
-
-Valid inference across synthetic probes:
-> Controlled true depth from 1 to 4 changes reported SIZE only about **+0.1 to +0.2 GB**. This is far too small to explain Agentic 001's later 7.2 GB state.
-
-Do not infer depth-8 memory cost from this run.
-
-Record:
-- `research/agents/pi-multiturn-memory-probe-003.md`
+Valid inference:
+> Controlled true round-trip depth from 1 to 4 changes SIZE by only ~0.1–0.2 GB. Synthetic depth alone does not explain the late 6–7 GB state.
 
 Decision:
-> Stop iterating synthetic deep-turn probes for now. Qwen's rigid-protocol reliability at depth 8 is itself interfering with experimental control. Move to the real frozen benchmark workload shape.
+> Stop iterating synthetic deep-turn protocols for this question.
 
-## Pi Agentic Cold Replay 001 — PREREGISTERED / READY
+Records:
+- `research/agents/pi-multiturn-memory-probe-001.md`
+- `research/agents/pi-multiturn-memory-probe-002.md`
+- `research/agents/pi-multiturn-memory-probe-003.md`
+
+### 4. Pi Agentic Cold Replay 001 — COMPLETED
+
+Run id: `20260818-230858`
+Record:
+- `research/agents/pi-agentic-cold-replay-001.md`
+
+Design:
+- exact frozen T01–T06 agent-facing workload shape
+- same wrapper/files/tool surface as Agentic 001
+- `ollama stop` before every task
+- memory/workload replay only; canonical benchmark scores unchanged
+
+Results:
+
+| Task | Cold tools | Hist tools | Cold usage | Hist usage | Cold SIZE | Warm hist SIZE |
+|---|---:|---:|---:|---:|---:|---:|
+| T01 | 1 | 2 | 2146 | 2474 | 4.3 GB | 4.4 GB |
+| T02 | 5 | 8 | 3833 | 4240 | 4.7 GB | 5.2 GB |
+| T03 | 3 | 2 | 4217 | 2923 | 4.5 GB | 5.6 GB |
+| T04 | 6 | 5 | 5494 | 4213 | 4.9 GB | 6.4 GB |
+| T05 | 4 | 3 | 4026 | 2581 | 4.5 GB | 6.8 GB |
+| T06 | 0 | 2 | N/A | 3778 | 4.4 GB | 7.2 GB |
+
+T06 replay is **invalid for workload comparison**: it timed out at ~300 s with no tool call and no provider-usage snapshot. Do not use its 4.4 GB value as a cold T06 requirement.
+
+Strongest evidence:
+- T03 cold had more usage/tools than historical yet was **4.5 vs 5.6 GB**.
+- T04 cold had more usage/tools than historical yet was **4.9 vs 6.4 GB**.
+- T05 cold had more usage/tools than historical yet was **4.5 vs 6.8 GB**.
+
+Warm-minus-cold gap for valid T01–T05 grows with sequence position:
+- **0.1, 0.5, 1.1, 1.5, 2.3 GB**.
+
+### Practical memory conclusion
+
+> Cross-task retained warm runtime high-water is a **major contributor** to the sustained Agentic 001 memory trajectory. Individual cold tasks T01–T05 remain within 4.3–4.9 GB even when some cold replays are heavier by tool/usage measures than the historical warm run.
+
+This does not identify the internal mechanism. Do not call it a memory leak, KV-cache effect, MLX allocator bug or fragmentation without lower-level evidence.
+
+Practical implication:
+> Periodic model unload/reload is a plausible memory-pressure mitigation for long local-agent sessions on 8 GB, with a latency tradeoff that can be evaluated later in the daily-use profile.
+
+The memory investigation is sufficiently resolved for Phase 3 progression; lower-level MLX internals are not blocking the next agent comparison.
+
+## Qwen Code Safe-Mode 4096 Diagnostic — PREREGISTERED / READY
 
 Plan:
-- `research/agents/pi-agentic-cold-replay-001-plan.md`
+- `research/agents/qwen-code-safe-mode-4096-plan.md`
 
 Runner:
-- `scripts/pi_agentic_cold_replay.py`
+- `scripts/qwen_code_safe_mode_smoke.py`
 
 Purpose:
-> Replay the exact frozen T01-T06 agent-facing workload, but execute `ollama stop` before every task, so each task starts cold. Compare each cold post-task SIZE/tool count/usage to the historical warm Agentic 001 sequence.
+> Test whether Qwen Code's minimal official safe-mode harness can form/execute the first local request at context 4096 once optional context/customizations are removed.
 
-Frozen replay properties:
-- same Coding Benchmark 01 v1.0.1 task prompts
-- same task wrapper from `pi_agentic_benchmark.py`
-- same supplied files
-- same `read,write,edit` tool surface
-- no bash/tests/hidden-test feedback
-- one attempt per task
-- context 4096
-- max output 2048
-- isolated run-local Pi directory
-- `ollama stop` before every T01-T06
-
-This is a memory/workload replay, **not a benchmark rescore**. Canonical benchmark scores must not change.
-
-Historical warm reference embedded in the runner:
-- T01 size 4.4 GB, tools 2, usage 2474
-- T02 size 5.2 GB, tools 8, usage 4240
-- T03 size 5.6 GB, tools 2, usage 2923
-- T04 size 6.4 GB, tools 5, usage 4213
-- T05 size 6.8 GB, tools 3, usage 2581
-- T06 size 7.2 GB, tools 2, usage 3778
+Frozen characteristics:
+- Qwen Code 0.21.13
+- `--safe-mode`
+- explicit `--auth-type openai`
+- explicit model `qwen3.5:4b-mlx`
+- explicit Ollama OpenAI endpoint/key
+- output cap 2048
+- project model provider remains the canonical 4096 configuration
+- read-only task: read `README.md` and return exactly `# LOOM`
+- approval mode `plan`
+- JSON output
+- model unloaded before run
+- repository status/settings diff captured before/after
+- memory/swap/Ollama state captured before/after
 
 Interpretation:
-- cold tasks near 4.1-4.6 GB => cumulative warm retention is a major driver;
-- individual cold tasks near 6+ GB => workload-specific high-water is a major driver;
-- intermediate values => mixed workload + retention effect.
+- success => optional Qwen custom/context surface was the binding cause of historical preflight failure;
+- pre-inference failure => core safe-mode harness still does not fit 4096;
+- request reaches Ollama but fails later => classify separately as model/tool transport behavior.
 
-If replay tool count/usage differs materially from the historical task, record the mismatch and avoid treating that task as perfectly matched.
+No 8192 rescue is permitted inside this experiment.
 
 ## Exact next step
 
@@ -247,29 +261,24 @@ On the reference Mac:
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/pi_agentic_cold_replay.py
-python3 scripts/pi_agentic_cold_replay.py
+python3 -m py_compile scripts/qwen_code_safe_mode_smoke.py
+python3 scripts/qwen_code_safe_mode_smoke.py
 ```
 
-Preserve output from `=== COLD TASK REPLAY ===` through `=== COMPLETE ===`.
+Preserve complete output, including any stderr warning.
 
-Expected lines report for each T01-T06:
-- replay tool count vs historical tool count
-- replay provider usage vs historical usage
-- cold post-task SIZE vs historical warm SIZE
-- context/swap/free memory
-
-After this run:
-1. classify cumulative retention vs per-workload high-water;
-2. decide whether lower-level MLX/Ollama instrumentation is still needed;
-3. then return to Qwen Code safe-mode 4096 as secondary harness diagnostic.
+After the run:
+1. classify whether safe mode reaches Ollama at 4096;
+2. compare with historical normal-config 4474-token preflight failure;
+3. decide whether Qwen Code remains useful as a primary local comparator;
+4. only consider 8192 as a separate context-scaling experiment if it still adds value.
 
 ## Roadmap state
 
 - Phase 0 foundation: DONE
 - Phase 1 baseline: DONE
 - Phase 2 Coding Benchmark/Baseline: DONE / FROZEN
-- Phase 3 agent/runtime investigation: ACTIVE — exact-workload cold replay ready
+- Phase 3 agent/runtime investigation: ACTIVE — memory question practically resolved; Qwen safe-mode diagnostic ready
 - Phase 4 llama.cpp: queued
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD/MoE: queued
