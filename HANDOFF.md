@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — repository initialized, ready for Benchmark Coding 01
-Checkpoint: REPO_INITIALIZED_BASELINE_FROZEN
+Status: ACTIVE — Coding Benchmark 01 frozen; Ollama execution adapter is next
+Checkpoint: CODING_BENCHMARK_01_FROZEN
 
 ## Mission
 
@@ -29,21 +29,22 @@ Study, test and eventually improve ways to run capable local language models and
 ### 0. Project foundation
 - Project name frozen as `LOOM`.
 - Tagline frozen as `Big models. Small machines.`
-- Canonical handoff discipline defined.
-- Private GitHub repository created and verified: `Ilcoach/loom`.
-- Initial project scaffold written to the `main` branch.
-- Repository includes README, roadmap, methodology, hardware profile, benchmark/result directories, experiment workspaces, research workspaces and this canonical handoff.
-- `ROADMAP.md` Phase 0 is complete.
+- Private GitHub repository created: `Ilcoach/loom`.
+- Repository visibility: private.
+- Default branch: `main`.
+- Initial project scaffold committed.
+- Canonical handoff discipline defined: this file must be updated after every meaningful project step.
 
 ### 1. Ollama baseline setup
 - Ollama updated from 0.31.2 to a current MLX-capable build.
-- Previous model present: `qwen3.5:2b` (2.7 GB on disk).
 - Baseline model installed: `qwen3.5:4b-mlx`.
 - MLX backend confirmed from Ollama logs.
 - `ollama ps` confirmed 100% GPU execution.
 - Context: 4096 tokens.
 
-### 2. Baseline performance
+### 2. Baseline 001 performance
+- Runtime: Ollama.
+- Model: Qwen 3.5 4B MLX.
 - Model resident size reported by Ollama: 4.3 GB.
 - Output tokens: 256.
 - Generation throughput: 15.02 tok/s.
@@ -77,79 +78,93 @@ Observed delta while model is resident:
 - Swap used: +~1976.62 MB.
 - Memory-pressure free percentage: -30 points.
 
-Interpretation: Qwen 3.5 4B MLX is usable and reasonably fast, but the 8 GB system is already close to its practical memory ceiling under normal desktop load. Larger models will require more aggressive techniques rather than simple full-resident loading.
+Interpretation: the 4B MLX configuration is practical at roughly 15 tok/s, but the 8 GB machine is already near its normal full-resident memory ceiling. Larger-model research must therefore focus on quantization, offload, memory mapping, SSD streaming and/or sparse/MoE techniques.
 
-## Repository state
+### 4. Coding Benchmark 01 v1.0.0
 
-Repository: `Ilcoach/loom`
-Visibility: private
-Default branch: `main`
+Created and frozen at `benchmarks/coding/v1`.
 
-Initial tracked structure:
+Coverage:
+- T01 code generation — 15 points.
+- T02 debugging — 15 points.
+- T03 code comprehension — 15 points.
+- T04 constrained refactoring — 15 points.
+- T05 multi-file reasoning — 25 points.
+- T06 instruction-following under implementation constraints — 15 points.
+- Total: 100 points.
 
-- `README.md`
-- `ROADMAP.md`
-- `HANDOFF.md`
-- `.gitignore`
-- `docs/research-goals.md`
-- `docs/methodology.md`
-- `docs/hardware/m1-8gb.md`
-- `benchmarks/coding/README.md`
-- `benchmarks/reasoning/README.md`
-- `benchmarks/results/baseline-001-qwen35-4b-mlx.md`
-- `agents/README.md`
-- `experiments/ollama/README.md`
-- `experiments/mlx/README.md`
-- `experiments/llama.cpp/README.md`
-- `experiments/colibri/README.md`
-- `scripts/README.md`
-- `research/notes/README.md`
-- `research/papers/README.md`
+Benchmark infrastructure:
+- exact versioned prompts;
+- deterministic Python standard-library fixtures;
+- automated unittest suites;
+- `manifest.json`;
+- machine-readable `result-schema.json`;
+- `runner.py` for scoring and JSON output;
+- separate `single_shot` and `agentic` benchmark modes.
+
+Validation:
+- private reference implementations were used only for QA and were not committed;
+- 41 / 41 tests passed;
+- reference score: 100 / 100;
+- runner aggregation validated at 100 / 100;
+- T03 was corrected before freeze to accept equivalent Big-O multiplication order;
+- validation record committed as `benchmarks/coding/v1/VALIDATION.md`.
+
+Freeze rule: v1 prompts, fixtures, tests and scoring are now immutable except for a documented critical defect. Semantic changes require a new benchmark version.
 
 ## Decisions frozen so far
 
 - Project name: LOOM.
 - Tagline: `Big models. Small machines.`
-- GitHub repository: `Ilcoach/loom`, private initially.
+- Repository: `Ilcoach/loom`, private initially.
+- Reference hardware: Apple M1 / 8 GB unified memory.
 - Baseline runtime/model: Ollama + Qwen 3.5 4B MLX.
-- Every runtime/model comparison must use repeatable tests and record quality, speed and memory behavior.
-- `HANDOFF.md` is the canonical project state and must be updated after every meaningful step before moving to the next checkpoint.
+- Benchmark quality must be measured separately from speed and memory behavior.
+- `single_shot` and `agentic` scores are separate experimental conditions.
+- Failed runs must be retained.
+- `HANDOFF.md` is the canonical project state.
 
-## Roadmap
+## Roadmap state
 
-1. Freeze baseline 001. [DONE]
-2. Initialize private GitHub repository and scaffold. [DONE]
-3. Create reproducible Coding Benchmark 01. [NEXT]
-4. Run Qwen 3.5 4B MLX through Coding Benchmark 01.
-5. Connect a local coding agent to Ollama and test repository-level tasks.
-6. Test llama.cpp with larger, aggressively quantized models (Q4/Q3/Q2 where appropriate).
-7. Test direct MLX execution without Ollama.
-8. Test Colibrì and MoE / SSD expert streaming within 8 GB constraints.
-9. Evaluate additional Apple Silicon runtimes if technically relevant.
-10. Compare all configurations using identical benchmark tasks.
-11. Choose daily, maximum-capability and experimental profiles.
+1. Baseline 001. [DONE]
+2. GitHub repository + scaffold. [DONE]
+3. Coding Benchmark 01 v1.0.0 design. [DONE]
+4. Coding Benchmark 01 validation/freeze. [DONE]
+5. Build Ollama single-shot execution adapter. [NEXT]
+6. Run Qwen 3.5 4B MLX through Coding Benchmark 01.
+7. Repeat throughput test to investigate low prompt-processing measurement.
+8. Select and connect a local coding agent to Ollama.
+9. Run the same benchmark in `agentic` mode.
+10. Test llama.cpp with larger Q4/Q3/Q2 configurations.
+11. Test direct MLX.
+12. Test Colibrì / MoE / SSD expert streaming.
+13. Evaluate other Apple Silicon runtimes only when technically justified.
+14. Synthesize daily-use, maximum-capability and experimental profiles.
 
 ## Exact next step
 
-Create `Benchmark Coding 01` as a fixed, versioned and reproducible suite of coding tasks that can be run unchanged against every model/runtime combination. It must test at least:
+Build an Ollama `single_shot` benchmark adapter that:
 
-1. code generation from specification;
-2. debugging of faulty code;
-3. code comprehension/explanation;
-4. constrained refactoring;
-5. multi-file or repository-level reasoning;
-6. instruction following under explicit constraints.
+1. reads each frozen task prompt and allowed source files;
+2. constructs a deterministic request for `qwen3.5:4b-mlx`;
+3. sends it to the local Ollama API;
+4. requires machine-parseable file outputs;
+5. writes only the task's permitted target files into an isolated working copy;
+6. records Ollama timing/token metrics for every task;
+7. runs `runner.py` after all six tasks;
+8. stores raw model outputs separately from benchmark scores;
+9. never edits the frozen benchmark source tree.
 
-The benchmark must define deterministic inputs, expected outcomes/tests, scoring criteria and a machine-readable result format. After the suite is committed, update this handoff to the next checkpoint before running the baseline model against it.
+After the adapter is validated, run it on the reference M1/8 GB machine and commit only the resulting summarized benchmark record, not transient working files.
 
 ## Open questions
 
-- Is the low measured prompt-processing throughput repeatable or an artifact of the short prompt/test method?
-- What is the best quality/memory tradeoff for 7B–9B-class models on this 8 GB M1?
+- Is the low measured 4.36 tok/s prompt-processing result repeatable or a short-prompt measurement artifact?
+- How strong is Qwen 3.5 4B MLX on the frozen coding benchmark in single-shot mode?
+- How much does an agent layer improve correctness, and at what latency/memory cost?
+- What is the best quality/memory tradeoff for 7B–9B-class quantized models on this 8 GB M1?
 - Can direct MLX materially improve memory behavior versus Ollama MLX?
 - How much useful model capacity can SSD-backed or MoE expert streaming unlock before latency becomes impractical?
-- What is the best local agent layer for coding on this hardware?
-- Which benchmark design best predicts real repository-level usefulness while remaining small enough for repeated local testing?
 
 ## Continuation rule
 
