@@ -37,20 +37,25 @@
 - [ ] Define reasoning benchmark
 
 ## Phase 3 — Local coding agent
-- [x] Research/select first agent layer — **Qwen Code**
+- [x] Research/select first controlled agent layer — Qwen Code
 - [x] Verify Node/npm prerequisites
 - [x] Install Qwen Code — `0.21.13`
 - [x] Add reproducible project configuration for Ollama / `qwen3.5:4b-mlx` at context 4096
-- [x] Pull project config onto reference Mac and verify config contents
-- [x] Correct local provider placeholder auth and set first smoke run to `approvalMode: plan`
-- [x] Add reproducible read-only smoke-test runner with memory/swap and working-tree checks
-- [ ] Run sandboxed read-only tool smoke test
-- [ ] Run targeted edit + test smoke test
-- [ ] Measure agent-layer memory/swap overhead
-- [ ] Add reproducible validation/retry workflow
-- [ ] Run Coding Benchmark 01 in `agentic` mode
+- [x] Run Qwen Code normal-config read-only smoke at 4096 — failed before first tool call because initial prompt estimated 4474 tokens
+- [x] Elevate existing Pi installation as immediate matched comparator
+- [x] Add Ollama/Qwen to Pi non-destructively while preserving OpenAI/Codex setup
+- [x] Run Pi read-only smoke at 4096 with only `read` exposed — PASS, returned `# LOOM`, working tree unchanged
+- [x] Establish first measured harness-overhead result: Pi minimal harness fits 4096 where Qwen Code normal config does not
+- [ ] Ingest Qwen Code + Pi smoke summaries and compare memory/swap/runtime/tool metadata
+- [ ] Diagnose Qwen Code smoke working-tree status delta
+- [ ] Run Pi targeted edit + test smoke at context 4096
+- [ ] Run Qwen Code safe-mode 4096 diagnostic
+- [ ] Measure Qwen Code context scaling to 8192 only as a separate experiment if still useful
+- [ ] Add reproducible agent validation/retry workflow
+- [ ] Run Coding Benchmark 01 in Pi `agentic` mode
 - [ ] Compare agentic score, protocol reliability, latency and memory against Baseline 001
-- [ ] Test Aider as second agentic comparator
+- [ ] Decide whether Qwen Code remains a primary comparator after safe-mode/context tests
+- [ ] Test Aider as later comparator if it adds research value
 - [ ] Evaluate OpenCode if context requirements are practical on 8 GB
 
 ## Phase 4 — llama.cpp
