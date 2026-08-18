@@ -1,21 +1,12 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Qwen Code selected; prerequisites verified; installation pending
-Checkpoint: AGENT_LAYER_PREREQUISITES_VERIFIED
+Status: ACTIVE — Qwen Code installed and project-local Ollama configuration committed; first local-agent smoke test pending
+Checkpoint: QWEN_CODE_INSTALLED_LOCAL_CONFIG_COMMITTED
 
 ## Mission
 
 Study, test and improve ways to run capable local language models and self-hosted AI agents on resource-constrained consumer computers, with particular focus on making larger models useful on machines that normally cannot hold them entirely in RAM.
-
-## Long-term destination
-
-1. Build a practical self-hosted local coding agent with no per-token cloud usage limits.
-2. Establish reproducible quality/performance/memory benchmarks for constrained local inference.
-3. Explore quantization, offloading, unified memory, memory mapping, swap, SSD streaming and MoE expert streaming.
-4. Compare Ollama, MLX, llama.cpp, Colibrì and other promising runtimes.
-5. Determine the largest useful, not merely launchable, models on small consumer machines.
-6. If the research reveals a useful gap, prototype LOOM-specific tools/runtime techniques.
 
 ## Reference system
 
@@ -27,147 +18,116 @@ Study, test and improve ways to run capable local language models and self-hoste
 - Node.js: `v25.9.0`
 - npm: `11.12.1`
 - Ollama: `0.32.14`
+- Qwen Code: `0.21.13`
 
-Installed Ollama models verified on 2026-08-18:
-- `qwen3.5:4b-mlx` — 4.0 GB — required baseline/agent model;
-- `qwen3.5:2b` — 2.7 GB — retained for now, not active baseline.
+Installed Ollama models:
+- `qwen3.5:4b-mlx` — 4.0 GB — canonical baseline/agent model
+- `qwen3.5:2b` — 2.7 GB — retained, not active baseline
 
-## Frozen project decisions
+## Frozen baseline
 
-- Project name: `LOOM`
-- Tagline: `Big models. Small machines.`
-- Baseline runtime/model: Ollama + `qwen3.5:4b-mlx`
-- Baseline context: 4096
-- Coding Benchmark 01 prompts, fixtures, tests, expected semantics and task weights are frozen.
-- Current scorer: Benchmark 01 v1.0.1 after a scoring-only defect fix.
-- `single_shot` and `agentic` are distinct experimental conditions.
-- Quality, delivery reliability, inference speed and memory are separate dimensions.
-- Failed/malformed responses are preserved; no silent retries in strict baseline mode.
-- `HANDOFF.md` is canonical and must be updated after every meaningful project step.
+Coding Baseline 001 is frozen for `qwen3.5:4b-mlx`, Ollama/MLX, context 4096.
 
-## CODING BASELINE 001 — FROZEN
-
-Run id: `20260818-203156`
-
-Configuration:
-- model: `qwen3.5:4b-mlx`
-- runtime/backend: Ollama / MLX
-- mode: `single_shot`
-- context: 4096
-
-Frozen quality views:
-- canonical strict delivery-adjusted score: **30.00 / 100**;
+Canonical metrics:
+- strict single-shot delivery score: **30.00/100**;
 - structured-output delivery success: **3/6 = 50%**;
-- artifact diagnostic score: **40.71 / 100**;
-- deterministic recovered semantic-content score: **82.86 / 100**.
+- artifact score: **40.71/100**;
+- recovered semantic-content score: **82.86/100**;
+- weighted prompt processing: **186.46 tok/s** across all six calls;
+- weighted generation: **16.01 tok/s**;
+- peak observed swap: **2486.94 MB**.
 
-Raw-response recovery showed:
-- T04 malformed JSON contained code that passed **7/7** tests after envelope-only repair;
-- T05 malformed JSON contained code that passed **7/7** tests;
-- T06 malformed JSON contained code that passed **6/7** tests, failing only boolean `True` validation.
+Main finding: the first 4B baseline was limited substantially more by fragile structured-output delivery than by underlying generated-code quality. T04 and T05 raw code passed 7/7 after envelope-only recovery; T06 passed 6/7.
 
-Main research finding:
-
-> The first 4B baseline was limited much more by structured-output delivery reliability than raw generated-code quality.
-
-This is why the next phase must use true file/edit/shell tools instead of full source files serialized inside one JSON response.
-
-Full six-call performance:
-- prompt tokens: 2,520 @ **186.46 tok/s** weighted;
-- output tokens: 1,068 @ **16.01 tok/s** weighted;
-- summed Ollama API wall time: **85.535 s**;
-- full benchmark process: ~91.25 s.
-
-Memory:
-- run-start swap: 885.69 MB;
-- peak observed swap: 2486.94 MB;
-- final swap: 2403.44 MB;
-- model remained 100% GPU;
-- Ollama reported resident size rising ~4.1 → 4.8 GB across the sequence.
-
-Detailed frozen result:
+Detailed result:
 - `benchmarks/results/coding-baseline-001-qwen35-4b-mlx.md`
 
-## Phase 3 — Agent layer selection
+## Phase 3 — local coding agent
 
-### Selected first candidate: Qwen Code
+### Selected first agent layer
+
+Qwen Code.
 
 Decision record:
 - `research/agents/agent-layer-selection-001.md`
 
-Why selected:
-- open-source agent CLI;
-- supports local/self-hosted models through OpenAI-compatible endpoints, including Ollama;
-- Ollama endpoint target: `http://localhost:11434/v1`;
-- built-in file tools: read, write, edit, list, glob, grep;
-- built-in shell execution for tests and commands;
-- tool confirmation/approval modes;
-- sandbox support;
-- macOS can use lightweight Seatbelt / `sandbox-exec` rather than requiring Docker;
-- local model context window is configurable;
-- directly tests whether tool-based editing can close the 30.00 → 82.86 gap discovered in Baseline 001.
+Reasons:
+- OpenAI-compatible local provider support, including Ollama;
+- built-in file read/write/edit/search tools;
+- shell/test execution;
+- iterative tool loop;
+- approval modes;
+- lightweight macOS Seatbelt sandbox;
+- directly attacks the JSON full-file transport bottleneck discovered in Baseline 001.
 
-### Comparators queued
+### Installation checkpoint
 
-1. Qwen Code — selected first.
-2. Aider — second comparator; mature Ollama/repo-map/test workflow but still relies on edit-format conformance.
-3. OpenCode — later comparator; strong built-in tool model and Ollama integration, but current guidance favors much larger contexts than are comfortable for the 8 GB reference system.
-
-## Completed checkpoint — prerequisites verified
-
-Environment check from the reference Mac:
+The reference Mac successfully installed:
 
 ```text
-node --version   -> v25.9.0
-npm --version    -> 11.12.1
-ollama --version -> 0.32.14
+qwen --version -> 0.21.13
 ```
 
-`ollama list` confirms `qwen3.5:4b-mlx` is installed and available.
-
-Qwen Code's current official npm installation requires Node.js 22+, so the reference environment satisfies the prerequisite.
-
-## Exact next step
-
-Install the latest Qwen Code package via the official npm package:
+Installation command used:
 
 ```bash
 npm install -g @qwen-code/qwen-code@latest
 ```
 
-Then verify:
+### Reproducible LOOM Qwen Code configuration
+
+Committed file:
+- `.qwen/settings.json`
+
+Configuration:
+- provider protocol: OpenAI-compatible;
+- base URL: `http://localhost:11434/v1`;
+- model: `qwen3.5:4b-mlx`;
+- context window: **4096**;
+- temperature: **0**;
+- max output tokens: **2048**;
+- sandbox: enabled;
+- approval mode: `default`.
+
+This project-level configuration is intentionally versioned so the agent experiment is reproducible and does not require cloud authentication. Ollama's OpenAI-compatible `/v1/chat/completions` endpoint supports tool calls, and Qwen Code uses tool schemas for filesystem/shell actions.
+
+Do not increase context yet. Context scaling is a separate LOOM experiment if 4096 proves insufficient for tool calling.
+
+## Exact next step
+
+On the reference Mac:
 
 ```bash
-qwen --version
+cd "<repository-root>"
+git pull
+cat .qwen/settings.json
 ```
 
-Do not start an authenticated/cloud session yet. After version verification, configure Qwen Code explicitly for local Ollama:
-- model: `qwen3.5:4b-mlx`;
-- base URL: `http://localhost:11434/v1`;
-- initial context window: **4096**.
+Confirm that the pulled config contains `qwen3.5:4b-mlx` and `http://localhost:11434/v1`.
 
-Do not increase context before measuring the first smoke test. If tool calls fail at 4096, context scaling becomes an explicit LOOM experiment with memory/swap measurements.
+Then perform a **read-only connection/tool smoke test** before allowing edits. Start Qwen Code from the LOOM root:
 
-### Smoke-test goals
+```bash
+qwen
+```
 
-1. connect Qwen Code to Ollama;
-2. confirm the local model identity;
-3. run inside a disposable LOOM test working directory;
-4. enable macOS Seatbelt sandbox where compatible;
-5. ask the agent to read a file;
-6. make one targeted edit;
-7. run a test command;
-8. verify the edit and tool loop;
-9. measure `ollama ps`, memory pressure and swap;
-10. update this handoff before full agentic benchmark.
+Expected checks inside Qwen Code:
+1. it starts without cloud authentication;
+2. active model is `qwen3.5:4b-mlx`;
+3. `/model` shows the local Ollama model;
+4. `/doctor` shows the OpenAI-compatible local endpoint/config;
+5. first prompt asks only to inspect/read a known LOOM file — no edits yet;
+6. macOS sandbox should resolve to Seatbelt/sandbox-exec when enabled.
+
+If connection/tool calling fails at context 4096, preserve the exact error. Do not silently raise context or change provider settings.
 
 ## Roadmap state
 
 - Phase 0 foundation: DONE.
-- Phase 1 Ollama/MLX baseline: DONE.
+- Phase 1 inference baseline: DONE.
 - Phase 2 Coding Benchmark + Baseline 001: DONE / FROZEN.
-- Phase 3 local coding agent: ACTIVE — Qwen Code selected, prerequisites verified, install next.
-- Phase 4 llama.cpp larger quantized models: queued.
+- Phase 3 local coding agent: ACTIVE — Qwen Code installed/config committed; read-only smoke test next.
+- Phase 4 llama.cpp: queued.
 - Phase 5 direct MLX: queued.
 - Phase 6 Colibrì / SSD streaming / MoE: queued.
 - Phase 7 other runtimes: queued.
@@ -175,14 +135,14 @@ Do not increase context before measuring the first smoke test. If tool calls fai
 
 ## Open research questions
 
-- Can Qwen Code use Qwen 3.5 4B tool calls reliably at only 4096 context?
-- How much can agentic edit/test loops close the strict 30.00 → recovered 82.86 quality gap?
+- Can Qwen Code + Qwen 3.5 4B execute reliable tool calls at only 4096 context?
+- How much can tool-based agent editing close the strict 30.00 → semantic 82.86 gap?
 - What latency and memory overhead does the agent layer add?
-- Why does Ollama resident size rise ~4.1 → 4.8 GB during sustained inference?
-- What is the best quality/memory tradeoff for 7B–9B Q4/Q3/Q2 models on 8 GB?
-- Can direct MLX improve memory behavior versus Ollama MLX?
-- How much practical capacity can SSD-backed / MoE expert streaming unlock before latency becomes unacceptable?
+- Why did Ollama's resident report grow ~4.1 → 4.8 GB during sustained baseline inference?
+- What is the best 7B–9B quantization/runtime configuration on 8 GB?
+- Can direct MLX improve memory behavior?
+- How far can SSD-backed / MoE expert streaming extend useful model size?
 
 ## Continuation rule
 
-Before starting any new experiment, read this file. After every meaningful experiment, decision, benchmark, architecture change or tooling change, update this file before moving to the next checkpoint.
+Before starting a new experiment, read this file. After every meaningful experiment, decision, benchmark, architecture change or tooling change, update this file before moving to the next checkpoint.
