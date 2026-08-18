@@ -1,7 +1,7 @@
 # LOOM — Project Handoff
 
-Last updated: 2026-08-18
-Status: ACTIVE — Pi validated as primary local agent harness; Agentic 001 frozen; practical memory-retention question resolved; Qwen Code deprioritized; llama.cpp Phase 4 Metal setup fully validated; 4B GGUF runtime control preregistered and ready
+Last updated: 2026-08-19
+Status: ACTIVE — Pi validated as primary local agent harness; Agentic 001 frozen; practical memory-retention question resolved; Qwen Code deprioritized; llama.cpp Phase 4 Metal setup fully validated; 4B GGUF runtime control preregistered and running/ready
 Checkpoint: LLAMA_CPP_4B_CONTROL_001_READY
 
 ## Mission
@@ -26,6 +26,20 @@ Reference stack before Phase 4:
 The user's normal Pi installation contains real OpenAI API/Codex auth, sessions and customizations. LOOM added Ollama only as an additional provider.
 
 Do not reset/overwrite normal Pi state. Controlled experiments use run-local `PI_CODING_AGENT_DIR` and explicit per-run resources.
+
+## Storage hygiene rule
+
+LOOM will accumulate multi-GB model artifacts during Phase 4-6. Treat free disk capacity as a standard operational metric.
+
+Rules:
+- record free disk space before and after each new model download / large runtime experiment where practical;
+- periodically inspect total size of `results-local/models/`, llama.cpp source/build trees and other model/runtime caches;
+- do not silently delete verified models or prior experiment artifacts; classify what is disposable first;
+- flag low-space conditions before starting another multi-GB download;
+- prefer reusing already verified artifacts instead of redownloading them;
+- when storage becomes materially constrained, prepare an explicit cleanup list separating reproducible caches/builds from canonical research records.
+
+Current `scripts/llama_cpp_4b_control.py` already records `disk_free_gib_before` and refuses a fresh model download if less than 4 GiB is free. Future Phase 4+ runners should preserve/strengthen this telemetry, including post-run free space where practical.
 
 ## Frozen Coding Baseline 001
 
@@ -209,6 +223,7 @@ Runner behavior:
 - unloads the canonical Ollama model first if Ollama is available;
 - downloads/resumes the model into ignored `results-local/models/`;
 - verifies SHA256 before execution;
+- records free disk space before the download/run;
 - records `llama-bench --list-devices`;
 - runs `llama-bench` at `-ngl -1`, flash-attn auto, pp512, tg128, 3 repetitions;
 - records JSON throughput output, backend/device evidence and offload log lines;
@@ -223,18 +238,9 @@ Success authorizes the next main experiment:
 
 ## Exact next step
 
-On the reference Mac:
+If the 4B control is currently downloading, let the current run complete; do not restart it merely for the storage-policy documentation update.
 
-```bash
-cd "<repository-root>"
-git pull
-python3 -m py_compile scripts/llama_cpp_4b_control.py
-python3 scripts/llama_cpp_4b_control.py
-```
-
-The first run will download approximately 2.5 GB if the verified GGUF is not already present. The download is resumable.
-
-Preserve complete output from `LOOM llama.cpp 4B Runtime Control 001` through the final `Summary:` line, including device and benchmark sections.
+After completion, preserve complete output from `LOOM llama.cpp 4B Runtime Control 001` through the final `Summary:` line, including device and benchmark sections. Then inspect remaining disk space before authorizing the 8B download.
 
 ## Roadmap state
 
@@ -242,7 +248,7 @@ Preserve complete output from `LOOM llama.cpp 4B Runtime Control 001` through th
 - Phase 1 baseline: DONE
 - Phase 2 Coding Benchmark/Baseline: DONE / FROZEN
 - Phase 3 agent/runtime investigation: materially complete; Pi primary, Qwen Code secondary
-- **Phase 4 llama.cpp: ACTIVE — Metal setup validated, 4B runtime control ready**
+- **Phase 4 llama.cpp: ACTIVE — Metal setup validated, 4B runtime control running/ready**
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD/MoE: queued
 - Phase 7 extended runtimes: queued
