@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """LOOM Coding Benchmark 01 runner.
 
-Runs the frozen unittest suites and emits a machine-readable result.
+Runs the benchmark unittest suites and emits a machine-readable result.
 Environment variables may be used to annotate a run:
   LOOM_MODEL, LOOM_RUNTIME, LOOM_BACKEND, LOOM_MODE, LOOM_CONTEXT
 
@@ -10,10 +10,14 @@ Scoring rule:
 - a method passes only if it completes without failures, errors,
   unexpected successes, or failing subtests;
 - failing subtests do not increase the denominator.
+
+By default the runner scores the benchmark tree containing this file. Use
+--benchmark-root to rescore an isolated working copy from an earlier run.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -22,9 +26,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-REPO_ROOT = HERE.parents[2]
-MANIFEST = json.loads((HERE / "manifest.json").read_text())
+SCRIPT_ROOT = Path(__file__).resolve().parent
 
 TEST_PROBE = r'''
 import contextlib
@@ -70,8 +72,19 @@ print(json.dumps({"tests": records}))
 '''
 
 
-def run_task(task: dict) -> dict:
-    task_dir = HERE / task["path"]
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--benchmark-root",
+        type=Path,
+        default=SCRIPT_ROOT,
+        help="Benchmark v1 tree to score. Defaults to the tree containing this runner.",
+    )
+    return parser.parse_args()
+
+
+def run_task(task: dict, benchmark_root: Path) -> dict:
+    task_dir = benchmark_root / task["path"]
     started = time.perf_counter()
     proc = subprocess.run(
         [sys.executable, "-c", TEST_PROBE],
@@ -147,10 +160,17 @@ def run_task(task: dict) -> dict:
 
 
 def main() -> int:
+    args = parse_args()
+    benchmark_root = args.benchmark_root.resolve()
+    manifest_path = benchmark_root / "manifest.json"
+    if not manifest_path.exists():
+        raise SystemExit(f"Benchmark manifest not found: {manifest_path}")
+
+    manifest = json.loads(manifest_path.read_text())
     results = []
-    for task in MANIFEST["tasks"]:
+    for task in manifest["tasks"]:
         try:
-            results.append(run_task(task))
+            results.append(run_task(task, benchmark_root))
         except subprocess.TimeoutExpired:
             results.append({
                 "id": task["id"],
@@ -166,8 +186,8 @@ def main() -> int:
 
     score = round(sum(x["points_earned"] for x in results), 2)
     payload = {
-        "benchmark": MANIFEST["benchmark"],
-        "version": MANIFEST["version"],
+        "benchmark": manifest["benchmark"],
+        "version": manifest["version"],
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "model": os.getenv("LOOM_MODEL", "unknown"),
         "runtime": os.getenv("LOOM_RUNTIME", "unknown"),
@@ -175,11 +195,14 @@ def main() -> int:
         "mode": os.getenv("LOOM_MODE", "unknown"),
         "context": os.getenv("LOOM_CONTEXT", "unknown"),
         "score": score,
-        "max_score": MANIFEST["total_points"],
+        "max_score": manifest["total_points"],
         "tasks": results,
     }
 
-    out_dir = REPO_ROOT / "results-local"
+    # For an isolated run tree shaped as <run>/benchmarks/coding/v1, parents[2]
+    # resolves to <run>. For the canonical tree it resolves to the repository root.
+    output_root = benchmark_root.parents[2]
+    out_dir = output_root / "results-local"
     out_dir.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     out_file = out_dir / f"coding-benchmark-01-{stamp}.json"
