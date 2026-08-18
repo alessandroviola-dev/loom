@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — Qwen Code selected as first local coding-agent layer; installation/smoke test pending
-Checkpoint: AGENT_LAYER_SELECTED_QWEN_CODE
+Status: ACTIVE — Qwen Code selected; prerequisites verified; installation pending
+Checkpoint: AGENT_LAYER_PREREQUISITES_VERIFIED
 
 ## Mission
 
@@ -24,6 +24,13 @@ Study, test and improve ways to run capable local language models and self-hoste
 - macOS
 - Canonical local repo: `<repository-root>`
 - GitHub: `Ilcoach/loom` (private)
+- Node.js: `v25.9.0`
+- npm: `11.12.1`
+- Ollama: `0.32.14`
+
+Installed Ollama models verified on 2026-08-18:
+- `qwen3.5:4b-mlx` — 4.0 GB — required baseline/agent model;
+- `qwen3.5:2b` — 2.7 GB — retained for now, not active baseline.
 
 ## Frozen project decisions
 
@@ -106,31 +113,38 @@ Why selected:
 2. Aider — second comparator; mature Ollama/repo-map/test workflow but still relies on edit-format conformance.
 3. OpenCode — later comparator; strong built-in tool model and Ollama integration, but current guidance favors much larger contexts than are comfortable for the 8 GB reference system.
 
-## Exact next step
+## Completed checkpoint — prerequisites verified
 
-On the reference Mac, check prerequisites before installation:
+Environment check from the reference Mac:
 
-```bash
-node --version
-npm --version
-ollama --version
-ollama list
+```text
+node --version   -> v25.9.0
+npm --version    -> 11.12.1
+ollama --version -> 0.32.14
 ```
 
-Required model:
-- `qwen3.5:4b-mlx`
+`ollama list` confirms `qwen3.5:4b-mlx` is installed and available.
 
-If Node/npm are available, install Qwen Code:
+Qwen Code's current official npm installation requires Node.js 22+, so the reference environment satisfies the prerequisite.
+
+## Exact next step
+
+Install the latest Qwen Code package via the official npm package:
 
 ```bash
-npm install -g @qwen-code/qwen-code
+npm install -g @qwen-code/qwen-code@latest
+```
+
+Then verify:
+
+```bash
 qwen --version
 ```
 
-Then configure Qwen Code to use the local Ollama OpenAI-compatible endpoint with:
+Do not start an authenticated/cloud session yet. After version verification, configure Qwen Code explicitly for local Ollama:
 - model: `qwen3.5:4b-mlx`;
 - base URL: `http://localhost:11434/v1`;
-- initial context window: **4096** to preserve comparability with Baseline 001.
+- initial context window: **4096**.
 
 Do not increase context before measuring the first smoke test. If tool calls fail at 4096, context scaling becomes an explicit LOOM experiment with memory/swap measurements.
 
@@ -139,7 +153,7 @@ Do not increase context before measuring the first smoke test. If tool calls fai
 1. connect Qwen Code to Ollama;
 2. confirm the local model identity;
 3. run inside a disposable LOOM test working directory;
-4. enable macOS Seatbelt sandbox;
+4. enable macOS Seatbelt sandbox where compatible;
 5. ask the agent to read a file;
 6. make one targeted edit;
 7. run a test command;
@@ -152,7 +166,7 @@ Do not increase context before measuring the first smoke test. If tool calls fai
 - Phase 0 foundation: DONE.
 - Phase 1 Ollama/MLX baseline: DONE.
 - Phase 2 Coding Benchmark + Baseline 001: DONE / FROZEN.
-- Phase 3 local coding agent: ACTIVE — Qwen Code selected; install/smoke test next.
+- Phase 3 local coding agent: ACTIVE — Qwen Code selected, prerequisites verified, install next.
 - Phase 4 llama.cpp larger quantized models: queued.
 - Phase 5 direct MLX: queued.
 - Phase 6 Colibrì / SSD streaming / MoE: queued.
