@@ -44,31 +44,23 @@
 - [x] Run Qwen Code normal-config read-only smoke at 4096 — failed before first tool call because initial prompt estimated 4474 tokens
 - [x] Elevate existing Pi installation as immediate matched comparator
 - [x] Add Ollama/Qwen to Pi non-destructively while preserving OpenAI/Codex setup
-- [x] Run Pi read-only smoke at 4096 with only `read` exposed — PASS, returned `# LOOM`, working tree unchanged
-- [x] Establish first measured harness-overhead result: Pi minimal harness fits 4096 where Qwen Code normal config does not
-- [x] Ingest Qwen Code + Pi smoke summaries and compare memory/swap/runtime/tool metadata
-- [x] Record `research/agents/harness-comparison-001.md`
-- [x] Harden Qwen Code smoke runner to detect semantic API errors and capture `.qwen/settings.json` diffs
-- [x] Inspect Qwen Code settings delta — only automatic schema marker `"$version": 4`
-- [x] Adopt Qwen Code settings schema version 4 in the versioned LOOM config
-- [x] Add isolated reproducible Pi edit+test smoke runner at context 4096
-- [x] Run Pi targeted edit + test smoke at context 4096 — functional PASS, strict output FAIL
-- [x] Patch Pi edit-smoke runner to separate functional and strict success
-- [x] Record `research/agents/pi-edit-test-smoke-001.md`
-- [x] Ingest Pi edit+test metrics — ~114 s, +655.31 MB swap, Ollama 4.8 GB / 100% GPU / context 4096
-- [x] Build isolated Pi Coding Benchmark 01 agentic adapter with hidden tests excluded from agent workspaces
-- [x] Preregister Pi agentic benchmark protocol and scoring in `research/agents/pi-agentic-benchmark-001-plan.md`
-- [x] Run Coding Benchmark 01 in Pi file-agentic mode at context 4096
-- [x] Ingest full Pi agentic run-summary: per-task scores, protocol failures, runtime and memory/swap trajectory
-- [x] Validate raw Pi tool paths remain within per-task temporary workspaces — PASS
-- [x] Ingest provider-reported usage from saved Pi JSONL — 19,556 input + 653 output = 20,209 total across six task sessions
+- [x] Run Pi read-only smoke at 4096 with only `read` exposed — PASS
+- [x] Establish first harness-overhead result: Pi minimal harness fits 4096 where Qwen Code normal config does not
+- [x] Run Pi targeted edit + test smoke at 4096 — functional PASS / strict output FAIL
+- [x] Build, preregister and run isolated Pi Coding Benchmark 01 agentic adapter with hidden tests excluded
+- [x] Validate raw Pi tool paths stay inside temporary workspaces — PASS
 - [x] Freeze canonical `research/agents/pi-agentic-benchmark-001.md`
-- [x] Canonical Pi Agentic 001 scores: artifact/delivery **77.15**, strict **60.00**, delivery **6/6**, protocol **4/6**
-- [x] Classify remaining 22.85 artifact points as genuine frozen-test deficits and 17.15 additional strict points as final-output protocol-only loss
-- [x] Identify sustained memory-pressure finding: swap +3.279 GB and Ollama reported allocation 4.4 -> 7.2 GB across tasks at context 4096
-- [x] Mark preliminary Agentic 001 record superseded
-- [ ] Preregister and run lightweight repeated-call memory-retention probe at context 4096
-- [ ] Determine whether Ollama 4.4 -> 7.2 GB growth is reproducible accumulation across separate calls or task-specific high-water behavior
+- [x] Canonical Pi Agentic 001: artifact/delivery **77.15**, strict **60.00**, delivery **6/6**, protocol **4/6**
+- [x] Classify 22.85 artifact points as genuine frozen-test deficits and 17.15 additional strict points as final-output protocol-only loss
+- [x] Identify sustained memory-pressure finding in Agentic 001: swap +3.279 GB and Ollama reported allocation 4.4 -> 7.2 GB at context 4096
+- [x] Preregister and run Pi Memory Retention Probe 001 with identical warm/cold calls
+- [x] Record `research/agents/pi-memory-retention-probe-001.md`
+- [x] Determine simple invocation count alone does not reproduce 4.4 -> 7.2 GB: identical warm calls only 4.1 -> 4.5 GB; cold calls reset to 4.1 GB; warm swap did not accumulate
+- [x] Preregister direct Ollama Context Retention Probe 001 to remove Pi and vary prompt pressure
+- [x] Add `scripts/ollama_context_retention_probe.py`
+- [ ] Run direct Ollama Context Retention Probe 001
+- [ ] Determine whether direct runtime allocation scales with prompt pressure and retains high-water state after a large prompt
+- [ ] If needed isolate multi-turn/tool-round-trip effects separately
 - [ ] Run Qwen Code safe-mode 4096 diagnostic as secondary harness-overhead experiment
 - [ ] Measure Qwen Code context scaling to 8192 only if it still adds research value
 - [ ] Add reproducible agent validation/retry workflow for real-world daily-use profile
