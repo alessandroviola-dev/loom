@@ -8,7 +8,11 @@ EXPECTED = {
     "mutates_inputs": False,
     "return_on_unassigned": -1,
     "capacity_state": "internal_copy",
-    "worst_case": "O(len(capacities) * len(jobs))",
+}
+
+ACCEPTED_COMPLEXITIES = {
+    "O(len(capacities) * len(jobs))",
+    "O(len(jobs) * len(capacities))",
 }
 
 
@@ -22,7 +26,7 @@ class ComprehensionTests(unittest.TestCase):
 
     def test_exact_keys(self):
         data = json.loads(Path("answer.json").read_text())
-        self.assertEqual(set(data), set(EXPECTED))
+        self.assertEqual(set(data), set(EXPECTED) | {"worst_case"})
 
     def test_strategy(self):
         data = json.loads(Path("answer.json").read_text())
@@ -39,7 +43,7 @@ class ComprehensionTests(unittest.TestCase):
 
     def test_complexity(self):
         data = json.loads(Path("answer.json").read_text())
-        self.assertEqual(data["worst_case"], EXPECTED["worst_case"])
+        self.assertIn(data["worst_case"], ACCEPTED_COMPLEXITIES)
 
 
 if __name__ == "__main__":
