@@ -1,12 +1,12 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-18
-Status: ACTIVE — matched 4096 read-only comparison complete: Pi succeeds where Qwen Code normal config fails before first tool call
-Checkpoint: PI_4096_READONLY_SMOKE_PASSED_QWEN_CODE_OVERHEAD_CONFIRMED
+Status: ACTIVE — Pi 4096 minimal harness validated; Qwen Code normal harness blocked by context overhead; smoke metrics ingested
+Checkpoint: PI_4096_SMOKE_METRICS_INGESTED_QWEN_SETTINGS_DIFF_PENDING
 
 ## Mission
 
-Study, test and improve ways to run capable local language models and self-hosted AI agents on resource-constrained consumer computers, with particular focus on making larger models useful on machines that normally cannot hold them entirely in RAM.
+Study, test and improve ways to run capable local language models and self-hosted AI agents on resource-constrained consumer computers, especially Apple M1 / 8 GB unified memory.
 
 ## Reference system
 
@@ -20,24 +20,19 @@ Study, test and improve ways to run capable local language models and self-hoste
 - Ollama: `0.32.14`
 - Qwen Code: `0.21.13`
 - Pi: `0.84.2`
-- Existing Pi remains production tooling with OpenAI API access, OpenAI/Codex account auth, persistent sessions and user customizations
+- Pi remains production tooling with existing OpenAI API/Codex auth, sessions and user customizations preserved
 
 Installed Ollama models:
 - `qwen3.5:4b-mlx` — 4.0 GB — canonical baseline/agent model
-- `qwen3.5:2b` — 2.7 GB — retained, not active baseline
+- `qwen3.5:2b` — retained, not active baseline
 
 ## Frozen Coding Baseline 001
 
 Run id: `20260818-203156`
+Model/runtime: `qwen3.5:4b-mlx`, Ollama/MLX, context 4096
 
-Configuration:
-- model: `qwen3.5:4b-mlx`
-- runtime/backend: Ollama / MLX
-- mode: `single_shot`
-- context: 4096
-
-Canonical baseline views:
-- strict single-shot delivery-adjusted score: **30.00/100**
+Canonical metrics:
+- strict delivery-adjusted score: **30.00/100**
 - structured-output delivery success: **3/6 = 50%**
 - artifact score: **40.71/100**
 - recovered semantic-content score: **82.86/100**
@@ -45,132 +40,151 @@ Canonical baseline views:
 - weighted generation: **16.01 tok/s**
 - peak observed swap: **2486.94 MB**
 
-Main baseline finding:
-> The 4B model's generated code was substantially better than its strict delivery score; fragile structured-output transport was a major bottleneck.
+Main finding:
+> Generated code quality was much better than strict delivery score; fragile structured-output transport was a major bottleneck.
 
-## Phase 3 — local coding agent
+## Pi configuration rule
 
-### Qwen Code read-only smoke 001 — FAILED BEFORE TOOL CALL
+LOOM added Ollama only as an additional provider in `~/.pi/agent/models.json`.
 
-Run id: `20260818-211009`
+Must remain untouched:
+- OpenAI API credentials/configuration
+- OpenAI/Codex account authentication
+- saved defaults
+- sessions
+- skills/extensions/packages
+- unrelated Pi customizations
 
-Matched conditions relevant to comparator:
-- model: `qwen3.5:4b-mlx`
-- Ollama local endpoint
-- context: 4096
-- read-only task: read LOOM `README.md` and return first Markdown heading
-
-Observed:
-- model resolved correctly;
-- macOS Seatbelt active (`permissive-open`);
-- no tool call reached;
-- estimated initial prompt: **4474 tokens**;
-- hard context limit: **4096**;
-- approximately **378 tokens over limit**;
-- always-on Qwen Code context warning: approximately **1429 tokens**;
-- process returned exit code 0 despite semantic API error;
-- runner reported a working-tree status delta that still requires exact local inspection.
-
-Conclusion:
-> Qwen Code in normal configuration does not fit inside context 4096 on the reference setup before the first minimal tool call.
-
-### Pi Ollama provider addition — COMPLETED NON-DESTRUCTIVELY
-
-LOOM added only `providers.ollama` in `~/.pi/agent/models.json`.
-
-Verified listing:
-
-```text
-provider  model           context  max-out  thinking  images
-ollama    qwen3.5:4b-mlx  4.1K     2.0K     no        no
-```
-
-Untouched by LOOM setup:
-- OpenAI API credentials/configuration;
-- OpenAI/Codex account authentication;
-- saved default provider/model settings;
-- sessions;
-- skills;
-- extensions;
-- packages.
-
-### Pi read-only smoke 001 — PASSED
-
-Run id: `pi-20260818-212407`
-
-Command harness:
+Pi model now available:
 - provider: `ollama`
 - model: `qwen3.5:4b-mlx`
 - context: 4096
-- exposed tool set: `read` only
-- ephemeral: `--no-session`
-- output mode: JSON
+- max output: 2048
 
-Observed terminal result:
+## Qwen Code read-only smoke 001
 
-```text
-Exit code: 0
-Provider/model: ollama/qwen3.5:4b-mlx
-Tools: ['read']
-Result: '# LOOM'
-Working tree unchanged: True
-Success: True
-```
+Run id: `20260818-211009`
 
-Result directory:
-- `results-local/agent-smoke/pi-20260818-212407`
-- summary: `results-local/agent-smoke/pi-20260818-212407/smoke-summary.json`
+Conditions:
+- model: `qwen3.5:4b-mlx`
+- context: 4096
+- normal Qwen Code harness
+- plan/read-only
+- Seatbelt enabled
 
-### Matched 4096 comparison — KEY RESULT
+Result:
+- process exit code: 0, but semantic API error
+- no tool call reached
+- estimated initial prompt: **4474 tokens**
+- hard limit: **4096**
+- ~**378 tokens over limit**
+- always-on context warning: ~**1429 tokens**
+- Ollama model never loaded
 
-Same reference hardware, model family/build, Ollama runtime, context limit and equivalent read-only repository task:
+Memory snapshots:
+- PhysMem used: **6675M -> 6741M** (+66M)
+- memory free: **73% -> 73%**
+- swap: **1380.69M -> 1380.69M** (+0M)
+- compressor: **283M -> 283M**
+- elapsed from first snapshot to finish: ~**2.08 s**
 
-| Harness | Context | First read tool | Result |
-|---|---:|---|---|
-| Qwen Code 0.21.13 normal config | 4096 | Not reached | FAIL — initial prompt estimated 4474 tokens |
-| Pi 0.84.2 minimal read harness | 4096 | Reached (`read`) | PASS — returned `# LOOM` |
+Git:
+- before: clean
+- after: ` M .qwen/settings.json`
+
+Important: exact local diff is still pending. Do not assume what Qwen Code changed until `git diff -- .qwen/settings.json` is inspected.
+
+## Pi read-only smoke 001
+
+Run id: `pi-20260818-212407`
+
+Conditions:
+- provider/model: `ollama/qwen3.5:4b-mlx`
+- context: 4096
+- only tool exposed: `read`
+- `--no-session`
+- JSON event mode
+
+Result:
+- exit code: 0
+- success: true
+- tool used: `read`
+- final text: `# LOOM`
+- no event errors
+- no JSONL parse errors
+- repository status unchanged relative to start
+- Ollama after run: **4.2 GB, 100% GPU, context 4096**
+
+Memory snapshots:
+- PhysMem used: **7207M -> 7462M** (+255M)
+- memory free: **73% -> 31%**
+- swap: **1356.69M -> 2008.56M** (**+651.87M**)
+- compressor: **289M -> 3483M** (+3194M)
+- elapsed: ~**34.00 s**
+
+Git:
+- before: ` M .qwen/settings.json`
+- after: ` M .qwen/settings.json`
+- therefore Pi caused no additional repository delta
+
+## Harness Comparison 001 — key result
+
+Canonical record:
+- `research/agents/harness-comparison-001.md`
+
+| Harness | Tool surface | Context | Tool reached | Result |
+|---|---|---:|---|---|
+| Qwen Code 0.21.13 | normal config | 4096 | No | FAIL before first tool call; prompt ~4474 tokens |
+| Pi 0.84.2 | `read` only | 4096 | Yes | PASS; returned `# LOOM` |
 
 Research finding:
-> Agent-harness overhead is now a measured practical constraint on the 8 GB reference machine. At the same 4096-token model context, Pi can complete the minimal tool task while Qwen Code normal configuration cannot reach the first tool call.
+> Agent-harness/context overhead is a practical feasibility constraint on the 8 GB reference machine. The tested minimal Pi profile works at 4096 where the tested normal Qwen Code profile does not.
 
-Important scope:
-- this does **not** yet prove Pi is globally better than Qwen Code;
-- Pi was deliberately run with only one exposed tool, while Qwen Code normal configuration carries a larger tool/context surface;
-- the result does prove that harness/context overhead can determine feasibility at small context windows.
+Scope limitation:
+- Pi exposed only `read`; Qwen Code had its normal larger harness/tool/context surface.
+- This does not yet prove Pi is globally better or that its base framework always has lower overhead.
+- Qwen's memory run is not comparable to Pi's loaded-model memory because Qwen failed before Ollama loaded.
 
-## Committed tooling
+## Tooling updates
 
+Committed:
 - `.qwen/settings.json`
 - `scripts/qwen_code_readonly_smoke.py`
 - `scripts/pi_add_ollama_provider.py`
 - `scripts/pi_readonly_smoke.py`
+- `research/agents/harness-comparison-001.md`
+
+Qwen smoke runner has now been hardened to:
+- detect `[API Error: ...]` as semantic failure even with exit code 0
+- require expected final text + observed tool call for success
+- capture `.qwen/settings.json` diff before/after
+- preserve Git status and memory/swap diagnostics
 
 ## Exact next step
 
-Ingest the two smoke summaries before changing context or running edit tests.
+On the reference Mac, after pulling latest repo, inspect the existing Qwen Code settings delta:
 
-Required local files:
-1. Qwen Code:
-   `results-local/agent-smoke/20260818-211009/smoke-summary.json`
-2. Pi:
-   `results-local/agent-smoke/pi-20260818-212407/smoke-summary.json`
+```bash
+cd "<repository-root>"
+git pull
+git diff -- .qwen/settings.json
+```
 
-Use them to compare:
-- memory before/after;
-- swap before/after;
-- `ollama ps` resident/context state;
-- wall/runtime data available in each harness;
-- exact Qwen `git_status_before` vs `git_status_after` delta;
-- any event/token metadata Pi exposes.
+Do not reset or commit the local settings modification until its contents are understood.
 
-After ingesting those metrics, run a controlled Pi edit+test smoke before attempting full Coding Benchmark 01 agentic mode. Qwen Code safe-mode 4096 and/or context 8192 remain separate experiments.
+After that:
+1. classify the Qwen Code settings mutation;
+2. restore/accept it deliberately;
+3. run a controlled Pi edit + test smoke at context 4096;
+4. separately run Qwen Code safe-mode 4096 to isolate always-on context overhead;
+5. only then decide whether to test Qwen Code at 8192 or move Pi directly to full agentic Coding Benchmark 01.
 
 ## Roadmap state
 
 - Phase 0 foundation: DONE
 - Phase 1 inference baseline: DONE
 - Phase 2 Coding Benchmark + Baseline 001: DONE / FROZEN
-- Phase 3 local coding agent: ACTIVE — matched read-only 4096 comparison complete; Pi passed, Qwen Code normal config failed on context overhead; metric ingestion next
+- Phase 3 local coding agent: ACTIVE — Pi minimal 4096 passes; Qwen normal 4096 fails on context; metrics ingested; settings diff next
 - Phase 4 llama.cpp: queued
 - Phase 5 direct MLX: queued
 - Phase 6 Colibrì / SSD streaming / MoE: queued
@@ -179,14 +193,12 @@ After ingesting those metrics, run a controlled Pi edit+test smoke before attemp
 
 ## Open research questions
 
-- How much lower is Pi's first-turn context/tool-schema overhead than Qwen Code's?
-- What are the RAM/swap differences between the two smoke runs?
-- What caused the Qwen smoke working-tree status delta?
-- Can Pi perform reliable edit + test loops at context 4096?
-- Does Qwen Code safe-mode fit at 4096?
-- What is the minimum practical context for Qwen Code normal configuration?
-- What memory/swap cost is added by Qwen Code context scaling to 8192?
-- How much can agentic workflows close the strict 30.00 → recovered 82.86 gap?
+- What exactly did Qwen Code rewrite in `.qwen/settings.json`?
+- How much of Qwen Code's 4096 failure is always-on context vs tool schema/core prompt?
+- Can Pi perform reliable edit + test loops at 4096?
+- What is the minimum practical Qwen Code context on M1/8 GB?
+- What extra swap cost comes from 8192 context?
+- How much can Pi agentic mode close the strict 30.00 -> recovered 82.86 gap?
 
 ## Continuation rule
 
