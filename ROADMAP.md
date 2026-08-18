@@ -46,8 +46,10 @@
 - [x] Add Ollama/Qwen to Pi non-destructively while preserving OpenAI/Codex setup
 - [x] Run Pi read-only smoke at 4096 with only `read` exposed — PASS, returned `# LOOM`, working tree unchanged
 - [x] Establish first measured harness-overhead result: Pi minimal harness fits 4096 where Qwen Code normal config does not
-- [ ] Ingest Qwen Code + Pi smoke summaries and compare memory/swap/runtime/tool metadata
-- [ ] Diagnose Qwen Code smoke working-tree status delta
+- [x] Ingest Qwen Code + Pi smoke summaries and compare memory/swap/runtime/tool metadata
+- [x] Record `research/agents/harness-comparison-001.md`
+- [x] Harden Qwen Code smoke runner to detect semantic API errors and capture `.qwen/settings.json` diffs
+- [ ] Inspect exact local `git diff -- .qwen/settings.json` from first Qwen Code run
 - [ ] Run Pi targeted edit + test smoke at context 4096
 - [ ] Run Qwen Code safe-mode 4096 diagnostic
 - [ ] Measure Qwen Code context scaling to 8192 only as a separate experiment if still useful
