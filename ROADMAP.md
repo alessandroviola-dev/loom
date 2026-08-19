@@ -38,27 +38,26 @@
 - [x] 8B Q3_K_M Capability 001 VALID FAIL at context 4096 / forced `-ngl -1`: memory free 1%; guardrail triggered
 - [x] Resolve Q2 harness chronology: 001/002 invalid, 003 recovered Stage A PASS
 - [x] 8B Q2 Stage B 001 FULL_PASS: pp512 103.00 t/s ±0.67; tg128 13.72 t/s ±0.34; peak RSS 2461.17 MB; peak swap 1990.38 MB; minimum free memory 8%
-- [x] Freeze `research/runtime/llama-cpp-8b-q2-technical-pass.md`
-- [x] Technical conclusion: Qwen3 8B Q2_K is runnable at context 4096 under LOOM safety guardrails
-- [x] Server Smoke 001 FULL_PASS: readiness 5.684 s; `/v1/chat/completions` returned `OK`; peak RSS 1729.33 MB; peak swap 1855.12 MB; minimum free memory 6%
-- [x] Run frozen Coding Benchmark 01 v1.0.1 same-runtime Qwen3 8B Q2 vs Qwen3 4B Q4
-- [x] Quality Compare 001 primary result: 8B Q2 delivery 0/100 vs 4B Q4 34.29/100; delta -34.29; relation `4B_HIGHER`; both profiles COMPLETE
-- [x] Inspect persisted per-task failure classes without rerunning inference
-- [x] Freeze diagnostic: all 8B requests HTTP 200 / EOS / valid JSON, but Q2 repeatedly treated prompt placeholder `filename` as a literal key; T05 generated code under `filename/value`; no transport/resource defect identified
-- [x] Conclusion: tested Q2 8B profile is technically runnable but not a practical upgrade for this structured coding workload
-- [x] Preregister and run Q3 Auto-Fit Server Smoke 001
-- [x] Q3 Auto-Fit Server Smoke 001 VALID FAIL: model SHA PASS; 3.841 GiB; peak RSS 2121.86 MB; peak swap 2263.31 MB; minimum free memory 4%; 5% guardrail triggered
-- [x] Inspect saved Q3 auto-fit readiness, memory timeline and server stderr without rerunning inference
-- [x] Diagnostic: pinned llama-server auto parallelism resolves to 4; failed run initialized `n_slots=4`, `n_ctx_slot=4096`, `kv_unified=true`, then reached `model loaded`; guardrail had already fired at 4% free
-- [x] Freeze `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001-diagnostic.md`
-- [x] Preregister one-variable Q3 rescue: explicit `-np 1`, all other Q3 auto-fit settings and guardrails unchanged
-- [x] Add `research/runtime/llama-cpp-8b-q3-autofit-np1-server-smoke-001-plan.md`
-- [x] Add `scripts/llama_cpp_8b_q3_autofit_np1_server_smoke.py`
-- [ ] Run Q3 Auto-Fit NP1 Server Smoke 001 and require `n_slots=1` evidence
-- [ ] If NP1 FULL_PASS, freeze actual telemetry then compare Q3 vs 4B Q4 on Coding Benchmark 01 with explicit `-np 1` for both profiles
-- [ ] If NP1 still memory FAIL, preregister Q3 KV-cache Q8_0 as the next single-variable llama.cpp rescue or continue to Direct MLX
+- [x] Q2 llama-server smoke FULL_PASS: readiness 5.684 s; API returned `OK`; minimum free memory 6%
+- [x] Run frozen Coding Benchmark 01 same-runtime Qwen3 8B Q2 vs Qwen3 4B Q4
+- [x] Quality Compare 001: 8B Q2 delivery 0/100 vs 4B Q4 34.29/100; relation `4B_HIGHER`
+- [x] Diagnose Q2 failures: HTTP/API/JSON healthy, repeated structured-instruction/delivery failure; Q2 profile not a practical upgrade
+- [x] Q3 Auto-Fit Server Smoke 001 VALID FAIL: minimum free memory 4%
+- [x] Diagnose default server: auto parallelism resolved to `n_slots=4`, `n_ctx_slot=4096`, `kv_unified=true`
+- [x] Preregister and run Q3 Auto-Fit NP1 Server Smoke 001
+- [x] Q3 NP1 evidence PASS: `n_slots=1`, `n_ctx_slot=4096`, `kv_unified=false`
+- [x] Q3 NP1 still VALID FAIL: peak RSS 2100.44 MB; peak swap 2295.94 MB; minimum free memory 4%; parallelism reduction insufficient
+- [x] Record `research/runtime/llama-cpp-8b-q3-autofit-np1-server-smoke-001.md`
+- [x] Verify pinned llama.cpp KV flags: `-ctk/--cache-type-k`, `-ctv/--cache-type-v`; Q8_0 supported; default main K/V cache F16/F16
+- [x] Preregister next one-variable rescue: keep NP1/context/fit fixed, change only KV F16/F16 -> Q8_0/Q8_0
+- [x] Add `research/runtime/llama-cpp-8b-q3-autofit-np1-q8-server-smoke-001-plan.md`
+- [x] Add `scripts/llama_cpp_8b_q3_autofit_np1_q8_server_smoke.py`
+- [ ] Run Q3 Auto-Fit NP1 Q8 KV Server Smoke 001
+- [ ] If Q8 KV FULL_PASS, freeze telemetry then compare Q3 vs 4B Q4 on Coding Benchmark 01 under controlled single-slot settings before Pi
+- [ ] If Q8 KV still memory FAIL, move main branch to Direct MLX rather than stacking multiple llama.cpp rescue changes; consider more aggressive KV only as a separately justified later experiment
 - [ ] Do not relax Q2 benchmark delivery rules post hoc
-- [ ] Do not test ~9B until the 8B quality/usefulness frontier is characterized
+- [ ] Do not lower the 5% guardrail or reduce context inside an already-failed condition
+- [ ] Do not test ~9B until the useful 8B frontier is characterized
 
 ## Phase 5 — Direct MLX
 - [ ] Set up direct MLX environment
