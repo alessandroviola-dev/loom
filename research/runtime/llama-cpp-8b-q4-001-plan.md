@@ -1,7 +1,7 @@
 # LOOM — llama.cpp 8B Q4 Capability 001 Plan
 
 Date: 2026-08-19
-Status: **PREREGISTERED — DISK PREFLIGHT REQUIRED BEFORE RUN**
+Status: **PREREGISTERED — DISK PREFLIGHT PASS / RUNNER READY**
 
 ## Research question
 
@@ -63,6 +63,27 @@ The runner independently records disk free before and after the experiment.
 For a fresh 8B download, require **at least 12 GiB free** before starting. This leaves room for the approximately 4.68 GiB model, temporary/resumable download state, swap growth and normal macOS operation.
 
 Do not silently delete the verified 4B model or prior results to satisfy this guard.
+
+### Disk preflight — PASS
+
+Observed on the reference Mac before the 8B run:
+
+```text
+Filesystem        Size    Used   Avail Capacity  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    56Gi    18%   /
+
+2.3G  results-local/models
+415M  results-local/llama-cpp
+```
+
+Classification:
+- free disk: **56 GiB**
+- required minimum: **12 GiB**
+- model storage currently: **2.3 GiB**
+- llama.cpp source/build/results currently: **415 MiB**
+- storage gate: **PASS**
+
+No cleanup is required before Capability 001.
 
 ## Stage A — context-4096 launch smoke
 
@@ -140,6 +161,13 @@ This still proves basic 8B launchability but not useful benchmark stability.
 - or a memory guardrail is breached during Stage A.
 
 No same-run rescue by reducing context, quantization or GPU layers is permitted. Any fallback is a separately preregistered condition.
+
+## Runner
+
+Canonical runner:
+- `scripts/llama_cpp_8b_q4.py`
+
+The runner preserves the preregistered staged sequence, model hash, context, offload request, disk gate and memory guardrails. It also records disk free after the run.
 
 ## Non-claims
 
