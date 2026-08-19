@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — llama.cpp/Metal validated. Qwen3 8B Q2 is technically runnable/API-servable but loses the frozen structured coding benchmark to 4B Q4. Qwen3 8B Q3_K_M has a technical/API FULL_PASS at context 4096 using NP1 + Q8_0 K/V KV cache. Coding Quality Compare 002 remains the active quality gate; its first invocation was INVALID_HARNESS before any model launch and the runner has been corrected without changing the preregistered experiment.
-Checkpoint: `LLAMA_CPP_CODING_QUALITY_COMPARE_002_READY`
+Status: ACTIVE — llama.cpp/Metal validated. Qwen3 8B Q2 is technically runnable/API-servable but loses the frozen structured coding benchmark to 4B Q4. Qwen3 8B Q3_K_M has an API-smoke FULL_PASS at context 4096 using NP1 + Q8_0 K/V KV cache, but Coding Quality Compare 002 hit the frozen resource guardrail during T01. The comparison is PARTIAL and does not establish a valid quality ordering.
+Checkpoint: `LLAMA_CPP_CODING_QUALITY_COMPARE_002_RESOURCE_DIAGNOSTIC`
 
 ## Mission
 
@@ -21,12 +21,12 @@ Reference stack:
 
 ## Production Pi constraint
 
-Production Pi contains real auth, sessions and customizations. LOOM must never reset/replace production Pi configuration. Controlled experiments use isolated/run-local configuration where required. Do not expose a new llama.cpp profile to Pi until it passes technical/API and frozen quality gates.
+Production Pi contains real auth, sessions and customizations. LOOM must never reset/replace production Pi configuration. Controlled experiments use isolated/run-local configuration where required. Do not expose a new llama.cpp profile to Pi until it passes technical/API, workload-safety and frozen quality gates.
 
 ## Storage hygiene
 
 Reuse verified artifacts and never silently delete models or canonical results. Free disk is a standard metric.
-Latest confirmed after Q3 NP1 Q8 smoke: **43.597 GiB free**. Verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 artifacts are retained. No new model download is required for Compare 002.
+Latest confirmed after Coding Quality Compare 002: **43.643 GiB free**. Verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 artifacts are retained.
 
 # Frozen baseline / prior results
 
@@ -110,21 +110,16 @@ Auto-Fit NP1 Q8 KV Server Smoke 001 — FULL_PASS, run `20260819-113658`:
 Canonical record:
 `research/runtime/llama-cpp-8b-q3-autofit-np1-q8-server-smoke-001.md`
 
-The safety margin is narrow: 6% minimum free, one point above the 5% guardrail. Full workloads must retain the same guardrails.
+Important boundary: this established API-smoke viability only. Its one-point margin above the 5% guardrail required full-workload validation before Pi.
 
-# Current checkpoint — Coding Quality Compare 002
+# Coding Quality Compare 002 — PARTIAL / RESOURCE FAIL
 
 Plan: `research/runtime/llama-cpp-coding-quality-compare-002-plan.md`
+Result: `research/runtime/llama-cpp-coding-quality-compare-002.md`
 Runner: `scripts/llama_cpp_coding_quality_compare_002.py`
+Run: `20260819-114848`
 
-Research question:
-> Does Qwen3-8B Q3_K_M deliver higher structured coding quality than Qwen3-4B Q4_K_M when both run under the same pinned llama-server policy and the frozen Coding Benchmark 01 v1.0.1?
-
-Profiles:
-1. Qwen3-8B Q3_K_M
-2. Qwen3-4B Q4_K_M
-
-Common server policy for both:
+Common runtime for both profiles:
 ```text
 -c 4096
 -np 1
@@ -137,7 +132,7 @@ Common server policy for both:
 no forced -ngl -1
 ```
 
-Common benchmark/request policy:
+Common benchmark discipline:
 - Coding Benchmark 01 v1.0.1, T01–T06
 - `POST /completion`
 - `n_predict=2048`
@@ -146,54 +141,70 @@ Common benchmark/request policy:
 - `cache_prompt=false`
 - `json_schema={}`
 - one attempt per task
-- no retries, test feedback, salvage or prompt changes
-- delivery-adjusted score is primary
+- no retries, feedback, salvage or prompt changes
+- delivery-adjusted score primary
 
-## Invalid harness attempt 001
+Observed:
 
-First invocation of Compare 002 stopped immediately with:
-```text
-Template transform: FAIL — expected one occurrence, found 0
-```
+### Qwen3 8B Q3_K_M
+- server ready in 7.360 s
+- T01 started
+- T01 `guardrail abort`
+- profile artifact 15.0/100
+- delivery-adjusted 0/100
+- classification `PARTIAL_OR_RESOURCE_FAIL`
 
-Classification: **INVALID_HARNESS**.
+### Qwen3 4B Q4_K_M
+- server ready in 1.060 s
+- T01 written
+- T02 written
+- T03 failed delivery
+- T04 failed delivery
+- T05 written
+- T06 failed delivery
+- artifact 36.43/100
+- delivery-adjusted 25.72/100
+- classification `COMPLETE`
 
-No llama-server was launched, no Q3/4B model was loaded and no benchmark task ran. Therefore this attempt produced no scientific data and does not consume the comparison.
+Top-level runner printed `4B_HIGHER`, delta -25.72, but overall classification is `PARTIAL`.
 
-Root cause: the wrapper used a template needle with literal escaped newline sequences (`\\n`) rather than actual template newlines; another later needle had the same fragility.
+Canonical interpretation:
+> **Do not use the printed `4B_HIGHER` as a quality conclusion.** The preregistered decision rule requires both profiles to complete. Q3 suffered a resource abort during the first real coding request. This demonstrates that the current NP1 + Q8_0 KV Q3 profile is API-smoke viable but has not demonstrated workload stability at context 4096 under the frozen LOOM memory guardrail.
 
-Record:
-`research/runtime/llama-cpp-coding-quality-compare-002-invalid-harness-001.md`
+Do not expose Q3 to Pi from this result.
 
-Correction commit: Compare 002 transformer now uses smaller unique replacements plus exact profile/server blocks. Pre-execution invariants still require Q3, NP1, Q8_0 K/V, auto-fit and absence of forced `-ngl -1`. No scientific condition changed.
+# Current checkpoint — Compare 002 resource diagnostic
+
+Checkpoint: `LLAMA_CPP_CODING_QUALITY_COMPARE_002_RESOURCE_DIAGNOSTIC`
+Inspector: `scripts/inspect_llama_cpp_quality_compare_002.py`
+Existing local run:
+`results-local/llama-cpp/coding-quality-compare-002/20260819-114848`
+
+The inspector is read-only and must recover:
+- exact Q3 `guardrail_abort_reason`;
+- Q3 peak RSS / peak swap / minimum free-memory percentage;
+- final memory samples around T01;
+- whether T01 produced an HTTP/API response before the abort;
+- relevant server/KV/context/request log lines.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/llama_cpp_coding_quality_compare_002.py
-python3 scripts/llama_cpp_coding_quality_compare_002.py
+python3 -m py_compile scripts/inspect_llama_cpp_quality_compare_002.py
+python3 scripts/inspect_llama_cpp_quality_compare_002.py \
+  results-local/llama-cpp/coding-quality-compare-002/20260819-114848
 ```
 
-Preserve output from `LOOM llama.cpp Coding Quality Compare 002` through `Summary:`.
+No model is launched by this inspector.
 
-## Decision after Compare 002
+## Decision after diagnostic
 
-If both profiles are `COMPLETE` and Q3 delivery-adjusted score is higher:
-1. freeze quality result;
-2. Q3 becomes the leading llama.cpp candidate;
-3. preregister isolated Pi integration / Pi Agentic validation;
-4. production Pi config remains untouched.
+- If the abort is a real free-memory/swap breach caused during T01 generation, freeze Q3 as **smoke-pass / workload-fail** for this exact context/runtime. Do not infer coding quality from Compare 002.
+- Only after identifying the mechanism decide whether one separately preregistered memory intervention is scientifically justified or whether the main branch should move to Phase 5 Direct MLX.
+- Do not lower the 5% guardrail, reduce context inside this failed condition, relax delivery rules, or test ~9B before the 8B frontier is resolved.
 
-If both are `COMPLETE` and 4B is higher or tied:
-1. do not expose Q3 to Pi as an assumed upgrade;
-2. close the current llama.cpp 8B frontier;
-3. move the main branch to Phase 5 Direct MLX.
+## Continuation rule
 
-If comparison is `PARTIAL` because of resource or harness failure:
-1. inspect persisted artifacts;
-2. identify the exact mechanism before changing any parameter;
-3. do not infer a clean quality ordering.
-
-Do not relax benchmark delivery rules, lower the 5% guardrail, reduce context inside a failed condition, or test ~9B before this gate is resolved.
+Before a new experiment, read this file. After every meaningful experiment/decision/result, update this file before moving to the next checkpoint.
