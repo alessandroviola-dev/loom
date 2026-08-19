@@ -88,45 +88,53 @@ Frozen subject: Qwen3-8B 3-bit, 36 layers, vocab 151936, untied embedding/head, 
 - [x] Harness-only pipefix blob `8b2ce5902d3ed45c9120273fab415fe67a026d4a`
 - [x] Valid run `20260819-173553`
 - [x] `ONE_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`
-- [x] Prompt logits max/mean diff 0.0 / 0.0
-- [x] Generated token equality true; token `[[1]]`
-- [x] Resident/streamed KV after prompt 37,748,736 B; offsets all 4
-- [x] Feed generated token through same cache
-- [x] Resident/streamed KV after feedback 37,748,736 B; offsets all 5
-- [x] Post-token logits max/mean diff 0.0 / 0.0
-- [x] Post-token top-1 equality true
-- [x] Resident model delta 3,583,928,320 B
+- [x] Prompt and post-token logits exact parity
+- [x] Cache offsets 4 -> 5 and total KV 37,748,736 B
+- [x] Resident model 3,583,928,320 B vs max streamed stage 272,269,312 B
+- [x] Establish persistent-KV one-token autoregressive reuse
+
+### Stretch 009 — Four-token KV autoregressive parity — COMPLETE PASS
+- [x] Valid run `20260819-183143`
+- [x] `FOUR_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`
+- [x] Prompt full-logit parity max/mean 0.0 / 0.0
+- [x] Four feedback steps each max/mean 0.0 / 0.0
+- [x] Top-1 equality at every step
+- [x] Resident/streamed generated sequence equal: `[1,374,264,4647]`
+- [x] Cache offsets advance 4 -> 5 -> 6 -> 7 -> 8
+- [x] Final resident/streamed KV 37,748,736 / 37,748,736 B
+- [x] Resident full model 3,583,928,320 B
 - [x] Max streamed raw-weight stage 272,269,312 B
 - [x] Ratio 13.16317396798652x
-- [x] Whole-run min free 26%; peak swap 1583.75 MB
-- [x] Freeze `research/stretch/one-token-kv-autoregressive-parity-008-result.md`
-- [x] Establish real persistent-KV autoregressive reuse in streamed path
+- [x] Mean 36-layer materialization 0.188658 s/token
+- [x] Mean 36-layer forward 0.192317 s/token
+- [x] Whole-run min free 21%; streamed-token bucket min free 64%
+- [x] Freeze `research/stretch/four-token-kv-autoregressive-parity-009-result.md`
 
-### Stretch 009 — Four-token KV autoregressive parity — CURRENT / READY
-- [x] Freeze single scientific change: continuation depth 1 -> 4 tokens
-- [x] Keep prompt `[[1,42,2048,151935]]`
-- [x] Keep ordinary BF16 `KVCache`
-- [x] Keep official resident control and phase-streamed raw-weight path
-- [x] Keep argmax only; no tokenizer/sampling/cache quantization/prefetch
-- [x] Expected offsets 4 -> 5 -> 6 -> 7 -> 8
-- [x] Expected KV allocation remains ~37,748,736 B below 256-position boundary
-- [x] Require numerical parity and top-1 equality at every step
-- [x] Require identical four-token generated sequence
-- [x] Record per-token layer materialization/forward wall
-- [x] Use `child-state.json` + `child-final.json`; stdout/stderr file-backed
-- [x] Preregister `research/stretch/four-token-kv-autoregressive-parity-009-plan.md`
-- [x] Add `scripts/stretch_four_token_kv_autoregressive_parity_009.py`
-- [x] Freeze runner blob `3e0780850bb65f9dccf07946f89597fa2e4d17e1`
-- [ ] Run Stretch 009
+### Stretch 010 — Sixteen-token autoregressive stability — CURRENT / READY
+- [x] Single scientific change: continuation depth 4 -> 16 tokens
+- [x] Preserve exact Stretch 009 source blob `3e0780850bb65f9dccf07946f89597fa2e4d17e1`
+- [x] Preserve prompt, deterministic argmax, ordinary BF16 KVCache, resident control, streamed weight policy and guardrails
+- [x] Expected final cache offset 20
+- [x] Expected KV allocation remains 37,748,736 B below 256-position boundary
+- [x] Require prompt + 16 feedback full-logit parity and top-1 equality
+- [x] Require identical 16-token sequence
+- [x] Preserve weight-stage gates on all passes
+- [x] Expose existing full streamed pass wall per token
+- [x] Summarize mean/median full-pass latency and logical streamed tok/s
+- [x] Explicitly distinguish logical tok/s from physical SSD throughput
+- [x] Preregister `research/stretch/sixteen-token-autoregressive-stability-010-plan.md`
+- [x] Add frozen-transform runner `scripts/stretch_sixteen_token_autoregressive_stability_010.py`
+- [x] Runner blob `ff3dc83abc6388113fca15594eef6b3ec00ebe50`
+- [ ] Run Stretch 010
 - [ ] Freeze result
 
-### Stretch 010+ — usable streamed generation / optimization
-- [ ] Decide next single factor after Stretch 009 result
-- [ ] Candidate: tokenizer/text integration OR longer deterministic loop
-- [ ] Measure bytes/token, RAM, swap, wall time and tok/s
+### Stretch 011+ — usable streamed generation / optimization
+- [ ] After Stretch 010, likely add tokenizer/text integration as one isolated factor
+- [ ] Test 256-position cache-capacity boundary separately
+- [ ] Measure/characterize physical storage I/O separately from page-cache-assisted logical reads
+- [ ] Freeze unoptimized end-to-end logical tok/s baseline before optimization
 - [ ] Test prefetch/double buffering separately
 - [ ] Test KV quantization separately
-- [ ] Test 256-position cache-capacity boundary separately
 - [ ] Only later study layer skipping/early exit or MoE routing
 
 ## Phase 8 — Synthesis
