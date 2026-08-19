@@ -51,8 +51,10 @@
 - [x] Preregister Coding Quality Compare 002: Qwen3 8B Q3_K_M vs Qwen3 4B Q4_K_M
 - [x] Freeze common runtime for both Compare 002 profiles: context 4096, `-np 1`, FA auto, auto-fit target 1024, Q8_0 K/V KV cache, no forced `-ngl -1`
 - [x] Add `research/runtime/llama-cpp-coding-quality-compare-002-plan.md`
-- [x] Add `scripts/llama_cpp_coding_quality_compare_002.py`
-- [ ] Run Coding Quality Compare 002
+- [x] First Compare 002 invocation stopped before model launch: INVALID_HARNESS due fragile escaped-newline template needle
+- [x] Record `research/runtime/llama-cpp-coding-quality-compare-002-invalid-harness-001.md`
+- [x] Fix Compare 002 transformer using smaller unique replacements; preserve all preregistered runtime/benchmark invariants
+- [ ] Run corrected Coding Quality Compare 002
 - [ ] If Q3 quality is higher and both profiles COMPLETE, freeze result then preregister isolated Pi integration/agentic validation
 - [ ] If 4B is higher/tied, close the current llama.cpp 8B frontier and move the main branch to Direct MLX
 - [ ] If comparison is partial/resource-failed, diagnose persisted artifacts before changing any parameter
