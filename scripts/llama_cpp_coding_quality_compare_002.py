@@ -69,10 +69,27 @@ NEW_SERVER_CMD = '''    server_cmd = [
         "--offline",
     ]'''
 
+SERVER_SETTINGS_INSERT = '''        "context": CTX,
+        "server_settings": {
+            "parallel": 1,
+            "flash_attention": "auto",
+            "fit": "on",
+            "fit_target_mib": 1024,
+            "fit_ctx": CTX,
+            "cache_type_k": "q8_0",
+            "cache_type_v": "q8_0",
+            "forced_gpu_layers": None,
+        },'''
+
 REPLACEMENTS = [
+    ('"""LOOM llama.cpp Coding Quality Compare 001.', '"""LOOM llama.cpp Coding Quality Compare 002.'),
     (
-        '"""LOOM llama.cpp Coding Quality Compare 001.\\n\\nRuns the frozen LOOM Coding Benchmark 01 v1.0.1 in single-shot mode against\\nQwen3-8B Q2_K and Qwen3-4B Q4_K_M through the same pinned llama-server raw\\n/completion API. No task retries, test feedback, salvage, or prompt changes.\\n"""',
-        '"""LOOM llama.cpp Coding Quality Compare 002.\\n\\nRuns the frozen LOOM Coding Benchmark 01 v1.0.1 in single-shot mode against\\nQwen3-8B Q3_K_M and Qwen3-4B Q4_K_M through the same pinned llama-server raw\\n/completion API with identical NP1/Q8-KV auto-fit runtime settings.\\n"""',
+        'Qwen3-8B Q2_K and Qwen3-4B Q4_K_M through the same pinned llama-server raw',
+        'Qwen3-8B Q3_K_M and Qwen3-4B Q4_K_M through the same pinned llama-server raw',
+    ),
+    (
+        '/completion API. No task retries, test feedback, salvage, or prompt changes.',
+        '/completion API with identical NP1/Q8-KV auto-fit runtime settings. No task retries, test feedback, salvage, or prompt changes.',
     ),
     ('PORT = 18082', 'PORT = 18086'),
     (OLD_Q2_PROFILE, NEW_Q3_PROFILE),
@@ -82,10 +99,7 @@ REPLACEMENTS = [
     ('print("LOOM llama.cpp Coding Quality Compare 001")', 'print("LOOM llama.cpp Coding Quality Compare 002")'),
     ('print("Profiles: 8B Q2 first, then 4B Q4")', 'print("Profiles: 8B Q3 first, then 4B Q4; common runtime NP1 + Q8_0 KV")'),
     ('"experiment": "llama.cpp Coding Quality Compare 001",', '"experiment": "llama.cpp Coding Quality Compare 002",'),
-    (
-        '"context": CTX,\n        "profile_order": [x["key"] for x in PROFILES],',
-        '"context": CTX,\n        "server_settings": {\n            "parallel": 1,\n            "flash_attention": "auto",\n            "fit": "on",\n            "fit_target_mib": 1024,\n            "fit_ctx": CTX,\n            "cache_type_k": "q8_0",\n            "cache_type_v": "q8_0",\n            "forced_gpu_layers": None,\n        },\n        "profile_order": [x["key"] for x in PROFILES],',
-    ),
+    ('        "context": CTX,', SERVER_SETTINGS_INSERT),
     ('score_8 = by_key.get("8b-q2", {}).get("delivery_adjusted_score")', 'score_8 = by_key.get("8b-q3", {}).get("delivery_adjusted_score")'),
     ('print(f"8B Q2 delivery-adjusted: {score_8}/100")', 'print(f"8B Q3 delivery-adjusted: {score_8}/100")'),
 ]
@@ -126,8 +140,6 @@ def main() -> int:
             return 2
         source = source.replace(old, new)
 
-    # Pre-execution invariants: the generated implementation must carry the
-    # exact preregistered common server policy and must no longer force -ngl.
     required = [
         '"-np", "1"',
         '"--fit", "on"',
@@ -136,6 +148,8 @@ def main() -> int:
         '"-ctk", "q8_0"',
         '"-ctv", "q8_0"',
         '"key": "8b-q3"',
+        '"cache_type_k": "q8_0"',
+        '"cache_type_v": "q8_0"',
     ]
     missing = [needle for needle in required if needle not in source]
     if missing or '"-ngl", "-1"' in source:
