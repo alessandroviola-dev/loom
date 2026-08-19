@@ -75,19 +75,34 @@ Primary subject: `qwen3.5:4b-mlx` via Ollama.
 - [x] Freeze Amplifier 002 wrapper blob `df332568820e28c90baa5247df27e92cba43c0d6`
 - [x] First launch (`20260819-143838`) returns `HOST_STATE_NOT_READY` at 67% free; 0 model calls
 - [x] Valid launch (`20260819-144256`) passes host gate at 71%, 72%, 72%; swap 1699.0 MB
-- [x] T01 initial completes and solves without repair
-- [x] T02 initial completes and triggers repair
-- [x] Call-isolated run still terminates `PARTIAL_RESOURCE_FAIL` during T02 repair path
-- [x] Freeze partial record `research/amplify/capability-amplifier-002-partial-20260819-144256.md`
-- [x] Do not assign aggregate quality score to partial 002 run
-- [ ] Run read-only diagnostic on Amplifier 002 persisted telemetry
-- [ ] Recover exact failure reason, min free, peak swap and all isolation samples
-- [ ] Verify actual unload confirmation before/after each completed call
-- [ ] Determine free/swap state immediately before T02 repair
-- [ ] If unload succeeded but memory did not recover enough, preregister unload + recovery-gated profile as a new factor
-- [ ] If memory recovered materially and cold repair alone drives breach, redesign repair footprint rather than residency timing
-- [ ] If isolation itself failed, fix only demonstrated isolation harness issue
-- [ ] Do not rerun unchanged Amplifier 002 or weaken guardrail
+- [x] T01 initial completes 6/6; T02 initial completes 3/7 and triggers repair
+- [x] Run terminates `PARTIAL_RESOURCE_FAIL` during T02 repair
+- [x] Run read-only diagnostic
+- [x] Recover exact failure: memory free 4% <5%; peak swap 2611.50 MB
+- [x] Confirm T01/T02 initial are cold loads (~4.153 s / ~3.153 s)
+- [x] Confirm post-call model unload via `ollama ps` boundary and exit code 0
+- [x] Confirm T02 repair starts from recovered 68% free / 2346.94 MB swap
+- [x] Confirm repair trajectory 68% -> 63% -> 23% -> 16% -> 4%
+- [x] Confirm post-abort unload returns 66% free / 1776.06 MB swap
+- [x] Freeze `research/amplify/capability-amplifier-002-resource-diagnostic.md`
+- [x] Conclude call isolation works but is insufficient; do not claim specific allocator/KV cause
+- [x] Do not add recovery gate as leading fix because repair starts at 68% while successful T02 initial starts at 67%
+
+### Amplifier 003 — repair context 3072
+- [x] Select repair-call context allocation as next one-factor memory-aware orchestration test
+- [x] Verify from official Ollama behavior that API `num_ctx` controls request context and larger context increases memory demand
+- [x] Preregister `research/amplify/capability-amplifier-003-repair-context-3072-plan.md`
+- [x] Freeze initial calls at `num_ctx=4096`
+- [x] Freeze repair calls at `num_ctx=3072`
+- [x] Preserve call isolation, prompts, feedback, validation, max-one-repair, sampler, 2048 max-generation request, scorer and guardrails
+- [x] Freeze 3072 as a single 25% context reduction; no automatic 2048 ladder
+- [x] Add `scripts/capability_amplifier_003_repair_context_3072.py`
+- [x] Freeze runner blob `c2bcc8f126eb5b599645ba12d1fd08a348e2b443`
+- [x] Freeze provenance checks against Amplifier 001 blob `9f472c...` and Amplifier 002 wrapper blob `df3325...`
+- [ ] Run Capability Amplifier 003 — Repair Context 3072
+- [ ] If COMPLETE, freeze resource/quality result and apply prospective quality gates
+- [ ] If PARTIAL_RESOURCE_FAIL at 3072, do not automatically lower to 2048; redesign repair architecture
+- [ ] If harness/isolation/telemetry defect, fix only demonstrated defect
 
 ### Later amplification work
 - [ ] Once a COMPLETE amplification mechanism exists, compare quality/resource/efficiency against single-shot 30.00/3-of-6 and Pi 77.15/6-of-6
