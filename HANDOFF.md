@@ -3,7 +3,7 @@
 Last updated: 2026-08-19
 Status: ACTIVE — LOOM now runs two coordinated tracks on the Apple M1 / 8 GB reference system: **Amplify** (small model, better system capability) and **Stretch** (memory hierarchy / out-of-core execution).
 
-Current checkpoint: `STRETCH_002_SINGLE_LAYER_MLX_READY`
+Current checkpoint: `STRETCH_003_TWO_LAYER_BOUNDED_RESIDENCY_READY`
 
 ## Mission
 
@@ -66,8 +66,7 @@ Goal: improve end-to-end capability of a small model through validation/repair/t
 
 ## Amplifier 001
 
-Warm-resident validator + max-one-repair.
-Run `20260819-142640`: T01 6/6; T02 initial 3/7; repair hits 4% free. `PARTIAL_RESOURCE_FAIL`. Warm residency lacks headroom; no leak claim.
+Warm-resident validator + max-one-repair. Run `20260819-142640`: T01 6/6; T02 initial 3/7; repair hits 4% free. `PARTIAL_RESOURCE_FAIL`. Warm residency lacks headroom; no leak claim.
 
 ## Amplifier 002
 
@@ -102,75 +101,86 @@ Runner: `scripts/stretch_layer_streaming_feasibility_001.py`
 Runner blob: `890444928abd6cc24e7194317c92b36b50fd994b`
 Canonical result: `research/stretch/layer-streaming-feasibility-001-result.md`
 
-First launch `20260819-153944`: `MODEL_NOT_FOUND` because default locator searched HF cache. No weight inspection; harness locator issue only. Correct verified model path: `results-local/mlx/models/Qwen3-8B-3bit`.
-
-Valid run `20260819-154335` using explicit path:
+Valid run `20260819-154335`:
 - classification `LAYER_ADDRESSABLE_IO_PASS`
-- `num_hidden_layers`: 36
-- safetensors shards: 1
-- tensors: 907
-- total tensor payload: 3,583,928,320 B (~3.338 GiB)
-- discovered layer IDs: exact 0..35
-- missing/unexpected: none
-- non-layer/shared payload: 544,546,816 B (~519.32 MiB)
-- every layer: exactly 84,427,264 B (~80.52 MiB)
-- transformer-layer payload total: 3,039,381,504 B (~2.831 GiB)
-
-Selective I/O probe, layer 18:
-- 25 tensors
-- expected/read bytes: 84,427,264 / 84,427,264
-- wall 0.069784 s
-- effective throughput 1153.794 MiB/s
-- SHA256 `2185c6f5cf1528ad8c0789426491e88ba6acc9ca36d11992a95742d4bd5f452d`
+- 36/36 layer IDs exact, no missing/unexpected
+- 907 tensors
+- total tensor payload 3,583,928,320 B (~3.338 GiB)
+- non-layer/shared 544,546,816 B (~519.32 MiB)
+- every transformer layer exactly 84,427,264 B (~80.52 MiB), 25 tensors
+- layer 18 selective I/O: exact 84,427,264 B read in 0.069784 s, 1153.794 MiB/s
 - system state 68% free / 850.5 MB swap -> 69% / 850.5 MB
-- disk unchanged 36.310 GiB.
+- disk unchanged.
 
-Canonical interpretation:
-> The 8B 3-bit artifact is cleanly layer-addressable and exact one-layer byte-range I/O works without reading/materializing the full model. This proves a prerequisite only, not end-to-end streamed inference.
+Interpretation: the artifact is cleanly layer-addressable and exact one-layer byte-range I/O works without full-model materialization. Do not infer future token throughput from the one-shot I/O measurement.
 
-Do not infer future token throughput directly from the one-shot 1153.794 MiB/s result; OS page cache, repeated reads and compute overlap can change effective behavior.
-
-## Stretch 002 — Single-Layer MLX Materialization + Eviction — READY
+## Stretch 002 — SINGLE_LAYER_MLX_EVICTION_PASS
 
 Plan: `research/stretch/single-layer-mlx-materialization-002-plan.md`
 Runner: `scripts/stretch_single_layer_mlx_materialization_002.py`
 Runner blob: `e7bd6bf4c61b44664c0c8421bf230b938509e4ef`
+Canonical result: `research/stretch/single-layer-mlx-materialization-002-result.md`
 
-Probe layer: 18; expected 25 tensors / 84,427,264 B.
+Run `20260819-155641`:
+- classification `SINGLE_LAYER_MLX_EVICTION_PASS`
+- version lock PASS: mlx 0.31.2 / mlx-lm 0.31.3 / transformers 5.12.1
+- layer 18 provenance PASS: 25 tensors / 84,427,264 B
+- host gate: 70%, 68%, 67% free; swap 850.5 MB
+- pre-eval MLX active delta: **0 B**
+- post-eval MLX active delta: **84,427,264 B** exactly
+- post-clear MLX active delta: **0 B**
+- post-clear MLX cache delta: **0 B**
+- `mx.eval` wall: 0.039611 s
+- minimum observed free memory: 67%
+- peak observed swap: 850.5 MB
+- peak child RSS: 40.25 MB
+- disk 36.319 -> 36.319 GiB.
 
-Method:
-- use frozen Direct MLX venv (mlx 0.31.2 / mlx-lm 0.31.3 / transformers 5.12.1)
-- no Qwen model construction, tokenizer, KV cache or token generation
-- `mx.load(model.safetensors)` then retain only layer-18 arrays
-- drop all other array references before evaluation
-- measure MLX active/cache/peak before eval
-- if pre-eval active delta >32 MiB, classify `EAGER_FULL_FILE_LOAD_SUSPECTED`
-- `mx.eval()` selected layer only
-- measure MLX/system memory
-- delete layer refs + `gc.collect()` + `mx.clear_cache()`
-- eviction pass requires final active/cache within +1 MiB of baseline
-- 3 launch samples >=60% free; runtime free<5% / swap>5600 guardrails.
+Canonical interpretation:
+> One raw transformer layer can remain lazy before evaluation, materialize independently to exactly its tensor payload, and be reclaimed back to baseline active/cache memory without constructing the Qwen model.
 
-Possible primary classifications:
-- `SINGLE_LAYER_MLX_EVICTION_PASS`
-- `SINGLE_LAYER_MLX_MATERIALIZATION_PASS_EVICTION_INCONCLUSIVE`
-- `EAGER_FULL_FILE_LOAD_SUSPECTED`
-- safety/harness classifications as defined in plan.
+This is a prerequisite only. No transformer forward computation, shared embeddings/norm, activations, residual stream, KV cache or generation was included.
 
-If eviction passes, next experiment should prove **repeated bounded residency across two sequential layers** before attempting a full streamed transformer forward.
+## Stretch 003 — Two-Layer Repeated Bounded Residency — READY
+
+Plan: `research/stretch/two-layer-bounded-residency-003-plan.md`
+Runner: `scripts/stretch_two_layer_bounded_residency_003.py`
+Runner blob: `5882b01c37616f668705713f46e5c30aa40c268a`
+
+Frozen provenance:
+- Stretch 002 source blob must equal `e7bd6bf4c61b44664c0c8421bf230b938509e4ef`.
+
+Probe:
+- layer 18 then layer 19
+- same MLX child process
+- each layer must be 25 tensors / 84,427,264 B
+- no Qwen model construction, tokenizer, KV cache or generation.
+
+Per cycle:
+1. `mx.load()` safetensors;
+2. retain only selected layer lazy arrays and delete full tensor dictionary;
+3. require pre-eval active delta <=32 MiB;
+4. `mx.eval()` selected layer;
+5. require materialized active delta within +/-1 MiB of 84,427,264 B;
+6. delete references + GC + `mx.clear_cache()`;
+7. require post-clear active/cache deltas <=1 MiB.
+
+Primary PASS: `TWO_LAYER_BOUNDED_RESIDENCY_PASS` only if both cycles satisfy all gates in the same process.
+
+A PASS would establish repeated bounded raw-weight residency, but still not actual streamed transformer inference.
 
 # Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/stretch_single_layer_mlx_materialization_002.py
-python3 scripts/stretch_single_layer_mlx_materialization_002.py
+python3 -m py_compile scripts/stretch_two_layer_bounded_residency_003.py
+python3 scripts/stretch_two_layer_bounded_residency_003.py
 ```
 
 No download and no full-model construction are expected.
 
-If `py_compile` or a child API preflight fails, treat it as harness/runtime compatibility only; do not reinterpret it as evidence against layer streaming.
+If py_compile/provenance/runtime preflight fails, classify it as harness/runtime compatibility only, not evidence against layer streaming.
 
 # Continuation rule
 
