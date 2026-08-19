@@ -1,156 +1,111 @@
 # LOOM Roadmap
 
-## Phase 0 — Project foundation
-- [x] Choose project name: LOOM
-- [x] Define research mission and handoff discipline
-- [x] Create private repository `Ilcoach/loom`
+## Phase 0 — Foundation
+- [x] Project name / mission / handoff discipline
+- [x] Private repository `Ilcoach/loom`
 
 ## Phase 1 — Baseline
-- [x] Validate canonical Ollama/MLX 4B baseline
-- [x] Weighted prompt throughput 186.46 t/s; generation 16.01 t/s
-- [x] Freeze Coding Baseline 001: artifact 40.71, strict/delivery-adjusted 30.00, delivery 3/6
+- [x] Canonical Ollama/MLX 4B baseline
+- [x] Coding Baseline 001: artifact 40.71, delivery-adjusted 30.00, delivery 3/6
 
 ## Phase 2 — Benchmark framework
-- [x] Freeze Coding Benchmark 01 v1.0.1
-- [ ] Define reasoning benchmark later
+- [x] Coding Benchmark 01 v1.0.1
+- [ ] Reasoning benchmark later
 
 ## Phase 3 — Local agent investigation
-- [x] Validate Pi 0.84.2 non-destructively
-- [x] Pi Agentic Coding Benchmark 001
-- [x] Establish same-4B agentic reference: artifact/delivery 77.15, strict 60.00, delivery 6/6
+- [x] Pi 0.84.2 validated non-destructively
+- [x] Pi Agentic Coding Benchmark 001: delivery-adjusted 77.15, delivery 6/6
 
-## Phase 4 — llama.cpp runtime frontier — CHARACTERIZED
-- [x] 4B Q4 control PASS: pp512 230.85 t/s, tg128 22.33 t/s
-- [x] 8B Q4/Q3 max-offload frontier characterized
-- [x] 8B Q2 technically runnable but poor structured coding delivery
-- [x] Q3 NP1 + Q8_0 KV API smoke PASS
-- [x] Q3 real Coding T01 RESOURCE FAIL at 4% free
-- [x] Preserve llama.cpp 4B as future Amplify capability/efficiency control
+## Phase 4 — llama.cpp frontier — CHARACTERIZED
+- [x] 4B Q4 control PASS: pp512 230.85 t/s, tg128 22.33 t/s, min free 22%
+- [x] 8B Q4/Q3/Q2 boundaries characterized
+- [x] Preserve llama.cpp 4B as alternate Amplify capability/efficiency profile
 
-## Phase 5 — Direct MLX 8B frontier — CHARACTERIZED / MAIN BRANCH CLOSED
-- [x] Direct MLX environment validated
-- [x] Qwen3-8B-3bit full session stable but not promoted on quality
-- [x] Qwen3-8B-4bit continuous profile resource boundary characterized
-- [x] Close 8B rescue ladder after preregistered attempts
-- [x] Preserve verified models/results
+## Phase 5 — Direct MLX 8B frontier — CHARACTERIZED
+- [x] 8B 3-bit full session stable; quality not promoted
+- [x] 8B 4-bit memory boundary characterized
+- [x] Preserve verified 3-bit/4-bit artifacts
 
-## Phase 6 — Capability Amplification — ACTIVE
+## Phase 6 — Amplify — ACTIVE / SECONDARY WHILE STRETCH CHECKPOINT RUNS
 
-Research question:
-**What is the greatest useful capability that can be produced by an 8 GB local system?**
+### Amplifier 001
+- [x] Warm-resident validation + max-one-repair
+- [x] `PARTIAL_RESOURCE_FAIL` during T02 repair
 
-Primary current subject: `qwen3.5:4b-mlx` via Ollama.
-Alternate preserved subject: Qwen3-4B Q4 via llama.cpp.
+### Amplifier 002
+- [x] Call isolation
+- [x] Isolation works; T02 repair still hits 4% free
 
-### Amplifier 001 — warm-resident
-- [x] Freeze exact baseline initial call + deterministic validation + max one repair
-- [x] Run `20260819-142640`
-- [x] T01 initial 6/6; T02 initial 3/7; repair triggered
-- [x] `PARTIAL_RESOURCE_FAIL`: free 4% <5%, peak swap 2500.88 MB
-- [x] Diagnose warm-resident profile as insufficient headroom
-- [x] Do not claim memory leak
+### Amplifier 003
+- [x] Repair context 3072
+- [x] Valid run still hits 4% free from 70%-free start
+- [x] Do not descend automatically to 2048
 
-### Amplifier 002 — call-isolated
-- [x] Preregister one-factor call-isolated profile
-- [x] Confirm unload between calls
-- [x] Valid run `20260819-144256`
-- [x] T02 repair starts at 68% free and still reaches 4%
-- [x] `PARTIAL_RESOURCE_FAIL`; peak swap 2611.50 MB
-- [x] Conclude call isolation works but is insufficient
-- [x] Do not add recovery gate as leading fix
-
-### Amplifier 003 — repair context 3072
-- [x] Preregister single 25% repair-context reduction
-- [x] Initial calls remain 4096; repair calls 3072
-- [x] Valid run `20260819-150342`
-- [x] Confirm repair `call_context=3072`
-- [x] Repair starts at 70% free / 2069.12 MB swap
-- [x] Repair trajectory 70 -> 65 -> 31 -> 7 -> 6 -> 4% free
-- [x] `PARTIAL_RESOURCE_FAIL`; peak swap 2318.12 MB
-- [x] Freeze `research/amplify/capability-amplifier-003-resource-diagnostic.md`
-- [x] Do not automatically descend to 2048
-- [x] Note successful initial calls still reach only 6% free
-
-### Repair-prompt anatomy
-- [x] Measure T02 initial prompt: 1638 B
-- [x] Measure T02 repair prompt: 4573 B
-- [x] Freeze ratio: 2.792x
-- [x] Measure validation feedback: 2762 B (~60.4% of repair prompt)
-- [x] Freeze `research/amplify/capability-amplifier-003-prompt-anatomy-t02.md`
-- [x] Conclude one bounded Compact Repair experiment is justified
+### Repair prompt anatomy
+- [x] Initial 1638 B
+- [x] Repair 4573 B (2.792x)
+- [x] Validation feedback 2762 B (~60.4%)
 
 ### Amplifier 004 — Compact Feedback — READY / QUEUED
-- [x] Preregister `research/amplify/capability-amplifier-004-compact-feedback-plan.md`
-- [x] Preserve initial context 4096 and repair context 3072
-- [x] Preserve task prompt + current candidate in repair
-- [x] Preserve isolation, validation, max one repair, scorer and guardrails
-- [x] Change only variable failure-detail serialization
-- [x] Freeze detail body budget at 768 UTF-8 bytes
-- [x] Preserve first feedback line + deterministic UTF-8-safe detail tail
-- [x] Add `scripts/capability_amplifier_004_compact_feedback.py`
-- [x] Freeze runner blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`
-- [ ] Run Amplifier 004 after current Stretch 001 checkpoint
-- [ ] If PARTIAL_RESOURCE_FAIL, stop prompt-budget/context rescue ladder on Ollama/MLX profile
-- [ ] If COMPLETE, freeze quality/resource/efficiency and apply prospective gates
-
-### Later Amplify work
-- [ ] Obtain first COMPLETE amplifier profile
-- [ ] Compare capability/resource/efficiency against single-shot and Pi references
-- [ ] Reassess llama.cpp 4B if Ollama/MLX 004 remains resource-bound
-- [ ] Later candidate factors: planner/verifier, tool loop, retrieval
-- [ ] Only later consider specialization / LoRA / SFT / distillation
+- [x] Preregister bounded 768-byte failure-detail serialization
+- [x] Runner blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`
+- [ ] Run after current Stretch checkpoint
+- [ ] If resource fail, stop prompt/context rescue ladder on Ollama/MLX 4B
+- [ ] If COMPLETE, freeze quality/resource/efficiency
 
 ## Phase 7 — Stretch / Memory Hierarchy — ACTIVE
 
-Research direction:
-**Can LOOM treat SSD + RAM as a model-memory hierarchy rather than requiring full weight residency?**
+Research question:
+**Can LOOM use SSD + RAM as an explicit model-memory hierarchy rather than requiring full weight residency?**
 
-Principle:
-- dense layer streaming = use all layers sequentially while keeping only a bounded subset resident;
-- layer skipping / early exit = separate later research problem, not assumed safe for standard dense checkpoints.
+### Stretch 001 — Dense Layer Streaming Feasibility — COMPLETE PASS
+- [x] Preregister header-only layer map + selective I/O
+- [x] First launch locator mismatch only; no scientific result
+- [x] Rerun using verified `results-local/mlx/models/Qwen3-8B-3bit`
+- [x] Classification `LAYER_ADDRESSABLE_IO_PASS`
+- [x] 36/36 layers discovered exactly; no missing/unexpected IDs
+- [x] 907 tensors; total payload 3,583,928,320 B
+- [x] Shared/non-layer payload 544,546,816 B (~519.32 MiB)
+- [x] Every layer exactly 84,427,264 B (~80.52 MiB)
+- [x] Probe layer 18: 25 tensors, exact 84,427,264 B read
+- [x] Probe wall 0.069784 s; 1153.794 MiB/s
+- [x] Pre/post system state 68%/850.5 MB -> 69%/850.5 MB
+- [x] Freeze `research/stretch/layer-streaming-feasibility-001-result.md`
+- [x] Do not interpret single selective-I/O throughput as future token throughput
 
-### Stretch 001 — Dense Layer Streaming Feasibility — CURRENT
-- [x] Select verified `mlx-community/Qwen3-8B-3bit` as preferred subject
-- [x] No new download authorized
-- [x] Preregister `research/stretch/layer-streaming-feasibility-001-plan.md`
-- [x] Add standard-library runner `scripts/stretch_layer_streaming_feasibility_001.py`
-- [x] Freeze runner blob `890444928abd6cc24e7194317c92b36b50fd994b`
-- [x] Stage A design: safetensors header-only layer map
-- [x] Stage A exact coverage gate against `num_hidden_layers`
-- [x] Stage A exact per-layer / shared byte accounting
-- [x] Stage B design: read only one middle layer's exact byte ranges
-- [x] Stage B bounded 4 MiB I/O chunks + SHA-256 fingerprint
-- [x] Record wall time / MiB/s / free memory / swap / disk
-- [x] No model launch, no MLX model construction, no cache mutation
-- [x] First launch `20260819-153944` returns `MODEL_NOT_FOUND` before inspecting weights
-- [x] Classify first launch as locator mismatch / no scientific Stretch result
-- [x] Recover verified Direct MLX artifact path: `results-local/mlx/models/Qwen3-8B-3bit`
-- [x] Freeze locator note `research/stretch/layer-streaming-feasibility-001-locator-note.md`
-- [x] Do not modify runner; use existing `--model-dir` override
-- [ ] Rerun same frozen Stretch 001 with explicit verified model path
-- [ ] Freeze exact layer layout and selective-I/O result
+### Stretch 002 — Single-Layer MLX Materialization + Eviction — CURRENT
+- [x] Preregister `research/stretch/single-layer-mlx-materialization-002-plan.md`
+- [x] Add `scripts/stretch_single_layer_mlx_materialization_002.py`
+- [x] Freeze runner blob `e7bd6bf4c61b44664c0c8421bf230b938509e4ef`
+- [x] Probe layer 18 / 25 tensors / 84,427,264 B
+- [x] No model construction, tokenizer, KV cache or generation
+- [x] Measure lazy `mx.load` state before selected-layer `mx.eval`
+- [x] Eager-load guard: pre-eval active delta <=32 MiB
+- [x] Measure MLX active/cache/peak after materialization
+- [x] Delete selected refs + GC + `mx.clear_cache()`
+- [x] Eviction gate: final active/cache <= baseline +1 MiB
+- [x] Host gate: 3 samples >=60% free; runtime free<5% / swap>5600 MB
+- [ ] Run Stretch 002
+- [ ] Freeze exact materialization and reclamation result
 
-### Stretch 002 — Single-layer MLX materialization + eviction — CONDITIONAL
-- [ ] Only preregister if Stretch 001 is `LAYER_ADDRESSABLE_IO_PASS`
-- [ ] Materialize one transformer layer only
-- [ ] Force MLX evaluation
-- [ ] Measure MLX active/cache memory + system free/swap
-- [ ] Release references and use version-safe GC/cache reclamation
-- [ ] Verify memory recovery
-- [ ] Do not run full generation yet
+### Stretch 003 — Repeated bounded residency — CONDITIONAL
+- [ ] Only preregister after Stretch 002 materialization/eviction result
+- [ ] Sequentially materialize/evaluate/evict two different layers
+- [ ] Demonstrate repeated bounded residency rather than one-off load
+- [ ] Still no full token generation
 
-### Stretch 003+ — later if prerequisites pass
-- [ ] Build streamed sequential forward prototype
-- [ ] Verify numerical/logit equivalence against resident control
-- [ ] Add prefetch / double-buffering
-- [ ] Measure SSD traffic per token and throughput
-- [ ] Explore cache/residency policy
-- [ ] Only later investigate dynamic layer selection / early exit / MoE routing
+### Stretch 004+ — later if prerequisites pass
+- [ ] Build streamed sequential transformer forward prototype
+- [ ] Compare against resident control for numerical/logit equivalence
+- [ ] Add prefetch/double buffering
+- [ ] Measure SSD bytes/token, RAM, swap, wall time and tok/s
+- [ ] Explore layer cache/residency policies
+- [ ] Only later study layer skipping/early exit or MoE routing
 
 ## Phase 8 — Synthesis
-- [ ] Build capability-vs-memory-vs-time frontier
+- [ ] Capability-vs-memory-vs-time frontier
 - [ ] Daily-use profile
 - [ ] Fast/efficient profile
 - [ ] Maximum-capability profile
-- [ ] Experimental large-model/streamed profile
+- [ ] Experimental streamed profile
 - [ ] Publish research findings when ready
