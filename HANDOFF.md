@@ -119,14 +119,6 @@ Records:
 - `research/runtime/llama-cpp-coding-quality-compare-001.md`
 - `research/runtime/llama-cpp-coding-quality-compare-001-diagnostic.md`
 
-Frozen comparison:
-- LOOM Coding Benchmark 01 v1.0.1, single-shot
-- same pinned llama.cpp/Metal/llama-server runtime
-- context 4096 / `-ngl -1` / FA auto
-- raw `POST /completion`
-- exact frozen adapter-built prompts
-- one request/task, no retry/salvage/test feedback
-
 Primary result:
 - 8B Q2 delivery-adjusted **0/100**
 - 4B Q4 delivery-adjusted **34.29/100**
@@ -187,18 +179,31 @@ Descriptively, 4% minimum free is less severe than the 1% observed in the earlie
 # Current checkpoint — Q3 auto-fit diagnostic
 
 Checkpoint: `LLAMA_CPP_8B_Q3_AUTOFIT_SERVER_SMOKE_001_DIAGNOSTIC`
+Inspector: `scripts/inspect_llama_cpp_q3_autofit_smoke.py`
 
 Existing local run directory:
 `results-local/llama-cpp/8b-q3-autofit-server-smoke/20260819-111648`
 
-Need to inspect, without rerunning inference:
+The inspector reads only existing artifacts and does not launch inference. It reports:
 - `server_ready`
 - `request_pass`
 - `failure_reason`
 - final `/health` states
-- `fit_offload_log_lines`
+- saved `fit_offload_log_lines`
 - final memory samples
-- relevant `llama-server-stderr.txt` lines around fit/offload/layer placement
+- relevant server stderr lines and tail
+
+## Exact next step
+
+```bash
+cd "<repository-root>"
+git pull
+python3 -m py_compile scripts/inspect_llama_cpp_q3_autofit_smoke.py
+python3 scripts/inspect_llama_cpp_q3_autofit_smoke.py \
+  results-local/llama-cpp/8b-q3-autofit-server-smoke/20260819-111648
+```
+
+Preserve the complete inspector output.
 
 ## Decision after diagnostic
 
