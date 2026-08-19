@@ -50,35 +50,48 @@ Primary subject: `qwen3.5:4b-mlx` via Ollama.
 - [x] Adopt Amplify / Stretch research pivot
 - [x] Select canonical Ollama/MLX 4B as primary Amplify subject
 - [x] Keep faster llama.cpp 4B as later secondary control
+
+### Amplifier 001 — warm-resident
 - [x] Preregister Capability Amplifier 001
-- [x] Freeze mechanism: exact baseline initial call + deterministic validation + max one repair
-- [x] Freeze deterministic candidate selection by frozen test pass count
+- [x] Freeze exact baseline initial call + deterministic validation + max one repair
+- [x] Freeze deterministic candidate selection by test pass count
 - [x] Freeze initial host gate: 3 consecutive samples >=70% free
 - [x] Freeze runtime guardrails: free<5% / swap>5600 MB
 - [x] Freeze quality gates before result
 - [x] Run Amplifier 001 (`20260819-142640`)
-- [x] Host gate PASS at 74%, 74%, 74%; swap 1206.12 MB
 - [x] T01 initial solves 6/6, 15/15, no repair
-- [x] T02 initial completes 3/7 and correctly triggers repair
-- [x] Amplifier 001 aborts during T02 repair as `PARTIAL_RESOURCE_FAIL`
-- [x] Run read-only resource diagnostic
-- [x] Recover exact failure: free memory 4% <5%; peak swap 2500.88 MB
-- [x] Recover T01 min free 5%, T02 initial min free 6%, T02 repair 7% -> 5% -> 5% -> 4%
+- [x] T02 initial completes 3/7 and triggers repair
+- [x] Abort during T02 repair as `PARTIAL_RESOURCE_FAIL`
+- [x] Read-only diagnostic recovers exact free-memory breach: 4% <5%; peak swap 2500.88 MB
+- [x] Confirm T01 min free 5%, T02 initial min free 6%, repair 7% -> 5% -> 5% -> 4%
 - [x] Confirm first call cold load ~3.668 s vs second warm load ~0.045 s
-- [x] Freeze `research/amplify/capability-amplifier-001-resource-diagnostic.md`
-- [x] Conclude warm-resident Amplifier 001 lacks sufficient headroom; do not claim memory leak
-- [x] Preregister one-factor Capability Amplifier 002 — Call-Isolated
-- [x] Preserve all quality logic/prompts/benchmark/scorer from Amplifier 001
-- [x] Change only residency: unload and confirm model absent between every model call
-- [x] Do not add an inter-call >=70% recovery threshold; keep single-factor design
-- [x] Add `scripts/capability_amplifier_002_call_isolated.py`
-- [x] Freeze base runner blob `9f472c60b523762276291232f6e8c6ffc1c5fcae`
+- [x] Freeze warm-resident profile as insufficient headroom; do not claim memory leak
+
+### Amplifier 002 — call-isolated
+- [x] Preregister one-factor call-isolated profile
+- [x] Preserve model, prompts, validation, repair, scorer, context, sampler and guardrails
+- [x] Change only residency: unload and confirm target absent between every model call
+- [x] Do not add inter-call >=70% recovery threshold in 002
 - [x] Freeze Amplifier 002 wrapper blob `df332568820e28c90baa5247df27e92cba43c0d6`
-- [ ] Run Capability Amplifier 002 — Call-Isolated
-- [ ] If COMPLETE, freeze quality/resource/efficiency and compare with single-shot + Amplifier 001
-- [ ] If PARTIAL_RESOURCE_FAIL despite isolation, do not rerun unchanged or weaken guardrail
-- [ ] If ISOLATION_FAIL, fix only demonstrated isolation-harness defect
-- [ ] After amplification mechanism is established, port same logic to llama.cpp 4B for capability/efficiency comparison
+- [x] First launch (`20260819-143838`) returns `HOST_STATE_NOT_READY` at 67% free; 0 model calls
+- [x] Valid launch (`20260819-144256`) passes host gate at 71%, 72%, 72%; swap 1699.0 MB
+- [x] T01 initial completes and solves without repair
+- [x] T02 initial completes and triggers repair
+- [x] Call-isolated run still terminates `PARTIAL_RESOURCE_FAIL` during T02 repair path
+- [x] Freeze partial record `research/amplify/capability-amplifier-002-partial-20260819-144256.md`
+- [x] Do not assign aggregate quality score to partial 002 run
+- [ ] Run read-only diagnostic on Amplifier 002 persisted telemetry
+- [ ] Recover exact failure reason, min free, peak swap and all isolation samples
+- [ ] Verify actual unload confirmation before/after each completed call
+- [ ] Determine free/swap state immediately before T02 repair
+- [ ] If unload succeeded but memory did not recover enough, preregister unload + recovery-gated profile as a new factor
+- [ ] If memory recovered materially and cold repair alone drives breach, redesign repair footprint rather than residency timing
+- [ ] If isolation itself failed, fix only demonstrated isolation harness issue
+- [ ] Do not rerun unchanged Amplifier 002 or weaken guardrail
+
+### Later amplification work
+- [ ] Once a COMPLETE amplification mechanism exists, compare quality/resource/efficiency against single-shot 30.00/3-of-6 and Pi 77.15/6-of-6
+- [ ] Port established amplification logic to llama.cpp 4B as capability/efficiency control
 - [ ] Later candidate capability factors: planner/verifier, tool loop, retrieval
 - [ ] Only later consider specialization / LoRA / SFT / distillation
 
