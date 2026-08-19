@@ -26,29 +26,28 @@
 - [x] Freeze Pi Agentic Coding Benchmark 001
 - [x] Pi Agentic 001: artifact/delivery 77.15, strict 60.00, delivery 6/6, protocol 4/6
 - [x] Investigate sustained warm memory trajectory 4.4 -> 7.2 GB
-- [x] Invocation, context-pressure, multi-turn and cold-replay probes
 - [x] Conclude cumulative retained warm high-water is a major contributor; internal mechanism unresolved
 - [x] Qwen Code safe mode still 4363 > 4096; deprioritize Qwen Code
 - [ ] Add daily-use validation/retry workflow later
-- [ ] Test Aider/OpenCode only if later research value justifies it
 
 ## Phase 4 — llama.cpp — ACTIVE
-- [x] Preregister Phase 4 and pin llama.cpp commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
-- [x] Install CMake 4.4.2
-- [x] Resolve initial LOOM build-target defect
-- [x] Setup Probe 003 canonical PASS: Release build, `llama-cli`, `llama-bench`, Metal ON
-- [x] Preregister/run 4B GGUF Runtime Control 001
-- [x] Record `research/runtime/llama-cpp-4b-control-001.md`
-- [x] 4B control PASS: Qwen3 4B Q4_K_M, 2.326 GiB, Metal, pp512 230.85 t/s, tg128 22.33 t/s
-- [x] 4B telemetry: peak process RSS 1914.91 MB, peak swap 1097.19 MB, minimum free memory 22%
-- [x] Preregister `research/runtime/llama-cpp-8b-q4-001-plan.md`
-- [x] Explicit disk preflight PASS: 56 GiB free; `results-local/models` 2.3 GiB; llama.cpp tree/results 415 MiB
-- [x] Add staged runner `scripts/llama_cpp_8b_q4.py`
-- [ ] Run Qwen3 8B Q4_K_M Capability 001: context-4096 smoke, then throughput only if stable
-- [ ] Compare 4B -> 8B throughput/memory scaling
-- [ ] Test 8B Q3 variant according to observed headroom
-- [ ] Test ~9B Q3/Q2 where feasible
-- [ ] Compare partial CPU/GPU offload where useful
+- [x] Pin llama.cpp commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
+- [x] Install CMake 4.4.2 and validate Release/Metal build
+- [x] Setup Probe 003 canonical PASS: `llama-cli`, `llama-bench`, Metal ON
+- [x] 4B Q4_K_M Runtime Control 001 PASS
+- [x] 4B: 2.326 GiB; pp512 230.85 t/s; tg128 22.33 t/s; peak RSS 1914.91 MB; peak swap 1097.19 MB; minimum free memory 22%
+- [x] Disk preflight before 8B: 56 GiB free
+- [x] Run 8B Q4_K_M Capability 001 at context 4096 / `-ngl -1`
+- [x] 8B Q4 Stage A VALID FAIL: memory free reached 1% during load/init; frozen 5% guardrail triggered; Stage B skipped
+- [x] Record `research/runtime/llama-cpp-8b-q4-001.md`
+- [x] Preserve verified Q4 artifact; disk free after run 50.567 GiB
+- [x] Preregister `research/runtime/llama-cpp-8b-q3-001-plan.md`
+- [x] Add `scripts/llama_cpp_8b_q3.py`
+- [ ] Run 8B Q3_K_M Capability 001 at context 4096 with unchanged memory guardrails
+- [ ] If Q3 FULL_PASS, quantify throughput/memory scaling and run usefulness/quality checks
+- [ ] If Q3 Stage A FAIL, preregister 8B Q2-class condition
+- [ ] Compare partial CPU/GPU offload only as a separately frozen later condition
+- [ ] Test ~9B Q3/Q2 only if 8B evidence justifies it
 
 ## Phase 5 — Direct MLX
 - [ ] Set up direct MLX environment
