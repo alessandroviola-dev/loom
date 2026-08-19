@@ -1,7 +1,7 @@
 # LOOM — llama.cpp Coding Quality Compare 001 Plan
 
 Date: 2026-08-19
-Status: **PREREGISTERED — READY AFTER RUNNER COMMIT**
+Status: **PREREGISTERED — READY**
 
 ## Research question
 
@@ -65,10 +65,13 @@ Reason:
 - this avoids adding a system/user chat envelope or applying a chat template in the adapter;
 - the exact prompt construction from the existing `scripts/ollama_single_shot.py` adapter must be reused.
 
-The runner must verify the existing adapter Git blob before importing its `TASKS`, `build_prompt`, and output validation semantics.
+The runner verifies the existing adapter Git blob before importing its `TASKS`, `build_prompt`, and output validation semantics.
 
 Frozen adapter blob:
 `62abab57f6463c5813809b43d8f1e7bdfec5f304`
+
+Runner:
+`scripts/llama_cpp_coding_quality_compare.py`
 
 ## Request settings — frozen
 
