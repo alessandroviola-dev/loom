@@ -75,7 +75,7 @@ Frozen subject: Qwen3-8B 3-bit, 36 layers, vocab 151936, untied embedding/head, 
 - [x] official resident model 3,583,928,320 B
 - [x] max streamed raw-weight stage 272,269,312 B
 - [x] ratio 13.16317396798652x
-- [x] full logits max/mean diff 0.0 / 0.0
+- [x] exact full logits
 
 ### Stretch 008 — COMPLETE PASS
 - [x] `ONE_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`
@@ -86,57 +86,73 @@ Frozen subject: Qwen3-8B 3-bit, 36 layers, vocab 151936, untied embedding/head, 
 ### Stretch 009 — COMPLETE PASS
 - [x] `FOUR_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`
 - [x] generated sequence `[1,374,264,4647]` identical
-- [x] KV offsets 4 -> 8, allocation stable at 37,748,736 B
-- [x] all four feedback logits exact parity
+- [x] KV offsets 4 -> 8, allocation stable 37,748,736 B
+- [x] exact logits at all four steps
 - [x] mean 36-layer materialization 0.188658 s/token
 - [x] mean 36-layer forward 0.192317 s/token
-- [x] freeze `research/stretch/four-token-kv-autoregressive-parity-009-result.md`
+- [x] freeze result
 
-### Stretch 010 — Sixteen-token autoregressive stability — COMPLETE PASS
+### Stretch 010 — COMPLETE PASS
 - [x] Valid run `20260819-183844`
 - [x] `SIXTEEN_TOKEN_AUTOREGRESSIVE_STABILITY_PASS`
-- [x] Scientific change 4 -> 16 generated/feedback tokens only
-- [x] Prompt and all 16 feedback logits max/mean diff 0.0 / 0.0
-- [x] Top-1 equality at every step
-- [x] Resident/streamed sequence identical: `[1,374,264,4647,1483,304,279,1809,315,5994,320,1654,23740,285,8,311]`
-- [x] Final KV offsets all 20
-- [x] KV allocation remains 37,748,736 B
-- [x] Resident full model 3,583,928,320 B
-- [x] Max streamed stage 272,269,312 B
-- [x] Ratio 13.16317396798652x
-- [x] Mean transformer forward 0.192486 s/token remains stable
-- [x] Mean full streamed pass 2.888971 s/token
-- [x] Median full streamed pass 3.350773 s/token
-- [x] Logical streamed throughput 0.346144 token/s
-- [x] Identify materialization regime change: ~0.19 s early -> ~1.4 s late while forward stays ~0.19 s
-- [x] Do not attribute timing transition to SSD/page cache/allocator without direct instrumentation
-- [x] Freeze `research/stretch/sixteen-token-autoregressive-stability-010-result.md`
+- [x] exact prompt + 16 feedback logits and identical sequence
+- [x] final KV offset 20, allocation 37,748,736 B
+- [x] resident model 3,583,928,320 B
+- [x] max streamed stage 272,269,312 B
+- [x] mean transformer forward 0.192486 s/token
+- [x] mean full pass 2.888971 s/token
+- [x] median full pass 3.350773 s/token
+- [x] logical throughput 0.346144 token/s
+- [x] identify materialization transition ~0.19 s early -> ~1.4 s late while forward stays stable
+- [x] freeze result
 
-### Stretch 011 — Materialization I/O attribution — CURRENT / READY
-- [x] Keep exact 16-token Stretch 010 scientific workload unchanged
-- [x] No tokenizer/sampling/KV quantization/prefetch/cache purge
-- [x] Use Darwin `proc_pid_rusage(..., RUSAGE_INFO_V2)` instrumentation
-- [x] Capture per-layer build/select and materialization disk-read/page-in deltas
-- [x] Capture shared-stage and full-pass resource deltas
-- [x] Compare tokens 1–4 vs tokens 8–16
-- [x] Report diagnostic materialization-time vs disk-read/page-in correlation
-- [x] Preserve all inherited correctness/cache/weight/resource gates
-- [x] Preregister `research/stretch/materialization-io-attribution-011-plan.md`
-- [x] Add `scripts/stretch_materialization_io_attribution_011.py`
-- [x] Freeze runner blob `16125f7eb0b2fb662591e194de0498513a563a6d`
-- [ ] Run Stretch 011
-- [ ] Freeze attribution result
+### Stretch 011 — Materialization I/O attribution — COMPLETE PASS
+- [x] Valid run `20260819-185036`
+- [x] `MATERIALIZATION_IO_ATTRIBUTION_PASS`
+- [x] Preserve exact 16-token Stretch 010 workload
+- [x] All correctness/KV/weight gates remain PASS
+- [x] Reproduce slow materialization regime
+- [x] Late materialization process disk-read accounting ~3,039,395,840 B/token
+- [x] Frozen transformer payload 3,039,381,504 B
+- [x] Late full-pass process reads ~3.584 GB/token
+- [x] Build/select reads negligible relative to materialization
+- [x] Materialization page-ins remain zero
+- [x] Materialization-time vs disk-read Pearson 0.9995866107996246
+- [x] Mean transformer forward remains ~0.191414 s/token
+- [x] Stream-token bucket min free 65%
+- [x] Freeze `research/stretch/materialization-io-attribution-011-result.md`
+- [x] Establish repeated weight traversal/I/O as dominant late materialization cost under current runtime/accounting
+- [x] Preserve interpretation boundary: process disk-I/O accounting is not forensic per-file SSD tracing
 
-### Stretch 012+ — conditional
-- [ ] If slow regime has large process disk-read/page-in deltas: characterize storage/page-cache policy before optimization
-- [ ] If slow regime has flat disk/page-in counters: profile MLX allocation/materialization lifecycle
-- [ ] If slowdown does not reproduce: mark timing transition host/cache-state dependent and decide whether replication is needed
-- [ ] Tokenizer/text integration after this performance boundary is characterized
-- [ ] Freeze unoptimized runtime baseline before prefetch/double buffering
-- [ ] Test prefetch/double buffering as a separate factor
+### Stretch 012 — Eight-layer persistent hotset — CURRENT / READY
+- [x] Single scientific change: retain transformer layers 0..7 across prompt + 16 autoregressive tokens
+- [x] Layers 8..35 remain streamed/evicted
+- [x] Embedding/norm/LM head remain streamed
+- [x] Preserve exact 16-token prompt/argmax/KV/resident parity workload
+- [x] Preserve Darwin I/O attribution
+- [x] Preserve host/runtime guardrails
+- [x] Expected hotset payload 675,418,112 B
+- [x] Expected max simultaneous raw-weight budget ~947,687,424 B
+- [x] Require hotset per-token materialized delta near zero
+- [x] Require normal 84,427,264 B materialization for layers 8..35
+- [x] Expected late transformer process reads may fall toward ~2,363,977,728 B/token
+- [x] Expected late full-pass process reads may fall toward ~2.909 GB/token
+- [x] No minimum speedup gate; latency/I/O reduction is an outcome
+- [x] Preregister `research/stretch/eight-layer-persistent-hotset-012-plan.md`
+- [x] Add runner `scripts/stretch_eight_layer_persistent_hotset_012.py`
+- [x] Freeze runner blob `8e10660af778655a279f30e7d59785163bc204e3`
+- [ ] Run Stretch 012
+- [ ] Freeze result
+
+### Stretch 013+ — conditional residency frontier / usability
+- [ ] If 012 validates RAM-for-I/O tradeoff, preregister another retained-layer point separately (e.g. 16 layers) to build a small frontier
+- [ ] If 012 loses more from memory pressure than it gains from fewer reads, preregister a smaller hotset separately
+- [ ] Select practical RAM/I/O point before tokenizer integration
+- [ ] Add tokenizer/text integration as isolated factor
+- [ ] Test 256-position KV capacity boundary separately
+- [ ] Test prefetch/double buffering separately
 - [ ] Test KV quantization separately
-- [ ] Test 256-position cache-capacity boundary separately
-- [ ] Only later study layer skipping/early exit or MoE routing
+- [ ] Only later study speculative decoding/layer skipping/early exit/MoE routing
 
 ## Phase 8 — Synthesis
 - [ ] Capability-vs-memory-vs-time frontier
