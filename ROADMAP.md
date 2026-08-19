@@ -16,8 +16,8 @@
 - [x] Pi Agentic Coding Benchmark 001: delivery-adjusted 77.15, delivery 6/6
 
 ## Phase 4 — llama.cpp frontier — CHARACTERIZED
-- [x] 4B Q4 control PASS: pp512 230.85 t/s, tg128 22.33 t/s
-- [x] 8B Q4/Q3/Q2 boundaries characterized
+- [x] 4B Q4 efficiency control
+- [x] 8B Q4/Q3/Q2 memory/quality boundaries characterized
 
 ## Phase 5 — Direct MLX 8B frontier — CHARACTERIZED
 - [x] 8B 3-bit full session stable; quality not promoted
@@ -25,61 +25,54 @@
 - [x] Preserve verified artifacts
 
 ## Phase 6 — Amplify — ACTIVE / QUEUED BEHIND STRETCH
-
-### Amplifier 001–003
-- [x] Canonical 4B repair path resource boundary characterized
-- [x] Call isolation and repair-context 3072 individually insufficient
+- [x] Amplifier 001–003 resource boundary characterized
 - [x] Do not claim leak/KV/allocator root cause
-
-### Amplifier 004 — Compact Feedback — READY / QUEUED
-- [x] Preregister 768-byte variable repair-feedback cap
-- [x] Runner blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`
-- [ ] Run after current Stretch sequence
+- [x] Amplifier 004 compact-feedback plan/runner frozen
+- [ ] Run Amplifier 004 after current Stretch sequence
 
 ## Phase 7 — Stretch / Memory Hierarchy — ACTIVE
 
 Frozen subject: Qwen3-8B 3-bit, 36 layers, vocab 151936, untied embedding/head, 3-bit/group64.
 
-### Stretch 001 — Layer addressability — COMPLETE PASS
+### Stretch 001 — COMPLETE PASS
 - [x] `LAYER_ADDRESSABLE_IO_PASS`
-- [x] 36/36 layers exact
-- [x] One-layer selective read exact
+- [x] 36/36 layers exact and selectively readable
 
-### Stretch 002 — Single-layer MLX materialization/eviction — COMPLETE PASS
+### Stretch 002 — COMPLETE PASS
 - [x] `SINGLE_LAYER_MLX_EVICTION_PASS`
-- [x] 0 -> 84,427,264 -> 0 B active
+- [x] one layer 0 -> 84,427,264 -> 0 B active
 
-### Stretch 003 — Repeated bounded residency — COMPLETE PASS
+### Stretch 003 — COMPLETE PASS
 - [x] `TWO_LAYER_BOUNDED_RESIDENCY_PASS`
-- [x] two sequential one-layer cycles without accumulation
+- [x] repeated one-layer cycles remain bounded
 
-### Stretch 004 — Two-layer streamed forward — COMPLETE PASS
+### Stretch 004 — COMPLETE PASS
 - [x] `TWO_LAYER_STREAMED_FORWARD_PARITY_PASS`
-- [x] official Qwen3 block computation
+- [x] real Qwen3 block compute
 - [x] exact numerical parity
 
-### Stretch 005 — Eight-layer scaling — COMPLETE PASS
+### Stretch 005 — COMPLETE PASS
 - [x] `EIGHT_LAYER_STREAMED_FORWARD_SCALING_PASS`
 - [x] resident/streamed ratio ~8x
 - [x] exact numerical parity
 
-### Stretch 006 — Full 36-layer body — COMPLETE PASS
+### Stretch 006 — COMPLETE PASS
 - [x] `FULL_36_LAYER_STREAMED_BODY_PARITY_PASS`
 - [x] valid run `20260819-164605`
 - [x] resident body delta 3,039,315,964 B
 - [x] max streamed layer 84,427,264 B
 - [x] ratio 35.99922371048291x
-- [x] exact activation parity
+- [x] exact full-body activation parity
 - [x] earlier transform failure classified harness-only
 
-### Stretch 007A — Shared component anatomy — COMPLETE PASS
+### Stretch 007A — COMPLETE PASS
 - [x] `SHARED_COMPONENT_ANATOMY_PASS`
 - [x] embedding 272,269,312 B
 - [x] final norm 8,192 B
 - [x] LM head 272,269,312 B
 - [x] `tie_word_embeddings=false`
 
-### Stretch 007B — Full token-ID-to-logit phase streaming — COMPLETE PASS
+### Stretch 007B — COMPLETE PASS
 - [x] `PHASE_STREAMED_FULL_LOGIT_PARITY_PASS`
 - [x] valid run `20260819-170334`
 - [x] official resident model 3,583,928,320 B
@@ -88,52 +81,52 @@ Frozen subject: Qwen3-8B 3-bit, 36 layers, vocab 151936, untied embedding/head, 
 - [x] full logits max/mean diff 0.0 / 0.0
 - [x] top-1 equality true
 
-### Stretch 008 — One-token KV autoregressive parity — COMPLETE PASS
-- [x] Preregister ordinary BF16 `KVCache`, frozen prompt and argmax one-token policy
+### Stretch 008 — COMPLETE PASS
 - [x] Scientific runner blob `03e7a04bb42ad1e3ac4709d0a745bfdbf491e9bf`
-- [x] First launch stalled on undrained captured stdout; classify harness I/O stall / no scientific result
-- [x] Freeze harness note `research/stretch/one-token-kv-autoregressive-parity-008-harness-note.md`
-- [x] Apply harness-only pipefix blob `8b2ce5902d3ed45c9120273fab415fe67a026d4a`
+- [x] First launch stalled on undrained verbose stdout pipe; harness-only/no scientific result
+- [x] Freeze harness note
+- [x] Harness-only pipefix blob `8b2ce5902d3ed45c9120273fab415fe67a026d4a`
 - [x] Valid run `20260819-173553`
 - [x] `ONE_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`
-- [x] Prompt logits parity max/mean 0.0 / 0.0
+- [x] Prompt logits max/mean diff 0.0 / 0.0
 - [x] Generated token equality true; token `[[1]]`
-- [x] Resident/streamed KV bytes after prompt 37,748,736 / 37,748,736 B
-- [x] Resident/streamed cache offsets after prompt all 4
-- [x] Feed generated token through same cache state
-- [x] Resident/streamed cache offsets after token all 5
-- [x] KV bytes remain 37,748,736 B below 256-position capacity boundary
-- [x] Post-token logits parity max/mean 0.0 / 0.0
+- [x] Resident/streamed KV after prompt 37,748,736 B; offsets all 4
+- [x] Feed generated token through same cache
+- [x] Resident/streamed KV after feedback 37,748,736 B; offsets all 5
+- [x] Post-token logits max/mean diff 0.0 / 0.0
 - [x] Post-token top-1 equality true
-- [x] Resident full-model delta 3,583,928,320 B
+- [x] Resident model delta 3,583,928,320 B
 - [x] Max streamed raw-weight stage 272,269,312 B
-- [x] Resident/max-streamed-stage ratio 13.16317396798652x
-- [x] Valid whole-run min free 26%; peak swap 1583.75 MB
+- [x] Ratio 13.16317396798652x
+- [x] Whole-run min free 26%; peak swap 1583.75 MB
 - [x] Freeze `research/stretch/one-token-kv-autoregressive-parity-008-result.md`
-- [x] Establish actual persistent-KV autoregressive reuse in streamed path
+- [x] Establish real persistent-KV autoregressive reuse in streamed path
 
-### Stretch 009 — Short deterministic multi-token loop — CURRENT / PREREGISTRATION
-- [ ] Single scientific change: continuation depth 1 -> short fixed multi-token sequence
-- [ ] Freeze exact generated-token count before implementation
-- [ ] Same prompt `[[1,42,2048,151935]]`
-- [ ] Same ordinary BF16 `KVCache`
-- [ ] Same resident official control and phase-streamed raw-weight path
-- [ ] Argmax only; no tokenizer/sampling
-- [ ] Numerical parity and generated-token equality at every step
-- [ ] Cache offset/byte gates after every step
-- [ ] Per-token parameter materialization and transformer-forward wall
-- [ ] Phase/system memory and swap diagnostics
-- [ ] Use file-backed child state/final result to avoid stdout pipe stalls
-- [ ] Preregister plan
-- [ ] Implement/freeze runner
-- [ ] Run and freeze result
+### Stretch 009 — Four-token KV autoregressive parity — CURRENT / READY
+- [x] Freeze single scientific change: continuation depth 1 -> 4 tokens
+- [x] Keep prompt `[[1,42,2048,151935]]`
+- [x] Keep ordinary BF16 `KVCache`
+- [x] Keep official resident control and phase-streamed raw-weight path
+- [x] Keep argmax only; no tokenizer/sampling/cache quantization/prefetch
+- [x] Expected offsets 4 -> 5 -> 6 -> 7 -> 8
+- [x] Expected KV allocation remains ~37,748,736 B below 256-position boundary
+- [x] Require numerical parity and top-1 equality at every step
+- [x] Require identical four-token generated sequence
+- [x] Record per-token layer materialization/forward wall
+- [x] Use `child-state.json` + `child-final.json`; stdout/stderr file-backed
+- [x] Preregister `research/stretch/four-token-kv-autoregressive-parity-009-plan.md`
+- [x] Add `scripts/stretch_four_token_kv_autoregressive_parity_009.py`
+- [x] Freeze runner blob `3e0780850bb65f9dccf07946f89597fa2e4d17e1`
+- [ ] Run Stretch 009
+- [ ] Freeze result
 
 ### Stretch 010+ — usable streamed generation / optimization
-- [ ] Add tokenizer/text prompt parity
-- [ ] Extend generation length after short-loop stability
+- [ ] Decide next single factor after Stretch 009 result
+- [ ] Candidate: tokenizer/text integration OR longer deterministic loop
 - [ ] Measure bytes/token, RAM, swap, wall time and tok/s
-- [ ] Add prefetch/double buffering as separate experiments
-- [ ] Explore cache quantization/residency policies separately
+- [ ] Test prefetch/double buffering separately
+- [ ] Test KV quantization separately
+- [ ] Test 256-position cache-capacity boundary separately
 - [ ] Only later study layer skipping/early exit or MoE routing
 
 ## Phase 8 — Synthesis
