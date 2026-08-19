@@ -3,7 +3,7 @@
 Last updated: 2026-08-19
 Status: ACTIVE — Apple M1 / 8 GB reference system; tracks **Amplify** and **Stretch**.
 
-Current checkpoint: `STRETCH_011_MATERIALIZATION_IO_ATTRIBUTION_READY`
+Current checkpoint: `STRETCH_012_EIGHT_LAYER_PERSISTENT_HOTSET_READY`
 
 ## Mission
 
@@ -28,7 +28,7 @@ Local path: `<repository-root>`
 - No new large-model acquisition while existing artifacts suffice.
 - Do not attribute whole-run telemetry to a sub-phase without phase-scoped evidence.
 - Long child runs must use file-backed state/final/stdout/stderr or otherwise drain pipes.
-- Do not equate repeated safetensors materialization time with physical SSD throughput; macOS page cache may satisfy reads.
+- Do not equate logical safetensors materialization time or Darwin process disk-I/O accounting with forensic model-file SSD throughput.
 - Do not purge macOS caches casually to manufacture a cold-cache state.
 
 Verified GGUF and Direct MLX 3-bit/4-bit artifacts remain retained. Stretch disk is ~36.27 GiB free; no download is planned.
@@ -154,13 +154,9 @@ Runner/blob:
 - `3e0780850bb65f9dccf07946f89597fa2e4d17e1`.
 
 Valid run `20260819-183143`, `FOUR_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`:
-- prompt + all 4 feedback steps max/mean logit diff 0.0 / 0.0
-- generated sequence resident/streamed `[1,374,264,4647]`
-- KV offsets 4 -> 5 -> 6 -> 7 -> 8
-- KV stays 37,748,736 B
-- resident model 3,583,928,320 B
-- max streamed stage 272,269,312 B
-- ratio 13.16317396798652x
+- prompt + 4 feedback steps exact logits
+- sequence `[1,374,264,4647]` identical
+- KV 4 -> 8, stable 37,748,736 B
 - mean 36-layer materialization 0.188658 s/token
 - mean 36-layer forward 0.192317 s/token
 - stream-token bucket min free 64%.
@@ -169,106 +165,134 @@ Result:
 `research/stretch/four-token-kv-autoregressive-parity-009-result.md`.
 
 ### 010 — COMPLETE PASS
-
-Plan:
-`research/stretch/sixteen-token-autoregressive-stability-010-plan.md`
-
 Runner/blob:
 - `scripts/stretch_sixteen_token_autoregressive_stability_010.py`
 - `ff3dc83abc6388113fca15594eef6b3ec00ebe50`.
 
-Valid run `20260819-183844`:
-`SIXTEEN_TOKEN_AUTOREGRESSIVE_STABILITY_PASS`.
-
-Scientific change vs 009: continuation depth 4 -> 16 only.
-
-Correctness/stability:
-- prompt parity max/mean 0.0 / 0.0
-- all 16 feedback steps max/mean 0.0 / 0.0
-- top-1 equality at every step
-- resident and streamed generated sequence identical:
-  `[1,374,264,4647,1483,304,279,1809,315,5994,320,1654,23740,285,8,311]`
-- final resident/streamed KV offsets all 20
-- final KV bytes 37,748,736 / 37,748,736 B.
-
-Weight residency unchanged:
+Valid run `20260819-183844`, `SIXTEEN_TOKEN_AUTOREGRESSIVE_STABILITY_PASS`:
+- exact prompt + 16 feedback logits
+- resident/streamed sequence identical `[1,374,264,4647,1483,304,279,1809,315,5994,320,1654,23740,285,8,311]`
+- final KV offset 20; 37,748,736 B
 - resident full model 3,583,928,320 B
 - max streamed stage 272,269,312 B
-- ratio 13.16317396798652x.
-
-Unoptimized timing:
-- 36-layer materialization walls:
-  `[0.212377,0.190494,0.18926,0.187676,0.464371,1.359481,0.519632,1.396424,1.413411,1.425179,1.425537,1.442005,1.412515,1.404428,1.41408,1.397497]`
-- mean layer materialization 0.990898 s/token
-- mean layer forward **0.192486 s/token**, approximately stable across the run
-- full pass walls `[1.863135,1.838579,1.849972,1.833425,2.366761,3.336781,2.38608,3.34347,3.425303,3.465824,3.485435,3.454962,3.358077,3.369774,3.487604,3.358349]`
+- ratio 13.16317396798652x
+- mean transformer forward 0.192486 s/token
 - mean full pass 2.888971 s/token
 - median full pass 3.350773 s/token
-- logical streamed throughput 0.346144 token/s.
-
-Resource:
-- whole-run min free 24%, peak swap 1563.31 MB, peak child RSS 764.844 MB
-- stream prompt min free 70%
-- stream tokens min free 66%, peak RSS 354.938 MB
-- disk 36.272 -> 36.270 GiB.
-
-Important new finding:
-- tokens 1–4 materialize all 36 layer weights in ~0.19–0.21 s
-- token 5/7 are transitional
-- token 6 and tokens 8–16 are ~1.36–1.44 s
-- transformer forward remains ~0.19 s/token.
-
-Canonical interpretation:
-> Sixteen-token persistent-KV autoregressive correctness is established with exact resident parity. The current runtime also shows a late-run materialization slowdown while compute remains stable. Timing alone does not establish whether the cause is physical storage/page-cache behavior or MLX/allocator/materialization lifecycle.
+- logical streamed throughput 0.346144 token/s
+- materialization regime changes from ~0.19 s early to ~1.4 s late while forward stays ~0.19 s.
 
 Result:
 `research/stretch/sixteen-token-autoregressive-stability-010-result.md`.
 
-## Stretch 011 — Materialization I/O Attribution — READY
+### 011 — COMPLETE PASS
 
 Plan:
 `research/stretch/materialization-io-attribution-011-plan.md`
 
-Runner:
-`scripts/stretch_materialization_io_attribution_011.py`
+Runner/blob:
+- `scripts/stretch_materialization_io_attribution_011.py`
+- `16125f7eb0b2fb662591e194de0498513a563a6d`.
 
-Runner blob:
-`16125f7eb0b2fb662591e194de0498513a563a6d`.
-
-Frozen upstream:
-- Stretch 009 blob `3e0780850bb65f9dccf07946f89597fa2e4d17e1`
-- Stretch 010 transform blob `ff3dc83abc6388113fca15594eef6b3ec00ebe50`.
-
-Scientific workload: exact Stretch 010 16-token workload, **unchanged**.
-
-New instrumentation only:
-- Darwin `/usr/lib/libproc.dylib`
-- `proc_pid_rusage(..., RUSAGE_INFO_V2)`
-- cumulative process `ri_diskio_bytesread`, `ri_diskio_byteswritten`, `ri_pageins`, resident size and physical footprint
-- snapshots around each layer `build_block()` and `mx.eval(block.parameters())`
-- equivalent shared-stage/pass-level snapshots
-- early tokens 1–4 vs late tokens 8–16 descriptive I/O means
-- diagnostic correlation between materialization wall and disk-read/page-in deltas.
-
-No OS cache purge, tokenizer, sampling, prefetch, KV quantization or other scientific change.
-
-Primary PASS:
+Valid run `20260819-185036`:
 `MATERIALIZATION_IO_ATTRIBUTION_PASS`.
 
-Interpretation boundary:
-`ri_diskio_bytesread` is per-process Darwin disk-I/O accounting, not automatically an exact count of model-file SSD bytes. A timing/I/O correlation is diagnostic evidence, not causal proof by itself.
+Correctness/state:
+- exact prompt + all 16 feedback logits
+- same 16-token generated sequence as 010
+- final KV offsets all 20
+- KV 37,748,736 B
+- resident model 3,583,928,320 B
+- max streamed stage 272,269,312 B
+- ratio 13.16317396798652x.
+
+Timing reproduced:
+- materialization token 1: 0.215334 s
+- token 2: 0.397099 s
+- token 3 onward ~1.39–1.41 s
+- mean materialization 1.261344 s/token
+- mean transformer forward 0.191414 s/token
+- mean full pass 3.200954 s/token
+- median full pass 3.351453 s/token
+- logical streamed throughput 0.312407 token/s.
+
+Darwin process disk-I/O attribution:
+- materialization disk reads/token:
+  `[48513024,389873664,3023896576,3039395840,3039395840,3039395840,3039395840,3039395840,3039395840,3039395840,3039395840,3039395840,3039395840,3039395840,3039395840,3039395840]`
+- late steady-state transformer materialization ~3,039,395,840 B/token, very near frozen transformer payload 3,039,381,504 B
+- late full-pass disk-read accounting ~3.584 GB/token, very near complete tensor payload 3,583,928,320 B
+- build/select reads negligible compared with materialization
+- materialization page-ins all zero
+- materialization-time vs disk-read Pearson **0.9995866107996246**.
+
+Early 1–4 vs late 8–16:
+- mean materialization wall 0.85343275 -> 1.3990707778 s
+- mean materialization disk reads 1,625,419,776 -> 3,039,395,840 B
+- mean full-pass disk reads 1,959,089,152 -> 3,584,055,068 B.
+
+Resource:
+- whole-run min free 22%
+- peak swap 1606.94 MB
+- stream-token bucket min free 65%
+- disk 36.267 -> 36.269 GiB.
+
+Canonical interpretation:
+> Pure one-layer-at-a-time dense autoregressive streaming reaches a steady state where Darwin process disk-I/O accounting is approximately one transformer-body traversal during layer materialization and approximately one full-model payload during the complete pass per generated token. The near-payload deltas and ~0.9996 timing correlation strongly support I/O as the dominant late materialization cost, but `ri_diskio_bytesread` is not a forensic per-file SSD trace.
+
+Result:
+`research/stretch/materialization-io-attribution-011-result.md`.
+
+## Stretch 012 — Eight-Layer Persistent Hotset — READY
+
+Plan:
+`research/stretch/eight-layer-persistent-hotset-012-plan.md`
+
+Runner:
+`scripts/stretch_eight_layer_persistent_hotset_012.py`
+
+Runner blob:
+`8e10660af778655a279f30e7d59785163bc204e3`.
+
+Frozen reconstruction:
+- Stretch 009 source blob `3e0780850bb65f9dccf07946f89597fa2e4d17e1`
+- Stretch 010 transform blob `ff3dc83abc6388113fca15594eef6b3ec00ebe50`
+- Stretch 011 instrumentation blob `16125f7eb0b2fb662591e194de0498513a563a6d`.
+
+Single scientific change:
+- transformer layers **0..7** are materialized once and retained across streamed prompt + all 16 token passes.
+
+Unchanged:
+- layers 8..35 remain one-at-a-time streamed/evicted
+- embedding/final norm/LM head remain streamed
+- same prompt, 16-token argmax loop, resident control, BF16 KVCache, parity/cache gates, I/O instrumentation and resource guardrails
+- no tokenizer/sampling/KV quantization/prefetch/cache purge/download.
+
+Expected hotset payload:
+**675,418,112 B**.
+
+Expected worst simultaneous raw-weight budget:
+- hotset + embedding/head max new stage
+- 675,418,112 + 272,269,312 = **947,687,424 B** (~903.79 MiB).
+
+Expected late transformer process-read accounting if retention works:
+~3,039,395,840 - 675,418,112 ≈ **2,363,977,728 B/token**.
+
+Expected late full-pass process reads may move from ~3.584 GB toward ~2.909 GB/token. These are diagnostic expectations, not PASS thresholds.
+
+Primary PASS:
+`EIGHT_LAYER_PERSISTENT_HOTSET_PASS`.
 
 # Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/stretch_materialization_io_attribution_011.py
-python3 scripts/stretch_materialization_io_attribution_011.py
+python3 -m py_compile scripts/stretch_eight_layer_persistent_hotset_012.py
+python3 scripts/stretch_eight_layer_persistent_hotset_012.py
 ```
 
 No download is expected.
 
-If 011 attributes the slow regime to actual disk/page-in activity, characterize storage/page-cache policy next. If disk/page-in counters remain flat while materialization slows, investigate MLX/allocator/materialization lifecycle. Tokenizer/text integration remains queued until this performance boundary is characterized.
+If 012 validates the expected reduction in repeated process reads without losing correctness/resource safety, build a small retained-layer frontier in separate preregistered experiments before choosing a practical profile. Tokenizer/text integration remains queued until the first RAM-for-I/O optimization point is characterized.
 
 After every meaningful result/decision, update `HANDOFF.md` and `ROADMAP.md` before advancing.
