@@ -42,20 +42,26 @@
 - [x] Do not promote Qwen3-8B-3bit to Pi on current quality evidence
 - [x] Select/verify `mlx-community/Qwen3-8B-4bit`
 - [x] 4-bit Smoke 001 FULL_PASS (`20260819-131009`): min free 10%, peak swap 2403.31 MB, MLX peak 4.6833 GB
-- [x] 4-bit exact T01 Workload Safety 001 FULL_PASS (`20260819-132612`): delivery written, min free 6%, peak swap 2470.31 MB, MLX peak 4.9817 GB
+- [x] 4-bit exact T01 Workload Safety 001 FULL_PASS (`20260819-132612`): preflight 74% free, min free 6%, peak swap 2470.31 MB
 - [x] Preregister full 4-bit six-task Coding Benchmark 001
 - [x] Freeze prospective 4-bit Pi gate before result: `COMPLETE` + delivery-adjusted >27.86 + delivery >2/6
-- [x] Run full Qwen3-8B-4bit Coding Benchmark 001 (`20260819-133144`)
-- [x] 4-bit full run hits free-memory guardrail during T01: min free **4%**, peak swap 3028.25 MB
-- [x] Classify 4-bit full run **PARTIAL_RESOURCE_FAIL**; no valid aggregate quality ordering
-- [x] Freeze `research/runtime/direct-mlx-8b-4bit-coding-benchmark-001.md`
-- [x] Add read-only `scripts/inspect_direct_mlx_8b_4bit_coding_benchmark_001.py`
-- [ ] Diagnose persisted 4-bit run timeline/progress/child state; no model rerun
-- [ ] If genuine T01 processing/generation caused the 4% breach, freeze exact 4-bit profile as continuous-workload RESOURCE FAIL
-- [ ] Only consider a separately preregistered one-factor rescue if diagnostic reveals a strong low-confound mechanism
-- [ ] Otherwise close 4-bit branch and advance to next Direct MLX / Phase 6 frontier
+- [x] Run original full Qwen3-8B-4bit Coding Benchmark 001 (`20260819-133144`)
+- [x] Original 4-bit full run hits free-memory guardrail during T01: preflight 56%, min free 4%, peak swap 3028.25 MB
+- [x] Classify original 4-bit full run `PARTIAL_RESOURCE_FAIL`; no valid aggregate quality ordering
+- [x] Diagnose persisted 4-bit timeline/progress/child state; no model rerun
+- [x] Confirm no T01 result persisted; child terminated at 17.913 s while T01 running
+- [x] Confirm max swap occurred earlier than min-free sample and swap was decreasing at 4% breach
+- [x] Identify material host-state difference: failed full preflight 56% free vs successful 4-bit T01 74% and completed 3-bit full 75%
+- [x] Freeze `research/runtime/direct-mlx-8b-4bit-coding-benchmark-001-resource-diagnostic.md`
+- [x] Preregister exactly one host-state-controlled 4-bit full replication before any KV rescue
+- [x] Add `research/runtime/direct-mlx-8b-4bit-hoststate-replication-001-plan.md`
+- [x] Add `scripts/direct_mlx_8b_4bit_hoststate_replication_001.py`
+- [ ] Run host-state wrapper; require 3 consecutive prelaunch samples >=70% free memory
+- [ ] If `HOST_STATE_NOT_READY`, do not launch MLX and do not count as model failure; retry only after naturally freeing host resources
+- [ ] If controlled replication launches and resource-fails again, close 4-bit / 4096 / unquantized-KV full-session branch with no further same-profile repeats
+- [ ] If controlled replication completes, retain both original fail and replication; apply frozen quality gate (>27.86 delivery-adjusted and >2/6 delivery) before any Pi validation
+- [ ] Do not automate memory/swap purge, lower guardrails, change KV/context, prompts/parser/scorer, or retry individual tasks
 - [ ] Pi remains blocked until technical + workload + prospective quality gates all pass
-- [ ] Do not lower 5% / 5600 MB guardrails or alter failed condition post-hoc
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
