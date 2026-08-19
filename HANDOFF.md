@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — Direct MLX has established a safe 8B frontier on the Apple M1 / 8 GB reference machine. Qwen3-8B-3bit is full-session stable but did not earn Pi promotion on frozen coding quality. Qwen3-8B-4bit has passed both smoke and exact T01 workload safety at `max_kv_size=4096`, but T01 reached only 6% free memory. The active gate is the full six-task 4-bit coding benchmark in one continuous model session.
-Checkpoint: `DIRECT_MLX_8B_4BIT_CODING_BENCHMARK_001_READY`
+Status: ACTIVE — Direct MLX established a practical 8B runtime frontier on Apple M1 / 8 GB. Qwen3-8B-3bit is full-session stable but did not earn Pi promotion on frozen coding quality. Qwen3-8B-4bit passed smoke and standalone T01 only narrowly, then the preregistered continuous six-task benchmark hit the frozen free-memory guardrail during T01. No valid 4-bit aggregate quality result exists.
+Checkpoint: `DIRECT_MLX_8B_4BIT_CODING_BENCHMARK_001_RESOURCE_DIAGNOSTIC`
 
 ## Mission
 
@@ -19,9 +19,10 @@ Local path: `<repository-root>`
 - Frozen safety abort: free memory <5% OR swap >5600 MB.
 - Process RSS is diagnostic only; system-wide free memory and swap drive safety decisions.
 - Never silently delete verified models or canonical results.
-- Record free disk before/after model acquisition and large runtime experiments.
+- Record free disk before/after model acquisitions and large runtime experiments.
+- Do not lower guardrails or alter a failed frozen condition post-hoc.
 
-Latest observed disk after 4-bit T01: **35.354 GiB free**. Verified 3-bit, 4-bit and GGUF artifacts are retained.
+Latest observed disk after 4-bit full benchmark partial run: **35.338 GiB free**. Verified 3-bit, 4-bit and GGUF artifacts are retained.
 
 # Frozen prior results
 
@@ -41,29 +42,29 @@ Pi Agentic Coding Benchmark 001 (`20260818-214848`):
 - delivery 6/6
 - protocol 4/6
 
-## Phase 4 llama.cpp boundary
+## Phase 4 — llama.cpp boundary
 
-Pinned llama.cpp commit: `60addddf3c567c43ec3caf70fc953fba3572d96f`.
+Pinned commit: `60addddf3c567c43ec3caf70fc953fba3572d96f`.
 
 - 4B Q4 control: pp512 230.85 t/s, tg128 22.33 t/s, min free 22%.
-- 8B Q2: technically runnable/API-servable but frozen coding delivery 0/100 vs 4B Q4 34.29/100.
-- 8B Q3 NP1 + Q8_0 KV: API smoke PASS at 6% free, but exact Coding T01 hit 4% free and guardrail abort.
+- 8B Q2: technically runnable/API-servable but coding delivery 0/100 vs 4B Q4 34.29/100 in Compare 001.
+- 8B Q3 NP1 + Q8_0 KV: API smoke PASS at 6% free; exact Coding T01 hit 4% free and guardrail abort.
 
 Canonical Q3 boundary:
 > **API-smoke PASS / real-workload RESOURCE FAIL** at context 4096 under llama.cpp.
 
 Do not expose llama.cpp Q3 to Pi.
 
-# Phase 5 — Direct MLX — ACTIVE
+# Phase 5 — Direct MLX
 
 Validated environment:
-- venv `results-local/mlx/venv-mlx-lm-0.31.3`
+- `results-local/mlx/venv-mlx-lm-0.31.3`
 - `mlx-lm==0.31.3`
 - `mlx==0.31.2`
 - `transformers==5.12.1`
 - Darwin arm64 / local MLX compute PASS.
 
-## Qwen3-8B-3bit — resource success, quality not promoted
+## Qwen3-8B-3bit — full-session stable, quality not promoted
 
 Artifact:
 - `mlx-community/Qwen3-8B-3bit`
@@ -72,17 +73,25 @@ Artifact:
 - 3-bit / group size 64
 - observed main weight 3.338 GiB.
 
-Safety-valid smoke (`20260819-124440`): min free 23%, peak swap 1720.75 MB, FULL_PASS.
+Safety-valid smoke (`20260819-124440`):
+- `max_kv_size=4096`, unquantized KV
+- min free 23%
+- peak swap 1720.75 MB
+- FULL_PASS.
 
-Exact T01 (`20260819-124952`): min free 19%, peak swap 1643.12 MB, structured delivery `written`, FULL_PASS.
+Exact T01 (`20260819-124952`):
+- min free 19%
+- peak swap 1643.12 MB
+- delivery `written`
+- FULL_PASS.
 
-Full Coding Benchmark 001 (`20260819-125647`):
+Full Direct MLX Coding Benchmark 001 (`20260819-125647`):
 - one loaded model session T01–T06
 - min free 14%
 - peak swap 1683.38 MB
 - artifact 38.57/100
 - delivery-adjusted 27.86/100
-- delivery 2/6
+- structured delivery 2/6
 - COMPLETE.
 
 Diagnostic:
@@ -90,7 +99,7 @@ Diagnostic:
 - T02 12.86/15, 6/7 tests.
 - T03 protocol fail from extra fenced JSON.
 - T04 protocol fail plus malformed/incorrect content.
-- T05 protocol fail; candidate emitted but no post-hoc salvage.
+- T05 protocol fail; substantial candidate emitted but no post-hoc salvage.
 - T06 protocol fail plus tie-order semantic defect.
 
 Conclusion:
@@ -100,15 +109,14 @@ Records:
 - `research/runtime/direct-mlx-coding-benchmark-001.md`
 - `research/runtime/direct-mlx-coding-benchmark-001-diagnostic.md`
 
-## Qwen3-8B-4bit — smoke PASS
+## Qwen3-8B-4bit — smoke PASS, standalone T01 PASS, continuous benchmark RESOURCE FAIL
 
 Artifact:
 - `mlx-community/Qwen3-8B-4bit`
 - revision `545dc4251c05440727734bcd94334791f6ab0192`
 - SHA256 `f2d29621aab300336ad645567ff38c42aac755513006ef4e8a579cf7ef5256d8`
 - 4-bit / group size 64
-- observed main weight 4.291 GiB
-- local path `results-local/mlx/models/Qwen3-8B-4bit`.
+- observed main weight 4.291 GiB.
 
 Smoke `20260819-131009`:
 - `max_kv_size=4096`, unquantized KV
@@ -116,100 +124,93 @@ Smoke `20260819-131009`:
 - generation 20.8411 t/s
 - MLX peak memory 4.683327704 GB
 - peak swap 2403.31 MB
-- minimum free memory 10%
+- min free 10%
 - FULL_PASS.
 
-Record: `research/runtime/direct-mlx-8b-4bit-smoke-001.md`.
-
-## Qwen3-8B-4bit — exact T01 FULL_PASS
-
-Run `20260819-132612`.
-Plan: `research/runtime/direct-mlx-8b-4bit-t01-workload-001-plan.md`
-Result: `research/runtime/direct-mlx-8b-4bit-t01-workload-001.md`
-Runner: `scripts/direct_mlx_8b_4bit_t01_workload.py`
-
-Frozen condition:
-- exact Coding Benchmark 01 v1.0.1 T01 / frozen adapter
-- local/offline Direct MLX
-- `enable_thinking=False`
-- `max_kv_size=4096`
-- unquantized KV
-- max generation 2048
-- seed 0
-- one attempt, no retry/repair/salvage/test feedback
-- unchanged 5% / 5600 MB guardrails.
-
-Observed:
-- disk before/after 35.354 GiB
-- safety preflight 74% free / 1395.25 MB swap
-- generation exit 0
-- output 421 chars
+Standalone exact T01 `20260819-132612`:
 - prompt 276 tok @ 35.2422 t/s
 - generation 101 tok @ 13.9275 t/s
 - MLX peak memory 4.981664948 GB
-- structured delivery `written`
-- peak process RSS 558.921875 MB
-- peak swap **2470.31 MB**
-- minimum free memory **6%**
-- classification **FULL_PASS**.
+- delivery `written`
+- peak swap 2470.31 MB
+- min free **6%**
+- FULL_PASS.
 
-Canonical interpretation:
-> The 4-bit profile clears the exact real T01 gate but only narrowly on free memory: 6% minimum, one percentage point above the frozen 5% threshold. This authorizes the full benchmark without authorizing any runtime relaxation.
+### Full 4-bit Coding Benchmark 001 — PARTIAL_RESOURCE_FAIL
 
-Descriptive T01 comparison, 3-bit vs 4-bit:
-- min free 19% vs 6%
-- peak swap 1643.12 vs 2470.31 MB
-- MLX peak memory 3.9595 vs 4.9817 GB
-- generation 16.5166 vs 13.9275 t/s
-- delivery `written` for both.
-
-Do not interpret these as a causal estimate of weight precision.
-
-# Current checkpoint — 4-bit full Coding Benchmark 001
-
-Checkpoint: `DIRECT_MLX_8B_4BIT_CODING_BENCHMARK_001_READY`
+Run `20260819-133144`.
 Plan: `research/runtime/direct-mlx-8b-4bit-coding-benchmark-001-plan.md`
+Result: `research/runtime/direct-mlx-8b-4bit-coding-benchmark-001.md`
 Runner: `scripts/direct_mlx_8b_4bit_coding_benchmark_001.py`
 
-The runner is a frozen transform of validated 3-bit full benchmark blob `01b00d604026affff4bad0d599a3159faaf786ae` and changes only model identity and result labels/directories.
-
-Frozen full-run condition:
-- exact 4-bit artifact and pinned MLX environment
+Frozen condition:
 - exact Coding Benchmark 01 v1.0.1 T01–T06
-- adapter blob `62abab57f6463c5813809b43d8f1e7bdfec5f304`
-- scorer blob `754e9a6506968d2b191bff57997710591efe8133`
-- exact prompts/parser/scorer
-- one loaded model session for all six tasks
+- exact adapter/scorer blobs
+- one loaded Direct MLX model session
 - local/offline, non-thinking
-- `max_kv_size=4096`, unquantized KV
-- max 2048 generation tokens/task
+- `max_kv_size=4096`
+- unquantized KV
+- max 2048 tokens/task
 - seed 0
 - no retry/repair/salvage/test feedback
 - free <5% / swap >5600 MB abort.
 
-Prospectively frozen quality gate versus same-runtime 3-bit:
-- 3-bit reference delivery-adjusted: 27.86/100
-- 3-bit structured delivery: 2/6
-- 4-bit becomes eligible for later isolated Pi validation only if `COMPLETE`, delivery-adjusted **>27.86**, and delivery count **>2/6**.
-- This gate does not by itself establish a daily-use upgrade.
+Preflight:
+- disk before 36.347 GiB
+- environment/model/adapter/scorer/benchmark/prompts PASS
+- 56% free / 948.75 MB swap.
+
+Observed:
+- session reached `[1/6] T01 running...`
+- peak process RSS 459.453125 MB
+- peak swap **3028.25 MB**
+- minimum free memory **4%**
+- guardrail abort
+- classification **PARTIAL_RESOURCE_FAIL**
+- disk after 35.338 GiB.
+
+Canonical conclusion:
+> Qwen3-8B-4bit Direct MLX passed smoke and a standalone exact T01, but the preregistered continuous benchmark condition crossed the frozen free-memory boundary during T01. Therefore this exact 4096-KV / unquantized-KV 4-bit profile is not established as full-session workload-stable on the reference M1/8 GB machine.
+
+The prospectively frozen Pi-quality gate required `COMPLETE` + delivery-adjusted >27.86 + delivery >2/6. Because the run is partial, **no valid 4-bit aggregate quality comparison exists** and Pi remains blocked.
+
+Do not compare any partial score/output against the completed 3-bit benchmark.
+
+# Current checkpoint — 4-bit resource diagnostic
+
+Checkpoint: `DIRECT_MLX_8B_4BIT_CODING_BENCHMARK_001_RESOURCE_DIAGNOSTIC`
+Inspector: `scripts/inspect_direct_mlx_8b_4bit_coding_benchmark_001.py`
+Local run:
+`results-local/mlx/8b-4bit-coding-benchmark-001/20260819-133144`
+
+Diagnostic must recover without rerunning the model:
+- exact `guardrail_abort_reason`;
+- child exit/wall state;
+- progress state and whether T01 completed/persisted;
+- free-memory/swap timeline around the 4% breach;
+- raw child stdout/stderr tails;
+- whether evidence places the breach during model load, prompt processing, generation, or after response completion.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/direct_mlx_8b_4bit_coding_benchmark_001.py
-python3 scripts/direct_mlx_8b_4bit_coding_benchmark_001.py
+python3 -m py_compile scripts/inspect_direct_mlx_8b_4bit_coding_benchmark_001.py
+python3 scripts/inspect_direct_mlx_8b_4bit_coding_benchmark_001.py \
+  results-local/mlx/8b-4bit-coding-benchmark-001/20260819-133144
 ```
 
-No model download is expected. Preserve output through `Summary:`.
+Paste the full output.
 
-## Decision after full 4-bit run
+## Decision after diagnostic
 
-If `COMPLETE`, freeze quality/safety and apply the prospectively frozen gate above before any Pi experiment.
-
-If resource/telemetry/runtime partial, do not infer a clean quality ordering. Diagnose before changing any runtime parameter. Do not lower guardrails, reduce `max_kv_size`, quantize KV, alter prompts/parser/scorer or retry tasks inside this condition.
+- If the 4% breach occurred during genuine T01 processing/generation, freeze the exact 4-bit condition as workload RESOURCE FAIL. Do not rerun the same condition.
+- Do not lower the guardrail or reduce `max_kv_size` inside the failed experiment.
+- A new rescue is allowed only as a separately preregistered one-factor experiment with a clear mechanistic rationale; avoid an endless rescue ladder.
+- If no single low-confound rescue is strongly justified, close the 4-bit branch and move to the next Phase 5/6 frontier.
+- Pi remains blocked regardless until a profile passes technical, workload and prospective quality gates.
 
 ## Continuation rule
 
-Before a new experiment, read this file. After every meaningful experiment/decision/result, update this file before moving to the next checkpoint.
+Before a new experiment, read this file. After every meaningful result/decision, update this file before moving to the next checkpoint.
