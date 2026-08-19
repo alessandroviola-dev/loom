@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — Pi remains the primary local agent harness; memory-retention investigation practically resolved; Qwen Code deprioritized; llama.cpp Metal setup and 4B GGUF control both validated; 8B Q4 capability test preregistered pending disk preflight
-Checkpoint: `LLAMA_CPP_8B_Q4_001_DISK_PREFLIGHT`
+Status: ACTIVE — Pi remains the primary local agent harness; memory-retention investigation practically resolved; Qwen Code deprioritized; llama.cpp Metal setup and 4B control validated; 8B Q4 disk preflight passed and staged capability runner ready
+Checkpoint: `LLAMA_CPP_8B_Q4_001_READY`
 
 ## Mission
 
@@ -27,16 +27,30 @@ Normal Pi contains real auth, sessions and customizations. LOOM must not reset o
 
 ## Storage hygiene
 
-Phase 4-6 will accumulate multi-GB models/builds. Free disk is now a standard operational metric.
+Free disk is a standard LOOM operational metric for Phase 4-6.
 
 Rules:
-- record disk free before/after new multi-GB models where practical;
+- record free disk before/after new multi-GB models where practical;
 - periodically inspect `results-local/models/`, llama.cpp source/build trees and related caches;
 - reuse verified artifacts rather than redownloading;
 - never silently delete models/results;
 - before cleanup, separate reproducible caches/builds from canonical research records.
 
-The 8B Q4 plan requires at least **12 GiB free** before a fresh download.
+### 8B disk preflight — PASS
+
+Observed 2026-08-19 before Capability 001:
+
+```text
+Filesystem        Size    Used   Avail Capacity  Mounted on
+/dev/disk3s1s1   228Gi    12Gi    56Gi    18%   /
+
+2.3G  results-local/models
+415M  results-local/llama-cpp
+```
+
+Frozen fresh-download minimum: **12 GiB**.
+Observed free: **56 GiB**.
+Conclusion: no cleanup required before the 8B Q4 run.
 
 ## Frozen baseline / agent results
 
@@ -74,7 +88,7 @@ Controlled work showed:
 - identical warm calls only 4.1 -> 4.5 GB;
 - direct prompt pressure only 4.1 -> 4.5 GB, with warm high-water retention;
 - valid synthetic 1 -> 4 true turns added only ~0.1-0.2 GB;
-- exact-workload cold T01-T05 stayed 4.3-4.9 GB, while the historical warm sequence reached 6.8 GB by T05;
+- exact-workload cold T01-T05 stayed 4.3-4.9 GB, while historical warm sequence reached 6.8 GB by T05;
 - T03-T05 cold replays were equal/heavier by tool or token activity yet 1.1-2.3 GB below warm historical SIZE.
 
 Canonical conclusion:
@@ -142,11 +156,12 @@ Benchmark, `-ngl -1`, flash-attn auto, 3 repetitions:
 - success true
 
 Interpretation:
-> GGUF download/hash verification, pinned llama.cpp, Metal execution and telemetry are all validated. This is not an apples-to-apples performance claim versus the different `qwen3.5:4b-mlx` model.
+> GGUF download/hash verification, pinned llama.cpp, Metal execution and telemetry are validated. This is not an apples-to-apples performance claim versus the different `qwen3.5:4b-mlx` model.
 
-## 8B Q4 Capability 001 — PREREGISTERED
+## 8B Q4 Capability 001 — READY
 
 Plan: `research/runtime/llama-cpp-8b-q4-001-plan.md`
+Runner: `scripts/llama_cpp_8b_q4.py`
 
 Frozen artifact:
 - official repo `Qwen/Qwen3-8B-GGUF`
@@ -154,30 +169,38 @@ Frozen artifact:
 - remote size `5,027,783,488` bytes (~4.68 GiB)
 - SHA256 `d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785`
 
-Because this is close to the observed Metal working-set frontier, the experiment is staged:
-1. verify free disk and model storage footprint;
-2. download + SHA256 only if >=12 GiB free for a fresh artifact;
-3. context-4096 `llama-cli` launch smoke, maximum Metal offload;
-4. only if smoke passes, run the same pp512/tg128 throughput shape as the 4B control;
-5. monitor RSS, swap and memory pressure;
-6. abort child process if observed free memory <5% or swap >5600 MB;
-7. no same-run parameter rescue.
+Disk preflight passed with 56 GiB free, well above the frozen 12 GiB minimum.
+
+Frozen staged sequence:
+1. download/resume the 8B GGUF and verify exact SHA256;
+2. stop the canonical Ollama model if present;
+3. Stage A: `llama-cli`, maximum Metal offload (`-ngl -1`), context **4096**, tiny deterministic prompt, 8 generated tokens;
+4. monitor RSS, swap and memory pressure;
+5. abort if observed free memory <5% or swap >5600 MB;
+6. Stage B runs only if Stage A passes;
+7. Stage B: same pp512/tg128, 3-repetition `llama-bench` shape as the 4B control;
+8. record disk free after the run;
+9. no same-run reduction of context, quantization or GPU layers.
+
+Classification:
+- `FULL_PASS`: smoke + benchmark pass without guardrail breach;
+- `LAUNCH_PASS_BENCH_FAIL`: context-4096 smoke passes but benchmark fails/aborts;
+- `FAIL`: hash or Stage A failure/guardrail.
 
 ## Exact next step
 
-Do **not** start the 8B download yet. On the reference Mac run:
+On the reference Mac:
 
 ```bash
 cd "<repository-root>"
 git pull
-
-df -h /
-du -sh results-local/models results-local/llama-cpp 2>/dev/null
+python3 -m py_compile scripts/llama_cpp_8b_q4.py
+python3 scripts/llama_cpp_8b_q4.py
 ```
 
-Paste the full output.
+The first run downloads approximately 4.68 GiB and is resumable. Preserve the complete output from `LOOM llama.cpp 8B Q4 Capability 001` through the final `Summary:` line.
 
-If free disk is comfortably above the frozen 12 GiB guard, create/finalize the 8B runner and execute Capability 001 exactly as preregistered.
+If the runner reports `FAIL` or `LAUNCH_PASS_BENCH_FAIL`, do not manually rerun with altered parameters before updating the canonical result and deciding the next preregistered condition.
 
 ## Roadmap state
 
@@ -185,7 +208,7 @@ If free disk is comfortably above the frozen 12 GiB guard, create/finalize the 8
 - Phase 1: DONE
 - Phase 2: DONE / FROZEN
 - Phase 3: materially complete for current needs
-- **Phase 4: ACTIVE — 4B control PASS, 8B Q4 waiting disk preflight**
+- **Phase 4: ACTIVE — 4B control PASS; 8B Q4 Capability 001 READY**
 - Phase 5 Direct MLX: queued
 - Phase 6 Colibrì / SSD / MoE: queued
 - Phase 7 extended runtimes: queued
