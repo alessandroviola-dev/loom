@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — LOOM is optimizing useful capability rather than resident model size on the Apple M1 / 8 GB reference system. Amplifier 001 showed warm-resident multi-call memory pressure. Amplifier 002 proved call isolation works, but a cold T02 repair at context 4096 still crossed the 5% free-memory guardrail from 68% free. Amplifier 003 reduced only repair context to 3072; a valid launch again reached the T02 repair path and terminated `PARTIAL_RESOURCE_FAIL`. Exact 003 telemetry is not yet inspected.
-Checkpoint: `CAPABILITY_AMPLIFIER_003_RESOURCE_DIAGNOSTIC`
+Status: ACTIVE — LOOM is optimizing useful capability rather than resident model size on the Apple M1 / 8 GB reference system. Amplifiers 001–003 established that the current Ollama/MLX 4B profile has extremely narrow memory headroom for multi-call repair workflows. Call isolation works, and reducing repair context from 4096 to 3072 changes pressure but still fails the 5% free-memory guardrail. Before designing another amplifier, measure the actual repair-prompt footprint.
+Checkpoint: `CAPABILITY_AMPLIFIER_REPAIR_PROMPT_ANATOMY`
 
 ## Mission
 
@@ -12,23 +12,23 @@ Tagline: **Big models. Small machines.**
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 
-## Safety / production constraints
+## Safety / research constraints
 
 - Never reset, replace or destroy production Pi configuration.
 - Controlled Pi experiments use run-local `PI_CODING_AGENT_DIR`.
 - Never silently delete verified models or canonical results.
 - Record disk around model acquisitions / large runtime work.
 - Runtime safety boundary: free memory <5% OR swap >5600 MB abort.
-- Process RSS is diagnostic only; system-wide free memory and swap are decisive.
+- System-wide free memory and swap are decisive; process RSS is diagnostic only.
 - Do not relabel harness/parser/capture defects as model failures.
 - Do not assign aggregate quality scores to partial resource/runtime runs.
-- Change one experimental factor at a time when testing a causal operational hypothesis.
+- Change one experimental factor at a time when testing causal operational hypotheses.
 - Do not weaken guardrails post-hoc.
-- Do not turn a single context rescue into an automatic reduction ladder.
+- No automatic context-reduction rescue ladder.
 
 Verified 3-bit, 4-bit and GGUF artifacts remain retained.
 
-# Frozen reference results
+# Frozen references
 
 ## Canonical Ollama/MLX 4B
 
@@ -50,8 +50,6 @@ Pi Agentic Coding Benchmark 001 (`20260818-214848`):
 - no hidden-test feedback
 - whole run ~612 s.
 
-Canonical finding: the same local 4B became materially more useful when direct filesystem tools replaced fragile full-file JSON transport. This motivates Capability Amplification.
-
 ## llama.cpp 4B efficiency reference
 
 Qwen3-4B Q4 control:
@@ -59,29 +57,9 @@ Qwen3-4B Q4 control:
 - tg128 22.33 tok/s
 - minimum free memory 22%.
 
-This remains a later secondary Amplify control, not the same model/runtime condition as the canonical Ollama/MLX 4B.
+This remains an important alternate Amplify subject. It is not the same model/runtime condition as `qwen3.5:4b-mlx`, so future comparisons must be framed as capability/efficiency comparisons, not one-factor causal comparisons.
 
-## 8B runtime frontier — characterized / main branch closed
-
-Direct MLX Qwen3-8B 3-bit:
-- full six-task session COMPLETE
-- min free 14%
-- peak swap 1683.38 MB
-- artifact 38.57
-- delivery-adjusted 27.86
-- delivery 2/6
-- stable but not promoted on quality.
-
-Direct MLX Qwen3-8B 4-bit, context 4096:
-- smoke PASS
-- standalone T01 PASS narrowly
-- original full benchmark resource-failed
-- >=70%-free controlled replication reached T04 then hit 4% free
-- exact continuous unquantized-KV profile closed as RESOURCE FAIL.
-
-KV8 Rescue 001 was operator-reported as failed but detailed output was not ingested before the project pivot; do not assign a canonical failure type.
-
-# Research pivot — ADOPTED
+# Research pivot
 
 Primary question:
 > **What is the greatest useful capability that can be produced by an 8 GB local system?**
@@ -92,128 +70,135 @@ Long-term tracks:
 
 Joint frontier metrics: quality/delivery, free memory/swap, wall time, model calls, prompt/generated tokens, disk footprint where relevant.
 
-# Phase 6 — Capability Amplification — ACTIVE
+# Phase 6 — Capability Amplification
 
-## Amplifier 001 — warm-resident frozen result
+## Amplifier 001 — warm-resident
 
-Plan: `research/amplify/capability-amplifier-001-plan.md`
-Runner: `scripts/capability_amplifier_001.py`
 Runner blob: `9f472c60b523762276291232f6e8c6ffc1c5fcae`
 Diagnostic: `research/amplify/capability-amplifier-001-resource-diagnostic.md`
 
 Run `20260819-142640`:
-- host gate 74%, 74%, 74% free; swap 1206.12 MB
-- `PARTIAL_RESOURCE_FAIL`: memory free 4% <5%
+- host gate 74/74/74% free
+- T01 initial 6/6, 15/15
+- T02 initial 3/7, 6.43/15
+- T02 repair triggered
+- `PARTIAL_RESOURCE_FAIL`: free 4% <5%
 - peak swap 2500.88 MB
-- no aggregate quality score
-- T01 initial: 6/6, 15/15, prompt 301, gen 98, 15.922 tok/s, wall 12.391 s, min free 5%
-- T02 initial: 3/7, 6.43/15, prompt 406, gen 118, 16.026 tok/s, wall 10.020 s, min free 6%
-- T02 repair: free 7% -> 5% -> 5% -> 4%, no completed response.
+- no aggregate quality score.
 
 Interpretation: warm continuous Ollama residency lacks sufficient headroom. Do not call this a leak.
 
-## Amplifier 002 — call-isolated frozen result
+## Amplifier 002 — call-isolated
 
-Plan: `research/amplify/capability-amplifier-002-call-isolated-plan.md`
-Runner: `scripts/capability_amplifier_002_call_isolated.py`
 Runner blob: `df332568820e28c90baa5247df27e92cba43c0d6`
 Diagnostic: `research/amplify/capability-amplifier-002-resource-diagnostic.md`
 
 One changed factor vs 001: unload and confirm target absent from `ollama ps` before/after every model call.
 
 Valid run `20260819-144256`:
-- host gate 71%, 72%, 72% free; swap 1699.0 MB
-- `PARTIAL_RESOURCE_FAIL`: memory free 4% <5%
-- peak swap 2611.50 MB
-- T01 initial: 6/6, cold load ~4.153 s
-- T02 initial: 3/7, cold load ~3.153 s
+- host gate 71/72/72% free
+- T01 initial 6/6
+- T02 initial 3/7
 - model unload confirmed
-- T02 repair starts from 68% free / 2346.94 MB swap
-- repair trajectory 68% -> 63% -> 23% -> 16% -> 4%
-- post-abort unload returns 66% free / 1776.06 MB swap.
+- T02 repair starts 68% free / 2346.94 MB swap
+- repair trajectory 68 -> 63 -> 23 -> 16 -> 4% free
+- `PARTIAL_RESOURCE_FAIL`
+- peak swap 2611.50 MB.
 
-Interpretation: call isolation works operationally but is insufficient. Recovery gating alone is not the leading fix because the failing repair starts at 68% free while successful T02 initial starts at 67% free.
+Interpretation: call isolation works operationally but is insufficient. A recovery gate alone is not the leading fix.
 
-## Amplifier 003 — repair context 3072 — PARTIAL / DIAGNOSTIC PENDING
+## Amplifier 003 — repair context 3072 — FROZEN RESOURCE FAIL
 
 Plan: `research/amplify/capability-amplifier-003-repair-context-3072-plan.md`
 Runner: `scripts/capability_amplifier_003_repair_context_3072.py`
 Runner blob: `c2bcc8f126eb5b599645ba12d1fd08a348e2b443`
-Partial record: `research/amplify/capability-amplifier-003-partial-20260819-150342.md`
+Diagnostic: `research/amplify/capability-amplifier-003-resource-diagnostic.md`
 
 Single changed factor vs 002:
 - initial calls remain `num_ctx=4096`
 - repair calls use `num_ctx=3072`.
 
-Preserved:
-- same model/runtime
-- same initial and repair prompt content
-- deterministic validation and frozen-test feedback
-- max one repair
-- candidate selection
-- temperature 0 / non-thinking
-- max-generation request 2048
-- call isolation
-- initial >=70% three-sample host gate
-- free<5% / swap>5600 MB guardrails
-- no Pi/retrieval/planner/third call/human intervention.
-
 Attempt `20260819-150107`:
-- host free 69%
+- 69% free
 - `HOST_STATE_NOT_READY`
 - 0 model calls
 - not a scientific model result.
 
 Valid run `20260819-150342`:
-- disk before 36.344 GiB
-- frozen provenance checks PASS
-- host gate PASS: 71%, 74%, 74% free
-- swap 1247.88 MB
-- T01 initial completes and solves without repair
-- T02 initial completes
-- T02 repair authorized from `frozen_test_failure`
-- terminal classification `PARTIAL_RESOURCE_FAIL`
-- completed model-call records: 2
-- disk after 35.342 GiB
+- host gate 71/74/74% free; swap 1247.88 MB
+- disk 36.344 -> 35.342 GiB free
+- classification `PARTIAL_RESOURCE_FAIL`
+- exact reason `memory free 4% < 5%`
+- whole wall 48.841 s
+- overall peak swap 2318.12 MB
 - no aggregate quality score.
 
-Important boundary: terminal output alone does not expose exact 003 failure reason, repair context record, pre-repair free/swap, or telemetry trajectory. Do not yet claim that 3072 had no resource effect.
+T01 initial:
+- context 4096
+- 6/6, 15/15
+- prompt 301, gen 98
+- 15.042 tok/s
+- wall 11.791 s
+- min free 6%.
 
-# Current checkpoint — Amplifier 003 read-only diagnostic
+T02 initial:
+- context 4096
+- 3/7, 6.43/15
+- prompt 406, gen 118
+- 16.199 tok/s
+- wall 12.918 s
+- min free 6%.
 
-Checkpoint: `CAPABILITY_AMPLIFIER_003_RESOURCE_DIAGNOSTIC`
+T02 repair decisive evidence:
+- isolation confirmed
+- `call_context=3072`
+- starts **70% free / 2069.12 MB swap**
+- trajectory **70 -> 65 -> 31 -> 7 -> 6 -> 4% free**
+- no completed repair API response
+- post-abort unload returns 70% free.
 
-Use existing inspector:
-`scripts/inspect_capability_amplifier_001.py`
+Canonical interpretation:
+> A 25% repair-context reduction from 4096 to 3072 changes the observed pressure trajectory and lowers peak swap relative to Amplifier 002, but does not prevent the same free-memory safety breach. The 3072 repair began from a recovered 70%-free state and still failed.
 
-Target:
+Do not infer a specific KV-cache, allocator, prompt-only, MLX, or Ollama root cause.
+Do not automatically try repair context 2048.
+
+Additional observation:
+- successful T01/T02 initial calls themselves reach only 6% free, leaving very little operating margin in the current Ollama/MLX 4B profile.
+
+# Current checkpoint — repair prompt anatomy
+
+Checkpoint: `CAPABILITY_AMPLIFIER_REPAIR_PROMPT_ANATOMY`
+
+Inspector:
+`scripts/inspect_amplifier_prompt_anatomy.py`
+
+Target run:
 `results-local/amplify/capability-amplifier-003-repair-context-3072/20260819-150342`
 
-Required recovery:
-- exact failure reason
-- min free / peak swap
-- T01/T02 task results
-- model-call context records
-- isolation samples
-- T02 repair pre-state and telemetry trajectory
-- whether a repair API response completed.
+Purpose:
+- compare saved T02 initial vs repair prompt footprint;
+- count UTF-8 bytes, characters, lines and whitespace-delimited words;
+- break repair prompt into preamble, original task, validation feedback, candidate and non-editable context;
+- confirm repair raw API response is absent;
+- no model launch and no mutation.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 scripts/inspect_capability_amplifier_001.py \
-  results-local/amplify/capability-amplifier-003-repair-context-3072/20260819-150342
+python3 -m py_compile scripts/inspect_amplifier_prompt_anatomy.py
+python3 scripts/inspect_amplifier_prompt_anatomy.py \
+  results-local/amplify/capability-amplifier-003-repair-context-3072/20260819-150342 \
+  --task T02
 ```
 
-This inspector is read-only and does not launch the model.
+## Decision after prompt anatomy
 
-## Decision after diagnostic
-
-- If the 3072 repair still crosses the same guardrail from a recovered pre-state, do not automatically try 2048. Redesign repair architecture/prompt budget.
-- If telemetry shows a materially different failure mechanism, design the next one-factor experiment around that demonstrated mechanism.
-- If a harness/isolation/telemetry defect is found, fix only that defect before interpretation.
+1. If repair prompt is materially inflated relative to initial, preregister **Compact Repair** as the next one-factor architecture: keep model, 3072 repair context, call isolation, validation, max-one-repair, scorer and guardrails; change only repair information serialization/prompt budget.
+2. If repair prompt is already relatively compact, stop treating prompt reduction as the leading fix. Re-evaluate the primary Amplify execution profile, with the previously validated llama.cpp 4B as the strongest alternate due to substantially larger observed memory headroom and higher throughput.
+3. Do not automatically descend to context 2048.
 
 ## Continuation rule
 
