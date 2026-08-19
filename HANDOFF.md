@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — Pi remains primary local agent harness; llama.cpp/Metal validated; 4B control PASS; 8B Q4 and Q3 hit frozen memory guardrails; first Q2 attempt proved load/inference but was invalidated by interactive CLI behavior; corrected Q2 Capability 002 is ready.
-Checkpoint: `LLAMA_CPP_8B_Q2_002_READY`
+Status: ACTIVE — Pi remains primary local agent harness; llama.cpp/Metal validated; 4B control PASS; 8B Q4 and Q3 hit frozen memory guardrails; Q2 now demonstrably loads/completes a turn with healthy headroom, but Capability 002 was invalidated by an evidence-parser defect; Capability 003 is preregistered and ready.
+Checkpoint: `LLAMA_CPP_8B_Q2_003_READY`
 
 ## Mission
 
@@ -32,6 +32,8 @@ Latest confirmed storage observations:
 - after 8B Q4: 50.567 GiB free
 - after 8B Q3: 46.763 GiB free
 - before first Q2 attempt: 46.746 GiB free
+- Capability 002 before: **43.686 GiB free**
+- Capability 002 after: **43.674 GiB free**
 - verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 artifacts are retained
 
 ## Frozen baseline / agent state
@@ -142,64 +144,89 @@ Artifact:
 - `Qwen3-8B-Q2_K.gguf`
 - observed size **3.056 GiB**
 - SHA256 PASS
-- context 4096
-- `-ngl -1`
 
-Observed diagnostic behavior:
+Diagnostic result:
 - model loaded successfully
-- `llama-cli` entered actual inference on the frozen prompt
-- on-screen preliminary timing approximately **32.8 prompt t/s / 14.3 generation t/s**
-- after first response, CLI remained at an interactive prompt instead of exiting
+- actual inference began at requested context 4096
+- preliminary on-screen timing ~32.8 prompt t/s / 14.3 generation t/s
+- CLI then remained interactive because Stage A omitted `-st`
 
-Root cause:
-- at the pinned llama.cpp commit, conversation mode is auto-enabled when a chat template is available;
-- `-st` / `--single-turn` is documented to run one conversation turn and exit, and with a predefined prompt it does not remain interactive;
-- the inherited Q4 Stage A command omitted `-st`.
+Classification: **INVALID**, not PASS/FAIL.
 
-Classification:
-> Capability 001 is **INVALID**, not PASS/FAIL. It proves only that Q2 can load and begin inference at context 4096; it cannot provide a final automated Stage A or Stage B result.
+## 8B Q2 Capability 002 — INVALID / VALIDATION DEFECT
 
-## 8B Q2 Capability 002 — PREREGISTERED / READY
-
+Run id: `20260819-102747`
 Plan: `research/runtime/llama-cpp-8b-q2-002-plan.md`
+Invalid record: `research/runtime/llama-cpp-8b-q2-002-invalid.md`
 Runner: `scripts/llama_cpp_8b_q2_002.py`
 
-Frozen model/runtime condition remains unchanged from Capability 001:
-- same Q2_K artifact and expected SHA256
-- context 4096
+Frozen runtime/model condition:
+- same verified Q2_K artifact
+- context 4096 via `-c 4096`
 - `-ngl -1`
-- same 8-token Stage A prompt
-- same 5% memory-free abort
-- same 5600 MB swap abort
-- Stage B pp512/tg128 x3 only after Stage A PASS
-- no automatic rescue
+- `-st`
+- 8 generated tokens
+- same 5% memory-free / 5600 MB swap guardrails
 
-Only harness correction:
-- add `-st` (`--single-turn`) to Stage A so `llama-cli` exits after the predefined first turn.
+Observed:
+- SHA256 PASS
+- model size 3.056 GiB
+- single turn completed and CLI exited automatically
+- on-screen prompt **43.2 t/s**
+- on-screen generation **11.4 t/s**
+- wall **7.229 s**
+- peak RSS **2215.203125 MB**
+- peak swap **2181.12 MB**
+- minimum free memory **19%**
+- no guardrail breach
+- Stage B skipped because Stage A validator printed FAIL
 
-Implementation preserves prior reproducibility by leaving the Q4/Q3 runners unchanged. The new Q2 Capability 002 wrapper still verifies the exact frozen Q4 template blob `83e01eae5ed12d13396f003d5291ba786a668ffd`, then adds only the Q2 constants plus `-st` during deterministic transformation.
+Validation defect:
+- inherited validator required literal `metal`/`mtl` and `4096` strings inside Stage A child stdout/stderr;
+- the completed child did not print those optional strings;
+- therefore the parser could label a healthy completed run FAIL despite the requested command and same-run device preflight being correct.
 
-The verified local Q2 model must be reused; no new ~3 GB download is expected.
+Canonical treatment:
+> Capability 002 remains **INVALID**, not promoted post hoc. It is strong diagnostic evidence that Q2 has materially more headroom than Q4/Q3, but a corrected preregistered validator must authorize Stage B.
+
+## 8B Q2 Capability 003 — PREREGISTERED / READY
+
+Plan: `research/runtime/llama-cpp-8b-q2-003-plan.md`
+Runner: `scripts/llama_cpp_8b_q2_003.py`
+
+Runtime/model condition is unchanged from Capability 002.
+
+Only validation correction:
+- exact `-c 4096` pair must be present in the executed command;
+- exact `-ngl -1` pair must be present;
+- `-st`/`--single-turn` must be present;
+- same-run device preflight must show `MTL0` and Metal evidence;
+- child must exit 0, produce output, avoid timeout and avoid guardrail breach.
+
+Stage B remains unchanged pp512/tg128 x3 and independently records backend/effective GPU-layer evidence.
+
+The runner leaves frozen Q4/Q3 code untouched and still verifies the original Q4 runner blob `83e01eae5ed12d13396f003d5291ba786a668ffd` before deterministic transformation.
 
 ## Exact next step
 
-First terminate the still-interactive Capability 001 process with `Ctrl+C` if it is still open.
-
-Then run:
+Run:
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/llama_cpp_8b_q2_002.py
-python3 scripts/llama_cpp_8b_q2_002.py
+python3 -m py_compile scripts/llama_cpp_8b_q2_003.py
+python3 scripts/llama_cpp_8b_q2_003.py
 ```
 
-Preserve complete output from `LOOM llama.cpp 8B Q2 Capability 002` through the final `Summary:` line.
+The verified Q2 artifact is already local; no new multi-GB download is expected.
 
-## Decision after Q2 Capability 002
+Preserve complete output from `LOOM llama.cpp 8B Q2 Capability 003` through the final `Summary:` line.
 
-- If `FULL_PASS`: stop reducing quantization and test actual quality/usefulness and Pi compatibility before calling Q2 8B a practical upgrade.
-- If Stage A `FAIL`: stop blindly descending quantizations; next test is a separately preregistered partial-offload/context-memory strategy, then continue broader runtime research.
+## Decision after Capability 003
+
+- If `FULL_PASS`: stop reducing quantization; compare 4B/Q2-8B throughput and test actual quality/usefulness/Pi compatibility before calling Q2 8B a practical upgrade.
+- If `LAUNCH_PASS_BENCH_FAIL`: separately preregister a memory/offload strategy.
+- If Stage A genuinely `FAIL`: stop descending quantizations and move to a separately frozen partial-offload/context-memory condition.
 
 ## Roadmap state
 
@@ -207,7 +234,7 @@ Preserve complete output from `LOOM llama.cpp 8B Q2 Capability 002` through the 
 - Phase 1: DONE
 - Phase 2: DONE / FROZEN
 - Phase 3: materially complete for current needs
-- **Phase 4: ACTIVE — 4B PASS; 8B Q4 FAIL; 8B Q3 FAIL; Q2 Capability 001 INVALID; Q2 Capability 002 READY**
+- **Phase 4: ACTIVE — 4B PASS; 8B Q4 FAIL; 8B Q3 FAIL; Q2 001/002 INVALID; Q2 Capability 003 READY**
 - Phase 5 Direct MLX: queued
 - Phase 6 Colibrì / SSD / MoE: queued
 - Phase 7 extended runtimes: queued
