@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — LOOM has pivoted from maximizing resident model size to maximizing useful capability on an Apple M1 / 8 GB system. Capability Amplifier 001 was launched on the canonical `qwen3.5:4b-mlx`; T01 solved on the initial call, T02 required a repair, and the frozen run hit the runtime safety boundary during the T02 repair path. No aggregate quality result exists yet.
-Checkpoint: `CAPABILITY_AMPLIFIER_001_RESOURCE_DIAGNOSTIC`
+Status: ACTIVE — LOOM is now optimizing useful capability rather than resident model size on the Apple M1 / 8 GB reference system. Capability Amplifier 001 demonstrated the intended quality mechanism can solve T01 cleanly, but the warm-resident multi-call profile resource-failed during the T02 repair. The diagnostic is closed. A one-factor call-isolated replication is preregistered and ready.
+Checkpoint: `CAPABILITY_AMPLIFIER_002_CALL_ISOLATED_READY`
 
 ## Mission
 
@@ -21,8 +21,8 @@ Local path: `<repository-root>`
 - Runtime safety boundary where applicable: free memory <5% OR swap >5600 MB abort.
 - Process RSS is diagnostic only; system-wide free memory and swap are decisive.
 - Do not relabel harness/parser/capture defects as model failures.
-- Do not assign a quality score to a partial resource/runtime run.
-- Do not change an amplifier design before diagnosing a frozen failure.
+- Do not assign aggregate quality scores to partial resource/runtime runs.
+- Change one experimental factor at a time when testing a causal operational hypothesis.
 
 Verified 3-bit, 4-bit and GGUF artifacts remain retained.
 
@@ -48,7 +48,7 @@ Pi Agentic Coding Benchmark 001 (`20260818-214848`):
 - no hidden-test feedback
 - whole run ~612 s.
 
-Canonical finding: the same local 4B became materially more useful when fragile full-file JSON transport was replaced by direct filesystem tools. This is the main motivation for Capability Amplification.
+Canonical finding: the same local 4B became materially more useful when direct filesystem tools replaced fragile full-file JSON transport. This motivates Capability Amplification.
 
 ## llama.cpp 4B efficiency reference
 
@@ -57,7 +57,7 @@ Qwen3-4B Q4 control:
 - tg128 22.33 tok/s
 - minimum free memory 22%.
 
-This remains a later secondary Amplify control; it is not treated as the same model/runtime condition as `qwen3.5:4b-mlx`.
+This remains a later secondary Amplify control, not the primary subject.
 
 ## 8B runtime frontier — characterized / main branch closed
 
@@ -86,19 +86,9 @@ Record: `research/notes/capability-amplification-pivot-2026-08-19.md`
 Primary question:
 > **What is the greatest useful capability that can be produced by an 8 GB local system?**
 
-Two long-term tracks:
-
-1. **Amplify — small model, big capability**
-   - validation / repair
-   - planner / verifier / tool loops
-   - retrieval
-   - later specialization / LoRA / SFT / distillation when justified.
-
-2. **Stretch — big model, small machine**
-   - SSD/layer/expert streaming
-   - MoE offload
-   - hierarchical caching
-   - small resident controller + selectively invoked larger component.
+Long-term tracks:
+1. **Amplify — small model, big capability**: validation/repair, planner/verifier/tool loops, retrieval, later specialization/distillation.
+2. **Stretch — big model, small machine**: SSD/layer/expert streaming, MoE offload, hierarchical caching, small resident controller + selectively invoked larger component.
 
 Joint frontier metrics:
 - quality / delivery
@@ -110,11 +100,13 @@ Joint frontier metrics:
 
 # Phase 6 — Capability Amplification — ACTIVE
 
-## Capability Amplifier 001 — frozen design
+## Capability Amplifier 001 — frozen result
 
 Plan: `research/amplify/capability-amplifier-001-plan.md`
 Runner: `scripts/capability_amplifier_001.py`
 Runner blob: `9f472c60b523762276291232f6e8c6ffc1c5fcae`
+Partial result: `research/amplify/capability-amplifier-001-partial-20260819-142640.md`
+Diagnostic: `research/amplify/capability-amplifier-001-resource-diagnostic.md`
 
 Primary subject:
 - `qwen3.5:4b-mlx`
@@ -124,98 +116,123 @@ Primary subject:
 - temperature 0
 - max 2048 tokens/call.
 
-Frozen provenance:
-- Coding Benchmark 01 v1.0.1
-- manifest blob `547050ecd0183b8d447dc3e21e724a8232f10297`
-- single-shot adapter blob `62abab57f6463c5813809b43d8f1e7bdfec5f304`
-- scorer blob `754e9a6506968d2b191bff57997710591efe8133`.
-
-Mechanism:
+Frozen capability mechanism:
 - exact baseline initial call;
 - deterministic parser/test validation;
 - all tests pass => no repair;
 - otherwise maximum one repair with deterministic feedback;
 - valid repair selected only if it passes more frozen tests; tie retains initial;
-- no Pi, retrieval, third call, human intervention or external model.
+- no Pi, retrieval, planner, third call, human intervention or external model.
 
-Host/safety:
-- stop model before launch;
-- 3 consecutive host samples >=70% free;
-- during model calls free<5% or swap>5600 MB => `PARTIAL_RESOURCE_FAIL`.
+Run `20260819-142640`:
+- initial host gate PASS: 74%, 74%, 74% free; swap 1206.12 MB
+- classification `PARTIAL_RESOURCE_FAIL`
+- exact reason: `memory free 4% < 5%`
+- whole wall 42.789 s
+- overall peak swap 2500.88 MB
+- no aggregate quality score.
 
-Frozen success gates if COMPLETE:
+T01 initial:
+- written
+- 6/6 tests
+- 15/15
+- prompt 301
+- gen 98
+- 15.922 tok/s
+- wall 12.391 s
+- load duration ~3.668 s
+- min free 5% during call.
+
+T02 initial:
+- written
+- 3/7 tests
+- 6.43/15
+- prompt 406
+- gen 118
+- 16.026 tok/s
+- wall 10.020 s
+- load duration ~0.045 s
+- min free 6%.
+
+T02 repair:
+- correctly authorized from frozen-test failure
+- no completed model response
+- telemetry free 7% -> 5% -> 5% -> 4%
+- final swap 2500.88 MB
+- guardrail abort.
+
+Canonical interpretation:
+> Amplifier 001 with continuous warm Ollama residency between sequential calls does not leave enough memory headroom for the validator + one-repair workflow on the M1/8 GB reference system.
+
+This supports testing residency isolation, but does **not** prove a memory leak or any specific Ollama/MLX/KV mechanism.
+
+## Capability Amplifier 002 — Call-Isolated — READY
+
+Plan: `research/amplify/capability-amplifier-002-call-isolated-plan.md`
+Runner: `scripts/capability_amplifier_002_call_isolated.py`
+Runner blob: `df332568820e28c90baa5247df27e92cba43c0d6`
+Frozen base runner blob: `9f472c60b523762276291232f6e8c6ffc1c5fcae`
+
+One changed factor: model residency policy.
+
+Preserved exactly:
+- model/runtime/context/sampler/output budget
+- benchmark/adaptor/scorer
+- initial prompt/request/parser
+- deterministic validation
+- max one repair and feedback content
+- candidate selection
+- initial >=70% three-sample host gate
+- free<5% / swap>5600 MB runtime guardrails
+- quality gates.
+
+Changed:
+- before each model call, ensure target model is not resident;
+- after every completed call, `ollama stop qwen3.5:4b-mlx`;
+- poll `ollama ps` until model is absent (30 s timeout);
+- record isolation memory/swap samples;
+- no new >=70% threshold between calls.
+
+If unload cannot be confirmed: `ISOLATION_FAIL`, no aggregate quality conclusion.
+
+Frozen quality gates if COMPLETE:
 - `QUALITY_IMPROVED`: delivery-adjusted >30.00
 - `STRONG_AMPLIFICATION`: above + artifact >40.71 + delivery >3/6
-- `PI_REFERENCE_REACHED`: descriptive flag if delivery-adjusted >=77.15.
+- `PI_REFERENCE_REACHED`: descriptive if delivery-adjusted >=77.15.
 
-## Capability Amplifier 001 — partial run `20260819-142640`
-
-Record: `research/amplify/capability-amplifier-001-partial-20260819-142640.md`
-
-Observed terminal evidence:
-- disk before 36.360 GiB
-- frozen adapter/scorer/manifest PASS
-- model presence PASS
-- host samples 74%, 74%, 74% free
-- host swap 1206.12 MB
-- T01 initial call completed and solved without repair
-- T02 initial call completed
-- T02 repair authorized from `frozen_test_failure`
-- run aborted during T02 repair path
-- terminal classification `PARTIAL_RESOURCE_FAIL`
-- completed model-call records printed: 2
-- disk after 35.352 GiB
-- no final scorer result / no valid aggregate quality score.
-
-Important boundary:
-The terminal excerpt does not reveal the exact guardrail reason or telemetry trajectory. Do not yet claim free-memory failure, swap failure, warm-retention causality, or repair-specific causality.
-
-Run directory:
-`results-local/amplify/capability-amplifier-001/20260819-142640`
-
-Summary:
-`results-local/amplify/capability-amplifier-001/20260819-142640/run-summary.json`
-
-# Current checkpoint — read-only resource diagnostic
-
-Checkpoint: `CAPABILITY_AMPLIFIER_001_RESOURCE_DIAGNOSTIC`
-
-Inspector:
-`scripts/inspect_capability_amplifier_001.py`
-
-Target run:
-`results-local/amplify/capability-amplifier-001/20260819-142640`
-
-Required recovery:
-- exact `failure_reason`
-- min free memory and peak swap
-- T01/T02 initial test results
-- whether T02 repair produced a completed API response
-- telemetry grouped by task/phase
-- last samples leading into the guardrail
-- completed model-call records.
+Expected trade-off:
+- higher cold-load/wall-time cost;
+- potentially greater memory headroom.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/inspect_capability_amplifier_001.py
-python3 scripts/inspect_capability_amplifier_001.py \
-  results-local/amplify/capability-amplifier-001/20260819-142640
+python3 -m py_compile scripts/capability_amplifier_002_call_isolated.py
+python3 scripts/capability_amplifier_002_call_isolated.py
 ```
 
-This inspector is read-only and does not launch Ollama/MLX.
+No model download is expected.
 
-## Decision after diagnostic
+Preserve output through `Summary:`.
 
-Do not rerun frozen Amplify 001 yet.
+## Decision after Amplifier 002
 
-If telemetry supports retained warm-state accumulation across completed calls, the leading next design is a separately preregistered **call-isolated amplifier** that preserves model/prompts/feedback/scoring but unloads/re-establishes the model between amplification units. That would be a new operational profile, not a rescue rewrite.
+If `COMPLETE`:
+- freeze quality/resource/efficiency result;
+- compare directly with single-shot baseline and Amplifier 001 resource trajectory;
+- only then select the next one-factor capability amplifier.
 
-If the resource breach instead appears specific to one unusually large repair prompt or another localized factor, design the next experiment around that demonstrated cause.
+If `PARTIAL_RESOURCE_FAIL` despite confirmed isolation:
+- call isolation alone is insufficient;
+- do not weaken the 5% guardrail or simply rerun unchanged;
+- next experiment needs a new architectural rationale.
 
-The broader Amplify research question remains active regardless of this resource interruption: the system around a small model must itself be memory-aware on an 8 GB machine.
+If `ISOLATION_FAIL`:
+- inspect/fix only the demonstrated isolation-harness defect before interpreting model/runtime behavior.
+
+After the mechanism is established, port the same amplification logic to the faster llama.cpp 4B as an efficiency control.
 
 ## Continuation rule
 
