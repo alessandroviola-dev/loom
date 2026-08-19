@@ -211,7 +211,7 @@ save(
     resident_peak_bytes=resident_peak,
 )
 
-del resident_blocks, resident_weights, resident_input
+del resident_blocks, resident_weights, resident_input, block, selected
 gc.collect()
 mx.clear_cache()
 gc.collect()
