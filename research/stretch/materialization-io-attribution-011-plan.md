@@ -1,7 +1,13 @@
 # Stretch 011 — Materialization I/O Attribution — Preregistered Plan
 
 Date: 2026-08-19
-Status: READY AFTER RUNNER FREEZE
+Status: **READY**
+
+Runner:
+`scripts/stretch_materialization_io_attribution_011.py`
+
+Frozen runner blob:
+`16125f7eb0b2fb662591e194de0498513a563a6d`
 
 ## Purpose
 
@@ -29,7 +35,7 @@ Stretch 010 valid result:
 
 ## Scientific workload — UNCHANGED
 
-The runner must reproduce the exact transformed Stretch 010 workload:
+The runner reproduces the exact transformed Stretch 010 workload:
 - Qwen3-8B 3-bit/group64
 - mlx 0.31.2 / mlx-lm 0.31.3 / transformers 5.12.1
 - frozen prompt token IDs `[[1,42,2048,151935]]`
@@ -62,7 +68,7 @@ The frozen Darwin `rusage_info_v2` fields used are:
 
 `RUSAGE_INFO_V2` flavor is 2.
 
-These counters are cumulative process resource accounting. Deltas will be computed around phases.
+These counters are cumulative process resource accounting. Deltas are computed around phases.
 
 ### Transformer layer boundaries
 
@@ -83,7 +89,7 @@ The main attribution question concerns the materialization interval because Stre
 
 ### Shared stages
 
-Capture equivalent before/select/materialize resource snapshots for embedding and LM head, and lightweight snapshots for final norm where practical.
+Capture equivalent before/select/materialize resource snapshots for embedding and LM head, and lightweight snapshots for final norm.
 
 ### Pass-level accounting
 
@@ -108,7 +114,7 @@ For the 16 streamed feedback tokens report arrays for:
 
 Also report early tokens 1–4 vs late tokens 8–16 descriptive means.
 
-A Pearson correlation between layer-materialization wall and materialization disk-read bytes may be reported diagnostically if all values are available. It is not a causal gate.
+A Pearson correlation between layer-materialization wall and materialization disk-read bytes/page-ins is diagnostic only and is not a causal gate.
 
 ## Interpretation boundaries
 
@@ -116,7 +122,7 @@ A rise in `ri_diskio_bytesread` concurrent with materialization slowdown would s
 
 Flat disk-read/page-in counters despite higher materialization wall would argue against a simple physical-I/O explanation and motivate MLX/allocator/materialization profiling.
 
-Do not call `ri_diskio_bytesread` a guaranteed exact SSD-byte count for the model file. Do not infer device throughput by dividing model payload by time unless the measured per-process disk-read delta supports that interpretation.
+Do not call `ri_diskio_bytesread` a guaranteed exact SSD-byte count for the model file. Do not infer device throughput by dividing model payload by time unless measured per-process disk-read deltas support that interpretation.
 
 Do not purge macOS caches to manufacture a cold-cache state in this experiment.
 
