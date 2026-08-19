@@ -62,40 +62,85 @@ Alternate preserved subject: Qwen3-4B Q4 via llama.cpp.
 ### Amplifier 003 — repair context 3072
 - [x] Preregister single 25% repair-context reduction
 - [x] Initial calls remain 4096; repair calls 3072
-- [x] Preserve call isolation, prompts, validation, one repair, scorer and guardrails
-- [x] First attempt `20260819-150107`: `HOST_STATE_NOT_READY`, 0 calls
 - [x] Valid run `20260819-150342`
 - [x] Confirm repair `call_context=3072`
-- [x] Confirm repair starts at 70% free / 2069.12 MB swap
-- [x] Confirm trajectory 70 -> 65 -> 31 -> 7 -> 6 -> 4% free
-- [x] `PARTIAL_RESOURCE_FAIL`: exact reason free 4% <5%
-- [x] Peak swap 2318.12 MB
+- [x] Repair starts at 70% free / 2069.12 MB swap
+- [x] Repair trajectory 70 -> 65 -> 31 -> 7 -> 6 -> 4% free
+- [x] `PARTIAL_RESOURCE_FAIL`; peak swap 2318.12 MB
 - [x] Freeze `research/amplify/capability-amplifier-003-resource-diagnostic.md`
-- [x] Conclude 3072 changes pressure but is insufficient
 - [x] Do not automatically descend to 2048
 - [x] Note successful initial calls still reach only 6% free
 
-### Repair-prompt anatomy — CURRENT
-- [x] Add read-only `scripts/inspect_amplifier_prompt_anatomy.py`
-- [ ] Measure T02 initial vs repair prompt bytes/chars/lines/words
-- [ ] Decompose repair into original task / validation feedback / candidate / non-editable context
-- [ ] If repair is materially inflated, preregister Compact Repair as one-factor architecture
-- [ ] If repair is already compact, stop prompt-rescue work and reassess primary execution profile
-- [ ] Treat llama.cpp 4B as strongest alternate due to larger observed memory headroom and higher throughput
+### Repair-prompt anatomy
+- [x] Measure T02 initial prompt: 1638 B
+- [x] Measure T02 repair prompt: 4573 B
+- [x] Freeze ratio: 2.792x
+- [x] Measure validation feedback: 2762 B (~60.4% of repair prompt)
+- [x] Freeze `research/amplify/capability-amplifier-003-prompt-anatomy-t02.md`
+- [x] Conclude one bounded Compact Repair experiment is justified
 
-### Later amplification work
+### Amplifier 004 — Compact Feedback — READY / QUEUED
+- [x] Preregister `research/amplify/capability-amplifier-004-compact-feedback-plan.md`
+- [x] Preserve initial context 4096 and repair context 3072
+- [x] Preserve task prompt + current candidate in repair
+- [x] Preserve isolation, validation, max one repair, scorer and guardrails
+- [x] Change only variable failure-detail serialization
+- [x] Freeze detail body budget at 768 UTF-8 bytes
+- [x] Preserve first feedback line + deterministic UTF-8-safe detail tail
+- [x] Add `scripts/capability_amplifier_004_compact_feedback.py`
+- [x] Freeze runner blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`
+- [ ] Run Amplifier 004 after current Stretch 001 checkpoint
+- [ ] If PARTIAL_RESOURCE_FAIL, stop prompt-budget/context rescue ladder on Ollama/MLX profile
+- [ ] If COMPLETE, freeze quality/resource/efficiency and apply prospective gates
+
+### Later Amplify work
 - [ ] Obtain first COMPLETE amplifier profile
 - [ ] Compare capability/resource/efficiency against single-shot and Pi references
-- [ ] Port established amplification logic across the selected 4B profiles where scientifically useful
-- [ ] Later candidate factors: compact repair, planner/verifier, tool loop, retrieval
+- [ ] Reassess llama.cpp 4B if Ollama/MLX 004 remains resource-bound
+- [ ] Later candidate factors: planner/verifier, tool loop, retrieval
 - [ ] Only later consider specialization / LoRA / SFT / distillation
 
-## Phase 7 — Stretch / Memory Hierarchy
-- [ ] Reframe Colibrì / SSD streaming / MoE as explicit memory-hierarchy research
-- [ ] Investigate layer/expert streaming rather than only aggressive quantization
-- [ ] Evaluate SSD traffic vs resident-memory reduction
-- [ ] Explore small resident controller + selectively invoked large/MoE component
-- [ ] Identify 8 GB-compatible or modifiable candidates
+## Phase 7 — Stretch / Memory Hierarchy — ACTIVE
+
+Research direction:
+**Can LOOM treat SSD + RAM as a model-memory hierarchy rather than requiring full weight residency?**
+
+Principle:
+- dense layer streaming = use all layers sequentially while keeping only a bounded subset resident;
+- layer skipping / early exit = separate later research problem, not assumed safe for standard dense checkpoints.
+
+### Stretch 001 — Dense Layer Streaming Feasibility — CURRENT
+- [x] Select already cached `mlx-community/Qwen3-8B-3bit` as preferred subject
+- [x] No new download authorized
+- [x] Preregister `research/stretch/layer-streaming-feasibility-001-plan.md`
+- [x] Add standard-library runner `scripts/stretch_layer_streaming_feasibility_001.py`
+- [x] Freeze runner blob `890444928abd6cc24e7194317c92b36b50fd994b`
+- [x] Stage A design: safetensors header-only layer map
+- [x] Stage A exact coverage gate against `num_hidden_layers`
+- [x] Stage A exact per-layer / shared byte accounting
+- [x] Stage B design: read only one middle layer's exact byte ranges
+- [x] Stage B bounded 4 MiB I/O chunks + SHA-256 fingerprint
+- [x] Record wall time / MiB/s / free memory / swap / disk
+- [x] No model launch, no MLX model construction, no cache mutation
+- [ ] Run Stretch 001
+- [ ] Freeze exact layer layout and selective-I/O result
+
+### Stretch 002 — Single-layer MLX materialization + eviction — CONDITIONAL
+- [ ] Only preregister if Stretch 001 is `LAYER_ADDRESSABLE_IO_PASS`
+- [ ] Materialize one transformer layer only
+- [ ] Force MLX evaluation
+- [ ] Measure MLX active/cache memory + system free/swap
+- [ ] Release references and use version-safe GC/cache reclamation
+- [ ] Verify memory recovery
+- [ ] Do not run full generation yet
+
+### Stretch 003+ — later if prerequisites pass
+- [ ] Build streamed sequential forward prototype
+- [ ] Verify numerical/logit equivalence against resident control
+- [ ] Add prefetch / double-buffering
+- [ ] Measure SSD traffic per token and throughput
+- [ ] Explore cache/residency policy
+- [ ] Only later investigate dynamic layer selection / early exit / MoE routing
 
 ## Phase 8 — Synthesis
 - [ ] Build capability-vs-memory-vs-time frontier
