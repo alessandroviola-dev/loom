@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — llama.cpp/Metal validated; 8B Q2 has technical FULL PASS and llama-server FULL PASS, but frozen Coding Quality Compare 001 strongly favored 4B Q4 on delivery. Exact 8B failure classes are now the active diagnostic.
-Checkpoint: `LLAMA_CPP_CODING_QUALITY_COMPARE_001_DIAGNOSTIC`
+Status: ACTIVE — llama.cpp/Metal validated; 8B Q2 is technically runnable/API-servable but failed the frozen structured coding delivery benchmark; diagnostic confirms Q2 instruction/delivery degradation rather than a transport/resource defect. Next checkpoint: higher-quality 8B Q3 under llama.cpp automatic fit / partial offload.
+Checkpoint: `LLAMA_CPP_8B_Q3_AUTOFIT_SERVER_SMOKE_001_READY`
 
 ## Mission
 
@@ -28,9 +28,10 @@ Normal Pi contains real auth, sessions and customizations. LOOM must never reset
 Free disk is a standard LOOM metric. Reuse verified artifacts and never silently delete models/results.
 
 Latest confirmed:
-- quality compare before: 44.594 GiB free
-- quality compare after: 43.591 GiB free
+- Coding Quality Compare 001 before: 44.594 GiB free
+- Coding Quality Compare 001 after: 43.591 GiB free
 - verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 artifacts retained
+- no new model download is required for the current Q3 auto-fit test
 
 # Frozen baseline / agent state
 
@@ -51,7 +52,7 @@ Run `20260818-214848`:
 - protocol 4/6
 - provider usage 20,209 tokens
 
-Pi remains the primary local agent harness. Qwen Code remains secondary/deprioritized because its safe mode still exceeded a 4096 hard prompt budget before first tool use.
+Pi remains the primary local agent harness. Do not test a new llama.cpp profile through Pi until it first passes the technical/API and frozen quality gates.
 
 # Phase 4 — llama.cpp
 
@@ -72,19 +73,27 @@ Setup Probe 003 run `20260818-234628`: canonical PASS, Release build, `llama-cli
 
 ## 8B quantization frontier
 
-8B Q4 Capability 001 run `20260819-091424`: VALID FAIL; context 4096 / `-ngl -1`; minimum free memory 1%; 5% guardrail triggered during Stage A.
+8B Q4 Capability 001 run `20260819-091424`: VALID FAIL; context 4096 / forced `-ngl -1`; minimum free memory 1%; 5% guardrail triggered during Stage A.
 
-8B Q3 Capability 001 run `20260819-093842`: VALID FAIL; context 4096 / `-ngl -1`; minimum free memory 1%; guardrail triggered.
+8B Q3 Capability 001 run `20260819-093842`: VALID FAIL; Qwen3-8B Q3_K_M; context 4096 / forced `-ngl -1`; peak RSS 1670.48 MB; peak swap 2269.38 MB; minimum free memory 1%; 5% guardrail triggered.
 
-8B Q2 harness 001/002 were invalidated by CLI/parser defects. Capability 003 run `20260819-103347` provides recovered Stage A PASS evidence:
+Q3 artifact:
+- repository `unsloth/Qwen3-8B-GGUF`
+- file `Qwen3-8B-Q3_K_M.gguf`
+- expected SHA256 `4924cf38a3b3c4b27ead5ccb93e27027f9418738506ac50a24a70dfe8581a007`
+- already present locally
+
+## 8B Q2 — technical/API PASS
+
+Capability 003 recovered Stage A run `20260819-103347`:
 - exact `-c 4096`, `-ngl -1`, `-st`
 - Metal preflight
-- exit 0, no timeout, no guardrail
+- exit 0, no timeout/guardrail
 - peak RSS 2092.97 MB
 - peak swap 1986.56 MB
 - minimum free memory 10%
 
-8B Q2 Stage B 001 run `20260819-103952`: FULL_PASS
+Stage B 001 run `20260819-103952`: FULL_PASS
 - Qwen3-8B Q2_K, 3.056 GiB
 - pp512 103.00 t/s ±0.67
 - tg128 13.72 t/s ±0.34
@@ -92,104 +101,108 @@ Setup Probe 003 run `20260818-234628`: canonical PASS, Release build, `llama-cli
 - peak swap 1990.38 MB
 - minimum free memory 8%
 
-Canonical technical record: `research/runtime/llama-cpp-8b-q2-technical-pass.md`.
-
-## 8B Q2 llama-server smoke — FULL PASS
-
-Run `20260819-104946`:
-- localhost llama-server
-- context 4096 / `-ngl -1` / FA auto
-- readiness PASS in 5.684 s
-- `/v1/chat/completions` PASS, assistant content `OK`
+Server Smoke 001 run `20260819-104946`: FULL_PASS
+- context 4096 / `-ngl -1`
+- readiness 5.684 s
+- `/v1/chat/completions` returned `OK`
 - peak RSS 1729.33 MB
 - peak swap 1855.12 MB
 - minimum free memory 6%
 
-Record: `research/runtime/llama-cpp-8b-q2-server-smoke-001.md`.
+Canonical technical record: `research/runtime/llama-cpp-8b-q2-technical-pass.md`.
 
-Interpretation: API serving works, but server memory headroom is narrow: 6% minimum free vs 5% abort threshold.
+# Coding Quality Compare 001 — COMPLETE / 4B_HIGHER
 
-# Coding Quality Compare 001 — COMPLETE
-
-Run id: `20260819-110234`
-Plan: `research/runtime/llama-cpp-coding-quality-compare-001-plan.md`
-Result: `research/runtime/llama-cpp-coding-quality-compare-001.md`
-Runner: `scripts/llama_cpp_coding_quality_compare.py`
+Run `20260819-110234`.
+Records:
+- `research/runtime/llama-cpp-coding-quality-compare-001-plan.md`
+- `research/runtime/llama-cpp-coding-quality-compare-001.md`
+- `research/runtime/llama-cpp-coding-quality-compare-001-diagnostic.md`
 
 Frozen comparison:
-- LOOM Coding Benchmark 01 v1.0.1, `single_shot`
+- LOOM Coding Benchmark 01 v1.0.1, single-shot
 - same pinned llama.cpp/Metal/llama-server runtime
-- context 4096, `-ngl -1`, FA auto
+- context 4096 / `-ngl -1` / FA auto
 - raw `POST /completion`
-- exact existing adapter-built prompts
+- exact frozen adapter-built prompts
 - one request/task, no retry/salvage/test feedback
-- `n_predict=2048`, temperature 0, seed 0, stream false, cache_prompt false, `json_schema={}`
-- 8B Q2 first, then 4B Q4
+- `n_predict=2048`, temperature 0, seed 0, cache_prompt false, `json_schema={}`
 
-Observed:
+Primary result:
+- 8B Q2 delivery-adjusted **0/100**
+- 4B Q4 delivery-adjusted **34.29/100**
+- delta 8B-4B **-34.29**
+- relation **`4B_HIGHER`**
+- both profiles `COMPLETE`
 
-### 8B Q2
-- server ready 6.294 s
-- T01–T06 all adapter `failed`
-- artifact 15.0/100
-- delivery-adjusted **0/100**
-- profile `COMPLETE`
+8B resource state during quality run:
+- server ready
+- no guardrail abort
+- no execution failure
+- peak RSS 1953.02 MB
+- peak swap 2026.44 MB
+- minimum free memory 7%
 
-### 4B Q4
-- server ready 1.043 s
-- T01 written
-- T02 written
-- T03 failed
-- T04 failed
-- T05 written
-- T06 written
-- artifact 42.86/100
-- delivery-adjusted **34.29/100**
-- profile `COMPLETE`
+## Closed failure-mode diagnostic
 
-Primary frozen comparison:
-- delta 8B-4B = **-34.29**
-- relation = **`4B_HIGHER`**
-- overall classification = `COMPLETE`
+All six 8B requests returned HTTP 200, `stop_type=eos`, non-empty content and syntactically valid JSON. Therefore the 0/100 delivery result is not a server, HTTP, timeout, memory or JSON-syntax failure.
 
-Canonical boundary:
-> Under the frozen end-to-end delivery metric, 4B Q4 clearly beats 8B Q2. Therefore Q2 8B is **not established as a practical upgrade** despite technical runtime PASS.
+Observed Q2 pattern:
+- T01/T02/T03/T04/T06 returned `{"files":{"filename":"<actual expected name>"}}` or equivalent, treating the illustrative placeholder word `filename` as a literal schema key and omitting file contents;
+- T05 generated a substantial code body but returned it as `{"files":{"filename":"order.py","value":"..."}}` instead of `{ "files": { "order.py": "..." } }`.
 
-Do not yet claim the 8B has zero semantic coding ability: all six 8B outputs failed at the adapter/delivery layer. The persisted raw responses must be inspected before deciding whether this is primarily Q2 semantic/instruction degradation, malformed JSON/file-envelope behavior, or a transport-specific defect.
+The 4B control used the same transport/settings and correctly delivered T01, T02, T05 and T06 in the exact required file envelope. Its T03/T04 failures remain valid strict delivery failures.
 
-Also do not treat the 8B artifact 15/100 as 15 model-earned points: failed adapter outputs are not written into the working tree, so some artifact score can come from the benchmark's starting fixture state.
+Canonical conclusion:
+> Qwen3-8B Q2_K is technically runnable and API-servable, but its aggressive Q2 quantization does not preserve reliable structured instruction following on the frozen coding workload. It is **not a practical upgrade** over Qwen3-4B Q4_K_M for this use case.
 
-# Current checkpoint — failure-mode diagnostic
+Do not create a post-hoc easier Q2 benchmark, do not salvage T05 into the primary score, and do not proceed to Pi or ~9B from this Q2 profile.
 
-Inspector: `scripts/inspect_llama_cpp_quality_compare.py`
+# Current checkpoint — 8B Q3 Auto-Fit Server Smoke 001
 
-The inspector reads the existing run only. It does **not** start llama-server or rerun any model.
+Plan: `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001-plan.md`
+Runner: `scripts/llama_cpp_8b_q3_autofit_server_smoke.py`
+Checkpoint: `LLAMA_CPP_8B_Q3_AUTOFIT_SERVER_SMOKE_001_READY`
 
-Exact next step:
+Research question:
+> Can the higher-quality Q3_K_M weights fit and serve at context 4096 if llama.cpp may choose automatic device fit / partial offload instead of forced `-ngl -1`?
+
+Frozen condition:
+- same local Q3_K_M artifact / exact SHA256
+- pinned llama.cpp / Metal / llama-server
+- explicit `-c 4096`
+- FA auto
+- do not force `-ngl -1`
+- `--fit on`
+- `--fit-target 1024`
+- `--fit-ctx 4096`
+- default KV-cache types; no KV quantization in this experiment
+- localhost only / Web UI disabled / offline
+- same 5% free-memory and 5600 MB swap guardrails
+- one `Reply only with OK.` chat completion if server reaches healthy state
+
+The runner records server logs and extracts fit/offload/GPU-layer-related lines where available.
+
+## Exact next step
+
+Run:
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/inspect_llama_cpp_quality_compare.py
-python3 scripts/inspect_llama_cpp_quality_compare.py \
-  results-local/llama-cpp/coding-quality-compare-001/20260819-110234
+python3 -m py_compile scripts/llama_cpp_8b_q3_autofit_server_smoke.py
+python3 scripts/llama_cpp_8b_q3_autofit_server_smoke.py
 ```
 
-Preserve the complete inspector output. Required fields include, per task:
-- adapter status/error
-- HTTP status
-- stop type
-- token counts
-- content presence/length
-- JSON shape
-- short response prefix
-- profile telemetry/guardrail state
+No model download is expected.
 
-## Decision after diagnostic
+Preserve output from `LOOM llama.cpp 8B Q3 Auto-Fit Server Smoke 001` through the final `Summary:` line, including any `Auto-fit/offload evidence:` lines.
 
-- If 8B failures are genuine malformed/instruction-following outputs under otherwise healthy API requests, freeze Q2 as technically runnable but qualitatively/protocol-wise inferior for this workload. Next research branch: separately preregister higher-quality Q3/Q4 memory strategies (e.g. partial offload) and/or Direct MLX.
-- If failures expose a transport/harness defect specific to the frozen comparison, keep Compare 001 primary result unchanged but preregister a corrected Compare 002; never silently reinterpret or overwrite Compare 001.
-- Do not proceed to Pi or ~9B until this diagnostic closes the 8B usefulness frontier.
+## Decision after Q3 auto-fit
+
+- If `FULL_PASS`: freeze the actual observed fit/offload behavior, then preregister Q3 vs 4B Q4 on the frozen Coding Benchmark 01 before any Pi test.
+- If `FAIL`: do not alter several parameters at once. Next candidate is a separately preregistered Q3 KV-cache compression condition, starting Q8_0, or Direct MLX.
+- Do not test ~9B until the 8B quality/usefulness frontier is characterized.
 
 ## Roadmap state
 
@@ -197,7 +210,7 @@ Preserve the complete inspector output. Required fields include, per task:
 - Phase 1: DONE
 - Phase 2: DONE / FROZEN
 - Phase 3: materially complete for current needs
-- **Phase 4: ACTIVE — 8B Q2 TECHNICAL FULL PASS + server PASS, but Coding Quality Compare 001 = 4B_HIGHER; diagnostic active**
+- **Phase 4: ACTIVE — Q2 technical/API PASS but quality inferior; Q3 auto-fit rescue READY**
 - Phase 5 Direct MLX: queued
 - Phase 6 Colibrì / SSD / MoE: queued
 - Phase 7 extended runtimes: queued
