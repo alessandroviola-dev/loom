@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — Phase 4 llama.cpp main branch characterized. Direct MLX setup passed and Qwen3-8B-3bit successfully generated at max_kv_size 4096 with 25% minimum free memory. Smoke 001 safety qualification was blocked only by a macOS swap-telemetry parser defect caused by locale decimal commas. The defect is now diagnosed and a telemetry-only identical rerun is ready.
-Checkpoint: `DIRECT_MLX_8B_3BIT_SMOKE_001_SWAPFIX_RERUN_READY`
+Status: ACTIVE — Phase 4 llama.cpp frontier characterized. Phase 5 Direct MLX is now technically/safety validated at smoke level: Qwen3-8B-3bit completed the frozen 4096-KV smoke with both free-memory and swap telemetry valid. The active gate is the real frozen Coding Benchmark T01 workload-safety probe before any full quality benchmark or Pi integration.
+Checkpoint: `DIRECT_MLX_8B_3BIT_T01_WORKLOAD_001_READY`
 
 ## Mission
 
@@ -24,7 +24,7 @@ Local path: `<repository-root>`
 
 Qwen3-8B Q2_K:
 - technically runnable/API-servable;
-- coding delivery 0/100 vs 4B 34.29/100;
+- frozen coding delivery 0/100 vs 4B 34.29/100;
 - not established as a practical upgrade.
 
 Qwen3-8B Q3_K_M:
@@ -40,102 +40,130 @@ Main branch moved to Direct MLX.
 
 Run `20260819-120748`:
 - Darwin arm64
+- isolated venv `results-local/mlx/venv-mlx-lm-0.31.3`
 - `mlx-lm==0.31.3`
 - `mlx==0.31.2`
 - `transformers==5.12.1`
-- isolated venv `results-local/mlx/venv-mlx-lm-0.31.3`
 - tiny MLX compute PASS.
 
-## Direct MLX 8B 3-bit Smoke 001 — generation PASS / swap telemetry incomplete
+## Model
 
-Run `20260819-121656`.
-Model:
-- `mlx-community/Qwen3-8B-3bit`
-- revision `619ded3`
-- SHA256 `b9694bdb1f737223836235c0427b424ace11d566eeab0ac91ff8050143bd20a1`: PASS
-- 3-bit / group size 64: PASS
-- main weight 3.338 GiB
+`mlx-community/Qwen3-8B-3bit`
+- pinned visible revision `619ded3`
+- main weight SHA256 `b9694bdb1f737223836235c0427b424ace11d566eeab0ac91ff8050143bd20a1`: PASS
+- observed weight size 3.338 GiB
+- quantization metadata: 3-bit / group size 64 PASS
+- local path `results-local/mlx/models/Qwen3-8B-3bit`
 
-Frozen runtime:
-- local/offline
-- `enable_thinking=False`
-- prompt `Reply only with OK.`
-- max 16 tokens
+## Direct MLX 8B 3-bit Smoke 001
+
+Initial run `20260819-121656` generated successfully but swap telemetry was `None` because this Mac emits locale decimal commas in `vm.swapusage`.
+
+Diagnostic raw format:
+`used = 1121,88M`
+
+Root cause was telemetry-only. The parser accepted decimal points but not commas.
+
+### Safety-valid telemetry-fix rerun — FULL_PASS
+
+Run `20260819-124440`.
+Wrapper: `scripts/direct_mlx_8b_3bit_smoke_001_swapfix.py`.
+Record: `research/runtime/direct-mlx-8b-3bit-smoke-001-swapfix-rerun.md`.
+
+Frozen runtime unchanged from Smoke 001:
+- local/offline Direct MLX
+- Qwen3 `enable_thinking=False`
+- `Reply only with OK.`
 - direct `stream_generate`
 - `max_kv_size=4096`
 - unquantized KV
+- max generation 16 tokens
+- free-memory <5% / swap >5600 MB abort
 
 Observed:
-- child exit 0
-- output `OK.`
-- prompt 17 tok @ 6.3733 t/s
-- generation 3 tok @ 24.6243 t/s
+- locale-safe swap preflight 1113.88 MB: PASS
+- existing model SHA: PASS
+- no model re-download
+- assistant `OK.`
+- prompt 17 tok @ 11.0758 t/s
+- generation 3 tok @ 24.4160 t/s
 - MLX peak memory 3.6676508 GB
-- min system free memory 25%
-- swap telemetry `None`
+- peak process RSS 494.8125 MB
+- peak observed swap **1720.75 MB**
+- minimum observed free memory **23%**
+- classification **FULL_PASS**
+- disk after 40.639 GiB
 
-Record:
-`research/runtime/direct-mlx-8b-3bit-smoke-001.md`
+Canonical conclusion:
+> The verified Direct MLX Qwen3-8B 3-bit profile is smoke-level technically and safety viable with `max_kv_size=4096` and unquantized KV on the reference M1/8 GB machine. This does not yet establish real-workload stability or coding quality.
 
-## Swap diagnostic — CLOSED
+# Current checkpoint — T01 workload safety
 
-Read-only host output:
-```text
-total = 2048,00M  used = 1121,88M  free = 926,12M  (encrypted)
-```
+Checkpoint: `DIRECT_MLX_8B_3BIT_T01_WORKLOAD_001_READY`
+Plan: `research/runtime/direct-mlx-8b-3bit-t01-workload-001-plan.md`
+Runner: `scripts/direct_mlx_8b_3bit_t01_workload.py`
 
-Observed diagnostic state:
-- current swap used by inspection: 1121.88 MB
-- current free memory: 72%
-- current disk free: 40.647 GiB
+Research question:
+> Can the same safety-valid Direct MLX profile complete the real frozen Coding Benchmark T01 request without crossing the 5% free-memory or 5600 MB swap guardrails?
 
-Root cause:
-- original parser accepted decimal points only;
-- this Mac emits locale decimal commas;
-- both original and first "robust" diagnostic regex therefore returned `None`.
+Frozen benchmark provenance:
+- Coding Benchmark 01 v1.0.1
+- T01 only
+- frozen adapter `scripts/ollama_single_shot.py`
+- required adapter Git blob `62abab57f6463c5813809b43d8f1e7bdfec5f304`
+- exact adapter `build_prompt()` envelope
+- no test feedback
+- one attempt
+- no retry/repair/salvage
 
-This is a **telemetry parser defect**, not an MLX/model failure. Current swap is far below the 5600 MB threshold, but it cannot retroactively validate the missing samples from run `20260819-121656`.
+Direct MLX condition retained:
+- exact verified 8B/3-bit model
+- isolated pinned MLX environment
+- local/offline
+- Qwen3 non-thinking chat template
+- `max_kv_size=4096`
+- unquantized KV
+- seed 0
+- locale-safe swap telemetry
 
-Diagnostic record:
-`research/runtime/direct-mlx-8b-3bit-smoke-001-swap-diagnostic.md`
+Workload changes relative to smoke only:
+- prompt becomes exact frozen T01 single-shot prompt;
+- generation budget becomes 2048 tokens, matching Coding Benchmark 01.
 
-## Current checkpoint — identical smoke rerun with telemetry-only fix
-
-Checkpoint: `DIRECT_MLX_8B_3BIT_SMOKE_001_SWAPFIX_RERUN_READY`
-Wrapper:
-`scripts/direct_mlx_8b_3bit_smoke_001_swapfix.py`
-
-The wrapper:
-- imports the existing frozen Smoke 001 runner;
-- changes only `swap_used_mb()`;
-- accepts `.` or `,` decimal separators and Unicode whitespace;
-- normalizes comma to point before numeric conversion;
-- leaves all model/runtime/generation/safety settings unchanged.
-
-The already-downloaded verified model is reused. No model change, KV change, context change, prompt change or quality rescue is authorized.
+Structured delivery is recorded but does not determine this workload-safety classification. No benchmark test runner is executed in this probe.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/direct_mlx_8b_3bit_smoke_001_swapfix.py
-python3 scripts/direct_mlx_8b_3bit_smoke_001_swapfix.py
+python3 -m py_compile scripts/direct_mlx_8b_3bit_t01_workload.py
+python3 scripts/direct_mlx_8b_3bit_t01_workload.py
 ```
 
-Preserve output through `Summary:`.
+No model download is expected.
 
-## Decision after rerun
+Preserve output through `Summary:` including:
+- safety preflight;
+- T01 generation exit;
+- MLX stats;
+- structured delivery status;
+- peak swap;
+- minimum free memory;
+- classification.
 
-If the rerun:
-- captures numeric swap samples;
-- stays <=5600 MB swap;
-- stays >=5% free memory;
-- and satisfies all original Smoke 001 generation criteria,
+## Decision after T01
 
-then freeze it as the canonical Direct MLX 8B/3-bit safety-valid smoke and preregister a real Coding Benchmark T01 workload-safety probe.
+If `FULL_PASS`:
+1. freeze workload-safety result;
+2. preregister full Direct MLX Coding Benchmark 01;
+3. use quality/delivery as next gate before Pi.
 
-If it fails a real memory/swap guardrail, classify that profile as RESOURCE_FAIL. Do not lower thresholds or alter context inside the failed condition.
+If `RESOURCE_FAIL`:
+- do not lower guardrails or reduce the 4096 KV cap inside the failed condition;
+- consider KV quantization only as a separately preregistered rescue.
+
+If delivery fails while resource safety passes, preserve that protocol evidence and do not alter the prompt/parser post-hoc.
 
 ## Continuation rule
 
