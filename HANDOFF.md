@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — llama.cpp/Metal validated; 8B Q2 is technically runnable/API-servable but loses the frozen structured coding benchmark to 4B Q4. Q3 forced offload, auto-fit, and explicit single-slot auto-fit all fail the frozen 5% memory guardrail at context 4096. Next checkpoint is a one-variable Q3 KV-cache Q8_0 rescue while retaining single-slot server configuration.
-Checkpoint: `LLAMA_CPP_8B_Q3_AUTOFIT_NP1_Q8_SERVER_SMOKE_001_READY`
+Status: ACTIVE — llama.cpp/Metal validated. Qwen3 8B Q2 is technically runnable/API-servable but loses the frozen structured coding benchmark to 4B Q4. Qwen3 8B Q3_K_M now has its first technical/API FULL_PASS at context 4096 using explicit single-slot server configuration plus Q8_0 K/V KV cache. The active checkpoint is the frozen Q3-vs-4B coding quality comparison before any Pi integration.
+Checkpoint: `LLAMA_CPP_CODING_QUALITY_COMPARE_002_READY`
 
 ## Mission
 
@@ -21,19 +21,19 @@ Reference stack:
 
 ## Production Pi constraint
 
-Production Pi contains real auth, sessions and customizations. LOOM must never reset/replace production Pi configuration. Controlled experiments use isolated/run-local configuration where required. Do not expose a new llama.cpp profile to Pi until it first passes technical/API and frozen quality gates.
+Production Pi contains real auth, sessions and customizations. LOOM must never reset/replace production Pi configuration. Controlled experiments use isolated/run-local configuration where required. Do not expose a new llama.cpp profile to Pi until it passes technical/API and frozen quality gates.
 
 ## Storage hygiene
 
-Free disk is a standard LOOM metric. Reuse verified artifacts; never silently delete models or canonical results.
+Free disk is a standard LOOM metric. Reuse verified artifacts; never silently delete verified models or canonical results.
 
 Latest confirmed:
 - Coding Quality Compare 001 after: 43.591 GiB free
-- Q3 Auto-Fit Server Smoke 001 after: 43.658 GiB free
-- Q3 Auto-Fit NP1 Server Smoke 001 before: 43.628 GiB free
-- Q3 Auto-Fit NP1 Server Smoke 001 after: **43.632 GiB free**
+- Q3 Auto-Fit NP1 Server Smoke 001 after: 43.632 GiB free
+- Q3 Auto-Fit NP1 Q8 KV Server Smoke 001 before: 43.599 GiB free
+- Q3 Auto-Fit NP1 Q8 KV Server Smoke 001 after: **43.597 GiB free**
 - verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 artifacts retained
-- no new model download is required for the Q8 KV test
+- no new model download is required for Compare 002
 
 # Frozen baseline / agent state
 
@@ -54,7 +54,7 @@ Run `20260818-214848`:
 - protocol 4/6
 - provider usage 20,209 tokens
 
-Pi remains the primary local-agent harness. Qwen Code remains secondary/deprioritized because its safe prompt still exceeded the 4096 hard budget before first tool use.
+Pi remains the primary local-agent harness. Qwen Code remains secondary/deprioritized because its safe prompt exceeded the 4096 hard budget before first tool use.
 
 # Phase 4 — llama.cpp
 
@@ -92,8 +92,8 @@ Setup Probe 003 run `20260818-234628`: canonical PASS; exact pinned commit; Rele
 - VALID FAIL
 
 Q3 artifact:
-- `unsloth/Qwen3-8B-GGUF`
-- `Qwen3-8B-Q3_K_M.gguf`
+- repository `unsloth/Qwen3-8B-GGUF`
+- file `Qwen3-8B-Q3_K_M.gguf`
 - SHA256 `4924cf38a3b3c4b27ead5ccb93e27027f9418738506ac50a24a70dfe8581a007`
 - observed size 3.841 GiB
 - already present locally
@@ -134,9 +134,9 @@ Closed diagnostic:
 - 4B Q4 under identical transport delivered T01/T02/T05/T06 correctly.
 
 Canonical boundary:
-> The tested Qwen3-8B Q2_K profile is technically runnable and API-servable but is not established as a practical upgrade over Qwen3-4B Q4_K_M for this structured coding workload. Evidence is profile-level; it does not prove Q2 quantization alone is the cause.
+> Qwen3-8B Q2_K is technically runnable and API-servable on the reference machine but is not established as a practical upgrade over Qwen3-4B Q4_K_M for this structured coding workload. Evidence is profile-level; it does not prove Q2 quantization alone is the cause.
 
-# Q3 automatic-fit branch
+# Q3 automatic-fit rescue sequence
 
 ## Auto-Fit Server Smoke 001 — VALID FAIL
 
@@ -145,116 +145,163 @@ Run `20260819-111648`:
 - no forced `-ngl -1`
 - `--fit on --fit-target 1024 --fit-ctx 4096`
 - default KV precision
-- server parallelism left auto
+- server parallelism auto
 - peak RSS 2121.86 MB
 - peak swap 2263.31 MB
 - minimum free memory 4%
 - guardrail triggered
 
-Diagnostic of saved logs:
+Diagnostic showed:
 ```text
 initializing, n_slots = 4, n_ctx_slot = 4096, kv_unified = 'true'
 model loaded
-listening on http://127.0.0.1:18083
 ```
 
-Pinned llama-server resolves auto `n_parallel` to 4 in single-model mode. This directly motivated a controlled `-np 1` test.
-
-Records:
-- `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001.md`
-- `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001-diagnostic.md`
+Pinned llama-server resolves auto `n_parallel` to 4 in single-model mode, motivating a controlled `-np 1` test.
 
 ## Auto-Fit NP1 Server Smoke 001 — VALID FAIL
 
-Run `20260819-112818`.
-Plan: `research/runtime/llama-cpp-8b-q3-autofit-np1-server-smoke-001-plan.md`
-Record: `research/runtime/llama-cpp-8b-q3-autofit-np1-server-smoke-001.md`
-Runner: `scripts/llama_cpp_8b_q3_autofit_np1_server_smoke.py`
-
-Frozen change relative to prior auto-fit run:
-- explicit `-np 1` only.
-
-Observed:
-- model SHA PASS
-- size 3.841 GiB
-- slot evidence **PASS**
-- stderr: `n_slots = 1, n_ctx_slot = 4096, kv_unified = 'false'`
-- peak process RSS **2100.4375 MB**
-- peak swap **2295.94 MB**
-- minimum free memory **4%**
+Run `20260819-112818`:
+- exact same Q3 artifact/runtime policy except explicit `-np 1`
+- `n_slots = 1`, `n_ctx_slot = 4096`, `kv_unified = false`: PASS
+- peak RSS 2100.44 MB
+- peak swap 2295.94 MB
+- minimum free memory 4%
 - guardrail `memory free 4% < 5%`
-- API smoke not authorized to complete after guardrail breach
-- classification **VALID FAIL**
-- disk after **43.632 GiB**
+- API smoke not authorized to complete
+- VALID FAIL
 
 Interpretation:
-> Reducing llama-server from four slots to one did not restore the frozen memory margin. Four-way server parallelism is therefore not the dominant cause of this Q3 failure. Do not infer exact system-memory savings from process RSS alone.
+> Reducing server parallelism from four slots to one did not recover the frozen safety margin. Four-way concurrency was not the dominant cause.
 
-# Current checkpoint — Q3 NP1 + Q8_0 KV Server Smoke 001
+Record:
+`research/runtime/llama-cpp-8b-q3-autofit-np1-server-smoke-001.md`
 
-Checkpoint: `LLAMA_CPP_8B_Q3_AUTOFIT_NP1_Q8_SERVER_SMOKE_001_READY`
+## Auto-Fit NP1 Q8 KV Server Smoke 001 — FULL_PASS
+
+Run `20260819-113658`.
 Plan: `research/runtime/llama-cpp-8b-q3-autofit-np1-q8-server-smoke-001-plan.md`
+Record: `research/runtime/llama-cpp-8b-q3-autofit-np1-q8-server-smoke-001.md`
 Runner: `scripts/llama_cpp_8b_q3_autofit_np1_q8_server_smoke.py`
 
-Pinned llama.cpp facts verified before preregistration:
-- `-ctk` / `--cache-type-k` sets main-model K KV-cache type;
-- `-ctv` / `--cache-type-v` sets main-model V KV-cache type;
-- `q8_0` is supported;
-- default main-model K/V cache types are F16/F16.
+Frozen condition relative to NP1:
+- keep exact Q3 artifact/SHA;
+- keep context 4096;
+- keep `-np 1`;
+- keep FA auto;
+- keep `--fit on --fit-target 1024 --fit-ctx 4096`;
+- keep no forced `-ngl -1`;
+- change only target K/V KV cache from F16/F16 to Q8_0/Q8_0;
+- same 5% free-memory / 5600 MB swap guardrails.
+
+Observed:
+- disk before 43.599 GiB
+- model SHA PASS
+- model size 3.841 GiB
+- llama-server target present
+- readiness **PASS (8.756 s)**
+- slot evidence `n_slots=1`: **PASS**
+- Q8_0 KV command evidence: **PASS**
+- API smoke: **PASS**
+- assistant content: `OK`
+- peak process RSS **2246.75 MB**
+- peak swap **2113.88 MB**
+- minimum free memory **6%**
+- classification **FULL_PASS**
+- disk after **43.597 GiB**
+
+Server evidence:
+```text
+initializing, n_slots = 1, n_ctx_slot = 4096, kv_unified = 'false'
+```
+
+Canonical interpretation:
+> This exact Qwen3-8B Q3_K_M + NP1 + Q8_0-KV profile is technically API-servable at context 4096 under the frozen LOOM safety criterion. The safety margin is narrow (6% minimum free, one point above the 5% guardrail), so full-workload testing must keep the same guardrails.
+
+Do not expose Q3 to Pi yet.
+
+# Current checkpoint — Coding Quality Compare 002
+
+Checkpoint: `LLAMA_CPP_CODING_QUALITY_COMPARE_002_READY`
+Plan: `research/runtime/llama-cpp-coding-quality-compare-002-plan.md`
+Runner: `scripts/llama_cpp_coding_quality_compare_002.py`
 
 Research question:
-> Can Q3_K_M at context 4096 become safe when the already-controlled NP1 condition is retained and only main-model KV precision changes from F16/F16 to Q8_0/Q8_0?
+> Does the technically viable Qwen3-8B Q3_K_M profile deliver higher structured coding quality than Qwen3-4B Q4_K_M when both use the same pinned llama-server runtime and the same frozen Coding Benchmark 01 v1.0.1?
 
-Frozen condition:
-- exact existing Q3 artifact/SHA
-- pinned llama.cpp / Metal / llama-server
-- context `-c 4096`
-- `-np 1`
-- `-ctk q8_0`
-- `-ctv q8_0`
-- FA auto
-- no forced `-ngl -1`
-- `--fit on --fit-target 1024 --fit-ctx 4096`
-- localhost only / offline / no Web UI
-- one `Reply only with OK.` chat request only if readiness remains safe
-- unchanged guardrails: free memory <5% or swap >5600 MB abort
+Profiles:
+1. Qwen3-8B Q3_K_M
+2. Qwen3-4B Q4_K_M
 
-Only changed variable relative to NP1 is KV precision F16/F16 -> Q8_0/Q8_0.
+Common server policy for **both** profiles:
+```text
+-c 4096
+-np 1
+-fa auto
+--fit on
+--fit-target 1024
+--fit-ctx 4096
+-ctk q8_0
+-ctv q8_0
+no forced -ngl -1
+```
 
-The runner verifies frozen Q3 auto-fit base blob `9dd7677107601132e57e7c84bd58d0710fb138f9`, requires `n_slots = 1`, records exact Q8 cache command evidence and preserves full telemetry/logs.
+Common request envelope:
+```text
+POST /completion
+n_predict = 2048
+temperature = 0
+seed = 0
+stream = false
+cache_prompt = false
+json_schema = {}
+```
+
+Benchmark discipline:
+- Coding Benchmark 01 v1.0.1, T01–T06;
+- same frozen prompts/fixtures;
+- same adapter/parser/scorer as Compare 001;
+- one attempt per task;
+- no retries;
+- no test feedback;
+- no salvage;
+- no prompt changes;
+- delivery-adjusted score is primary.
+
+The Compare 002 runner verifies the exact Compare 001 template blob `c8aeac7a56830abca633f0a6629be2c640d115f9`, then transforms only the preregistered profile/runtime fields. It refuses execution if the generated implementation lacks NP1/Q8/auto-fit settings or still contains forced `-ngl -1`.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/llama_cpp_8b_q3_autofit_np1_q8_server_smoke.py
-python3 scripts/llama_cpp_8b_q3_autofit_np1_q8_server_smoke.py
+python3 -m py_compile scripts/llama_cpp_coding_quality_compare_002.py
+python3 scripts/llama_cpp_coding_quality_compare_002.py
 ```
 
 No model download is expected.
 
-Preserve output through `Summary:`, especially:
-- `Slot evidence n_slots=1`
-- `Q8_0 KV command evidence`
-- API smoke
-- peak RSS / swap / minimum free memory
-- guardrail/classification
-- any auto-fit/offload evidence
+Preserve output from `LOOM llama.cpp Coding Quality Compare 002` through `Summary:`.
 
-## Decision after Q8 KV
+## Decision after Compare 002
 
-If `FULL_PASS`:
-1. freeze technical/API result;
-2. preregister Q3 vs 4B Q4 on frozen Coding Benchmark 01 under explicit single-slot server settings;
-3. do not proceed to Pi until Q3 passes the quality gate.
+If both profiles are `COMPLETE` and Q3 delivery-adjusted score is higher:
+1. freeze quality result;
+2. Q3 becomes the leading llama.cpp candidate;
+3. preregister an isolated Pi integration / Pi Agentic validation;
+4. production Pi config remains untouched.
 
-If memory `VALID FAIL`:
-1. do not stack more rescue variables immediately;
-2. move the main research branch to Phase 5 Direct MLX;
-3. a more aggressive llama.cpp KV type can remain a separately justified later experiment, not an automatic rescue.
+If both are `COMPLETE` and 4B is higher or tied:
+1. do not expose Q3 to Pi as an assumed upgrade;
+2. close the current llama.cpp 8B frontier;
+3. move the main research branch to Phase 5 Direct MLX.
 
-Do not lower the 5% safety guardrail, alter context inside a failed condition, or test ~9B yet.
+If comparison is `PARTIAL` because of resource/harness failure:
+1. inspect persisted artifacts;
+2. identify exact mechanism before changing any parameter;
+3. do not infer a clean quality ordering from a resource-failed profile.
+
+Do not relax benchmark delivery rules post hoc, lower the safety guardrail, or test ~9B before this gate is resolved.
 
 ## Roadmap state
 
@@ -262,7 +309,7 @@ Do not lower the 5% safety guardrail, alter context inside a failed condition, o
 - Phase 1: DONE
 - Phase 2: DONE / FROZEN
 - Phase 3: materially complete for current needs
-- **Phase 4: ACTIVE — Q2 technical/API pass but quality inferior; Q3 maximum offload fail; Q3 auto-fit fail; Q3 NP1 fail; Q3 NP1 Q8 KV READY**
+- **Phase 4: ACTIVE — Q2 technical pass but quality inferior; Q3 NP1/Q8 technical/API FULL_PASS; Coding Quality Compare 002 READY**
 - Phase 5 Direct MLX: queued
 - Phase 6 Colibrì / SSD / MoE: queued
 - Phase 7 extended runtimes: queued
