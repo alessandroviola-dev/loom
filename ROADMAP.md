@@ -82,20 +82,25 @@ Frozen subject: Qwen3-8B 3-bit, 36 layers, each 84,427,264 B / 25 tensors.
 - [x] Min free 63%; peak swap 810.5 MB; disk unchanged
 - [x] Freeze `research/stretch/eight-layer-streamed-forward-scaling-005-result.md`
 
-### Stretch 006 — Full 36-layer transformer-body parity — CURRENT / READY
-- [x] Single changed factor: depth 8 -> 36 layers `0..35`
+### Stretch 006 — Full 36-layer transformer-body parity — CURRENT / HARNESS FIX READY
+- [x] Single changed scientific factor: depth 8 -> 36 layers `0..35`
 - [x] Preserve same tiny activation / official block / quantization / parity / streamed gates / safety
 - [x] Keep tokenizer, embedding, final norm, LM head, KV and generation excluded
 - [x] Preregister `research/stretch/full-36-layer-streamed-body-parity-006-plan.md`
 - [x] Implement frozen transform runner `scripts/stretch_full_36_layer_streamed_body_parity_006.py`
 - [x] Require exact Stretch 005 source blob `8bbfff727a0131c48d4ba71edc8de485182b7fbe`
-- [x] Freeze runner blob `3ec3f028305aad9927c794d5bf9d92beac4d0a12`
 - [x] Resident expected body payload 3,039,381,504 B (~2.831 GiB)
 - [x] Resident tolerance +/-36 MiB, preserving +/-1 MiB-per-layer scale
 - [x] Streamed per-layer gate remains 84,427,264 B +/-1 MiB
 - [x] Post-clear active/cache gates unchanged
 - [x] Numerical parity formula unchanged
-- [ ] Run Stretch 006
+- [x] First launch stopped before benchmark execution on transform invariant mismatch
+- [x] Classify first launch as harness transform failure / no scientific result
+- [x] Freeze harness note `research/stretch/full-36-layer-streamed-body-parity-006-harness-note.md`
+- [x] Fix only demonstrated defect: split console and summary label transform invariants
+- [x] Scientific design/gates unchanged
+- [x] Freeze corrected runner blob `ab5d74b37111b7ceae6e5c00a47c10f1e1086ca6`
+- [ ] Rerun Stretch 006
 - [ ] Freeze full-body parity/residency result
 
 ### Stretch 007 — Shared components / logits — CONDITIONAL
