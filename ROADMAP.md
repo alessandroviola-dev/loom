@@ -46,18 +46,22 @@
 - [x] Q3 Auto-Fit NP1 Server Smoke 001: `n_slots=1` verified but still VALID FAIL at 4% free
 - [x] Verify KV controls: `-ctk/--cache-type-k`, `-ctv/--cache-type-v`; Q8_0 supported; default K/V F16/F16
 - [x] Q3 Auto-Fit NP1 Q8 KV Server Smoke 001 FULL_PASS, run `20260819-113658`
-- [x] Q3 Q8 result: readiness 8.756 s; API `OK`; peak RSS 2246.75 MB; peak swap 2113.88 MB; minimum free memory 6%; `n_slots=1` and Q8 command evidence PASS
+- [x] Q3 Q8 smoke result: readiness 8.756 s; API `OK`; peak RSS 2246.75 MB; peak swap 2113.88 MB; minimum free memory 6%; `n_slots=1` and Q8 command evidence PASS
 - [x] Freeze `research/runtime/llama-cpp-8b-q3-autofit-np1-q8-server-smoke-001.md`
 - [x] Preregister Coding Quality Compare 002: Qwen3 8B Q3_K_M vs Qwen3 4B Q4_K_M
-- [x] Freeze common runtime for both Compare 002 profiles: context 4096, `-np 1`, FA auto, auto-fit target 1024, Q8_0 K/V KV cache, no forced `-ngl -1`
-- [x] Add `research/runtime/llama-cpp-coding-quality-compare-002-plan.md`
-- [x] First Compare 002 invocation stopped before model launch: INVALID_HARNESS due fragile escaped-newline template needle
-- [x] Record `research/runtime/llama-cpp-coding-quality-compare-002-invalid-harness-001.md`
-- [x] Fix Compare 002 transformer using smaller unique replacements; preserve all preregistered runtime/benchmark invariants
-- [ ] Run corrected Coding Quality Compare 002
-- [ ] If Q3 quality is higher and both profiles COMPLETE, freeze result then preregister isolated Pi integration/agentic validation
-- [ ] If 4B is higher/tied, close the current llama.cpp 8B frontier and move the main branch to Direct MLX
-- [ ] If comparison is partial/resource-failed, diagnose persisted artifacts before changing any parameter
+- [x] Freeze common Compare 002 runtime: context 4096, `-np 1`, FA auto, auto-fit target 1024, Q8_0 K/V KV cache, no forced `-ngl -1`
+- [x] First Compare 002 invocation INVALID_HARNESS before model launch; fix transformer without changing science
+- [x] Run corrected Coding Quality Compare 002, run `20260819-114848`
+- [x] Compare 002 Q3 server readiness PASS 7.360 s, then T01 resource guardrail abort; Q3 profile `PARTIAL_OR_RESOURCE_FAIL`
+- [x] Compare 002 4B profile COMPLETE: artifact 36.43/100, delivery-adjusted 25.72/100
+- [x] Overall Compare 002 classification `PARTIAL`; printed `4B_HIGHER` is not a valid quality ordering because Q3 did not complete
+- [x] Freeze `research/runtime/llama-cpp-coding-quality-compare-002.md`
+- [x] Add read-only `scripts/inspect_llama_cpp_quality_compare_002.py`
+- [ ] Run Compare 002 resource diagnostic and recover exact Q3 guardrail reason/timeline/API state
+- [ ] If Q3 genuinely breaches memory during real T01 generation, classify current Q3 NP1/Q8 profile as smoke-pass / workload-fail at context 4096
+- [ ] After diagnostic, decide whether one further separately preregistered memory intervention is justified or move main branch to Direct MLX
+- [ ] Do not expose Q3 to Pi until workload safety and quality both pass
+- [ ] Do not interpret partial Compare 002 as intrinsic 4B>Q3 quality evidence
 - [ ] Do not relax benchmark delivery rules post hoc
 - [ ] Do not lower the 5% guardrail or reduce context inside an already-failed condition
 - [ ] Do not test ~9B until the useful 8B frontier is characterized
