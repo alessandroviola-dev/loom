@@ -13,117 +13,105 @@
 - [ ] Reasoning benchmark later
 
 ## Phase 3 — Local agent investigation
-- [x] Pi 0.84.2 validated non-destructively
 - [x] Pi Agentic Coding Benchmark 001: delivery-adjusted 77.15, delivery 6/6
 
 ## Phase 4 — llama.cpp frontier — CHARACTERIZED
 - [x] 4B Q4 control PASS: pp512 230.85 t/s, tg128 22.33 t/s, min free 22%
 - [x] 8B Q4/Q3/Q2 boundaries characterized
-- [x] Preserve llama.cpp 4B as alternate Amplify capability/efficiency profile
 
 ## Phase 5 — Direct MLX 8B frontier — CHARACTERIZED
 - [x] 8B 3-bit full session stable; quality not promoted
 - [x] 8B 4-bit memory boundary characterized
-- [x] Preserve verified 3-bit/4-bit artifacts
+- [x] Preserve verified artifacts
 
 ## Phase 6 — Amplify — ACTIVE / QUEUED BEHIND STRETCH
 
 ### Amplifier 001–003
-- [x] Warm-resident validator + one repair: resource fail
+- [x] Warm-resident repair resource fail
 - [x] Call isolation works but repair still resource-fails
 - [x] Repair context 3072 still resource-fails from recovered 70% free
 - [x] Do not descend automatically to 2048
 
-### Repair prompt anatomy
-- [x] Initial 1638 B
-- [x] Repair 4573 B (2.792x)
-- [x] Validation feedback 2762 B (~60.4%)
-
 ### Amplifier 004 — Compact Feedback — READY / QUEUED
-- [x] Preregister bounded 768-byte failure-detail serialization
+- [x] Preregister 768-byte variable repair-feedback cap
 - [x] Runner blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`
-- [ ] Run after current Stretch scaling sequence
-- [ ] If resource fail, stop prompt/context rescue ladder on Ollama/MLX 4B
-- [ ] If COMPLETE, freeze quality/resource/efficiency
+- [ ] Run after current Stretch sequence
 
 ## Phase 7 — Stretch / Memory Hierarchy — ACTIVE
 
 Research question:
 **Can LOOM use SSD + RAM as an explicit model-memory hierarchy rather than requiring full weight residency?**
 
+Frozen subject: Qwen3-8B 3-bit, 36 layers, each 84,427,264 B / 25 tensors.
+
 ### Stretch 001 — Layer addressability — COMPLETE PASS
 - [x] `LAYER_ADDRESSABLE_IO_PASS`
 - [x] 36/36 layers exact
-- [x] 907 tensors; total payload 3,583,928,320 B
-- [x] Shared/non-layer 544,546,816 B (~519.32 MiB)
-- [x] Every layer 84,427,264 B (~80.52 MiB), 25 tensors
-- [x] Layer 18 exact selective read in 0.069784 s at 1153.794 MiB/s
-- [x] Freeze result record
+- [x] Shared/non-layer payload 544,546,816 B
+- [x] One layer exact selective read
 
 ### Stretch 002 — Single-layer MLX materialization/eviction — COMPLETE PASS
 - [x] `SINGLE_LAYER_MLX_EVICTION_PASS`
-- [x] Pre-eval active delta 0 B
-- [x] Post-eval active delta exactly 84,427,264 B
-- [x] Post-clear active/cache 0/0 B
-- [x] `mx.eval` 0.039611 s
-- [x] Min free 67%; peak swap 850.5 MB
-- [x] Freeze result record
+- [x] 0 -> 84,427,264 -> 0 B active
+- [x] cache returns 0 B
 
 ### Stretch 003 — Repeated bounded residency — COMPLETE PASS
 - [x] `TWO_LAYER_BOUNDED_RESIDENCY_PASS`
-- [x] Same MLX process, layers 18 then 19
-- [x] Layer 18: 0 -> 84,427,264 -> 0 B; cache 0 B
-- [x] Layer 19: 0 -> 84,427,264 -> 0 B; cache 0 B
-- [x] Min free 67%; peak swap 826.5 MB
-- [x] Freeze result record
-- [x] Close raw-weight prerequisite stage
+- [x] layers 18 and 19 each independently 0 -> 84,427,264 -> 0 B
+- [x] no cumulative cache/active growth
 
-### Stretch 004 — Two-layer streamed micro-forward parity — COMPLETE PASS
-- [x] Use official mlx-lm 0.31.3 Qwen3 `TransformerBlock`
-- [x] Use frozen 3-bit/group64 quantization path
-- [x] Deterministic batch1/seq4/hidden4096 activation
-- [x] Resident control layers 18+19
-- [x] Streamed path 18 -> evict -> 19 -> evict
-- [x] Run `20260819-162454`
-- [x] Classification `TWO_LAYER_STREAMED_FORWARD_PARITY_PASS`
-- [x] Resident materialized delta exactly 168,854,528 B
-- [x] Stream layer 18 materialized 84,361,724 B; post-clear within tolerance; cache 0 B
-- [x] Stream layer 19 materialized 84,427,264 B; post-clear 0 B; cache 0 B
-- [x] Numerical parity max abs diff 0.0; mean abs diff 0.0
-- [x] Min free 63%; peak swap 826.5 MB; peak child RSS 178.281 MB
-- [x] Freeze `research/stretch/two-layer-streamed-micro-forward-parity-004-result.md`
-- [x] Establish first real transformer-compute evidence for one-layer-at-a-time streamed weights
+### Stretch 004 — Two-layer streamed real forward — COMPLETE PASS
+- [x] `TWO_LAYER_STREAMED_FORWARD_PARITY_PASS`
+- [x] Official Qwen3 TransformerBlock computation
+- [x] Resident raw weights 168,854,528 B
+- [x] Streamed near one 84.4 MB layer at a time
+- [x] max/mean parity difference 0.0 / 0.0
+- [x] min free 63%; peak swap 826.5 MB
 
-### Stretch 005 — Eight-layer streamed forward scaling — CURRENT / READY
-- [x] Single changed factor vs 004: chain depth 2 -> 8
-- [x] Freeze layers `[14,15,16,17,18,19,20,21]`
-- [x] Preserve exact input, Qwen3 block implementation, quantization, parity and safety gates
-- [x] Resident expected raw-weight delta 675,418,112 B +/-8 MiB
-- [x] Streamed per-layer materialized delta 84,427,264 B +/-1 MiB
-- [x] Streamed post-clear active within +/-4 MiB and cache <=4 MiB
-- [x] Record resident/max-stream residency ratio and wall-time scaling
-- [x] Preregister `research/stretch/eight-layer-streamed-forward-scaling-005-plan.md`
-- [x] Add `scripts/stretch_eight_layer_streamed_forward_scaling_005.py`
-- [x] Fix generalized-loop lingering-reference harness issue before execution
-- [x] Freeze final runner blob `8bbfff727a0131c48d4ba71edc8de485182b7fbe`
-- [ ] Run Stretch 005
-- [ ] Freeze eight-layer parity/residency/efficiency result
+### Stretch 005 — Eight-layer streamed scaling — COMPLETE PASS
+- [x] Change depth only: 2 -> 8 layers `[14..21]`
+- [x] Run `20260819-163413`
+- [x] `EIGHT_LAYER_STREAMED_FORWARD_SCALING_PASS`
+- [x] Resident materialized delta 675,352,572 B
+- [x] Max streamed one-layer delta 84,427,264 B
+- [x] Resident/streamed ratio 7.999223710482908x
+- [x] Layers 15–21 clear exactly to 0 active/cache; layer 14 small -65,540 B bookkeeping delta within gate
+- [x] Numerical parity max/mean diff 0.0 / 0.0
+- [x] Stream materialization wall 0.042391 s
+- [x] Stream forward wall 0.067679 s
+- [x] Min free 63%; peak swap 810.5 MB; disk unchanged
+- [x] Freeze `research/stretch/eight-layer-streamed-forward-scaling-005-result.md`
 
-### Stretch 006 — Full 36-block body parity — CONDITIONAL
-- [ ] Only preregister if Stretch 005 passes
-- [ ] Extend same tiny-activation resident-vs-streamed design to all 36 transformer blocks
-- [ ] Keep embeddings/final norm/LM head/KV/token generation excluded
-- [ ] Verify resident raw-weight growth vs one-layer-at-a-time streamed residency
-- [ ] Preserve exact numerical parity and safety gates
+### Stretch 006 — Full 36-layer transformer-body parity — CURRENT / READY
+- [x] Single changed factor: depth 8 -> 36 layers `0..35`
+- [x] Preserve same tiny activation / official block / quantization / parity / streamed gates / safety
+- [x] Keep tokenizer, embedding, final norm, LM head, KV and generation excluded
+- [x] Preregister `research/stretch/full-36-layer-streamed-body-parity-006-plan.md`
+- [x] Implement frozen transform runner `scripts/stretch_full_36_layer_streamed_body_parity_006.py`
+- [x] Require exact Stretch 005 source blob `8bbfff727a0131c48d4ba71edc8de485182b7fbe`
+- [x] Freeze runner blob `3ec3f028305aad9927c794d5bf9d92beac4d0a12`
+- [x] Resident expected body payload 3,039,381,504 B (~2.831 GiB)
+- [x] Resident tolerance +/-36 MiB, preserving +/-1 MiB-per-layer scale
+- [x] Streamed per-layer gate remains 84,427,264 B +/-1 MiB
+- [x] Post-clear active/cache gates unchanged
+- [x] Numerical parity formula unchanged
+- [ ] Run Stretch 006
+- [ ] Freeze full-body parity/residency result
 
-### Stretch 007+ — end-to-end components if prerequisites continue passing
-- [ ] Add shared embedding/final-norm residency policy
-- [ ] Add LM head/logit parity
+### Stretch 007 — Shared components / logits — CONDITIONAL
+- [ ] Only after Stretch 006 PASS
+- [ ] Add token embedding residency policy
+- [ ] Add final RMSNorm
+- [ ] Add tied embedding/LM-head logit projection
+- [ ] Compare final logits against resident control
+- [ ] Keep KV/autoregressive generation excluded initially
+
+### Stretch 008+ — end-to-end inference
 - [ ] Add KV-cache handling
-- [ ] Add autoregressive token generation parity
+- [ ] Add autoregressive token-generation parity
 - [ ] Add prefetch/double buffering
 - [ ] Measure SSD bytes/token, RAM, swap, wall time and tok/s
-- [ ] Explore cache/residency policies
+- [ ] Explore residency/cache policies
 - [ ] Only later study layer skipping/early exit or MoE routing
 
 ## Phase 8 — Synthesis
@@ -132,4 +120,4 @@ Research question:
 - [ ] Fast/efficient profile
 - [ ] Maximum-capability profile
 - [ ] Experimental streamed profile
-- [ ] Publish research findings when ready
+- [ ] Publish findings when ready
