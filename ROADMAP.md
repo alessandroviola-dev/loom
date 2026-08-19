@@ -34,26 +34,20 @@
 - [x] Freeze environment: `mlx-lm==0.31.3`, `mlx==0.31.2`, `transformers==5.12.1`
 - [x] Acquire/verify `mlx-community/Qwen3-8B-3bit`
 - [x] Main weight SHA PASS; 3-bit/group-size 64 PASS
-- [x] Direct MLX Smoke 001 generated successfully
-- [x] Diagnose locale swap parser defect (`used = 1121,88M`)
-- [x] Rerun identical smoke with telemetry-only locale-safe parser
-- [x] Smoke safety rerun FULL_PASS (`20260819-124440`): minimum free memory 23%, peak swap 1720.75 MB
-- [x] Freeze `research/runtime/direct-mlx-8b-3bit-smoke-001-swapfix-rerun.md`
-- [x] Run real Coding Benchmark T01 Workload Safety 001 (`20260819-124952`)
-- [x] T01 workload FULL_PASS: minimum free memory 19%, peak swap 1643.12 MB
-- [x] T01 structured delivery `written`; prompt 57.11 t/s; generation 16.52 t/s; MLX peak memory 3.960 GB
-- [x] Freeze `research/runtime/direct-mlx-8b-3bit-t01-workload-001.md`
-- [x] Preregister full Direct MLX Coding Benchmark 001
-- [x] Freeze exact adapter blob `62abab57f6463c5813809b43d8f1e7bdfec5f304`
-- [x] Freeze exact scorer blob `754e9a6506968d2b191bff57997710591efe8133`
-- [x] Add `research/runtime/direct-mlx-coding-benchmark-001-plan.md`
-- [x] Add `scripts/direct_mlx_coding_benchmark_001.py`
-- [ ] Run full T01–T06 Direct MLX benchmark in one loaded model session
-- [ ] If COMPLETE, freeze artifact/delivery-adjusted/per-task quality and compare with established baselines
-- [ ] After COMPLETE quality review, decide whether isolated Pi integration/agentic validation is justified
-- [ ] If partial resource/telemetry/runtime fail, diagnose before changing runtime
+- [x] Direct MLX Smoke safety FULL_PASS (`20260819-124440`): minimum free 23%, peak swap 1720.75 MB
+- [x] Direct MLX T01 Workload Safety FULL_PASS (`20260819-124952`): minimum free 19%, peak swap 1643.12 MB, delivery written
+- [x] Run full Direct MLX Coding Benchmark 001 (`20260819-125647`) in one loaded model session
+- [x] Full benchmark resource stability PASS: minimum free 14%, peak swap 1683.38 MB
+- [x] Full benchmark classification COMPLETE
+- [x] Freeze quality result: artifact 38.57/100, delivery-adjusted 27.86/100, structured delivery 2/6
+- [x] Freeze `research/runtime/direct-mlx-coding-benchmark-001.md`
+- [x] Add read-only `scripts/inspect_direct_mlx_coding_benchmark_001.py`
+- [ ] Diagnose T03–T06 adapter failures and scorer points from persisted run; no model rerun
+- [ ] After diagnostic, decide whether isolated Pi agentic validation is scientifically justified
+- [ ] Do not promote the 8B profile as a practical upgrade solely because runtime stability is strong
+- [ ] Do not alter prompts/parser/scorer or invent a post-hoc quality threshold
+- [ ] If quality is not competitive, move to next Direct MLX quantization/model branch or Phase 6 rather than forcing Pi integration
 - [ ] Do not lower 5% free-memory / 5600 MB swap guardrails
-- [ ] Do not change KV cap/precision, prompts, parser, scorer or retry policy inside the frozen benchmark
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
