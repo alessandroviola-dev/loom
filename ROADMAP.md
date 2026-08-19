@@ -40,14 +40,16 @@
 - [x] 8B Q2 Stage B 001 FULL_PASS: pp512 103.00 t/s ±0.67; tg128 13.72 t/s ±0.34; peak RSS 2461.17 MB; peak swap 1990.38 MB; minimum free memory 8%
 - [x] Freeze `research/runtime/llama-cpp-8b-q2-technical-pass.md`
 - [x] Technical conclusion: Qwen3 8B Q2_K is runnable at context 4096 under LOOM safety guardrails
-- [x] Run 8B Q2 llama-server smoke
 - [x] Server Smoke 001 FULL_PASS: readiness 5.684 s; `/v1/chat/completions` returned `OK`; peak RSS 1729.33 MB; peak swap 1855.12 MB; minimum free memory 6%
 - [x] Record `research/runtime/llama-cpp-8b-q2-server-smoke-001.md`
-- [x] Preregister `research/runtime/llama-cpp-coding-quality-compare-001-plan.md`
-- [x] Add `scripts/llama_cpp_coding_quality_compare.py`
-- [ ] Run frozen Coding Benchmark 01 v1.0.1: same-runtime Qwen3 8B Q2 vs Qwen3 4B Q4
-- [ ] If 8B Q2 scores higher, run controlled Pi/agent compatibility smoke through llama-server
-- [ ] If 8B Q2 is equal/lower, do not call it a practical upgrade; investigate higher-quality memory strategy (e.g. partial offload Q3/Q4) and/or Direct MLX
+- [x] Run frozen Coding Benchmark 01 v1.0.1 same-runtime Qwen3 8B Q2 vs Qwen3 4B Q4
+- [x] Quality Compare 001 primary result: 8B Q2 delivery 0/100 vs 4B Q4 34.29/100; delta -34.29; relation `4B_HIGHER`; both profiles COMPLETE
+- [x] Record `research/runtime/llama-cpp-coding-quality-compare-001.md`
+- [ ] Inspect persisted per-task 8B failure classes without rerunning inference; all 6 adapter deliveries failed, so separate protocol failure from semantic quality
+- [ ] Freeze failure-mode interpretation after diagnostic
+- [ ] If failures indicate genuine Q2 instruction/protocol degradation, investigate higher-quality memory strategy such as partial-offload Q3/Q4 and/or Direct MLX
+- [ ] If failures reveal a benchmark transport defect affecting the 8B condition, preregister a corrected transport comparison rather than post-hoc rescue
+- [ ] Do not call Q2 8B a practical upgrade from parameter count alone
 - [ ] Test ~9B only after the 8B quality/usefulness frontier is characterized
 
 ## Phase 5 — Direct MLX
