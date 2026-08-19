@@ -20,59 +20,45 @@
 - [ ] Define reasoning benchmark
 
 ## Phase 3 — Local coding agent / runtime investigation
-- [x] Qwen Code 0.21.13 normal-config 4096 blocked before first request (~4474 tokens)
+- [x] Qwen Code 0.21.13 normal-config 4096 blocked before first request
 - [x] Pi 0.84.2 configured non-destructively for Ollama
-- [x] Pi 4096 read-only and edit/test smoke tests
-- [x] Freeze Pi Agentic Coding Benchmark 001
-- [x] Pi Agentic 001: artifact/delivery 77.15, strict 60.00, delivery 6/6, protocol 4/6
-- [x] Conclude cumulative retained warm high-water is a major contributor to prior memory growth; internal mechanism unresolved
-- [x] Qwen Code safe mode still 4363 > 4096; deprioritize Qwen Code
+- [x] Pi 4096 smoke / Agentic Coding Benchmark 001
+- [x] Pi Agentic 001: artifact/delivery 77.15, strict 60.00, delivery 6/6
 - [ ] Add daily-use validation/retry workflow later
 
 ## Phase 4 — llama.cpp — MAIN BRANCH CHARACTERIZED
 - [x] Pin llama.cpp commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
-- [x] Install CMake 4.4.2 and validate Release/Metal build
-- [x] Setup Probe 003 canonical PASS: `llama-cli`, `llama-bench`, Metal ON
-- [x] 4B Q4_K_M Runtime Control 001 PASS: pp512 230.85 t/s; tg128 22.33 t/s; minimum free memory 22%
-- [x] 8B Q4_K_M Capability 001 VALID FAIL at context 4096: memory free 1%
-- [x] 8B Q3_K_M Capability 001 VALID FAIL at context 4096 / forced `-ngl -1`: memory free 1%
-- [x] 8B Q2 Stage B FULL_PASS: pp512 103.00 t/s; tg128 13.72 t/s; minimum free 8%
-- [x] Q2 llama-server smoke FULL_PASS: API `OK`; minimum free 6%
-- [x] Coding Quality Compare 001: Q2 delivery 0/100 vs 4B Q4 34.29/100; Q2 profile not a practical upgrade
-- [x] Q3 auto-fit default server VALID FAIL at 4% free
-- [x] Q3 explicit `-np 1` VALID FAIL at 4% free
-- [x] Q3 NP1 + Q8_0 KV API smoke FULL_PASS: minimum free 6%
-- [x] Run Coding Quality Compare 002 under common NP1/Q8_0 runtime
-- [x] Compare 002 Q3 server ready, then T01 resource abort: `memory free 4% < 5%`
-- [x] Diagnose Q3 T01 timeline: repeatedly at 5% free, then 4% at ~20.3 s; no HTTP response because safety shutdown terminated server
-- [x] Freeze `research/runtime/llama-cpp-coding-quality-compare-002-diagnostic.md`
-- [x] Classify exact Q3 NP1/Q8 profile as **API-smoke PASS / real-workload RESOURCE FAIL** at context 4096
-- [x] Keep Compare 002 intrinsic quality relation unresolved because Q3 did not complete
-- [x] Do not expose Q3 llama.cpp profile to Pi
-- [x] Move main research branch to Direct MLX instead of stacking another automatic llama.cpp KV rescue
-- [ ] Optional future: revisit more aggressive llama.cpp KV only as a separately motivated branch
-- [ ] Do not lower the 5% guardrail or retroactively alter failed conditions
-- [ ] Do not test ~9B until the useful 8B frontier is better characterized
+- [x] Setup Probe 003 PASS; Metal build validated
+- [x] 4B Q4 control PASS: pp512 230.85 t/s; tg128 22.33 t/s; min free 22%
+- [x] 8B Q4 max-offload VALID FAIL at 1% free
+- [x] 8B Q3 max-offload VALID FAIL at 1% free
+- [x] 8B Q2 technical/API PASS but frozen coding delivery 0/100 vs 4B 34.29/100
+- [x] Q3 auto-fit default FAIL at 4% free
+- [x] Q3 `-np 1` FAIL at 4% free
+- [x] Q3 NP1 + Q8_0 KV API smoke PASS at 6% free
+- [x] Q3 real Coding T01 then resource abort at 4% free
+- [x] Freeze Q3 llama.cpp as **API-smoke PASS / real-workload RESOURCE FAIL** at context 4096
+- [x] Move main research branch to Direct MLX
+- [ ] Optional future: separately motivate more aggressive llama.cpp KV if needed
 
 ## Phase 5 — Direct MLX — ACTIVE
-- [x] Research current direct-MLX runtime/candidate path
-- [x] Select isolated setup condition: `mlx-lm==0.31.3`, `mlx==0.31.2`, `transformers==5.12.1`
-- [x] Preregister `research/runtime/direct-mlx-setup-probe-001-plan.md`
-- [x] Add `scripts/direct_mlx_setup_probe.py`
-- [x] Run Direct MLX Setup Probe 001: PASS (`20260819-120748`)
-- [x] Validate Darwin arm64, exact package locks and tiny MLX local computation
-- [x] Record setup disk delta: 43.606 -> 43.138 GiB free (~0.468 GiB environment cost)
-- [x] Freeze `research/runtime/direct-mlx-setup-probe-001.md`
-- [x] Verify candidate `mlx-community/Qwen3-8B-3bit`: 3-bit/group-size 64, main weight published ~3.58 GB, SHA256 `b9694bdb1f737223836235c0427b424ace11d566eeab0ac91ff8050143bd20a1`
-- [x] Preregister `research/runtime/direct-mlx-8b-3bit-smoke-001-plan.md`
-- [x] Add `scripts/direct_mlx_8b_3bit_smoke.py`
-- [x] Freeze first Direct MLX model policy: local/offline inference, non-thinking Qwen3 chat prompt, 16-token max, `max_kv_size=4096`, no KV quantization, one attempt, same 5%/5600 MB guardrails
-- [ ] Run Direct MLX 8B 3-bit Smoke 001; first run acquires/reuses exact snapshot and verifies model SHA/metadata
-- [ ] If smoke FULL_PASS, freeze telemetry then preregister real Coding Benchmark T01 workload-safety probe under identical Direct MLX policy
+- [x] Select isolated environment `mlx-lm==0.31.3`, `mlx==0.31.2`, `transformers==5.12.1`
+- [x] Direct MLX Setup Probe 001 PASS (`20260819-120748`)
+- [x] Validate Darwin arm64 and tiny MLX computation
+- [x] Acquire/verify `mlx-community/Qwen3-8B-3bit`, 3-bit/group-size 64
+- [x] Main weight SHA256 PASS; observed weight 3.338 GiB
+- [x] Direct MLX 8B 3-bit Smoke 001 generated successfully (`20260819-121656`)
+- [x] Smoke output `OK.`; prompt 6.37 t/s; generation 24.62 t/s; MLX peak memory 3.668 GB
+- [x] Minimum sampled free memory 25%
+- [!] Swap telemetry unavailable (`None`), so frozen two-channel safety gate is incomplete
+- [x] Freeze result as generation PASS / safety telemetry incomplete
+- [x] Add `scripts/diagnose_macos_swap_telemetry.py`
+- [ ] Run read-only swap telemetry diagnostic
+- [ ] If parser defect, fix telemetry only and rerun identical smoke with already-downloaded model
+- [ ] Only after complete safety PASS preregister real Coding Benchmark T01 workload probe
 - [ ] Only after T01 workload-safety PASS run full frozen Coding Benchmark quality comparison
 - [ ] Only after technical + workload + quality gates consider Pi integration
-- [ ] If Direct MLX unquantized-KV smoke RESOURCE_FAIL, consider `kv_bits=8` only as a separately preregistered rescue
-- [ ] Do not lower the 5% guardrail or change context inside a failed condition
+- [ ] Do not lower 5% free-memory / 5600 MB swap guardrails
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
