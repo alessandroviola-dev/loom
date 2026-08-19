@@ -47,10 +47,10 @@
 - [x] Diagnose Q3 T01 timeline: repeatedly at 5% free, then 4% at ~20.3 s; no HTTP response because safety shutdown terminated server
 - [x] Freeze `research/runtime/llama-cpp-coding-quality-compare-002-diagnostic.md`
 - [x] Classify exact Q3 NP1/Q8 profile as **API-smoke PASS / real-workload RESOURCE FAIL** at context 4096
-- [x] Keep Compare 002 quality relation unresolved because Q3 did not complete
+- [x] Keep Compare 002 intrinsic quality relation unresolved because Q3 did not complete
 - [x] Do not expose Q3 llama.cpp profile to Pi
 - [x] Move main research branch to Direct MLX instead of stacking another automatic llama.cpp KV rescue
-- [ ] Optional future: revisit more aggressive llama.cpp KV only as a separately motivated branch, not the main path
+- [ ] Optional future: revisit more aggressive llama.cpp KV only as a separately motivated branch
 - [ ] Do not lower the 5% guardrail or retroactively alter failed conditions
 - [ ] Do not test ~9B until the useful 8B frontier is better characterized
 
@@ -59,12 +59,20 @@
 - [x] Select isolated setup condition: `mlx-lm==0.31.3`, `mlx==0.31.2`, `transformers==5.12.1`
 - [x] Preregister `research/runtime/direct-mlx-setup-probe-001-plan.md`
 - [x] Add `scripts/direct_mlx_setup_probe.py`
-- [ ] Run Direct MLX Setup Probe 001; no model weights downloaded
-- [ ] If setup PASS, freeze environment/package lock
-- [ ] Separately preregister acquisition/runtime smoke for `mlx-community/Qwen3-8B-3bit` with disk accounting
-- [ ] Test 8B/3-bit direct MLX at context 4096 under the same 5% free-memory safety boundary
-- [ ] If workload-safe, compare throughput/memory against llama.cpp profiles
-- [ ] Only after workload-safety PASS run frozen Coding Benchmark 01 and consider Pi integration
+- [x] Run Direct MLX Setup Probe 001: PASS (`20260819-120748`)
+- [x] Validate Darwin arm64, exact package locks and tiny MLX local computation
+- [x] Record setup disk delta: 43.606 -> 43.138 GiB free (~0.468 GiB environment cost)
+- [x] Freeze `research/runtime/direct-mlx-setup-probe-001.md`
+- [x] Verify candidate `mlx-community/Qwen3-8B-3bit`: 3-bit/group-size 64, main weight published ~3.58 GB, SHA256 `b9694bdb1f737223836235c0427b424ace11d566eeab0ac91ff8050143bd20a1`
+- [x] Preregister `research/runtime/direct-mlx-8b-3bit-smoke-001-plan.md`
+- [x] Add `scripts/direct_mlx_8b_3bit_smoke.py`
+- [x] Freeze first Direct MLX model policy: local/offline inference, non-thinking Qwen3 chat prompt, 16-token max, `max_kv_size=4096`, no KV quantization, one attempt, same 5%/5600 MB guardrails
+- [ ] Run Direct MLX 8B 3-bit Smoke 001; first run acquires/reuses exact snapshot and verifies model SHA/metadata
+- [ ] If smoke FULL_PASS, freeze telemetry then preregister real Coding Benchmark T01 workload-safety probe under identical Direct MLX policy
+- [ ] Only after T01 workload-safety PASS run full frozen Coding Benchmark quality comparison
+- [ ] Only after technical + workload + quality gates consider Pi integration
+- [ ] If Direct MLX unquantized-KV smoke RESOURCE_FAIL, consider `kv_bits=8` only as a separately preregistered rescue
+- [ ] Do not lower the 5% guardrail or change context inside a failed condition
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
