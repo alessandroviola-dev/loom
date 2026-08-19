@@ -42,8 +42,9 @@
 - [x] 4B control PASS: Qwen3 4B Q4_K_M, 2.326 GiB, Metal, pp512 230.85 t/s, tg128 22.33 t/s
 - [x] 4B telemetry: peak process RSS 1914.91 MB, peak swap 1097.19 MB, minimum free memory 22%
 - [x] Preregister `research/runtime/llama-cpp-8b-q4-001-plan.md`
-- [ ] Perform explicit disk-capacity preflight before fresh 8B download
-- [ ] Run Qwen3 8B Q4_K_M Capability 001 at context 4096 smoke, then throughput if stable
+- [x] Explicit disk preflight PASS: 56 GiB free; `results-local/models` 2.3 GiB; llama.cpp tree/results 415 MiB
+- [x] Add staged runner `scripts/llama_cpp_8b_q4.py`
+- [ ] Run Qwen3 8B Q4_K_M Capability 001: context-4096 smoke, then throughput only if stable
 - [ ] Compare 4B -> 8B throughput/memory scaling
 - [ ] Test 8B Q3 variant according to observed headroom
 - [ ] Test ~9B Q3/Q2 where feasible
