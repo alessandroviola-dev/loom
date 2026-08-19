@@ -1,212 +1,257 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — Direct MLX established a practical 8B runtime frontier on Apple M1 / 8 GB. Qwen3-8B-3bit is full-session stable but did not earn Pi promotion on frozen coding quality. Qwen3-8B-4bit with `max_kv_size=4096` and unquantized KV is now closed as continuous-workload RESOURCE FAIL after both the original full run and a >=70%-free host-controlled replication crossed the 5% free-memory guardrail. The controlled replication diagnostic supports exactly one final low-confound rescue: 8-bit KV cache active from token 0.
-Checkpoint: `DIRECT_MLX_8B_4BIT_KV8_RESCUE_001_READY`
+Status: ACTIVE — Runtime-frontier work has established useful 8B boundaries on the Apple M1 / 8 GB reference machine. The project has now pivoted from primarily asking “what is the largest model that fits?” to asking **“what is the greatest useful capability an 8 GB local system can produce?”**. The active main branch is Capability Amplification on the canonical `qwen3.5:4b-mlx` model.
+Checkpoint: `CAPABILITY_AMPLIFIER_001_READY`
 
 ## Mission
 
 Study practical local LLM/agent execution on constrained consumer hardware, initially Apple M1 / 8 GB unified memory.
+
 Tagline: **Big models. Small machines.**
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 
-## Frozen safety / production constraints
+## Safety / production constraints
 
-- Never reset or replace production Pi configuration.
-- Controlled experiments use isolated/run-local configuration.
-- No new profile reaches Pi until technical, workload-safety and quality gates pass.
-- Frozen runtime abort: free memory <5% OR swap >5600 MB.
-- Process RSS is diagnostic only; system-wide free memory and swap drive safety decisions.
+- Never reset, replace or destroy production Pi configuration.
+- Controlled Pi experiments use run-local `PI_CODING_AGENT_DIR`.
 - Never silently delete verified models or canonical results.
-- Record free disk before/after model acquisitions and large runtime experiments.
-- Do not lower guardrails or alter a failed frozen condition post-hoc.
-- Do not repeat a frozen profile once a controlled replication confirms its resource failure.
-- The KV8 rescue below is the only remaining rescue authorized for the 4-bit branch; no rescue ladder.
+- Record disk around model acquisitions / large runtime work.
+- Runtime safety boundary where applicable: free memory <5% OR swap >5600 MB abort.
+- Process RSS is diagnostic only; system-wide free memory and swap are decisive.
+- Do not relabel harness/parser/capture defects as model failures.
+- Do not reopen a rescue ladder without a new prospective scientific rationale.
 
-Latest observed disk after controlled 4-bit replication: **35.328 GiB free**. Verified 3-bit, 4-bit and GGUF artifacts remain retained.
+Verified 3-bit, 4-bit and GGUF artifacts are retained. Latest known disk in the 4-bit branch was roughly 35 GiB free; re-measure before any future multi-GB acquisition.
 
 # Frozen reference results
 
-## Ollama/MLX 4B baseline
+## Canonical Ollama/MLX 4B
 
-Coding Baseline 001 (`20260818-203156`): artifact 40.71/100, strict 30.00/100, delivery 3/6, recovered semantic diagnostic 82.86/100, generation 16.01 tok/s.
+Model: `qwen3.5:4b-mlx`
+Context: 4096
 
-Pi Agentic Coding Benchmark 001 (`20260818-214848`): artifact/delivery 77.15/100, strict 60.00/100, delivery 6/6, protocol 4/6.
+Coding Baseline 001 (`20260818-203156`):
+- artifact **40.71/100**
+- strict/delivery-adjusted **30.00/100**
+- delivery **3/6**
+- recovered semantic-content diagnostic **82.86/100**
+- weighted prompt throughput **186.46 tok/s**
+- generation **16.01 tok/s**.
 
-## llama.cpp boundary
+Pi Agentic Coding Benchmark 001 (`20260818-214848`):
+- same `qwen3.5:4b-mlx` family through Pi file tools
+- artifact/delivery-adjusted **77.15/100**
+- strict protocol-adjusted **60.00/100**
+- delivery **6/6**
+- protocol **4/6**
+- no hidden-test feedback
+- whole run ~612 s
+- severe but non-aborting warm memory/swap pressure.
 
-Pinned commit `60addddf3c567c43ec3caf70fc953fba3572d96f`.
-- 4B Q4 control: pp512 230.85 t/s, tg128 22.33 t/s, min free 22%.
-- 8B Q2: technically runnable/API-servable but coding delivery 0/100 vs 4B Q4 34.29/100 in Compare 001.
-- 8B Q3 NP1 + Q8_0 KV: API smoke PASS at 6% free; exact Coding T01 hit 4% free and guardrail abort.
+Canonical agentic finding:
+> Replacing fragile full-file JSON transport with direct filesystem tools materially improved end-to-end coding performance for the same local 4B model. This is key evidence motivating Capability Amplification.
 
-Canonical Q3 boundary: **API-smoke PASS / real-workload RESOURCE FAIL** at context 4096 under llama.cpp.
+Record: `research/agents/pi-agentic-benchmark-001.md`.
 
-# Phase 5 — Direct MLX
+## llama.cpp reference
 
-Validated environment:
-- `results-local/mlx/venv-mlx-lm-0.31.3`
+Pinned source commit: `60addddf3c567c43ec3caf70fc953fba3572d96f`.
+
+Qwen3-4B Q4 control:
+- pp512 **230.85 tok/s**
+- tg128 **22.33 tok/s**
+- minimum free memory **22%**.
+
+This faster 4B path remains a later **secondary Amplify control**, not the primary subject, because it is not the same model/runtime condition as `qwen3.5:4b-mlx`.
+
+Qwen3-8B llama.cpp frontier:
+- Q2 technically runnable/API-servable but frozen coding delivery poor;
+- Q3 NP1 + Q8_0 KV API-smoke PASS at 6% free;
+- exact Coding T01 reached 4% free and guardrail abort.
+
+## Direct MLX 8B frontier — characterized / main branch closed
+
+Environment:
 - `mlx-lm==0.31.3`
 - `mlx==0.31.2`
-- `transformers==5.12.1`
-- Darwin arm64 / local MLX compute PASS.
+- `transformers==5.12.1`.
 
-## Qwen3-8B-3bit — full-session stable, quality not promoted
+Qwen3-8B 3-bit:
+- smoke FULL_PASS
+- exact T01 FULL_PASS
+- full Coding Benchmark COMPLETE
+- full-session min free **14%**, peak swap **1683.38 MB**
+- artifact **38.57/100**
+- delivery-adjusted **27.86/100**
+- delivery **2/6**
+- not promoted on quality.
 
-Artifact:
-- `mlx-community/Qwen3-8B-3bit`
-- revision `619ded3`
-- SHA256 `b9694bdb1f737223836235c0427b424ace11d566eeab0ac91ff8050143bd20a1`
-- 3-bit / group size 64
-- main weight 3.338 GiB.
+Qwen3-8B 4-bit, `max_kv_size=4096`, unquantized KV:
+- smoke PASS at 10% min free
+- standalone T01 PASS at 6% min free
+- original full benchmark resource-failed during T01
+- >=70%-free controlled replication completed T01–T03, entered T04, then hit **4% free**
+- exact continuous unquantized-KV profile closed as workload RESOURCE FAIL.
 
-Safety-valid smoke `20260819-124440`: min free 23%, peak swap 1720.75 MB, FULL_PASS.
+KV8 Rescue 001 was attempted and operator-reported as failed, but its detailed terminal output was not ingested before the research pivot. Do **not** assign a canonical KV8 failure type without the missing evidence.
 
-Exact T01 `20260819-124952`: min free 19%, peak swap 1643.12 MB, delivery `written`, FULL_PASS.
+Closure record:
+`research/runtime/direct-mlx-8b-4bit-kv8-rescue-001-closure.md`
 
-Full Coding Benchmark 001 `20260819-125647`:
-- one loaded T01–T06 session
-- preflight 75% free / 1339.00 MB swap
-- min free 14%
-- peak swap 1683.38 MB
-- artifact 38.57/100
-- delivery-adjusted 27.86/100
-- delivery 2/6
-- COMPLETE.
+No further KV6/KV4/context rescue ladder is authorized in the old branch.
 
-Quality diagnostic:
-- T01 15/15 clean success
-- T02 12.86/15, 6/7 tests
-- T03 protocol fail from extra fenced JSON
-- T04 protocol fail plus malformed/incorrect content
-- T05 protocol fail; no post-hoc salvage
-- T06 protocol fail plus tie-order semantic defect.
+# Research pivot — ADOPTED
 
-Conclusion: resource stability solved at 3-bit, but coding quality is not a clear practical upgrade. Pi remains blocked.
+Record:
+`research/notes/capability-amplification-pivot-2026-08-19.md`
 
-Records:
-- `research/runtime/direct-mlx-coding-benchmark-001.md`
-- `research/runtime/direct-mlx-coding-benchmark-001-diagnostic.md`.
+New primary question:
+> **What is the greatest useful capability that can be produced by an 8 GB local system?**
 
-## Qwen3-8B-4bit — unquantized-KV profile CLOSED as RESOURCE FAIL
+Two parallel long-term tracks:
 
-Artifact:
-- `mlx-community/Qwen3-8B-4bit`
-- revision `545dc4251c05440727734bcd94334791f6ab0192`
-- SHA256 `f2d29621aab300336ad645567ff38c42aac755513006ef4e8a579cf7ef5256d8`
-- 4-bit / group size 64
-- main weight 4.291 GiB.
+1. **Amplify — small model, big capability**
+   - deterministic validation / repair
+   - planner / verifier / tool loops
+   - retrieval
+   - later specialization, LoRA/SFT/distillation when justified.
 
-Smoke `20260819-131009`: `max_kv_size=4096`, unquantized KV, min free 10%, peak swap 2403.31 MB, generation 20.8411 t/s, FULL_PASS.
+2. **Stretch — big model, small machine**
+   - SSD/layer/expert streaming
+   - MoE offload
+   - hierarchical caching
+   - selective routing from a small resident controller
+   - Colibrì / related memory-hierarchy ideas later.
 
-Standalone exact T01 `20260819-132612`: preflight 74% free, min free 6%, peak swap 2470.31 MB, delivery `written`, FULL_PASS.
+The project optimizes a joint capability frontier, not tokens/second alone:
+- quality
+- delivery/reliability
+- RAM/free-memory/swap
+- total wall time
+- model calls
+- prompt/generated tokens
+- disk footprint when relevant.
 
-### Original full benchmark `20260819-133144`
+# Phase 6 — Capability Amplification — ACTIVE
 
-- preflight 56% free / 948.75 MB swap
-- T01 started, no result persisted
-- min free 4%
-- peak swap 3028.25 MB
-- child exit -15
-- `PARTIAL_RESOURCE_FAIL`.
-
-Read-only diagnostic established that the breach occurred during T01 processing and that max swap occurred earlier; the materially lower host free-memory state justified exactly one controlled replication.
-
-### Host-State Controlled Replication 001
-
-Host gate `20260819-134010`: 72%, 74%, 74% free; swap 1381.75 MB. Launch eligible.
-
-Full run `20260819-134012`, unchanged model/runtime/benchmark:
-- preflight 72% free / 1381.75 MB swap
-- completed and persisted T01, T02, T03
-- entered T04
-- min free 4%
-- peak swap 2879.38 MB
-- child exit -15 at 49.353 s
-- `PARTIAL_RESOURCE_FAIL`.
-
-Controlled replication diagnostic:
-- T01: 101 gen tok, 13.1458 t/s, MLX peak 4.981664948 GB, `written`
-- T02: 119 gen tok, 13.3513 t/s, MLX peak 5.037748316 GB, `written`
-- T03: 60 gen tok, 12.7644 t/s, MLX peak 5.037748316 GB, `written`
-- T03 reaches exactly 5% free without breaching the `<5%` rule, then temporarily recovers
-- T04 begins at 6% free and reaches 4% at 49.198 s
-- final 4% sample has swap 2099.94 MB; peak swap occurred much earlier during T01.
-
-Canonical conclusion:
-> Host state affects how far the 4-bit run progresses, but does not rescue the exact 4-bit + Direct MLX + `max_kv_size=4096` + unquantized-KV continuous profile. That profile is closed as workload RESOURCE FAIL. No aggregate 4-bit quality score is valid from either partial full run.
-
-Records:
-- `research/runtime/direct-mlx-8b-4bit-coding-benchmark-001.md`
-- `research/runtime/direct-mlx-8b-4bit-coding-benchmark-001-resource-diagnostic.md`
-- `research/runtime/direct-mlx-8b-4bit-hoststate-replication-001.md`
-- `research/runtime/direct-mlx-8b-4bit-hoststate-replication-001-diagnostic.md`.
-
-# Current checkpoint — single KV8 rescue
-
-Checkpoint: `DIRECT_MLX_8B_4BIT_KV8_RESCUE_001_READY`
+## Capability Amplifier 001 — READY
 
 Plan:
-`research/runtime/direct-mlx-8b-4bit-kv8-rescue-001-plan.md`
+`research/amplify/capability-amplifier-001-plan.md`
 
 Runner:
-`scripts/direct_mlx_8b_4bit_kv8_rescue_001.py`
+`scripts/capability_amplifier_001.py`
 
-Scientific rationale:
-- continuous 4-bit session repeatedly approaches the free-memory floor while completing multiple tasks;
-- MLX-LM Direct generation exposes KV-cache quantization independently from weight quantization and `max_kv_size`;
-- KV precision is therefore the narrowest remaining directly supported memory-control factor.
+Primary subject:
+- `qwen3.5:4b-mlx`
+- Ollama
+- context 4096
+- non-thinking
+- temperature 0
+- max 2048 tokens/call.
 
-One-factor rescue policy:
-- model weights unchanged
-- environment unchanged
-- exact Coding Benchmark 01 v1.0.1 unchanged
-- prompts/parser/scorer unchanged
-- one loaded T01–T06 session unchanged
-- `enable_thinking=False` unchanged
-- max 2048 generated tokens/task unchanged
-- seed 0 unchanged
-- **`max_kv_size=4096` unchanged**
-- KV policy changes from unquantized to:
-  - `kv_bits=8`
-  - `kv_group_size=64`
-  - `quantized_kv_start=0`.
+Frozen benchmark provenance:
+- Coding Benchmark 01 v1.0.1
+- manifest blob `547050ecd0183b8d447dc3e21e724a8232f10297`
+- single-shot adapter blob `62abab57f6463c5813809b43d8f1e7bdfec5f304`
+- scorer blob `754e9a6506968d2b191bff57997710591efe8133`.
 
-`quantized_kv_start=0` is explicit so KV8 actually engages on these sub-5000-token tasks; the CLI deferred default of 5000 would not test the intended rescue.
+### Mechanism
 
-Controlled launch gate remains:
-- 3 consecutive samples >=70% free memory
-- no purge/process killing/swap manipulation
-- if not met: `HOST_STATE_NOT_READY`, MLX launch skipped, not a model result.
+Each task gets at most two calls.
 
-Runtime safety remains:
-- free <5% abort
-- swap >5600 MB abort.
+Call 1:
+- exact frozen single-shot prompt/request/parser
+- no test feedback.
 
-Prospective quality gate if and only if run reaches COMPLETE:
-- delivery-adjusted >27.86/100
-- structured delivery >2/6.
+Validation:
+- parser failure => deterministic parser feedback;
+- valid delivery => exact frozen task tests;
+- all tests pass => no repair allowed;
+- otherwise exactly one repair allowed.
 
-Both are required before any isolated Pi validation may be considered.
+Call 2, only when needed:
+- same model/runtime/sampler/context
+- original task/context
+- current candidate
+- exact parser error or frozen test-failure summary
+- same JSON delivery contract.
+
+Candidate selection is deterministic:
+- valid repair beats initial only if it passes more frozen tests;
+- ties retain initial;
+- invalid repair never replaces valid initial;
+- if only repair is valid, repair is selected;
+- if neither is valid, fixture remains and final delivery is failed.
+
+No Pi, retrieval, third call, human intervention, web access, external model or fine-tuning in Amplify 001.
+
+### Host / safety
+
+Before benchmark:
+- stop `qwen3.5:4b-mlx` once for cold-model policy;
+- require 3 consecutive samples >=70% free memory.
+
+If host gate is not met:
+- `HOST_STATE_NOT_READY`
+- no model benchmark launch.
+
+During each model call:
+- continuous free-memory/swap telemetry
+- free <5% or swap >5600 MB => stop model + `PARTIAL_RESOURCE_FAIL`
+- missing telemetry => `TELEMETRY_FAIL`.
+
+### Frozen success gates
+
+Historical single-shot reference:
+- artifact 40.71
+- delivery-adjusted 30.00
+- delivery 3/6.
+
+`QUALITY_IMPROVED`:
+- COMPLETE
+- delivery-adjusted **>30.00**.
+
+`STRONG_AMPLIFICATION`:
+- QUALITY_IMPROVED
+- artifact **>40.71**
+- delivery **>3/6**.
+
+`PI_REFERENCE_REACHED` descriptive flag:
+- delivery-adjusted **>=77.15**.
+
+Because Amplify 001 intentionally exposes one deterministic hidden-test feedback round, reaching the Pi number does not imply intrinsic superiority over Pi Agentic 001.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/direct_mlx_8b_4bit_kv8_rescue_001.py
-python3 scripts/direct_mlx_8b_4bit_kv8_rescue_001.py
+python3 -m py_compile scripts/capability_amplifier_001.py
+python3 scripts/capability_amplifier_001.py
 ```
 
 No model download is expected.
 
-If `HOST_STATE_NOT_READY`, no MLX run occurred; naturally close heavy applications and retry only the launch wrapper.
+Preserve output through `Summary:`.
 
-If the KV8 run resource-fails after launch, close the entire 4-bit branch and move to the next frontier. Do not test KV6/KV4, lower context or lower guardrails.
+## Decision after Amplify 001
 
-If it reaches COMPLETE, freeze full safety/quality evidence and apply the already-frozen quality gate before any Pi experiment.
+If `COMPLETE`:
+- freeze full per-task repair trajectory, quality and efficiency metrics;
+- compare against the frozen 4B single-shot baseline;
+- only then decide the next one-factor amplifier.
+
+If `HOST_STATE_NOT_READY`:
+- no scientific model run occurred; naturally free host resources and retry the launch.
+
+If `PARTIAL_RESOURCE_FAIL` / `RUNTIME_FAIL` / `TELEMETRY_FAIL`:
+- diagnose before changing the amplifier design.
+
+If the mechanism establishes clear amplification, the next major comparison should eventually apply the same amplification logic to the faster llama.cpp 4B as a secondary efficiency control.
 
 ## Continuation rule
 
-Before a new experiment, read this file. After every meaningful result/decision, update it before moving to the next checkpoint.
+Before a new experiment, read this file. After every meaningful experiment/decision/result, update this file and `ROADMAP.md` before moving to the next checkpoint.
