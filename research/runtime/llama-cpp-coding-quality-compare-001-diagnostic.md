@@ -2,7 +2,7 @@
 
 Date: 2026-08-19
 Source run: `20260819-110234`
-Status: **CLOSED — Q2 STRUCTURED INSTRUCTION/DELIVERY DEGRADATION**
+Status: **CLOSED — Q2 PROFILE STRUCTURED INSTRUCTION/DELIVERY DEGRADATION**
 
 ## Purpose
 
@@ -90,15 +90,21 @@ T03 and T04 failed because the 4B returned task-answer JSON directly instead of 
 
 The diagnostic does **not** identify a transport/harness defect specific to the 8B condition.
 
-Instead, Qwen3-8B Q2_K shows a strong and repeated structured instruction-following failure: it recognizes that a `files` object is required but treats the prompt's illustrative `filename` placeholder as a literal schema field, often terminating after only ~11–13 generated tokens.
+Instead, the tested Qwen3-8B Q2_K profile shows a strong and repeated structured instruction-following failure: it recognizes that a `files` object is required but treats the prompt's illustrative `filename` placeholder as a literal schema field, often terminating after only ~11–13 generated tokens.
 
-T05 shows that semantic code generation ability is not necessarily zero, but the model still fails the frozen delivery protocol. No post-hoc salvage is permitted for the primary score.
+T05 shows that semantic code generation ability is not necessarily zero, but the profile still fails the frozen delivery protocol. No post-hoc salvage is permitted for the primary score.
 
 The 8B artifact score of 15/100 is not treated as model-earned quality because failed adapter outputs were not written to the working tree; fixture baseline state can contribute to that raw score.
 
+## Causal boundary
+
+This experiment does **not** prove that Q2 weight quantization alone caused the failure pattern. The compared profiles differ in both parameter count and quantization level. The supported conclusion is narrower: the tested **8B Q2_K profile** is inferior to the tested **4B Q4_K_M profile** on the frozen structured-delivery workload.
+
+Testing the same 8B family at Q3/Q4 quality under a viable memory strategy is required before attributing the degradation specifically to Q2 quantization.
+
 ## Conclusion
 
-> Qwen3-8B Q2_K is technically runnable and API-servable on the reference M1/8GB system, but under the frozen Coding Benchmark 01 single-shot protocol its aggressive Q2 quantization does not preserve reliable structured instruction following. It is **not a practical upgrade** over Qwen3-4B Q4_K_M for this workload.
+> Qwen3-8B Q2_K is technically runnable and API-servable on the reference M1/8GB system, but under the frozen Coding Benchmark 01 single-shot protocol this tested profile does not preserve reliable structured instruction following. It is **not a practical upgrade** over Qwen3-4B Q4_K_M for this workload.
 
 Primary result remains unchanged:
 - 8B Q2 delivery-adjusted: `0/100`
