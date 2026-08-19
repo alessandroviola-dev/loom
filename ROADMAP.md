@@ -33,28 +33,29 @@
 - [x] Direct MLX Setup Probe 001 PASS (`20260819-120748`)
 - [x] Freeze environment: `mlx-lm==0.31.3`, `mlx==0.31.2`, `transformers==5.12.1`
 - [x] Acquire/verify `mlx-community/Qwen3-8B-3bit`
-- [x] 3-bit Smoke safety FULL_PASS (`20260819-124440`): minimum free 23%, peak swap 1720.75 MB
-- [x] 3-bit exact T01 Workload Safety FULL_PASS (`20260819-124952`): minimum free 19%, peak swap 1643.12 MB, delivery written
-- [x] 3-bit full Direct MLX Coding Benchmark 001 COMPLETE (`20260819-125647`)
-- [x] 3-bit full-session resource stability PASS: minimum free 14%, peak swap 1683.38 MB
-- [x] Freeze 3-bit quality: artifact 38.57/100, delivery-adjusted 27.86/100, structured delivery 2/6
+- [x] 3-bit Smoke FULL_PASS (`20260819-124440`): min free 23%, peak swap 1720.75 MB
+- [x] 3-bit exact T01 FULL_PASS (`20260819-124952`): min free 19%, peak swap 1643.12 MB, delivery written
+- [x] 3-bit full Coding Benchmark 001 COMPLETE (`20260819-125647`)
+- [x] 3-bit full-session resource stability PASS: min free 14%, peak swap 1683.38 MB
+- [x] Freeze 3-bit quality: artifact 38.57/100, delivery-adjusted 27.86/100, delivery 2/6
 - [x] Diagnose 3-bit quality; failures are not only formatting
 - [x] Do not promote Qwen3-8B-3bit to Pi on current quality evidence
 - [x] Select/verify `mlx-community/Qwen3-8B-4bit`
-- [x] 4-bit Smoke 001 FULL_PASS (`20260819-131009`): minimum free 10%, peak swap 2403.31 MB, MLX peak memory 4.6833 GB
-- [x] Freeze `research/runtime/direct-mlx-8b-4bit-smoke-001.md`
-- [x] Run exact 4-bit Coding T01 Workload Safety 001 (`20260819-132612`)
-- [x] 4-bit T01 FULL_PASS: delivery written, minimum free **6%**, peak swap 2470.31 MB, MLX peak memory 4.9817 GB
-- [x] Freeze `research/runtime/direct-mlx-8b-4bit-t01-workload-001.md`
+- [x] 4-bit Smoke 001 FULL_PASS (`20260819-131009`): min free 10%, peak swap 2403.31 MB, MLX peak 4.6833 GB
+- [x] 4-bit exact T01 Workload Safety 001 FULL_PASS (`20260819-132612`): delivery written, min free 6%, peak swap 2470.31 MB, MLX peak 4.9817 GB
 - [x] Preregister full 4-bit six-task Coding Benchmark 001
-- [x] Freeze 4-bit Pi-eligibility gate before result: `COMPLETE` + delivery-adjusted >27.86 + structured delivery >2/6
-- [x] Add `research/runtime/direct-mlx-8b-4bit-coding-benchmark-001-plan.md`
-- [x] Add frozen-transform runner `scripts/direct_mlx_8b_4bit_coding_benchmark_001.py`
-- [ ] Run full Qwen3-8B-4bit Coding Benchmark 01 in one loaded session with unchanged 4096 KV / unquantized KV / 5% / 5600 MB boundaries
-- [ ] If COMPLETE, freeze full resource/quality result and apply prospectively frozen 3-bit comparison gate
-- [ ] Only if gate passes consider separately preregistered isolated Pi agentic validation
-- [ ] If partial resource/telemetry/runtime failure, diagnose before any rescue; do not infer aggregate quality
-- [ ] Do not lower guardrails, change KV cap/precision, prompts/parser/scorer or retry policy inside the frozen condition
+- [x] Freeze prospective 4-bit Pi gate before result: `COMPLETE` + delivery-adjusted >27.86 + delivery >2/6
+- [x] Run full Qwen3-8B-4bit Coding Benchmark 001 (`20260819-133144`)
+- [x] 4-bit full run hits free-memory guardrail during T01: min free **4%**, peak swap 3028.25 MB
+- [x] Classify 4-bit full run **PARTIAL_RESOURCE_FAIL**; no valid aggregate quality ordering
+- [x] Freeze `research/runtime/direct-mlx-8b-4bit-coding-benchmark-001.md`
+- [x] Add read-only `scripts/inspect_direct_mlx_8b_4bit_coding_benchmark_001.py`
+- [ ] Diagnose persisted 4-bit run timeline/progress/child state; no model rerun
+- [ ] If genuine T01 processing/generation caused the 4% breach, freeze exact 4-bit profile as continuous-workload RESOURCE FAIL
+- [ ] Only consider a separately preregistered one-factor rescue if diagnostic reveals a strong low-confound mechanism
+- [ ] Otherwise close 4-bit branch and advance to next Direct MLX / Phase 6 frontier
+- [ ] Pi remains blocked until technical + workload + prospective quality gates all pass
+- [ ] Do not lower 5% / 5600 MB guardrails or alter failed condition post-hoc
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
