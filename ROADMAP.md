@@ -39,14 +39,21 @@
 - [x] Rerun identical smoke with telemetry-only locale-safe parser
 - [x] Smoke safety rerun FULL_PASS (`20260819-124440`): minimum free memory 23%, peak swap 1720.75 MB
 - [x] Freeze `research/runtime/direct-mlx-8b-3bit-smoke-001-swapfix-rerun.md`
-- [x] Preregister real Coding Benchmark T01 workload-safety probe
-- [x] Add `research/runtime/direct-mlx-8b-3bit-t01-workload-001-plan.md`
-- [x] Add `scripts/direct_mlx_8b_3bit_t01_workload.py`
-- [ ] Run Direct MLX 8B 3-bit T01 Workload Safety 001
-- [ ] If T01 workload safety FULL_PASS, freeze result and preregister full Direct MLX Coding Benchmark 01
-- [ ] Only after full quality/delivery gate consider Pi integration
-- [ ] If T01 RESOURCE_FAIL, do not lower 5%/5600 MB guardrails or reduce the 4096 KV cap inside the failed condition
-- [ ] Consider Direct MLX KV quantization only as a separately preregistered rescue if needed
+- [x] Run real Coding Benchmark T01 Workload Safety 001 (`20260819-124952`)
+- [x] T01 workload FULL_PASS: minimum free memory 19%, peak swap 1643.12 MB
+- [x] T01 structured delivery `written`; prompt 57.11 t/s; generation 16.52 t/s; MLX peak memory 3.960 GB
+- [x] Freeze `research/runtime/direct-mlx-8b-3bit-t01-workload-001.md`
+- [x] Preregister full Direct MLX Coding Benchmark 001
+- [x] Freeze exact adapter blob `62abab57f6463c5813809b43d8f1e7bdfec5f304`
+- [x] Freeze exact scorer blob `754e9a6506968d2b191bff57997710591efe8133`
+- [x] Add `research/runtime/direct-mlx-coding-benchmark-001-plan.md`
+- [x] Add `scripts/direct_mlx_coding_benchmark_001.py`
+- [ ] Run full T01–T06 Direct MLX benchmark in one loaded model session
+- [ ] If COMPLETE, freeze artifact/delivery-adjusted/per-task quality and compare with established baselines
+- [ ] After COMPLETE quality review, decide whether isolated Pi integration/agentic validation is justified
+- [ ] If partial resource/telemetry/runtime fail, diagnose before changing runtime
+- [ ] Do not lower 5% free-memory / 5600 MB swap guardrails
+- [ ] Do not change KV cap/precision, prompts, parser, scorer or retry policy inside the frozen benchmark
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
