@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — LOOM is optimizing useful capability rather than resident model size on the Apple M1 / 8 GB reference system. Capability Amplifier 001 showed that a warm-resident validator + one-repair workflow lacks memory headroom. Amplifier 002 successfully isolated model residency between calls, but a cold T02 repair at context 4096 still crossed the 5% free-memory guardrail from a recovered 68%-free state. The next one-factor experiment reduces only repair-call context to 3072 while preserving initial calls at 4096.
-Checkpoint: `CAPABILITY_AMPLIFIER_003_REPAIR_CONTEXT_3072_READY`
+Status: ACTIVE — LOOM is optimizing useful capability rather than resident model size on the Apple M1 / 8 GB reference system. Amplifier 001 showed warm-resident multi-call memory pressure. Amplifier 002 proved call isolation works, but a cold T02 repair at context 4096 still crossed the 5% free-memory guardrail from 68% free. Amplifier 003 reduced only repair context to 3072; a valid launch again reached the T02 repair path and terminated `PARTIAL_RESOURCE_FAIL`. Exact 003 telemetry is not yet inspected.
+Checkpoint: `CAPABILITY_AMPLIFIER_003_RESOURCE_DIAGNOSTIC`
 
 ## Mission
 
@@ -27,7 +27,6 @@ Local path: `<repository-root>`
 - Do not turn a single context rescue into an automatic reduction ladder.
 
 Verified 3-bit, 4-bit and GGUF artifacts remain retained.
-Latest observed free disk before Amplifier 002: ~35.346 GiB.
 
 # Frozen reference results
 
@@ -73,18 +72,16 @@ Direct MLX Qwen3-8B 3-bit:
 - delivery 2/6
 - stable but not promoted on quality.
 
-Direct MLX Qwen3-8B 4-bit, 4096, unquantized KV:
+Direct MLX Qwen3-8B 4-bit, context 4096:
 - smoke PASS
 - standalone T01 PASS narrowly
 - original full benchmark resource-failed
-- >=70%-free controlled replication completed T01–T03, entered T04, then hit 4% free
-- exact continuous profile closed as RESOURCE FAIL.
+- >=70%-free controlled replication reached T04 then hit 4% free
+- exact continuous unquantized-KV profile closed as RESOURCE FAIL.
 
 KV8 Rescue 001 was operator-reported as failed but detailed output was not ingested before the project pivot; do not assign a canonical failure type.
 
 # Research pivot — ADOPTED
-
-Record: `research/notes/capability-amplification-pivot-2026-08-19.md`
 
 Primary question:
 > **What is the greatest useful capability that can be produced by an 8 GB local system?**
@@ -97,165 +94,126 @@ Joint frontier metrics: quality/delivery, free memory/swap, wall time, model cal
 
 # Phase 6 — Capability Amplification — ACTIVE
 
-## Capability Amplifier 001 — warm-resident frozen result
+## Amplifier 001 — warm-resident frozen result
 
 Plan: `research/amplify/capability-amplifier-001-plan.md`
 Runner: `scripts/capability_amplifier_001.py`
 Runner blob: `9f472c60b523762276291232f6e8c6ffc1c5fcae`
-Partial result: `research/amplify/capability-amplifier-001-partial-20260819-142640.md`
 Diagnostic: `research/amplify/capability-amplifier-001-resource-diagnostic.md`
 
-Frozen capability mechanism:
-- exact baseline initial call;
-- deterministic parser/test validation;
-- all tests pass => no repair;
-- otherwise maximum one repair with deterministic feedback;
-- valid repair selected only if it passes more frozen tests; ties retain initial;
-- no Pi, retrieval, planner, third call, human intervention or external model.
-
 Run `20260819-142640`:
-- host gate PASS: 74%, 74%, 74% free; swap 1206.12 MB
+- host gate 74%, 74%, 74% free; swap 1206.12 MB
 - `PARTIAL_RESOURCE_FAIL`: memory free 4% <5%
 - peak swap 2500.88 MB
-- no aggregate quality score.
+- no aggregate quality score
+- T01 initial: 6/6, 15/15, prompt 301, gen 98, 15.922 tok/s, wall 12.391 s, min free 5%
+- T02 initial: 3/7, 6.43/15, prompt 406, gen 118, 16.026 tok/s, wall 10.020 s, min free 6%
+- T02 repair: free 7% -> 5% -> 5% -> 4%, no completed response.
 
-T01 initial:
-- written, 6/6, 15/15
-- prompt 301, gen 98
-- 15.922 tok/s, wall 12.391 s
-- load ~3.668 s
-- min free 5%.
+Interpretation: warm continuous Ollama residency lacks sufficient headroom. Do not call this a leak.
 
-T02 initial:
-- written, 3/7, 6.43/15
-- prompt 406, gen 118
-- 16.026 tok/s, wall 10.020 s
-- load ~0.045 s
-- min free 6%.
-
-T02 repair:
-- correctly authorized
-- no completed response
-- free 7% -> 5% -> 5% -> 4%
-- guardrail abort.
-
-Canonical interpretation:
-> Warm continuous Ollama residency does not leave enough headroom for this validator + one-repair workflow. This does not prove a memory leak or specific low-level mechanism.
-
-## Capability Amplifier 002 — call-isolated frozen result
+## Amplifier 002 — call-isolated frozen result
 
 Plan: `research/amplify/capability-amplifier-002-call-isolated-plan.md`
 Runner: `scripts/capability_amplifier_002_call_isolated.py`
 Runner blob: `df332568820e28c90baa5247df27e92cba43c0d6`
-Partial result: `research/amplify/capability-amplifier-002-partial-20260819-144256.md`
 Diagnostic: `research/amplify/capability-amplifier-002-resource-diagnostic.md`
 
-One changed factor vs 001: unload and confirm the target absent from `ollama ps` before/after every model call. No inter-call >=70% recovery threshold.
+One changed factor vs 001: unload and confirm target absent from `ollama ps` before/after every model call.
 
 Valid run `20260819-144256`:
-- host gate PASS: 71%, 72%, 72% free; swap 1699.0 MB
-- classification `PARTIAL_RESOURCE_FAIL`
-- exact failure: memory free 4% <5%
+- host gate 71%, 72%, 72% free; swap 1699.0 MB
+- `PARTIAL_RESOURCE_FAIL`: memory free 4% <5%
 - peak swap 2611.50 MB
-- whole wall 55.4 s
-- no aggregate quality score.
-
-T01 initial:
-- 6/6, 15/15
-- prompt 301, gen 98
-- 13.933 tok/s
-- wall 14.256 s
-- load ~4.153 s
-- pre-isolation 71% free
-- min during call 5%
-- post-isolation 38% free.
-
-T02 initial:
-- 3/7, 6.43/15
-- prompt 406, gen 118
-- 14.395 tok/s
-- wall 14.106 s
-- load ~3.153 s
-- pre-isolation 67% free
-- min during call 5%
-- post-isolation 39% free.
-
-Isolation evidence before T02 repair:
-- target model confirmed unloaded
-- `ollama_stop_exit_code=0`
-- repair pre-isolation sample **68% free / 2346.94 MB swap**.
-
-T02 repair at context 4096:
-- starts 68% free
-- trajectory 68% -> 63% -> 23% -> 16% -> 4%
-- peak/final swap 2611.50 MB
-- no completed repair response
+- T01 initial: 6/6, cold load ~4.153 s
+- T02 initial: 3/7, cold load ~3.153 s
+- model unload confirmed
+- T02 repair starts from 68% free / 2346.94 MB swap
+- repair trajectory 68% -> 63% -> 23% -> 16% -> 4%
 - post-abort unload returns 66% free / 1776.06 MB swap.
 
-Canonical interpretation:
-> Call isolation works operationally, but isolation alone is insufficient. A cold T02 repair at context 4096 independently crosses the free-memory guardrail from a materially recovered host state. This does not identify a specific allocator/KV/prompt-only cause.
+Interpretation: call isolation works operationally but is insufficient. Recovery gating alone is not the leading fix because the failing repair starts at 68% free while successful T02 initial starts at 67% free.
 
-A recovery gate alone is not the leading intervention because the failing repair started at 68% free while the successful T02 initial started at 67% free.
-
-## Capability Amplifier 003 — Repair Context 3072 — READY
+## Amplifier 003 — repair context 3072 — PARTIAL / DIAGNOSTIC PENDING
 
 Plan: `research/amplify/capability-amplifier-003-repair-context-3072-plan.md`
 Runner: `scripts/capability_amplifier_003_repair_context_3072.py`
 Runner blob: `c2bcc8f126eb5b599645ba12d1fd08a348e2b443`
-
-Provenance locks:
-- Amplifier 001 base blob `9f472c60b523762276291232f6e8c6ffc1c5fcae`
-- Amplifier 002 wrapper blob `df332568820e28c90baa5247df27e92cba43c0d6`.
+Partial record: `research/amplify/capability-amplifier-003-partial-20260819-150342.md`
 
 Single changed factor vs 002:
-- initial calls remain `num_ctx=4096`;
-- repair calls use **`num_ctx=3072`**.
+- initial calls remain `num_ctx=4096`
+- repair calls use `num_ctx=3072`.
 
 Preserved:
 - same model/runtime
-- initial prompt/request/parser
-- repair prompt content and failure feedback
-- deterministic validation
+- same initial and repair prompt content
+- deterministic validation and frozen-test feedback
 - max one repair
 - candidate selection
 - temperature 0 / non-thinking
 - max-generation request 2048
-- benchmark/scorer/task order
-- call isolation before/after every model call
+- call isolation
 - initial >=70% three-sample host gate
-- runtime free<5% / swap>5600 MB guardrails
+- free<5% / swap>5600 MB guardrails
 - no Pi/retrieval/planner/third call/human intervention.
 
-3072 is frozen as a single 25% repair-context reduction, not an automatic ladder. Changing repair context can affect both resource use and effective token budget; that is part of the tested profile.
+Attempt `20260819-150107`:
+- host free 69%
+- `HOST_STATE_NOT_READY`
+- 0 model calls
+- not a scientific model result.
 
-Frozen quality gates if COMPLETE:
-- `QUALITY_IMPROVED`: delivery-adjusted >30.00
-- `STRONG_AMPLIFICATION`: above + artifact >40.71 + delivery >3/6
-- `PI_REFERENCE_REACHED`: descriptive if delivery-adjusted >=77.15.
+Valid run `20260819-150342`:
+- disk before 36.344 GiB
+- frozen provenance checks PASS
+- host gate PASS: 71%, 74%, 74% free
+- swap 1247.88 MB
+- T01 initial completes and solves without repair
+- T02 initial completes
+- T02 repair authorized from `frozen_test_failure`
+- terminal classification `PARTIAL_RESOURCE_FAIL`
+- completed model-call records: 2
+- disk after 35.342 GiB
+- no aggregate quality score.
+
+Important boundary: terminal output alone does not expose exact 003 failure reason, repair context record, pre-repair free/swap, or telemetry trajectory. Do not yet claim that 3072 had no resource effect.
+
+# Current checkpoint — Amplifier 003 read-only diagnostic
+
+Checkpoint: `CAPABILITY_AMPLIFIER_003_RESOURCE_DIAGNOSTIC`
+
+Use existing inspector:
+`scripts/inspect_capability_amplifier_001.py`
+
+Target:
+`results-local/amplify/capability-amplifier-003-repair-context-3072/20260819-150342`
+
+Required recovery:
+- exact failure reason
+- min free / peak swap
+- T01/T02 task results
+- model-call context records
+- isolation samples
+- T02 repair pre-state and telemetry trajectory
+- whether a repair API response completed.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/capability_amplifier_003_repair_context_3072.py
-python3 scripts/capability_amplifier_003_repair_context_3072.py
+python3 scripts/inspect_capability_amplifier_001.py \
+  results-local/amplify/capability-amplifier-003-repair-context-3072/20260819-150342
 ```
 
-No model download is expected.
+This inspector is read-only and does not launch the model.
 
-Expected preflight lines include:
-- Amplifier 001 source blob PASS
-- Amplifier 002 provenance blob PASS
-- call-isolation transform PASS
-- context policy initial=4096, repair=3072
-- unchanged guardrails.
+## Decision after diagnostic
 
-Decision rules:
-- `HOST_STATE_NOT_READY`: no model result; naturally free host resources and retry launch wrapper only.
-- harness/isolation/telemetry defect: fix only demonstrated defect.
-- `PARTIAL_RESOURCE_FAIL` at repair context 3072: do not automatically descend to 2048; reassess repair architecture.
-- `COMPLETE`: freeze full resource/quality result and apply prospective quality gates before adding another amplifier factor.
+- If the 3072 repair still crosses the same guardrail from a recovered pre-state, do not automatically try 2048. Redesign repair architecture/prompt budget.
+- If telemetry shows a materially different failure mechanism, design the next one-factor experiment around that demonstrated mechanism.
+- If a harness/isolation/telemetry defect is found, fix only that defect before interpretation.
 
 ## Continuation rule
 
