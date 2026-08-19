@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — Runtime-frontier work has established useful 8B boundaries on the Apple M1 / 8 GB reference machine. The project has now pivoted from primarily asking “what is the largest model that fits?” to asking **“what is the greatest useful capability an 8 GB local system can produce?”**. The active main branch is Capability Amplification on the canonical `qwen3.5:4b-mlx` model.
-Checkpoint: `CAPABILITY_AMPLIFIER_001_READY`
+Status: ACTIVE — LOOM has pivoted from maximizing resident model size to maximizing useful capability on an Apple M1 / 8 GB system. Capability Amplifier 001 was launched on the canonical `qwen3.5:4b-mlx`; T01 solved on the initial call, T02 required a repair, and the frozen run hit the runtime safety boundary during the T02 repair path. No aggregate quality result exists yet.
+Checkpoint: `CAPABILITY_AMPLIFIER_001_RESOURCE_DIAGNOSTIC`
 
 ## Mission
 
@@ -21,128 +21,100 @@ Local path: `<repository-root>`
 - Runtime safety boundary where applicable: free memory <5% OR swap >5600 MB abort.
 - Process RSS is diagnostic only; system-wide free memory and swap are decisive.
 - Do not relabel harness/parser/capture defects as model failures.
-- Do not reopen a rescue ladder without a new prospective scientific rationale.
+- Do not assign a quality score to a partial resource/runtime run.
+- Do not change an amplifier design before diagnosing a frozen failure.
 
-Verified 3-bit, 4-bit and GGUF artifacts are retained. Latest known disk in the 4-bit branch was roughly 35 GiB free; re-measure before any future multi-GB acquisition.
+Verified 3-bit, 4-bit and GGUF artifacts remain retained.
 
 # Frozen reference results
 
 ## Canonical Ollama/MLX 4B
 
-Model: `qwen3.5:4b-mlx`
-Context: 4096
+Model: `qwen3.5:4b-mlx`, context 4096.
 
 Coding Baseline 001 (`20260818-203156`):
-- artifact **40.71/100**
-- strict/delivery-adjusted **30.00/100**
-- delivery **3/6**
-- recovered semantic-content diagnostic **82.86/100**
-- weighted prompt throughput **186.46 tok/s**
-- generation **16.01 tok/s**.
+- artifact 40.71/100
+- strict/delivery-adjusted 30.00/100
+- delivery 3/6
+- recovered semantic diagnostic 82.86/100
+- weighted prompt throughput 186.46 tok/s
+- generation 16.01 tok/s.
 
 Pi Agentic Coding Benchmark 001 (`20260818-214848`):
-- same `qwen3.5:4b-mlx` family through Pi file tools
-- artifact/delivery-adjusted **77.15/100**
-- strict protocol-adjusted **60.00/100**
-- delivery **6/6**
-- protocol **4/6**
+- artifact/delivery-adjusted 77.15/100
+- strict protocol-adjusted 60.00/100
+- delivery 6/6
+- protocol 4/6
 - no hidden-test feedback
-- whole run ~612 s
-- severe but non-aborting warm memory/swap pressure.
+- whole run ~612 s.
 
-Canonical agentic finding:
-> Replacing fragile full-file JSON transport with direct filesystem tools materially improved end-to-end coding performance for the same local 4B model. This is key evidence motivating Capability Amplification.
+Canonical finding: the same local 4B became materially more useful when fragile full-file JSON transport was replaced by direct filesystem tools. This is the main motivation for Capability Amplification.
 
-Record: `research/agents/pi-agentic-benchmark-001.md`.
-
-## llama.cpp reference
-
-Pinned source commit: `60addddf3c567c43ec3caf70fc953fba3572d96f`.
+## llama.cpp 4B efficiency reference
 
 Qwen3-4B Q4 control:
-- pp512 **230.85 tok/s**
-- tg128 **22.33 tok/s**
-- minimum free memory **22%**.
+- pp512 230.85 tok/s
+- tg128 22.33 tok/s
+- minimum free memory 22%.
 
-This faster 4B path remains a later **secondary Amplify control**, not the primary subject, because it is not the same model/runtime condition as `qwen3.5:4b-mlx`.
+This remains a later secondary Amplify control; it is not treated as the same model/runtime condition as `qwen3.5:4b-mlx`.
 
-Qwen3-8B llama.cpp frontier:
-- Q2 technically runnable/API-servable but frozen coding delivery poor;
-- Q3 NP1 + Q8_0 KV API-smoke PASS at 6% free;
-- exact Coding T01 reached 4% free and guardrail abort.
+## 8B runtime frontier — characterized / main branch closed
 
-## Direct MLX 8B frontier — characterized / main branch closed
+Direct MLX Qwen3-8B 3-bit:
+- full six-task session COMPLETE
+- min free 14%
+- peak swap 1683.38 MB
+- artifact 38.57
+- delivery-adjusted 27.86
+- delivery 2/6
+- stable but not promoted on quality.
 
-Environment:
-- `mlx-lm==0.31.3`
-- `mlx==0.31.2`
-- `transformers==5.12.1`.
+Direct MLX Qwen3-8B 4-bit, 4096, unquantized KV:
+- smoke PASS
+- standalone T01 PASS narrowly
+- original full benchmark resource-failed
+- >=70%-free controlled replication completed T01–T03, entered T04, then hit 4% free
+- exact continuous profile closed as RESOURCE FAIL.
 
-Qwen3-8B 3-bit:
-- smoke FULL_PASS
-- exact T01 FULL_PASS
-- full Coding Benchmark COMPLETE
-- full-session min free **14%**, peak swap **1683.38 MB**
-- artifact **38.57/100**
-- delivery-adjusted **27.86/100**
-- delivery **2/6**
-- not promoted on quality.
-
-Qwen3-8B 4-bit, `max_kv_size=4096`, unquantized KV:
-- smoke PASS at 10% min free
-- standalone T01 PASS at 6% min free
-- original full benchmark resource-failed during T01
-- >=70%-free controlled replication completed T01–T03, entered T04, then hit **4% free**
-- exact continuous unquantized-KV profile closed as workload RESOURCE FAIL.
-
-KV8 Rescue 001 was attempted and operator-reported as failed, but its detailed terminal output was not ingested before the research pivot. Do **not** assign a canonical KV8 failure type without the missing evidence.
-
-Closure record:
-`research/runtime/direct-mlx-8b-4bit-kv8-rescue-001-closure.md`
-
-No further KV6/KV4/context rescue ladder is authorized in the old branch.
+KV8 Rescue 001 was operator-reported as failed but detailed output was not ingested before the project pivot; do not assign a canonical failure type.
 
 # Research pivot — ADOPTED
 
-Record:
-`research/notes/capability-amplification-pivot-2026-08-19.md`
+Record: `research/notes/capability-amplification-pivot-2026-08-19.md`
 
-New primary question:
+Primary question:
 > **What is the greatest useful capability that can be produced by an 8 GB local system?**
 
-Two parallel long-term tracks:
+Two long-term tracks:
 
 1. **Amplify — small model, big capability**
-   - deterministic validation / repair
+   - validation / repair
    - planner / verifier / tool loops
    - retrieval
-   - later specialization, LoRA/SFT/distillation when justified.
+   - later specialization / LoRA / SFT / distillation when justified.
 
 2. **Stretch — big model, small machine**
    - SSD/layer/expert streaming
    - MoE offload
    - hierarchical caching
-   - selective routing from a small resident controller
-   - Colibrì / related memory-hierarchy ideas later.
+   - small resident controller + selectively invoked larger component.
 
-The project optimizes a joint capability frontier, not tokens/second alone:
-- quality
-- delivery/reliability
-- RAM/free-memory/swap
-- total wall time
+Joint frontier metrics:
+- quality / delivery
+- free memory / swap
+- wall time
 - model calls
 - prompt/generated tokens
-- disk footprint when relevant.
+- disk footprint where relevant.
 
 # Phase 6 — Capability Amplification — ACTIVE
 
-## Capability Amplifier 001 — READY
+## Capability Amplifier 001 — frozen design
 
-Plan:
-`research/amplify/capability-amplifier-001-plan.md`
-
-Runner:
-`scripts/capability_amplifier_001.py`
+Plan: `research/amplify/capability-amplifier-001-plan.md`
+Runner: `scripts/capability_amplifier_001.py`
+Runner blob: `9f472c60b523762276291232f6e8c6ffc1c5fcae`
 
 Primary subject:
 - `qwen3.5:4b-mlx`
@@ -152,106 +124,99 @@ Primary subject:
 - temperature 0
 - max 2048 tokens/call.
 
-Frozen benchmark provenance:
+Frozen provenance:
 - Coding Benchmark 01 v1.0.1
 - manifest blob `547050ecd0183b8d447dc3e21e724a8232f10297`
 - single-shot adapter blob `62abab57f6463c5813809b43d8f1e7bdfec5f304`
 - scorer blob `754e9a6506968d2b191bff57997710591efe8133`.
 
-### Mechanism
+Mechanism:
+- exact baseline initial call;
+- deterministic parser/test validation;
+- all tests pass => no repair;
+- otherwise maximum one repair with deterministic feedback;
+- valid repair selected only if it passes more frozen tests; tie retains initial;
+- no Pi, retrieval, third call, human intervention or external model.
 
-Each task gets at most two calls.
+Host/safety:
+- stop model before launch;
+- 3 consecutive host samples >=70% free;
+- during model calls free<5% or swap>5600 MB => `PARTIAL_RESOURCE_FAIL`.
 
-Call 1:
-- exact frozen single-shot prompt/request/parser
-- no test feedback.
+Frozen success gates if COMPLETE:
+- `QUALITY_IMPROVED`: delivery-adjusted >30.00
+- `STRONG_AMPLIFICATION`: above + artifact >40.71 + delivery >3/6
+- `PI_REFERENCE_REACHED`: descriptive flag if delivery-adjusted >=77.15.
 
-Validation:
-- parser failure => deterministic parser feedback;
-- valid delivery => exact frozen task tests;
-- all tests pass => no repair allowed;
-- otherwise exactly one repair allowed.
+## Capability Amplifier 001 — partial run `20260819-142640`
 
-Call 2, only when needed:
-- same model/runtime/sampler/context
-- original task/context
-- current candidate
-- exact parser error or frozen test-failure summary
-- same JSON delivery contract.
+Record: `research/amplify/capability-amplifier-001-partial-20260819-142640.md`
 
-Candidate selection is deterministic:
-- valid repair beats initial only if it passes more frozen tests;
-- ties retain initial;
-- invalid repair never replaces valid initial;
-- if only repair is valid, repair is selected;
-- if neither is valid, fixture remains and final delivery is failed.
+Observed terminal evidence:
+- disk before 36.360 GiB
+- frozen adapter/scorer/manifest PASS
+- model presence PASS
+- host samples 74%, 74%, 74% free
+- host swap 1206.12 MB
+- T01 initial call completed and solved without repair
+- T02 initial call completed
+- T02 repair authorized from `frozen_test_failure`
+- run aborted during T02 repair path
+- terminal classification `PARTIAL_RESOURCE_FAIL`
+- completed model-call records printed: 2
+- disk after 35.352 GiB
+- no final scorer result / no valid aggregate quality score.
 
-No Pi, retrieval, third call, human intervention, web access, external model or fine-tuning in Amplify 001.
+Important boundary:
+The terminal excerpt does not reveal the exact guardrail reason or telemetry trajectory. Do not yet claim free-memory failure, swap failure, warm-retention causality, or repair-specific causality.
 
-### Host / safety
+Run directory:
+`results-local/amplify/capability-amplifier-001/20260819-142640`
 
-Before benchmark:
-- stop `qwen3.5:4b-mlx` once for cold-model policy;
-- require 3 consecutive samples >=70% free memory.
+Summary:
+`results-local/amplify/capability-amplifier-001/20260819-142640/run-summary.json`
 
-If host gate is not met:
-- `HOST_STATE_NOT_READY`
-- no model benchmark launch.
+# Current checkpoint — read-only resource diagnostic
 
-During each model call:
-- continuous free-memory/swap telemetry
-- free <5% or swap >5600 MB => stop model + `PARTIAL_RESOURCE_FAIL`
-- missing telemetry => `TELEMETRY_FAIL`.
+Checkpoint: `CAPABILITY_AMPLIFIER_001_RESOURCE_DIAGNOSTIC`
 
-### Frozen success gates
+Inspector:
+`scripts/inspect_capability_amplifier_001.py`
 
-Historical single-shot reference:
-- artifact 40.71
-- delivery-adjusted 30.00
-- delivery 3/6.
+Target run:
+`results-local/amplify/capability-amplifier-001/20260819-142640`
 
-`QUALITY_IMPROVED`:
-- COMPLETE
-- delivery-adjusted **>30.00**.
-
-`STRONG_AMPLIFICATION`:
-- QUALITY_IMPROVED
-- artifact **>40.71**
-- delivery **>3/6**.
-
-`PI_REFERENCE_REACHED` descriptive flag:
-- delivery-adjusted **>=77.15**.
-
-Because Amplify 001 intentionally exposes one deterministic hidden-test feedback round, reaching the Pi number does not imply intrinsic superiority over Pi Agentic 001.
+Required recovery:
+- exact `failure_reason`
+- min free memory and peak swap
+- T01/T02 initial test results
+- whether T02 repair produced a completed API response
+- telemetry grouped by task/phase
+- last samples leading into the guardrail
+- completed model-call records.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/capability_amplifier_001.py
-python3 scripts/capability_amplifier_001.py
+python3 -m py_compile scripts/inspect_capability_amplifier_001.py
+python3 scripts/inspect_capability_amplifier_001.py \
+  results-local/amplify/capability-amplifier-001/20260819-142640
 ```
 
-No model download is expected.
+This inspector is read-only and does not launch Ollama/MLX.
 
-Preserve output through `Summary:`.
+## Decision after diagnostic
 
-## Decision after Amplify 001
+Do not rerun frozen Amplify 001 yet.
 
-If `COMPLETE`:
-- freeze full per-task repair trajectory, quality and efficiency metrics;
-- compare against the frozen 4B single-shot baseline;
-- only then decide the next one-factor amplifier.
+If telemetry supports retained warm-state accumulation across completed calls, the leading next design is a separately preregistered **call-isolated amplifier** that preserves model/prompts/feedback/scoring but unloads/re-establishes the model between amplification units. That would be a new operational profile, not a rescue rewrite.
 
-If `HOST_STATE_NOT_READY`:
-- no scientific model run occurred; naturally free host resources and retry the launch.
+If the resource breach instead appears specific to one unusually large repair prompt or another localized factor, design the next experiment around that demonstrated cause.
 
-If `PARTIAL_RESOURCE_FAIL` / `RUNTIME_FAIL` / `TELEMETRY_FAIL`:
-- diagnose before changing the amplifier design.
-
-If the mechanism establishes clear amplification, the next major comparison should eventually apply the same amplification logic to the faster llama.cpp 4B as a secondary efficiency control.
+The broader Amplify research question remains active regardless of this resource interruption: the system around a small model must itself be memory-aware on an 8 GB machine.
 
 ## Continuation rule
 
-Before a new experiment, read this file. After every meaningful experiment/decision/result, update this file and `ROADMAP.md` before moving to the next checkpoint.
+After every meaningful result/decision, update this file and `ROADMAP.md` before moving to the next checkpoint.
