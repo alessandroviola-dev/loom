@@ -1,7 +1,7 @@
 # Stretch 013 — Four-Token Oracle Block Verification — Preregistered Plan
 
 Date: 2026-08-19
-Status: READY AFTER RUNNER FREEZE
+Status: READY
 
 ## Purpose
 
@@ -45,6 +45,16 @@ blob `8e10660af778655a279f30e7d59785163bc204e3`.
 
 Stretch 012 canonical result:
 `research/stretch/eight-layer-persistent-hotset-012-result.md`.
+
+## Frozen runner
+
+Runner:
+`scripts/stretch_four_token_oracle_block_verification_013.py`
+
+Frozen runner blob:
+`deeb0339294162f38cd4522d2890b6a0c728f96e`.
+
+The runner reconstructs the exact frozen 009 -> 010 -> 011 -> 012 workload in both parent and `--child` modes, then applies only the oracle-block transform described here.
 
 ## Preserved architecture
 
