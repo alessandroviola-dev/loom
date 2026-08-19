@@ -29,47 +29,42 @@
 - [x] Qwen Code safe mode still 4363 > 4096; deprioritize Qwen Code
 - [ ] Add daily-use validation/retry workflow later
 
-## Phase 4 — llama.cpp — ACTIVE
+## Phase 4 — llama.cpp — MAIN BRANCH CHARACTERIZED
 - [x] Pin llama.cpp commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
 - [x] Install CMake 4.4.2 and validate Release/Metal build
 - [x] Setup Probe 003 canonical PASS: `llama-cli`, `llama-bench`, Metal ON
 - [x] 4B Q4_K_M Runtime Control 001 PASS: pp512 230.85 t/s; tg128 22.33 t/s; minimum free memory 22%
-- [x] 8B Q4_K_M Capability 001 VALID FAIL at context 4096: memory free 1%; guardrail triggered
-- [x] 8B Q3_K_M Capability 001 VALID FAIL at context 4096 / forced `-ngl -1`: memory free 1%; guardrail triggered
-- [x] Resolve Q2 harness chronology: 001/002 invalid, 003 recovered Stage A PASS
-- [x] 8B Q2 Stage B 001 FULL_PASS: pp512 103.00 t/s ±0.67; tg128 13.72 t/s ±0.34; peak RSS 2461.17 MB; peak swap 1990.38 MB; minimum free memory 8%
-- [x] Q2 llama-server smoke FULL_PASS: readiness 5.684 s; API returned `OK`; minimum free memory 6%
-- [x] Coding Quality Compare 001: 8B Q2 delivery 0/100 vs 4B Q4 34.29/100; relation `4B_HIGHER`
-- [x] Diagnose Q2: transport healthy but structured delivery degraded; Q2 not a practical upgrade on the frozen workload
-- [x] Q3 Auto-Fit Server Smoke 001 VALID FAIL: minimum free memory 4%
-- [x] Diagnose auto server parallelism: `n_slots=4`, `n_ctx_slot=4096`, `kv_unified=true`
-- [x] Q3 Auto-Fit NP1 Server Smoke 001: `n_slots=1` verified but still VALID FAIL at 4% free
-- [x] Verify KV controls: `-ctk/--cache-type-k`, `-ctv/--cache-type-v`; Q8_0 supported; default K/V F16/F16
-- [x] Q3 Auto-Fit NP1 Q8 KV Server Smoke 001 FULL_PASS, run `20260819-113658`
-- [x] Q3 Q8 smoke result: readiness 8.756 s; API `OK`; peak RSS 2246.75 MB; peak swap 2113.88 MB; minimum free memory 6%; `n_slots=1` and Q8 command evidence PASS
-- [x] Freeze `research/runtime/llama-cpp-8b-q3-autofit-np1-q8-server-smoke-001.md`
-- [x] Preregister Coding Quality Compare 002: Qwen3 8B Q3_K_M vs Qwen3 4B Q4_K_M
-- [x] Freeze common Compare 002 runtime: context 4096, `-np 1`, FA auto, auto-fit target 1024, Q8_0 K/V KV cache, no forced `-ngl -1`
-- [x] First Compare 002 invocation INVALID_HARNESS before model launch; fix transformer without changing science
-- [x] Run corrected Coding Quality Compare 002, run `20260819-114848`
-- [x] Compare 002 Q3 server readiness PASS 7.360 s, then T01 resource guardrail abort; Q3 profile `PARTIAL_OR_RESOURCE_FAIL`
-- [x] Compare 002 4B profile COMPLETE: artifact 36.43/100, delivery-adjusted 25.72/100
-- [x] Overall Compare 002 classification `PARTIAL`; printed `4B_HIGHER` is not a valid quality ordering because Q3 did not complete
-- [x] Freeze `research/runtime/llama-cpp-coding-quality-compare-002.md`
-- [x] Add read-only `scripts/inspect_llama_cpp_quality_compare_002.py`
-- [ ] Run Compare 002 resource diagnostic and recover exact Q3 guardrail reason/timeline/API state
-- [ ] If Q3 genuinely breaches memory during real T01 generation, classify current Q3 NP1/Q8 profile as smoke-pass / workload-fail at context 4096
-- [ ] After diagnostic, decide whether one further separately preregistered memory intervention is justified or move main branch to Direct MLX
-- [ ] Do not expose Q3 to Pi until workload safety and quality both pass
-- [ ] Do not interpret partial Compare 002 as intrinsic 4B>Q3 quality evidence
-- [ ] Do not relax benchmark delivery rules post hoc
-- [ ] Do not lower the 5% guardrail or reduce context inside an already-failed condition
-- [ ] Do not test ~9B until the useful 8B frontier is characterized
+- [x] 8B Q4_K_M Capability 001 VALID FAIL at context 4096: memory free 1%
+- [x] 8B Q3_K_M Capability 001 VALID FAIL at context 4096 / forced `-ngl -1`: memory free 1%
+- [x] 8B Q2 Stage B FULL_PASS: pp512 103.00 t/s; tg128 13.72 t/s; minimum free 8%
+- [x] Q2 llama-server smoke FULL_PASS: API `OK`; minimum free 6%
+- [x] Coding Quality Compare 001: Q2 delivery 0/100 vs 4B Q4 34.29/100; Q2 profile not a practical upgrade
+- [x] Q3 auto-fit default server VALID FAIL at 4% free
+- [x] Q3 explicit `-np 1` VALID FAIL at 4% free
+- [x] Q3 NP1 + Q8_0 KV API smoke FULL_PASS: minimum free 6%
+- [x] Run Coding Quality Compare 002 under common NP1/Q8_0 runtime
+- [x] Compare 002 Q3 server ready, then T01 resource abort: `memory free 4% < 5%`
+- [x] Diagnose Q3 T01 timeline: repeatedly at 5% free, then 4% at ~20.3 s; no HTTP response because safety shutdown terminated server
+- [x] Freeze `research/runtime/llama-cpp-coding-quality-compare-002-diagnostic.md`
+- [x] Classify exact Q3 NP1/Q8 profile as **API-smoke PASS / real-workload RESOURCE FAIL** at context 4096
+- [x] Keep Compare 002 quality relation unresolved because Q3 did not complete
+- [x] Do not expose Q3 llama.cpp profile to Pi
+- [x] Move main research branch to Direct MLX instead of stacking another automatic llama.cpp KV rescue
+- [ ] Optional future: revisit more aggressive llama.cpp KV only as a separately motivated branch, not the main path
+- [ ] Do not lower the 5% guardrail or retroactively alter failed conditions
+- [ ] Do not test ~9B until the useful 8B frontier is better characterized
 
-## Phase 5 — Direct MLX
-- [ ] Set up direct MLX environment
-- [ ] Run equivalent model directly
-- [ ] Compare throughput, memory pressure and context scaling
+## Phase 5 — Direct MLX — ACTIVE
+- [x] Research current direct-MLX runtime/candidate path
+- [x] Select isolated setup condition: `mlx-lm==0.31.3`, `mlx==0.31.2`, `transformers==5.12.1`
+- [x] Preregister `research/runtime/direct-mlx-setup-probe-001-plan.md`
+- [x] Add `scripts/direct_mlx_setup_probe.py`
+- [ ] Run Direct MLX Setup Probe 001; no model weights downloaded
+- [ ] If setup PASS, freeze environment/package lock
+- [ ] Separately preregister acquisition/runtime smoke for `mlx-community/Qwen3-8B-3bit` with disk accounting
+- [ ] Test 8B/3-bit direct MLX at context 4096 under the same 5% free-memory safety boundary
+- [ ] If workload-safe, compare throughput/memory against llama.cpp profiles
+- [ ] Only after workload-safety PASS run frozen Coding Benchmark 01 and consider Pi integration
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
