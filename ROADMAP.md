@@ -26,7 +26,7 @@
 - [x] 8B 4-bit memory boundary characterized
 - [x] Preserve verified 3-bit/4-bit artifacts
 
-## Phase 6 — Amplify — ACTIVE / SECONDARY WHILE STRETCH CHECKPOINT RUNS
+## Phase 6 — Amplify — ACTIVE / SECONDARY WHILE STRETCH RUNS
 
 ### Amplifier 001
 - [x] Warm-resident validation + max-one-repair
@@ -60,8 +60,6 @@ Research question:
 
 ### Stretch 001 — Dense Layer Streaming Feasibility — COMPLETE PASS
 - [x] Preregister header-only layer map + selective I/O
-- [x] First launch locator mismatch only; no scientific result
-- [x] Rerun using verified `results-local/mlx/models/Qwen3-8B-3bit`
 - [x] Classification `LAYER_ADDRESSABLE_IO_PASS`
 - [x] 36/36 layers discovered exactly; no missing/unexpected IDs
 - [x] 907 tensors; total payload 3,583,928,320 B
@@ -73,30 +71,49 @@ Research question:
 - [x] Freeze `research/stretch/layer-streaming-feasibility-001-result.md`
 - [x] Do not interpret single selective-I/O throughput as future token throughput
 
-### Stretch 002 — Single-Layer MLX Materialization + Eviction — CURRENT
+### Stretch 002 — Single-Layer MLX Materialization + Eviction — COMPLETE PASS
 - [x] Preregister `research/stretch/single-layer-mlx-materialization-002-plan.md`
-- [x] Add `scripts/stretch_single_layer_mlx_materialization_002.py`
-- [x] Freeze runner blob `e7bd6bf4c61b44664c0c8421bf230b938509e4ef`
-- [x] Probe layer 18 / 25 tensors / 84,427,264 B
-- [x] No model construction, tokenizer, KV cache or generation
-- [x] Measure lazy `mx.load` state before selected-layer `mx.eval`
-- [x] Eager-load guard: pre-eval active delta <=32 MiB
-- [x] Measure MLX active/cache/peak after materialization
-- [x] Delete selected refs + GC + `mx.clear_cache()`
-- [x] Eviction gate: final active/cache <= baseline +1 MiB
-- [x] Host gate: 3 samples >=60% free; runtime free<5% / swap>5600 MB
-- [ ] Run Stretch 002
-- [ ] Freeze exact materialization and reclamation result
+- [x] Runner blob `e7bd6bf4c61b44664c0c8421bf230b938509e4ef`
+- [x] Run `20260819-155641`
+- [x] Classification `SINGLE_LAYER_MLX_EVICTION_PASS`
+- [x] Layer 18 provenance exact: 25 tensors / 84,427,264 B
+- [x] Host gate 70/68/67% free; swap 850.5 MB
+- [x] Pre-eval MLX active delta 0 B
+- [x] Post-eval MLX active delta exactly 84,427,264 B
+- [x] Post-clear active/cache delta 0/0 B
+- [x] `mx.eval` wall 0.039611 s
+- [x] Minimum free memory 67%; peak swap 850.5 MB
+- [x] Peak child RSS 40.25 MB
+- [x] Disk unchanged 36.319 GiB
+- [x] Freeze `research/stretch/single-layer-mlx-materialization-002-result.md`
+- [x] Interpret as single-layer lazy residency + full reclamation prerequisite only
 
-### Stretch 003 — Repeated bounded residency — CONDITIONAL
-- [ ] Only preregister after Stretch 002 materialization/eviction result
-- [ ] Sequentially materialize/evaluate/evict two different layers
-- [ ] Demonstrate repeated bounded residency rather than one-off load
-- [ ] Still no full token generation
+### Stretch 003 — Two-Layer Repeated Bounded Residency — CURRENT
+- [x] Preregister `research/stretch/two-layer-bounded-residency-003-plan.md`
+- [x] Add `scripts/stretch_two_layer_bounded_residency_003.py`
+- [x] Freeze runner blob `5882b01c37616f668705713f46e5c30aa40c268a`
+- [x] Freeze source provenance against Stretch 002 blob `e7bd6b...`
+- [x] Probe layers exactly 18 then 19 in the same MLX child process
+- [x] Preserve no-model/no-KV/no-generation boundary
+- [x] Per-cycle lazy-load guard <=32 MiB pre-eval active delta
+- [x] Per-cycle materialization gate: 84,427,264 B +/-1 MiB
+- [x] Per-cycle eviction gate: post-clear active/cache <=1 MiB
+- [ ] Run Stretch 003
+- [ ] Freeze repeated-residency result
 
-### Stretch 004+ — later if prerequisites pass
-- [ ] Build streamed sequential transformer forward prototype
-- [ ] Compare against resident control for numerical/logit equivalence
+### Stretch 004 — Sequential forward prototype — CONDITIONAL
+- [ ] Only preregister if Stretch 003 is `TWO_LAYER_BOUNDED_RESIDENCY_PASS`
+- [ ] Introduce actual transformer-layer computation over a tiny frozen input
+- [ ] Start with a minimal number of consecutive layers, not all 36
+- [ ] Compare streamed outputs numerically against resident control
+- [ ] Measure activations, shared weights, MLX active/cache, system free/swap and wall time
+- [ ] Still no production-quality token generation claim
+
+### Stretch 005+ — later if prerequisites pass
+- [ ] Extend streamed sequential transformer forward
+- [ ] Add shared embedding/norm residency policy
+- [ ] Add KV-cache handling
+- [ ] Compare against resident control for logit/token equivalence
 - [ ] Add prefetch/double buffering
 - [ ] Measure SSD bytes/token, RAM, swap, wall time and tok/s
 - [ ] Explore layer cache/residency policies
