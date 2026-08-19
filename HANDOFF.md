@@ -1,13 +1,11 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — LOOM is optimizing useful capability on an Apple M1 / 8 GB reference system through two coordinated tracks: **Amplify** (small model, better system capability) and **Stretch** (larger capability through memory hierarchy / out-of-core execution).
+Status: ACTIVE — LOOM now runs two coordinated tracks on the Apple M1 / 8 GB reference system: **Amplify** (small model, better system capability) and **Stretch** (memory hierarchy / out-of-core execution).
 
-Current checkpoint: `STRETCH_001_EXPLICIT_MODEL_PATH_READY`
+Current checkpoint: `STRETCH_002_SINGLE_LAYER_MLX_READY`
 
 ## Mission
-
-Study practical local LLM/agent execution on constrained consumer hardware.
 
 Primary question:
 > **What is the greatest useful capability that can be produced by an 8 GB local system?**
@@ -18,18 +16,17 @@ Local path: `<repository-root>`
 
 ## Safety / research constraints
 
-- Never reset, replace or destroy production Pi configuration.
-- Controlled Pi experiments use run-local `PI_CODING_AGENT_DIR`.
+- Never reset/replace production Pi configuration.
 - Never silently delete verified models or canonical results.
-- Record disk around model acquisitions / large runtime work.
+- Record disk around large runtime/model work.
 - Runtime guardrail where applicable: free memory <5% OR swap >5600 MB abort.
-- System-wide free memory and swap are decisive; process RSS is diagnostic only.
-- Do not relabel harness/parser/capture defects as model failures.
-- Do not assign aggregate quality scores to partial resource/runtime runs.
+- System-wide free memory/swap are decisive; process RSS is diagnostic.
+- Harness/parser/capture defects are not model failures.
+- No aggregate quality score from partial runs.
 - Change one experimental factor at a time for causal tests.
 - Do not weaken guardrails post-hoc.
-- No automatic context-reduction rescue ladders.
-- No new large-model acquisition until local-artifact feasibility is exhausted.
+- No automatic context/budget rescue ladders.
+- No new large-model acquisition until existing artifacts are exhausted.
 
 Verified GGUF, Direct MLX 3-bit and Direct MLX 4-bit artifacts remain retained.
 
@@ -37,242 +34,144 @@ Verified GGUF, Direct MLX 3-bit and Direct MLX 4-bit artifacts remain retained.
 
 ## Canonical Ollama/MLX 4B
 
-Model: `qwen3.5:4b-mlx`, context baseline 4096.
+`qwen3.5:4b-mlx`, context 4096.
 
-Coding Baseline 001 (`20260818-203156`):
-- artifact 40.71/100
-- strict / delivery-adjusted 30.00/100
-- delivery 3/6
-- recovered semantic diagnostic 82.86/100
-- weighted prompt throughput 186.46 tok/s
-- generation 16.01 tok/s.
+Coding Baseline 001 (`20260818-203156`): artifact 40.71, delivery-adjusted 30.00, delivery 3/6, recovered semantic diagnostic 82.86, weighted prompt 186.46 tok/s, generation 16.01 tok/s.
 
-Pi Agentic Coding Benchmark 001 (`20260818-214848`):
-- same local 4B family through Pi file tools
-- artifact / delivery-adjusted 77.15/100
-- strict protocol-adjusted 60.00/100
-- delivery 6/6
-- protocol 4/6
-- no hidden-test feedback
-- whole run ~612 s.
-
-Canonical system finding:
-> Replacing fragile full-file JSON transport with direct filesystem tools materially improved end-to-end coding usefulness for the same local 4B family. This motivates the Amplify branch.
+Pi Agentic Coding Benchmark 001 (`20260818-214848`): delivery-adjusted 77.15, strict 60.00, delivery 6/6, protocol 4/6, no hidden-test feedback, ~612 s.
 
 ## llama.cpp 4B efficiency reference
 
-Qwen3-4B Q4 control:
-- pp512 230.85 tok/s
-- tg128 22.33 tok/s
-- minimum free memory 22%.
+Qwen3-4B Q4: pp512 230.85 tok/s, tg128 22.33 tok/s, minimum free memory 22%.
 
-This remains the strongest alternate 4B execution profile. It is not the same model/runtime/quantization condition as `qwen3.5:4b-mlx`, so comparisons must be capability/efficiency comparisons rather than runtime-only causal claims.
+This is an alternate capability/efficiency profile, not a runtime-only control against Qwen3.5/MLX.
 
-## 8B runtime frontier
+## Direct MLX 8B 3-bit reference
 
-Direct MLX Qwen3-8B 3-bit:
+`mlx-community/Qwen3-8B-3bit`:
 - smoke PASS
-- T01 PASS
-- full Coding Benchmark COMPLETE
+- standalone T01 PASS
+- full six-task coding benchmark COMPLETE
 - min free 14%
 - peak swap 1683.38 MB
-- artifact 38.57/100
-- delivery-adjusted 27.86/100
-- delivery 2/6
-- technically stable but not promoted on quality.
+- artifact 38.57
+- delivery-adjusted 27.86
+- delivery 2/6.
 
-Direct MLX Qwen3-8B 4-bit:
-- smoke PASS
-- standalone T01 PASS narrowly
-- continuous full profile repeatedly crosses frozen memory guardrail
-- exact unquantized-KV 4096 profile closed.
-
-llama.cpp Qwen3-8B:
-- Q2 runnable/API-servable but poor frozen coding delivery
-- Q3 NP1 + Q8_0 KV API smoke PASS
-- real Coding T01 reaches 4% free and aborts.
+Technically stable but not promoted on quality.
 
 # Track A — Amplify
 
-Goal: improve end-to-end capability of a smaller resident model through deterministic scaffolding, validation, repair, tools, planner/verifier loops, retrieval and eventually specialization/distillation.
+Goal: improve end-to-end capability of a small model through validation/repair/tools/planner/verifier/retrieval and later specialization.
 
-## Amplifier 001 — warm-resident
+## Amplifier 001
 
-Runner blob: `9f472c60b523762276291232f6e8c6ffc1c5fcae`
-Diagnostic: `research/amplify/capability-amplifier-001-resource-diagnostic.md`
+Warm-resident validator + max-one-repair.
+Run `20260819-142640`: T01 6/6; T02 initial 3/7; repair hits 4% free. `PARTIAL_RESOURCE_FAIL`. Warm residency lacks headroom; no leak claim.
 
-Run `20260819-142640`:
-- host gate 74/74/74% free
-- T01 initial 6/6, 15/15
-- T02 initial 3/7, 6.43/15
-- repair authorized
-- `PARTIAL_RESOURCE_FAIL`: free 4% <5%
-- peak swap 2500.88 MB
-- no aggregate quality result.
+## Amplifier 002
 
-Interpretation: warm continuous Ollama residency lacks sufficient headroom. Do not call this a leak.
+Call-isolated. Run `20260819-144256`: T02 repair starts from 68% free after confirmed unload, then 68 -> 63 -> 23 -> 16 -> 4%. `PARTIAL_RESOURCE_FAIL`. Isolation works but is insufficient.
 
-## Amplifier 002 — call-isolated
+## Amplifier 003
 
-Runner blob: `df332568820e28c90baa5247df27e92cba43c0d6`
-Diagnostic: `research/amplify/capability-amplifier-002-resource-diagnostic.md`
+Repair context only reduced 4096 -> 3072. Run `20260819-150342`: repair starts 70% free / 2069.12 MB swap, then 70 -> 65 -> 31 -> 7 -> 6 -> 4%. `PARTIAL_RESOURCE_FAIL`; peak swap 2318.12 MB. Initial calls themselves reach only 6% free. Do not descend automatically to 2048.
 
-Valid run `20260819-144256`:
-- host gate 71/72/72% free
-- T01 initial 6/6
-- T02 initial 3/7
-- unload confirmed
-- T02 repair starts 68% free / 2346.94 MB swap
-- trajectory 68 -> 63 -> 23 -> 16 -> 4% free
-- `PARTIAL_RESOURCE_FAIL`
-- peak swap 2611.50 MB.
+## Prompt anatomy
 
-Interpretation: call isolation works but is insufficient. Recovery gating alone is not the leading fix.
+T02 initial 1638 B; repair 4573 B; ratio 2.792x. Validation feedback alone 2762 B (~60.4%). Record: `research/amplify/capability-amplifier-003-prompt-anatomy-t02.md`.
 
-## Amplifier 003 — repair context 3072 — FROZEN RESOURCE FAIL
-
-Plan: `research/amplify/capability-amplifier-003-repair-context-3072-plan.md`
-Runner blob: `c2bcc8f126eb5b599645ba12d1fd08a348e2b443`
-Diagnostic: `research/amplify/capability-amplifier-003-resource-diagnostic.md`
-
-Valid run `20260819-150342`:
-- initial context 4096
-- repair context 3072
-- host gate 71/74/74% free
-- T01 initial 6/6
-- T02 initial 3/7
-- T02 repair starts 70% free / 2069.12 MB swap
-- repair trajectory 70 -> 65 -> 31 -> 7 -> 6 -> 4% free
-- `PARTIAL_RESOURCE_FAIL`: free 4% <5%
-- overall peak swap 2318.12 MB
-- post-abort unload returns 70% free
-- no completed repair API response.
-
-Important observation: successful T01/T02 initial calls themselves reach only 6% free.
-
-## T02 repair prompt anatomy — FROZEN
-
-Record: `research/amplify/capability-amplifier-003-prompt-anatomy-t02.md`
-
-Read-only measurement:
-- initial prompt 1638 UTF-8 bytes
-- repair prompt 4573 UTF-8 bytes
-- repair / initial = 2.792x
-- validation feedback = 2762 B (~60.4% of repair prompt)
-- current candidate = 458 B
-- original task prompt = 681 B
-- repair API response absent.
-
-Interpretation: repair information is materially inflated and the largest incremental component is deterministic validation feedback. One bounded Compact Repair experiment is justified.
-
-## Amplifier 004 — Compact Feedback — READY / QUEUED
+## Amplifier 004 — READY / QUEUED
 
 Plan: `research/amplify/capability-amplifier-004-compact-feedback-plan.md`
 Runner: `scripts/capability_amplifier_004_compact_feedback.py`
 Runner blob: `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`
 
-Single changed factor vs 003:
-- deterministic variable failure-detail body capped at **768 UTF-8 bytes**.
+Single change vs 003: variable repair-feedback detail capped at 768 UTF-8 bytes. Initial context 4096, repair context 3072, task/candidate, validation, one repair, selection, isolation, scorer and guardrails stay fixed.
 
-Preserved:
-- model/runtime
-- initial context 4096
-- repair context 3072
-- task prompt + current candidate in repair
-- validation/test mechanism
-- max one repair
-- candidate selection
-- sampler/output budget
-- call isolation
-- host gate and guardrails
-- scorer/task order
-- no Pi/retrieval/planner/human intervention.
-
-Decision rule:
-- if 004 still resource-fails, stop prompt-level rescue on this Ollama/MLX profile; do not create a budget ladder.
-- if COMPLETE, freeze quality/resource/efficiency and apply existing prospective gates.
-
-Amplifier 004 is ready but remains queued behind the current Stretch checkpoint.
+If 004 still resource-fails, stop prompt-level rescue on this Ollama/MLX profile.
 
 # Track B — Stretch / Memory Hierarchy
 
-Goal: explore whether model capability can exceed normal RAM residency by using SSD/RAM as an explicit hierarchy: layer streaming, expert streaming, prefetch, eviction, caching and later selective routing.
+Goal: use SSD + RAM as an explicit model-memory hierarchy. Dense layer streaming means all layers are still used sequentially while only a bounded subset is resident. Layer skipping/early exit is a separate later problem.
 
-Core distinction:
-- dense layer streaming uses all transformer layers but keeps only a bounded subset resident at once;
-- dynamic layer skipping / early exit is a separate later research problem and must not be assumed safe for a normally trained dense model.
-
-## Stretch 001 — Dense Layer Streaming Feasibility
+## Stretch 001 — LAYER_ADDRESSABLE_IO_PASS
 
 Plan: `research/stretch/layer-streaming-feasibility-001-plan.md`
 Runner: `scripts/stretch_layer_streaming_feasibility_001.py`
 Runner blob: `890444928abd6cc24e7194317c92b36b50fd994b`
-Preferred subject: `mlx-community/Qwen3-8B-3bit`.
+Canonical result: `research/stretch/layer-streaming-feasibility-001-result.md`
 
-Stage A:
-- safetensors header-only layer map
-- exact coverage vs `num_hidden_layers`
-- exact per-layer/shared byte accounting.
+First launch `20260819-153944`: `MODEL_NOT_FOUND` because default locator searched HF cache. No weight inspection; harness locator issue only. Correct verified model path: `results-local/mlx/models/Qwen3-8B-3bit`.
 
-Stage B:
-- selective I/O of one middle layer only
-- 4 MiB bounded chunks
-- SHA-256 fingerprint
-- verify exact bytes read
-- measure wall / MiB/s / free memory / swap.
+Valid run `20260819-154335` using explicit path:
+- classification `LAYER_ADDRESSABLE_IO_PASS`
+- `num_hidden_layers`: 36
+- safetensors shards: 1
+- tensors: 907
+- total tensor payload: 3,583,928,320 B (~3.338 GiB)
+- discovered layer IDs: exact 0..35
+- missing/unexpected: none
+- non-layer/shared payload: 544,546,816 B (~519.32 MiB)
+- every layer: exactly 84,427,264 B (~80.52 MiB)
+- transformer-layer payload total: 3,039,381,504 B (~2.831 GiB)
 
-No model launch, no MLX model construction, no download, no model-file mutation.
+Selective I/O probe, layer 18:
+- 25 tensors
+- expected/read bytes: 84,427,264 / 84,427,264
+- wall 0.069784 s
+- effective throughput 1153.794 MiB/s
+- SHA256 `2185c6f5cf1528ad8c0789426491e88ba6acc9ca36d11992a95742d4bd5f452d`
+- system state 68% free / 850.5 MB swap -> 69% / 850.5 MB
+- disk unchanged 36.310 GiB.
 
-### First launch `20260819-153944` — LOCATOR ISSUE, NO SCIENTIFIC RESULT
+Canonical interpretation:
+> The 8B 3-bit artifact is cleanly layer-addressable and exact one-layer byte-range I/O works without reading/materializing the full model. This proves a prerequisite only, not end-to-end streamed inference.
 
-Terminal classification:
-`MODEL_NOT_FOUND`
+Do not infer future token throughput directly from the one-shot 1153.794 MiB/s result; OS page cache, repeated reads and compute overlap can change effective behavior.
 
-Observed:
-- model launch none
-- network/download none
-- disk 36.325 GiB before/after
-- no model weights inspected.
+## Stretch 002 — Single-Layer MLX Materialization + Eviction — READY
 
-Diagnostic record:
-`research/stretch/layer-streaming-feasibility-001-locator-note.md`
+Plan: `research/stretch/single-layer-mlx-materialization-002-plan.md`
+Runner: `scripts/stretch_single_layer_mlx_materialization_002.py`
+Runner blob: `e7bd6bf4c61b44664c0c8421bf230b938509e4ef`
 
-Exact diagnosis:
-- Stretch 001 default locator searched Hugging Face cache roots.
-- The frozen Direct MLX 3-bit benchmark uses the verified local artifact at:
-  `results-local/mlx/models/Qwen3-8B-3bit`
-- primary weight:
-  `results-local/mlx/models/Qwen3-8B-3bit/model.safetensors`
-- therefore `MODEL_NOT_FOUND` is a harness path-resolution mismatch, not evidence that the artifact is absent and not evidence against layer streaming.
+Probe layer: 18; expected 25 tensors / 84,427,264 B.
 
-No runner change is required because Stretch 001 already accepts `--model-dir`.
+Method:
+- use frozen Direct MLX venv (mlx 0.31.2 / mlx-lm 0.31.3 / transformers 5.12.1)
+- no Qwen model construction, tokenizer, KV cache or token generation
+- `mx.load(model.safetensors)` then retain only layer-18 arrays
+- drop all other array references before evaluation
+- measure MLX active/cache/peak before eval
+- if pre-eval active delta >32 MiB, classify `EAGER_FULL_FILE_LOAD_SUSPECTED`
+- `mx.eval()` selected layer only
+- measure MLX/system memory
+- delete layer refs + `gc.collect()` + `mx.clear_cache()`
+- eviction pass requires final active/cache within +1 MiB of baseline
+- 3 launch samples >=60% free; runtime free<5% / swap>5600 guardrails.
 
-## Exact next step
+Possible primary classifications:
+- `SINGLE_LAYER_MLX_EVICTION_PASS`
+- `SINGLE_LAYER_MLX_MATERIALIZATION_PASS_EVICTION_INCONCLUSIVE`
+- `EAGER_FULL_FILE_LOAD_SUSPECTED`
+- safety/harness classifications as defined in plan.
 
-Rerun the same frozen Stretch 001 runner with the verified explicit artifact path:
+If eviction passes, next experiment should prove **repeated bounded residency across two sequential layers** before attempting a full streamed transformer forward.
+
+# Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/stretch_layer_streaming_feasibility_001.py
-python3 scripts/stretch_layer_streaming_feasibility_001.py \
-  --model-dir results-local/mlx/models/Qwen3-8B-3bit
+python3 -m py_compile scripts/stretch_single_layer_mlx_materialization_002.py
+python3 scripts/stretch_single_layer_mlx_materialization_002.py
 ```
 
-No download or model launch is expected.
+No download and no full-model construction are expected.
 
-If the explicit path itself is absent, stop and inspect the local `results-local/mlx/models/` directory; do not download anything.
-
-If classification is `LAYER_ADDRESSABLE_IO_PASS`, preregister Stretch 002: **Single-layer MLX materialization + eviction**.
-
-# Open questions
-
-1. Does the verified 8B 3-bit safetensors layout expose complete, clean transformer-layer byte ranges?
-2. How many bytes does one transformer layer occupy compared with total model weights?
-3. What selective SSD throughput is achieved for one full layer?
-4. Can one layer later be materialized and released in MLX with materially lower peak memory than resident-model loading?
-5. Does Amplifier 004 compact feedback finally yield a COMPLETE amplifier once Stretch 001 checkpoint is closed?
+If `py_compile` or a child API preflight fails, treat it as harness/runtime compatibility only; do not reinterpret it as evidence against layer streaming.
 
 # Continuation rule
 
-After every meaningful experiment/decision/result, update `HANDOFF.md` and `ROADMAP.md` before moving to the next checkpoint.
+After every meaningful result/decision, update `HANDOFF.md` and `ROADMAP.md` before moving to the next checkpoint.
