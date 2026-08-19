@@ -21,23 +21,17 @@
 
 ## Phase 4 — llama.cpp runtime frontier — CHARACTERIZED
 - [x] 4B Q4 control PASS: pp512 230.85 t/s, tg128 22.33 t/s
-- [x] 8B Q4/Q3 max-offload memory frontier characterized
+- [x] 8B Q4/Q3 max-offload frontier characterized
 - [x] 8B Q2 technically runnable but poor structured coding delivery
 - [x] Q3 NP1 + Q8_0 KV API smoke PASS
 - [x] Q3 real Coding T01 RESOURCE FAIL at 4% free
-- [x] Preserve llama.cpp 4B as future Amplify speed/efficiency control
+- [x] Preserve llama.cpp 4B as future Amplify capability/efficiency control
 
 ## Phase 5 — Direct MLX 8B frontier — CHARACTERIZED / MAIN BRANCH CLOSED
 - [x] Direct MLX environment validated
-- [x] Qwen3-8B-3bit full six-task session stable
-- [x] Freeze 3-bit quality: artifact 38.57, delivery-adjusted 27.86, delivery 2/6
-- [x] Qwen3-8B-4bit smoke + standalone T01 PASS
-- [x] Full 4-bit unquantized-KV profile fails frozen memory guardrail
-- [x] Controlled >=70%-free replication reaches T04 then fails at 4% free
-- [x] Close exact 4-bit / 4096 / unquantized-KV continuous profile
-- [x] Attempt one final KV8 rescue; operator reports failure
-- [x] Do not assign KV8 canonical failure type without missing detailed log
-- [x] Close 8B 4-bit rescue ladder
+- [x] Qwen3-8B-3bit full session stable but not promoted on quality
+- [x] Qwen3-8B-4bit continuous profile resource boundary characterized
+- [x] Close 8B rescue ladder after preregistered attempts
 - [x] Preserve verified models/results
 
 ## Phase 6 — Capability Amplification — ACTIVE
@@ -45,14 +39,11 @@
 Research question:
 **What is the greatest useful capability that can be produced by an 8 GB local system?**
 
-Primary subject: `qwen3.5:4b-mlx` via Ollama.
-
-- [x] Adopt Amplify / Stretch research pivot
-- [x] Select canonical Ollama/MLX 4B as primary Amplify subject
-- [x] Keep faster llama.cpp 4B as later secondary control
+Primary current subject: `qwen3.5:4b-mlx` via Ollama.
+Alternate preserved subject: Qwen3-4B Q4 via llama.cpp.
 
 ### Amplifier 001 — warm-resident
-- [x] Preregister frozen initial + deterministic validation + max one repair
+- [x] Freeze exact baseline initial call + deterministic validation + max one repair
 - [x] Run `20260819-142640`
 - [x] T01 initial 6/6; T02 initial 3/7; repair triggered
 - [x] `PARTIAL_RESOURCE_FAIL`: free 4% <5%, peak swap 2500.88 MB
@@ -61,44 +52,47 @@ Primary subject: `qwen3.5:4b-mlx` via Ollama.
 
 ### Amplifier 002 — call-isolated
 - [x] Preregister one-factor call-isolated profile
-- [x] Preserve quality mechanism, context 4096 and guardrails
+- [x] Confirm unload between calls
 - [x] Valid run `20260819-144256`
-- [x] T01 initial 6/6; T02 initial 3/7; repair triggered
-- [x] Confirm model unload between calls
-- [x] Confirm T02 repair starts at 68% free
-- [x] Repair trajectory 68% -> 63% -> 23% -> 16% -> 4%
-- [x] `PARTIAL_RESOURCE_FAIL`: free 4% <5%, peak swap 2611.50 MB
+- [x] T02 repair starts at 68% free and still reaches 4%
+- [x] `PARTIAL_RESOURCE_FAIL`; peak swap 2611.50 MB
 - [x] Conclude call isolation works but is insufficient
 - [x] Do not add recovery gate as leading fix
 
 ### Amplifier 003 — repair context 3072
-- [x] Preregister one-factor repair-context reduction
-- [x] Initial calls remain 4096; repair calls frozen at 3072
-- [x] Preserve call isolation, prompt content, validation, one repair, scorer and guardrails
-- [x] Freeze runner blob `c2bcc8f126eb5b599645ba12d1fd08a348e2b443`
-- [x] First attempt `20260819-150107`: `HOST_STATE_NOT_READY` at 69% free; 0 calls
-- [x] Valid launch `20260819-150342`: host 71%, 74%, 74%; swap 1247.88 MB
-- [x] T01 initial completes without repair
-- [x] T02 initial completes and triggers repair
-- [x] Terminal classification `PARTIAL_RESOURCE_FAIL`
-- [x] Completed model-call records: 2
-- [x] Freeze partial record `research/amplify/capability-amplifier-003-partial-20260819-150342.md`
-- [ ] Run read-only diagnostic on `20260819-150342`
-- [ ] Recover exact failure reason, repair context record, pre-state, telemetry and response completion
-- [ ] Do not automatically lower repair context to 2048
-- [ ] If 3072 still breaches from recovered state, redesign repair architecture/prompt budget
-- [ ] If a harness/isolation/telemetry defect is found, fix only that defect
+- [x] Preregister single 25% repair-context reduction
+- [x] Initial calls remain 4096; repair calls 3072
+- [x] Preserve call isolation, prompts, validation, one repair, scorer and guardrails
+- [x] First attempt `20260819-150107`: `HOST_STATE_NOT_READY`, 0 calls
+- [x] Valid run `20260819-150342`
+- [x] Confirm repair `call_context=3072`
+- [x] Confirm repair starts at 70% free / 2069.12 MB swap
+- [x] Confirm trajectory 70 -> 65 -> 31 -> 7 -> 6 -> 4% free
+- [x] `PARTIAL_RESOURCE_FAIL`: exact reason free 4% <5%
+- [x] Peak swap 2318.12 MB
+- [x] Freeze `research/amplify/capability-amplifier-003-resource-diagnostic.md`
+- [x] Conclude 3072 changes pressure but is insufficient
+- [x] Do not automatically descend to 2048
+- [x] Note successful initial calls still reach only 6% free
+
+### Repair-prompt anatomy — CURRENT
+- [x] Add read-only `scripts/inspect_amplifier_prompt_anatomy.py`
+- [ ] Measure T02 initial vs repair prompt bytes/chars/lines/words
+- [ ] Decompose repair into original task / validation feedback / candidate / non-editable context
+- [ ] If repair is materially inflated, preregister Compact Repair as one-factor architecture
+- [ ] If repair is already compact, stop prompt-rescue work and reassess primary execution profile
+- [ ] Treat llama.cpp 4B as strongest alternate due to larger observed memory headroom and higher throughput
 
 ### Later amplification work
 - [ ] Obtain first COMPLETE amplifier profile
-- [ ] Compare against single-shot 30.00/3-of-6 and Pi 77.15/6-of-6
-- [ ] Port established amplification logic to llama.cpp 4B for capability/efficiency comparison
-- [ ] Later candidate capability factors: compact repair, planner/verifier, tool loop, retrieval
+- [ ] Compare capability/resource/efficiency against single-shot and Pi references
+- [ ] Port established amplification logic across the selected 4B profiles where scientifically useful
+- [ ] Later candidate factors: compact repair, planner/verifier, tool loop, retrieval
 - [ ] Only later consider specialization / LoRA / SFT / distillation
 
 ## Phase 7 — Stretch / Memory Hierarchy
 - [ ] Reframe Colibrì / SSD streaming / MoE as explicit memory-hierarchy research
-- [ ] Investigate layer/expert streaming rather than only more aggressive quantization
+- [ ] Investigate layer/expert streaming rather than only aggressive quantization
 - [ ] Evaluate SSD traffic vs resident-memory reduction
 - [ ] Explore small resident controller + selectively invoked large/MoE component
 - [ ] Identify 8 GB-compatible or modifiable candidates
