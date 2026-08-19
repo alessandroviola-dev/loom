@@ -45,21 +45,28 @@
 - [x] 4-bit exact T01 Workload Safety 001 FULL_PASS (`20260819-132612`): preflight 74% free, min free 6%, peak swap 2470.31 MB
 - [x] Preregister full 4-bit six-task Coding Benchmark 001
 - [x] Freeze prospective 4-bit Pi gate before result: `COMPLETE` + delivery-adjusted >27.86 + delivery >2/6
-- [x] Original full 4-bit Coding Benchmark 001 (`20260819-133144`) resource-fails during T01: preflight 56%, min free 4%, peak swap 3028.25 MB
-- [x] Diagnose original 4-bit failure and identify host-state mismatch versus successful references
-- [x] Preregister exactly one host-state-controlled replication with >=70% free launch gate
-- [x] Host-state gate passes (`20260819-134010`): 72%, 74%, 74% free; swap 1381.75 MB
-- [x] Controlled full replication launches (`20260819-134012`) under unchanged model/runtime/benchmark condition
-- [x] Controlled replication progresses through T01, T02, T03 and into T04
-- [x] Controlled replication still hits free-memory guardrail: min free **4%**, peak swap 2879.38 MB
-- [x] Classify controlled replication `PARTIAL_RESOURCE_FAIL`
-- [x] Freeze `research/runtime/direct-mlx-8b-4bit-hoststate-replication-001.md`
+- [x] Original full 4-bit benchmark (`20260819-133144`) resource-fails during T01: preflight 56%, min free 4%
+- [x] Diagnose original failure and identify host-state mismatch
+- [x] Preregister exactly one >=70%-free host-controlled replication
+- [x] Controlled replication launches (`20260819-134012`) from 72–74% free
+- [x] Controlled replication completes/persists T01–T03 and enters T04
+- [x] Controlled replication still hits free-memory guardrail: min free 4%, peak swap 2879.38 MB
 - [x] Close exact 4-bit / `max_kv_size=4096` / unquantized-KV continuous profile as workload RESOURCE FAIL
 - [x] Prohibit further identical replications
-- [ ] Run read-only inspector on controlled replication `20260819-134012` to recover persisted task count and task-by-task memory timeline
-- [ ] If timeline supports a memory-pressure rationale, preregister at most one one-factor rescue with **8-bit KV cache** while preserving model, benchmark, 4096 cap, host gate and 5%/5600 MB guardrails
-- [ ] If KV8 rescue resource-fails, close 4-bit branch and move on; no rescue ladder
-- [ ] No valid aggregate 4-bit quality comparison until a full benchmark reaches COMPLETE
+- [x] Diagnose controlled replication read-only
+- [x] Confirm T01–T03 complete with `written` delivery; T04 aborts at 4% free
+- [x] Confirm pressure repeatedly approaches 5–7% during T02–T04; final breach is free-memory, not swap
+- [x] Freeze `research/runtime/direct-mlx-8b-4bit-hoststate-replication-001-diagnostic.md`
+- [x] Justify exactly one low-confound KV8 rescue
+- [x] Preregister `research/runtime/direct-mlx-8b-4bit-kv8-rescue-001-plan.md`
+- [x] Add `scripts/direct_mlx_8b_4bit_kv8_rescue_001.py`
+- [x] Freeze KV rescue policy: `kv_bits=8`, `kv_group_size=64`, `quantized_kv_start=0`, `max_kv_size=4096` unchanged
+- [x] Preserve >=70% host-state launch gate and 5%/5600 MB runtime guardrails
+- [ ] Run Direct MLX 8B 4-bit KV8 Rescue 001
+- [ ] If `HOST_STATE_NOT_READY`, do not count as model failure; retry launch only after naturally freeing host resources
+- [ ] If KV8 rescue `PARTIAL_RESOURCE_FAIL`, close 4-bit branch with no KV6/KV4/context rescue ladder
+- [ ] If KV8 rescue `COMPLETE`, apply frozen quality gate: delivery-adjusted >27.86 and delivery >2/6
+- [ ] Only if both quality dimensions pass consider separately preregistered isolated Pi validation
 - [ ] Pi remains blocked until technical + workload + prospective quality gates all pass
 - [ ] Do not lower guardrails, change context, prompts/parser/scorer, or retry individual benchmark tasks
 
