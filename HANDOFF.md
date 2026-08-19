@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — llama.cpp/Metal validated; 8B Q2 is technically runnable/API-servable but failed the frozen structured coding delivery benchmark; diagnostic confirms Q2 instruction/delivery degradation rather than a transport/resource defect. Next checkpoint: higher-quality 8B Q3 under llama.cpp automatic fit / partial offload.
-Checkpoint: `LLAMA_CPP_8B_Q3_AUTOFIT_SERVER_SMOKE_001_READY`
+Status: ACTIVE — llama.cpp/Metal validated; 8B Q2 is technically runnable/API-servable but loses the frozen structured coding benchmark to 4B Q4; 8B Q3 automatic-fit server rescue also hit the frozen memory guardrail. The active checkpoint is inspection of the saved Q3 fit/offload evidence before changing any parameter.
+Checkpoint: `LLAMA_CPP_8B_Q3_AUTOFIT_SERVER_SMOKE_001_DIAGNOSTIC`
 
 ## Mission
 
@@ -21,17 +21,18 @@ Reference stack:
 
 ## Production Pi constraint
 
-Normal Pi contains real auth, sessions and customizations. LOOM must never reset/replace production Pi configuration. Controlled experiments use isolated/run-local configuration where needed.
+Normal Pi contains real auth, sessions and customizations. LOOM must never reset/replace production Pi configuration. Controlled experiments use isolated/run-local configuration where needed. Do not expose a new llama.cpp profile to Pi until it passes technical/API and quality gates.
 
 ## Storage hygiene
 
 Free disk is a standard LOOM metric. Reuse verified artifacts and never silently delete models/results.
 
 Latest confirmed:
-- Coding Quality Compare 001 before: 44.594 GiB free
 - Coding Quality Compare 001 after: 43.591 GiB free
+- Q3 Auto-Fit Server Smoke 001 before: 43.659 GiB free
+- Q3 Auto-Fit Server Smoke 001 after: **43.658 GiB free**
 - verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 artifacts retained
-- no new model download is required for the current Q3 auto-fit test
+- no new model download is currently required
 
 # Frozen baseline / agent state
 
@@ -51,8 +52,6 @@ Run `20260818-214848`:
 - delivery 6/6
 - protocol 4/6
 - provider usage 20,209 tokens
-
-Pi remains the primary local agent harness. Do not test a new llama.cpp profile through Pi until it first passes the technical/API and frozen quality gates.
 
 # Phase 4 — llama.cpp
 
@@ -75,12 +74,13 @@ Setup Probe 003 run `20260818-234628`: canonical PASS, Release build, `llama-cli
 
 8B Q4 Capability 001 run `20260819-091424`: VALID FAIL; context 4096 / forced `-ngl -1`; minimum free memory 1%; 5% guardrail triggered during Stage A.
 
-8B Q3 Capability 001 run `20260819-093842`: VALID FAIL; Qwen3-8B Q3_K_M; context 4096 / forced `-ngl -1`; peak RSS 1670.48 MB; peak swap 2269.38 MB; minimum free memory 1%; 5% guardrail triggered.
+8B Q3 Capability 001 run `20260819-093842`: VALID FAIL; context 4096 / forced `-ngl -1`; peak RSS 1670.48 MB; peak swap 2269.38 MB; minimum free memory 1%; guardrail triggered.
 
 Q3 artifact:
 - repository `unsloth/Qwen3-8B-GGUF`
 - file `Qwen3-8B-Q3_K_M.gguf`
-- expected SHA256 `4924cf38a3b3c4b27ead5ccb93e27027f9418738506ac50a24a70dfe8581a007`
+- SHA256 `4924cf38a3b3c4b27ead5ccb93e27027f9418738506ac50a24a70dfe8581a007`
+- observed size 3.841 GiB
 - already present locally
 
 ## 8B Q2 — technical/API PASS
@@ -126,7 +126,6 @@ Frozen comparison:
 - raw `POST /completion`
 - exact frozen adapter-built prompts
 - one request/task, no retry/salvage/test feedback
-- `n_predict=2048`, temperature 0, seed 0, cache_prompt false, `json_schema={}`
 
 Primary result:
 - 8B Q2 delivery-adjusted **0/100**
@@ -135,74 +134,78 @@ Primary result:
 - relation **`4B_HIGHER`**
 - both profiles `COMPLETE`
 
-8B resource state during quality run:
-- server ready
-- no guardrail abort
-- no execution failure
-- peak RSS 1953.02 MB
-- peak swap 2026.44 MB
-- minimum free memory 7%
+Closed diagnostic:
+- every 8B task returned HTTP 200, EOS, non-empty syntactically valid JSON;
+- T01/T02/T03/T04/T06 used literal `filename` as the file key and omitted actual file contents;
+- T05 generated code but encoded it under `filename/value` instead of the exact required filename-to-content map;
+- 4B Q4 under the identical transport delivered T01/T02/T05/T06 correctly.
 
-## Closed failure-mode diagnostic
+Canonical boundary:
+> The tested Qwen3-8B Q2_K profile is technically runnable and API-servable but is not a practical upgrade over Qwen3-4B Q4_K_M for this structured coding workload. The evidence establishes profile-level instruction/delivery degradation; it does not by itself prove that Q2 quantization alone is the cause.
 
-All six 8B requests returned HTTP 200, `stop_type=eos`, non-empty content and syntactically valid JSON. Therefore the 0/100 delivery result is not a server, HTTP, timeout, memory or JSON-syntax failure.
+Do not relax the benchmark envelope post hoc and do not proceed to Pi or ~9B from the Q2 profile.
 
-Observed Q2 pattern:
-- T01/T02/T03/T04/T06 returned `{"files":{"filename":"<actual expected name>"}}` or equivalent, treating the illustrative placeholder word `filename` as a literal schema key and omitting file contents;
-- T05 generated a substantial code body but returned it as `{"files":{"filename":"order.py","value":"..."}}` instead of `{ "files": { "order.py": "..." } }`.
+# 8B Q3 Auto-Fit Server Smoke 001 — VALID FAIL
 
-The 4B control used the same transport/settings and correctly delivered T01, T02, T05 and T06 in the exact required file envelope. Its T03/T04 failures remain valid strict delivery failures.
-
-Canonical conclusion:
-> Qwen3-8B Q2_K is technically runnable and API-servable, but its aggressive Q2 quantization does not preserve reliable structured instruction following on the frozen coding workload. It is **not a practical upgrade** over Qwen3-4B Q4_K_M for this use case.
-
-Do not create a post-hoc easier Q2 benchmark, do not salvage T05 into the primary score, and do not proceed to Pi or ~9B from this Q2 profile.
-
-# Current checkpoint — 8B Q3 Auto-Fit Server Smoke 001
-
+Run id: `20260819-111648`
 Plan: `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001-plan.md`
+Record: `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001.md`
 Runner: `scripts/llama_cpp_8b_q3_autofit_server_smoke.py`
-Checkpoint: `LLAMA_CPP_8B_Q3_AUTOFIT_SERVER_SMOKE_001_READY`
-
-Research question:
-> Can the higher-quality Q3_K_M weights fit and serve at context 4096 if llama.cpp may choose automatic device fit / partial offload instead of forced `-ngl -1`?
 
 Frozen condition:
-- same local Q3_K_M artifact / exact SHA256
-- pinned llama.cpp / Metal / llama-server
-- explicit `-c 4096`
+- same verified Q3_K_M artifact
+- pinned llama.cpp / `llama-server` / Metal
+- explicit context 4096
 - FA auto
-- do not force `-ngl -1`
+- no forced `-ngl -1`
 - `--fit on`
 - `--fit-target 1024`
 - `--fit-ctx 4096`
-- default KV-cache types; no KV quantization in this experiment
-- localhost only / Web UI disabled / offline
+- default KV-cache types
+- localhost only / offline / no Web UI
 - same 5% free-memory and 5600 MB swap guardrails
-- one `Reply only with OK.` chat completion if server reaches healthy state
 
-The runner records server logs and extracts fit/offload/GPU-layer-related lines where available.
+Observed:
+- disk before 43.659 GiB
+- model SHA256 PASS
+- model size 3.841 GiB
+- server target present
+- automatic-fit launch started
+- API smoke FAIL
+- peak process RSS **2121.859375 MB**
+- peak swap **2263.31 MB**
+- minimum free memory **4%**
+- guardrail `memory free 4% < 5%`
+- classification **FAIL**
+- disk after **43.658 GiB**
 
-## Exact next step
+Interpretation:
+> This exact Q3 auto-fit condition is not safe enough under the frozen LOOM margin. The console output does not establish the exact fit/offload decision; inspect the persisted summary/logs before choosing the next memory intervention.
 
-Run:
+Descriptively, 4% minimum free is less severe than the 1% observed in the earlier forced-Q3 run, but the execution shapes differ and this is not an apples-to-apples performance comparison.
 
-```bash
-cd "<repository-root>"
-git pull
-python3 -m py_compile scripts/llama_cpp_8b_q3_autofit_server_smoke.py
-python3 scripts/llama_cpp_8b_q3_autofit_server_smoke.py
-```
+# Current checkpoint — Q3 auto-fit diagnostic
 
-No model download is expected.
+Checkpoint: `LLAMA_CPP_8B_Q3_AUTOFIT_SERVER_SMOKE_001_DIAGNOSTIC`
 
-Preserve output from `LOOM llama.cpp 8B Q3 Auto-Fit Server Smoke 001` through the final `Summary:` line, including any `Auto-fit/offload evidence:` lines.
+Existing local run directory:
+`results-local/llama-cpp/8b-q3-autofit-server-smoke/20260819-111648`
 
-## Decision after Q3 auto-fit
+Need to inspect, without rerunning inference:
+- `server_ready`
+- `request_pass`
+- `failure_reason`
+- final `/health` states
+- `fit_offload_log_lines`
+- final memory samples
+- relevant `llama-server-stderr.txt` lines around fit/offload/layer placement
 
-- If `FULL_PASS`: freeze the actual observed fit/offload behavior, then preregister Q3 vs 4B Q4 on the frozen Coding Benchmark 01 before any Pi test.
-- If `FAIL`: do not alter several parameters at once. Next candidate is a separately preregistered Q3 KV-cache compression condition, starting Q8_0, or Direct MLX.
-- Do not test ~9B until the 8B quality/usefulness frontier is characterized.
+## Decision after diagnostic
+
+- If fit logs show auto-fit still retained essentially maximum Metal placement and the failure occurred during load/readiness, preregister one-variable Q3 KV-cache compression starting with Q8_0 only if the expected memory source can plausibly affect the failing phase.
+- If the guardrail fires before KV allocation or logs show a weights/device-placement bottleneck, KV compression is unlikely to solve the load failure; prefer an explicit partial-offload experiment or move to Direct MLX.
+- Do not lower the safety guardrail, context, and quantization simultaneously.
+- Do not test ~9B yet.
 
 ## Roadmap state
 
@@ -210,7 +213,7 @@ Preserve output from `LOOM llama.cpp 8B Q3 Auto-Fit Server Smoke 001` through th
 - Phase 1: DONE
 - Phase 2: DONE / FROZEN
 - Phase 3: materially complete for current needs
-- **Phase 4: ACTIVE — Q2 technical/API PASS but quality inferior; Q3 auto-fit rescue READY**
+- **Phase 4: ACTIVE — Q2 technical/API PASS but quality inferior; Q3 forced offload FAIL; Q3 auto-fit FAIL at 4% free; fit/offload diagnostic active**
 - Phase 5 Direct MLX: queued
 - Phase 6 Colibrì / SSD / MoE: queued
 - Phase 7 extended runtimes: queued
