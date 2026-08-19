@@ -37,14 +37,14 @@
 - [x] 4B: 2.326 GiB; pp512 230.85 t/s; tg128 22.33 t/s; peak RSS 1914.91 MB; peak swap 1097.19 MB; minimum free memory 22%
 - [x] 8B Q4_K_M Capability 001 VALID FAIL at context 4096: memory free 1%; guardrail triggered
 - [x] 8B Q3_K_M Capability 001 VALID FAIL at context 4096: memory free 1%; guardrail triggered
-- [x] Q2 Capability 001: verified 3.056 GiB model loaded and began inference at context 4096
-- [x] Invalidate Q2 Capability 001 because Stage A remained in auto conversation mode instead of exiting
-- [x] Record `research/runtime/llama-cpp-8b-q2-001-invalid.md`
-- [x] Preregister `research/runtime/llama-cpp-8b-q2-002-plan.md`
-- [x] Add `scripts/llama_cpp_8b_q2_002.py` with only `-st/--single-turn` added to Stage A
-- [ ] Run Q2 Capability 002 using the existing SHA256-verified model
+- [x] Q2 Capability 001: model loaded/began inference but INVALID because CLI stayed interactive
+- [x] Q2 Capability 002: single-turn completed with 19% minimum free memory, but INVALID because Stage A parser required optional literal log strings
+- [x] Record `research/runtime/llama-cpp-8b-q2-002-invalid.md`
+- [x] Preregister `research/runtime/llama-cpp-8b-q2-003-plan.md`
+- [x] Add `scripts/llama_cpp_8b_q2_003.py` with corrected deterministic Stage A evidence validation
+- [ ] Run Q2 Capability 003 using the existing SHA256-verified model
 - [ ] If Q2 FULL_PASS, test actual quality/usefulness before calling it a practical 8B upgrade
-- [ ] If Q2 Stage A FAIL, stop descending quantizations and test a separately frozen partial-offload/context-memory strategy
+- [ ] If Q2 Stage A genuinely FAILs, stop descending quantizations and test a separately frozen partial-offload/context-memory strategy
 - [ ] Test ~9B only if the 8B frontier provides sufficient evidence/headroom
 
 ## Phase 5 — Direct MLX
