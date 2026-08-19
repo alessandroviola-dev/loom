@@ -46,13 +46,17 @@
 - [x] Inspect persisted per-task failure classes without rerunning inference
 - [x] Freeze diagnostic: all 8B requests HTTP 200 / EOS / valid JSON, but Q2 repeatedly treated prompt placeholder `filename` as a literal key; T05 generated code under `filename/value`; no transport/resource defect identified
 - [x] Conclusion: tested Q2 8B profile is technically runnable but not a practical upgrade for this structured coding workload
-- [x] Preregister Q3 higher-quality rescue via llama.cpp automatic fit / partial-offload policy at context 4096
-- [x] Run Q3 Auto-Fit Server Smoke 001
-- [x] Q3 Auto-Fit Server Smoke 001 VALID FAIL: model SHA PASS; 3.841 GiB; peak RSS 2121.86 MB; peak swap 2263.31 MB; minimum free memory 4%; 5% guardrail triggered; API smoke not completed successfully
-- [x] Record `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001.md`
-- [ ] Inspect saved Q3 auto-fit/offload lines, readiness state and final memory samples without rerunning inference
-- [ ] Based on diagnostic, preregister exactly one next Q3 memory intervention; candidate: KV-cache Q8_0 at context 4096 with same guardrails
-- [ ] If Q3 memory rescue remains nonviable, continue to Direct MLX rather than stacking post-hoc changes
+- [x] Preregister and run Q3 Auto-Fit Server Smoke 001
+- [x] Q3 Auto-Fit Server Smoke 001 VALID FAIL: model SHA PASS; 3.841 GiB; peak RSS 2121.86 MB; peak swap 2263.31 MB; minimum free memory 4%; 5% guardrail triggered
+- [x] Inspect saved Q3 auto-fit readiness, memory timeline and server stderr without rerunning inference
+- [x] Diagnostic: pinned llama-server auto parallelism resolves to 4; failed run initialized `n_slots=4`, `n_ctx_slot=4096`, `kv_unified=true`, then reached `model loaded`; guardrail had already fired at 4% free
+- [x] Freeze `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001-diagnostic.md`
+- [x] Preregister one-variable Q3 rescue: explicit `-np 1`, all other Q3 auto-fit settings and guardrails unchanged
+- [x] Add `research/runtime/llama-cpp-8b-q3-autofit-np1-server-smoke-001-plan.md`
+- [x] Add `scripts/llama_cpp_8b_q3_autofit_np1_server_smoke.py`
+- [ ] Run Q3 Auto-Fit NP1 Server Smoke 001 and require `n_slots=1` evidence
+- [ ] If NP1 FULL_PASS, freeze actual telemetry then compare Q3 vs 4B Q4 on Coding Benchmark 01 with explicit `-np 1` for both profiles
+- [ ] If NP1 still memory FAIL, preregister Q3 KV-cache Q8_0 as the next single-variable llama.cpp rescue or continue to Direct MLX
 - [ ] Do not relax Q2 benchmark delivery rules post hoc
 - [ ] Do not test ~9B until the 8B quality/usefulness frontier is characterized
 
