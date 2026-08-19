@@ -20,7 +20,6 @@
 - [ ] Add daily-use validation/retry workflow later
 
 ## Phase 4 — llama.cpp — MAIN BRANCH CHARACTERIZED
-- [x] Pin llama.cpp commit `60addddf3c567c43ec3caf70fc953fba3572d96f`
 - [x] 4B Q4 control PASS
 - [x] 8B Q4/Q3 max-offload memory frontier characterized
 - [x] 8B Q2 technical/API PASS but structured coding quality inferior
@@ -35,18 +34,19 @@
 - [x] Freeze environment: `mlx-lm==0.31.3`, `mlx==0.31.2`, `transformers==5.12.1`
 - [x] Acquire/verify `mlx-community/Qwen3-8B-3bit`
 - [x] Main weight SHA PASS; 3-bit/group-size 64 PASS
-- [x] Direct MLX 8B 3-bit Smoke 001 generated successfully (`20260819-121656`)
-- [x] Output `OK.`; generation 24.62 t/s; MLX peak memory 3.668 GB
-- [x] Minimum sampled free memory 25%
-- [x] Identify swap telemetry defect: macOS emits decimal commas (`used = 1121,88M`)
-- [x] Classify first smoke as generation PASS / swap safety channel unresolved
-- [x] Record `research/runtime/direct-mlx-8b-3bit-smoke-001-swap-diagnostic.md`
-- [x] Add locale-safe telemetry-only rerun wrapper `scripts/direct_mlx_8b_3bit_smoke_001_swapfix.py`
-- [ ] Run identical Smoke 001 with corrected swap parser; reuse downloaded model
-- [ ] If complete safety PASS, preregister real Coding Benchmark T01 workload-safety probe
-- [ ] Only after T01 workload-safety PASS run full frozen Coding Benchmark quality comparison
-- [ ] Only after technical + workload + quality gates consider Pi integration
-- [ ] Do not lower 5% free-memory / 5600 MB swap guardrails
+- [x] Direct MLX Smoke 001 generated successfully
+- [x] Diagnose locale swap parser defect (`used = 1121,88M`)
+- [x] Rerun identical smoke with telemetry-only locale-safe parser
+- [x] Smoke safety rerun FULL_PASS (`20260819-124440`): minimum free memory 23%, peak swap 1720.75 MB
+- [x] Freeze `research/runtime/direct-mlx-8b-3bit-smoke-001-swapfix-rerun.md`
+- [x] Preregister real Coding Benchmark T01 workload-safety probe
+- [x] Add `research/runtime/direct-mlx-8b-3bit-t01-workload-001-plan.md`
+- [x] Add `scripts/direct_mlx_8b_3bit_t01_workload.py`
+- [ ] Run Direct MLX 8B 3-bit T01 Workload Safety 001
+- [ ] If T01 workload safety FULL_PASS, freeze result and preregister full Direct MLX Coding Benchmark 01
+- [ ] Only after full quality/delivery gate consider Pi integration
+- [ ] If T01 RESOURCE_FAIL, do not lower 5%/5600 MB guardrails or reduce the 4096 KV cap inside the failed condition
+- [ ] Consider Direct MLX KV quantization only as a separately preregistered rescue if needed
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
