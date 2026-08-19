@@ -3,7 +3,7 @@
 Last updated: 2026-08-19
 Status: ACTIVE — Apple M1 / 8 GB reference system; coordinated tracks **Amplify** and **Stretch**.
 
-Current checkpoint: `STRETCH_007B_PHASE_STREAMED_FULL_LOGIT_PARITY_READY`
+Current checkpoint: `STRETCH_008_ONE_TOKEN_KV_AUTOREGRESSIVE_PARITY_READY`
 
 ## Mission
 
@@ -99,20 +99,24 @@ Frozen environment/config:
 - mlx-lm 0.31.3
 - transformers 5.12.1.
 
-Every transformer layer: 25 tensors / 84,427,264 B (~80.52 MiB).
+Weight layout:
+- total tensor payload 3,583,928,320 B
+- embedding 272,269,312 B
+- transformer body 3,039,381,504 B
+- each transformer layer 84,427,264 B / 25 tensors
+- final RMSNorm 8,192 B
+- LM head 272,269,312 B.
 
 ## Stretch 001 — COMPLETE PASS
 
 Run `20260819-154335` — `LAYER_ADDRESSABLE_IO_PASS`.
 
 - 36/36 layer IDs exact
-- 907 tensors
 - total tensor payload 3,583,928,320 B
-- shared/non-layer payload 544,546,816 B
-- each transformer layer 84,427,264 B
-- layer 18 selective I/O exact: 84,427,264 B in 0.069784 s at 1153.794 MiB/s.
+- one-layer selective I/O exact
+- layer 18 read 84,427,264 B in 0.069784 s at 1153.794 MiB/s.
 
-Interpretation: exact per-layer storage addressing works. Do not infer token throughput from the one-shot I/O rate.
+Interpretation: exact per-layer storage addressing works. Do not infer token throughput from one-shot I/O rate.
 
 ## Stretch 002 — COMPLETE PASS
 
@@ -120,11 +124,9 @@ Run `20260819-155641` — `SINGLE_LAYER_MLX_EVICTION_PASS`.
 
 Layer 18:
 - pre-eval active delta 0 B
-- post-eval active delta exactly 84,427,264 B
+- post-eval active delta 84,427,264 B
 - post-clear active/cache 0/0 B
 - min free 67%; peak swap 850.5 MB.
-
-Interpretation: one layer can remain lazy, materialize independently and be reclaimed.
 
 ## Stretch 003 — COMPLETE PASS
 
@@ -135,17 +137,14 @@ Same MLX process:
 - layer 19: 0 -> 84,427,264 -> 0 B; cache 0 B
 - min free 67%; peak swap 826.5 MB.
 
-Interpretation: repeated one-layer residency remains bounded.
-
 ## Stretch 004 — COMPLETE PASS
 
 Run `20260819-162454` — `TWO_LAYER_STREAMED_FORWARD_PARITY_PASS`.
 
-First real transformer-compute experiment using official Qwen3 `TransformerBlock`.
-
+- official Qwen3 TransformerBlock computation
 - resident two-layer materialized delta 168,854,528 B
 - streamed near one 84.4 MB layer at a time
-- max/mean parity difference 0.0 / 0.0
+- numerical parity max/mean difference 0.0 / 0.0
 - min free 63%; peak swap 826.5 MB.
 
 Result: `research/stretch/two-layer-streamed-micro-forward-parity-004-result.md`.
@@ -168,142 +167,166 @@ Result: `research/stretch/eight-layer-streamed-forward-scaling-005-result.md`.
 
 ## Stretch 006 — COMPLETE PASS
 
-Plan: `research/stretch/full-36-layer-streamed-body-parity-006-plan.md`
-Corrected wrapper: `scripts/stretch_full_36_layer_streamed_body_parity_006.py`
-Corrected wrapper blob: `ab5d74b37111b7ceae6e5c00a47c10f1e1086ca6`
-Frozen source: Stretch 005 blob `8bbfff727a0131c48d4ba71edc8de485182b7fbe`.
-Result: `research/stretch/full-36-layer-streamed-body-parity-006-result.md`
-
-The first attempted launch stopped inside the transform wrapper and is separately classified as harness-only/no scientific result in `research/stretch/full-36-layer-streamed-body-parity-006-harness-note.md`.
-
 Valid run `20260819-164605` — `FULL_36_LAYER_STREAMED_BODY_PARITY_PASS`.
 
-Resident transformer body:
-- exact body payload 3,039,381,504 B
-- observed materialized delta 3,039,315,964 B.
+The first launch was a transform-harness failure before MLX execution and is separately recorded in `research/stretch/full-36-layer-streamed-body-parity-006-harness-note.md`.
 
-Streamed body:
-- all layers 0..35 pre-eval delta 0 B
-- every layer materializes exactly 84,427,264 B
-- every layer post-clear active/cache returns 0/0 B
-- resident/streamed raw-weight ratio 35.99922371048291x.
-
-Parity:
-- max abs diff 0.0
-- mean abs diff 0.0.
-
-Timing, micro-forward batch1/seq4:
+Valid run:
+- resident transformer body observed 3,039,315,964 B
+- max streamed one-layer 84,427,264 B
+- resident/streamed ratio 35.99922371048291x
+- all layers 0..35: pre-eval 0 B, materialize 84,427,264 B, post-clear active/cache 0/0 B
+- full-body activation parity max/mean diff 0.0 / 0.0
 - streamed parameter materialization 1.207812 s
 - streamed transformer forward 0.440137 s.
 
-Whole-run system telemetry:
+Whole-run telemetry:
 - min free 22%
 - peak swap 1325.69 MB
 - peak child RSS 381.844 MB
 - disk 36.297 -> 36.293 GiB.
 
-Do not attribute whole-run min-free/peak-swap specifically to the streamed phase because the resident 36-layer control is included.
+Whole-run telemetry includes the resident 36-layer control; do not attribute it specifically to streamed execution.
 
-Canonical interpretation:
-> The complete 36-block Qwen3 transformer body executes with one-layer-at-a-time streamed raw-weight residency and exact resident final-activation parity. Raw transformer-layer residency is ~2.831 GiB resident versus ~80.52 MiB at a time streamed.
+Result: `research/stretch/full-36-layer-streamed-body-parity-006-result.md`.
+
+Canonical interpretation: the entire 36-block transformer body executes with one-layer-at-a-time raw-weight residency and exact resident parity.
 
 ## Stretch 007A — COMPLETE PASS
 
-Plan: `research/stretch/shared-component-anatomy-007a-plan.md`
-Runner: `scripts/stretch_shared_component_anatomy_007a.py`
-Runner blob: `7e147476119766a5cf29b697120291b1b96b9bb9`
-Result: `research/stretch/shared-component-anatomy-007a-result.md`
-
 Run `20260819-165247` — `SHARED_COMPONENT_ANATOMY_PASS`.
 
-Read-only; no MLX/model launch/materialization/network.
-
-Observed local config:
-- vocab size 151936
+Read-only physical layout recovery:
 - `tie_word_embeddings=false`
-- RMSNorm epsilon 1e-6
-- quantization 3-bit/group64.
+- embedding: 3 tensors / 272,269,312 B
+- final RMSNorm: 1 tensor / 8,192 B
+- LM head: 3 tensors / 272,269,312 B
+- other: 0.
 
-Exact tensor accounting:
-- all tensors 907
-- transformer-layer bytes 3,039,381,504 B
-- non-layer bytes 544,546,816 B
-- total 3,583,928,320 B.
+Embedding and LM head are distinct quantized payloads used at opposite ends of the forward path and can be phase-streamed separately.
 
-Non-layer decomposition:
-- embedding: 3 tensors / **272,269,312 B**
-  - `model.embed_tokens.weight` U32 `[151936,384]` 233,373,696 B
-  - `model.embed_tokens.scales` BF16 `[151936,64]` 19,447,808 B
-  - `model.embed_tokens.biases` BF16 `[151936,64]` 19,447,808 B
-- final RMSNorm: 1 tensor / **8,192 B**
-  - `model.norm.weight` BF16 `[4096]`
-- LM head: 3 tensors / **272,269,312 B**
-  - `lm_head.weight` U32 `[151936,384]` 233,373,696 B
-  - `lm_head.scales` BF16 `[151936,64]` 19,447,808 B
-  - `lm_head.biases` BF16 `[151936,64]` 19,447,808 B
-- other: 0 tensors / 0 B.
+Result: `research/stretch/shared-component-anatomy-007a-result.md`.
 
-Canonical interpretation:
-> Embedding and LM head are separate quantized ~272.27 MB payloads used at opposite ends of the forward path. They can therefore be tested as phase-streamed components instead of remaining simultaneously resident.
-
-Official mlx-lm v0.31.3 Qwen3 semantics verified: `Embedding -> 36 TransformerBlock -> final RMSNorm -> lm_head` when `tie_word_embeddings=false`; official loader quantizes modules when matching `.scales` tensors are present.
-
-## Stretch 007B — Phase-Streamed Full-Logit Parity — READY
+## Stretch 007B — COMPLETE PASS
 
 Plan: `research/stretch/phase-streamed-full-logit-parity-007b-plan.md`
 Runner: `scripts/stretch_phase_streamed_full_logit_parity_007b.py`
 Runner blob: `b08c9b44ae062ee259ab6641575e44c4d7d753e6`
+Result: `research/stretch/phase-streamed-full-logit-parity-007b-result.md`
 
-Research question:
-Can token-ID-to-final-logit execution match an official fully resident Qwen3 control while raw weights are phase-streamed as:
-
-`embedding -> evict -> layer0..35 one at a time -> final norm -> LM head`?
+Run `20260819-170334` — `PHASE_STREAMED_FULL_LOGIT_PARITY_PASS`.
 
 Frozen token IDs:
-`[[1, 42, 2048, 151935]]`.
+`[[1,42,2048,151935]]`.
 
-No tokenizer, KV cache or autoregressive generation yet.
-
-Resident control:
-- official `mlx_lm.utils.load_model(model_dir, lazy=False, strict=True)`
-- expected model tensor payload 3,583,928,320 B
-- broad accounting gate +/-64 MiB
-- execute same token IDs to full logits.
+Resident official control:
+- `mlx_lm.utils.load_model(..., lazy=False, strict=True)`
+- full-model materialized delta exactly **3,583,928,320 B**.
 
 Phase-streamed path:
-1. embedding payload 272,269,312 B, materialize -> lookup -> evict;
-2. all 36 transformer blocks, exact Stretch per-layer gates;
-3. final norm payload 8,192 B;
-4. separate LM head payload 272,269,312 B, materialize -> logits -> evict.
+- embedding materialized **272,269,312 B** -> evict
+- max transformer-layer materialized **84,427,264 B**
+- final RMSNorm selected/materialized **8,192 / 8,192 B**
+- LM head materialized **272,269,312 B** -> evict
+- max streamed weight-stage delta **272,269,312 B**
+- resident/max-streamed-stage ratio **13.16317396798652x**.
 
-Expected logits shape:
-`[1,4,151936]`.
+Full-logit parity `[1,4,151936]`:
+- max absolute difference **0.0**
+- mean absolute difference **0.0**
+- threshold 0.00018125000000000001
+- top-1 equality true
+- resident top1 `[[921,78,84,1]]`
+- streamed top1 `[[921,78,84,1]]`.
 
-Parity:
-- full logits compared in float32
-- threshold `1e-5 + 1e-5 * resident_max_abs`
-- top-1 token IDs per position also recorded.
+Whole-run telemetry:
+- host gate 69/69/70% free, swap 1125.62 MB
+- minimum free **25%**
+- peak swap **1586.0 MB**
+- peak child RSS **1007.547 MB**
+- disk **36.276 -> 36.276 GiB**.
+
+Again, whole-run telemetry includes the official resident control.
+
+Canonical interpretation:
+> Complete token-ID-to-final-logit Qwen3 execution is operational with embedding/head phase streaming plus one-layer-at-a-time transformer streaming, with exact logits versus the official fully resident control and a ~13.16x raw-weight-stage residency ratio.
+
+This is full-forward parity but not yet autoregressive cache reuse.
+
+## Stretch 008 — One-Token KV Autoregressive Parity — READY
+
+Plan:
+`research/stretch/one-token-kv-autoregressive-parity-008-plan.md`
+
+Runner:
+`scripts/stretch_one_token_kv_autoregressive_parity_008.py`
+
+Runner blob:
+`03e7a04bb42ad1e3ac4709d0a745bfdbf491e9bf`
+
+Frozen provenance:
+- Stretch 007B blob `b08c9b44ae062ee259ab6641575e44c4d7d753e6`
+- Stretch 002 helper blob `e7bd6bf4c61b44664c0c8421bf230b938509e4ef`.
+
+Official mlx-lm v0.31.3 KV semantics verified:
+- Qwen3 has no custom `make_cache`;
+- `make_prompt_cache` uses one default `KVCache()` per layer;
+- KVCache step capacity is 256 positions;
+- Qwen3 applies RoPE using `cache.offset` before `update_and_fetch`;
+- official attention mask is built once from cache[0] before the layer loop.
+
+Frozen prompt remains:
+`[[1,42,2048,151935]]`.
+
+Generation policy:
+- deterministic argmax only
+- exactly one generated token
+- then feed that token back through the model using the same persisted cache.
+
+Resident path:
+1. official fully resident model;
+2. official `make_prompt_cache`;
+3. prompt prefill -> cache offsets 4;
+4. select one argmax token;
+5. feed token back through same cache -> offsets 5.
+
+Streamed path:
+- 36 persistent `KVCache()` objects remain resident;
+- raw weights continue phase-streamed: embedding -> each layer -> norm -> LM head;
+- prompt prefill fills layer caches to offset 4;
+- resident-selected token is the common numerical feedback input;
+- same caches reused for feedback and advance to offset 5.
+
+Expected ordinary BF16 KV allocation:
+- ~1,048,576 B per layer due 256-position allocation step
+- ~37,748,736 B total for 36 layers after prompt
+- no additional allocation block expected at offset 5.
+
+Primary gates:
+- cache count/offset/byte gates resident and streamed
+- full prompt-with-cache logit parity
+- identical resident/streamed generated token
+- full post-token logit parity after actual cache reuse
+- existing streamed weight-stage materialization gates
+- same host/runtime guardrails.
 
 Primary PASS:
-`PHASE_STREAMED_FULL_LOGIT_PARITY_PASS`.
+`ONE_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`.
 
-Structural expectation if PASS:
-- resident complete model ~3.34 GiB raw tensor payload simultaneously;
-- largest streamed raw-weight stage ~272.27 MB (embedding or LM head), with transformer stages ~84.43 MB;
-- exact/near-exact full-logit parity.
+Phase-scoped host telemetry is recorded diagnostically where polling catches phases; absence of a phase sample is not a scientific failure.
 
 # Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/stretch_phase_streamed_full_logit_parity_007b.py
-python3 scripts/stretch_phase_streamed_full_logit_parity_007b.py
+python3 -m py_compile scripts/stretch_one_token_kv_autoregressive_parity_008.py
+python3 scripts/stretch_one_token_kv_autoregressive_parity_008.py
 ```
 
 No download is expected.
 
-If 007B passes, the next stage is the first KV/autoregressive experiment: a tiny frozen prompt and exactly one generated token before any longer generation loop.
+If Stretch 008 passes, next extend the same deterministic autoregressive loop to a short multi-token argmax sequence before optimization/prefetch.
 
 # Continuation rule
 
