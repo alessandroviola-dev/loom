@@ -28,7 +28,7 @@
 - [x] Amplifier 001–003 resource boundary characterized
 - [x] Do not claim leak/KV/allocator root cause
 - [x] Amplifier 004 compact-feedback plan/runner frozen
-- [ ] Run Amplifier 004 after current Stretch sequence
+- [ ] Run Amplifier 004 after current Stretch architectural sequence
 
 ## Phase 7 — Stretch / Memory Hierarchy — ACTIVE
 
@@ -58,12 +58,10 @@ Frozen subject: Qwen3-8B 3-bit, 36 layers, vocab 151936, untied embedding/head, 
 
 ### Stretch 006 — COMPLETE PASS
 - [x] `FULL_36_LAYER_STREAMED_BODY_PARITY_PASS`
-- [x] valid run `20260819-164605`
 - [x] resident body delta 3,039,315,964 B
 - [x] max streamed layer 84,427,264 B
 - [x] ratio 35.99922371048291x
 - [x] exact full-body activation parity
-- [x] earlier transform failure classified harness-only
 
 ### Stretch 007A — COMPLETE PASS
 - [x] `SHARED_COMPONENT_ANATOMY_PASS`
@@ -74,67 +72,70 @@ Frozen subject: Qwen3-8B 3-bit, 36 layers, vocab 151936, untied embedding/head, 
 
 ### Stretch 007B — COMPLETE PASS
 - [x] `PHASE_STREAMED_FULL_LOGIT_PARITY_PASS`
-- [x] valid run `20260819-170334`
 - [x] official resident model 3,583,928,320 B
 - [x] max streamed raw-weight stage 272,269,312 B
 - [x] ratio 13.16317396798652x
 - [x] full logits max/mean diff 0.0 / 0.0
-- [x] top-1 equality true
 
 ### Stretch 008 — COMPLETE PASS
-- [x] Scientific runner blob `03e7a04bb42ad1e3ac4709d0a745bfdbf491e9bf`
-- [x] First launch stalled on undrained verbose stdout pipe; harness-only/no scientific result
-- [x] Freeze harness note
-- [x] Harness-only pipefix blob `8b2ce5902d3ed45c9120273fab415fe67a026d4a`
-- [x] Valid run `20260819-173553`
 - [x] `ONE_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`
-- [x] Prompt and post-token logits exact parity
-- [x] Cache offsets 4 -> 5 and total KV 37,748,736 B
-- [x] Resident model 3,583,928,320 B vs max streamed stage 272,269,312 B
-- [x] Establish persistent-KV one-token autoregressive reuse
+- [x] persistent KV reuse offsets 4 -> 5
+- [x] exact resident/streamed prompt and post-token logits
+- [x] first launch stdout-pipe stall recorded as harness-only
 
-### Stretch 009 — Four-token KV autoregressive parity — COMPLETE PASS
-- [x] Valid run `20260819-183143`
+### Stretch 009 — COMPLETE PASS
 - [x] `FOUR_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`
-- [x] Prompt full-logit parity max/mean 0.0 / 0.0
-- [x] Four feedback steps each max/mean 0.0 / 0.0
+- [x] generated sequence `[1,374,264,4647]` identical
+- [x] KV offsets 4 -> 8, allocation stable at 37,748,736 B
+- [x] all four feedback logits exact parity
+- [x] mean 36-layer materialization 0.188658 s/token
+- [x] mean 36-layer forward 0.192317 s/token
+- [x] freeze `research/stretch/four-token-kv-autoregressive-parity-009-result.md`
+
+### Stretch 010 — Sixteen-token autoregressive stability — COMPLETE PASS
+- [x] Valid run `20260819-183844`
+- [x] `SIXTEEN_TOKEN_AUTOREGRESSIVE_STABILITY_PASS`
+- [x] Scientific change 4 -> 16 generated/feedback tokens only
+- [x] Prompt and all 16 feedback logits max/mean diff 0.0 / 0.0
 - [x] Top-1 equality at every step
-- [x] Resident/streamed generated sequence equal: `[1,374,264,4647]`
-- [x] Cache offsets advance 4 -> 5 -> 6 -> 7 -> 8
-- [x] Final resident/streamed KV 37,748,736 / 37,748,736 B
+- [x] Resident/streamed sequence identical: `[1,374,264,4647,1483,304,279,1809,315,5994,320,1654,23740,285,8,311]`
+- [x] Final KV offsets all 20
+- [x] KV allocation remains 37,748,736 B
 - [x] Resident full model 3,583,928,320 B
-- [x] Max streamed raw-weight stage 272,269,312 B
+- [x] Max streamed stage 272,269,312 B
 - [x] Ratio 13.16317396798652x
-- [x] Mean 36-layer materialization 0.188658 s/token
-- [x] Mean 36-layer forward 0.192317 s/token
-- [x] Whole-run min free 21%; streamed-token bucket min free 64%
-- [x] Freeze `research/stretch/four-token-kv-autoregressive-parity-009-result.md`
+- [x] Mean transformer forward 0.192486 s/token remains stable
+- [x] Mean full streamed pass 2.888971 s/token
+- [x] Median full streamed pass 3.350773 s/token
+- [x] Logical streamed throughput 0.346144 token/s
+- [x] Identify materialization regime change: ~0.19 s early -> ~1.4 s late while forward stays ~0.19 s
+- [x] Do not attribute timing transition to SSD/page cache/allocator without direct instrumentation
+- [x] Freeze `research/stretch/sixteen-token-autoregressive-stability-010-result.md`
 
-### Stretch 010 — Sixteen-token autoregressive stability — CURRENT / READY
-- [x] Single scientific change: continuation depth 4 -> 16 tokens
-- [x] Preserve exact Stretch 009 source blob `3e0780850bb65f9dccf07946f89597fa2e4d17e1`
-- [x] Preserve prompt, deterministic argmax, ordinary BF16 KVCache, resident control, streamed weight policy and guardrails
-- [x] Expected final cache offset 20
-- [x] Expected KV allocation remains 37,748,736 B below 256-position boundary
-- [x] Require prompt + 16 feedback full-logit parity and top-1 equality
-- [x] Require identical 16-token sequence
-- [x] Preserve weight-stage gates on all passes
-- [x] Expose existing full streamed pass wall per token
-- [x] Summarize mean/median full-pass latency and logical streamed tok/s
-- [x] Explicitly distinguish logical tok/s from physical SSD throughput
-- [x] Preregister `research/stretch/sixteen-token-autoregressive-stability-010-plan.md`
-- [x] Add frozen-transform runner `scripts/stretch_sixteen_token_autoregressive_stability_010.py`
-- [x] Runner blob `ff3dc83abc6388113fca15594eef6b3ec00ebe50`
-- [ ] Run Stretch 010
-- [ ] Freeze result
+### Stretch 011 — Materialization I/O attribution — CURRENT / READY
+- [x] Keep exact 16-token Stretch 010 scientific workload unchanged
+- [x] No tokenizer/sampling/KV quantization/prefetch/cache purge
+- [x] Use Darwin `proc_pid_rusage(..., RUSAGE_INFO_V2)` instrumentation
+- [x] Capture per-layer build/select and materialization disk-read/page-in deltas
+- [x] Capture shared-stage and full-pass resource deltas
+- [x] Compare tokens 1–4 vs tokens 8–16
+- [x] Report diagnostic materialization-time vs disk-read/page-in correlation
+- [x] Preserve all inherited correctness/cache/weight/resource gates
+- [x] Preregister `research/stretch/materialization-io-attribution-011-plan.md`
+- [x] Add `scripts/stretch_materialization_io_attribution_011.py`
+- [x] Freeze runner blob `16125f7eb0b2fb662591e194de0498513a563a6d`
+- [ ] Run Stretch 011
+- [ ] Freeze attribution result
 
-### Stretch 011+ — usable streamed generation / optimization
-- [ ] After Stretch 010, likely add tokenizer/text integration as one isolated factor
-- [ ] Test 256-position cache-capacity boundary separately
-- [ ] Measure/characterize physical storage I/O separately from page-cache-assisted logical reads
-- [ ] Freeze unoptimized end-to-end logical tok/s baseline before optimization
-- [ ] Test prefetch/double buffering separately
+### Stretch 012+ — conditional
+- [ ] If slow regime has large process disk-read/page-in deltas: characterize storage/page-cache policy before optimization
+- [ ] If slow regime has flat disk/page-in counters: profile MLX allocation/materialization lifecycle
+- [ ] If slowdown does not reproduce: mark timing transition host/cache-state dependent and decide whether replication is needed
+- [ ] Tokenizer/text integration after this performance boundary is characterized
+- [ ] Freeze unoptimized runtime baseline before prefetch/double buffering
+- [ ] Test prefetch/double buffering as a separate factor
 - [ ] Test KV quantization separately
+- [ ] Test 256-position cache-capacity boundary separately
 - [ ] Only later study layer skipping/early exit or MoE routing
 
 ## Phase 8 — Synthesis
