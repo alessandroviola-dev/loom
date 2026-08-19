@@ -110,7 +110,7 @@ Principle:
 - layer skipping / early exit = separate later research problem, not assumed safe for standard dense checkpoints.
 
 ### Stretch 001 — Dense Layer Streaming Feasibility — CURRENT
-- [x] Select already cached `mlx-community/Qwen3-8B-3bit` as preferred subject
+- [x] Select verified `mlx-community/Qwen3-8B-3bit` as preferred subject
 - [x] No new download authorized
 - [x] Preregister `research/stretch/layer-streaming-feasibility-001-plan.md`
 - [x] Add standard-library runner `scripts/stretch_layer_streaming_feasibility_001.py`
@@ -122,7 +122,12 @@ Principle:
 - [x] Stage B bounded 4 MiB I/O chunks + SHA-256 fingerprint
 - [x] Record wall time / MiB/s / free memory / swap / disk
 - [x] No model launch, no MLX model construction, no cache mutation
-- [ ] Run Stretch 001
+- [x] First launch `20260819-153944` returns `MODEL_NOT_FOUND` before inspecting weights
+- [x] Classify first launch as locator mismatch / no scientific Stretch result
+- [x] Recover verified Direct MLX artifact path: `results-local/mlx/models/Qwen3-8B-3bit`
+- [x] Freeze locator note `research/stretch/layer-streaming-feasibility-001-locator-note.md`
+- [x] Do not modify runner; use existing `--model-dir` override
+- [ ] Rerun same frozen Stretch 001 with explicit verified model path
 - [ ] Freeze exact layer layout and selective-I/O result
 
 ### Stretch 002 — Single-layer MLX materialization + eviction — CONDITIONAL
