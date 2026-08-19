@@ -3,7 +3,7 @@
 Last updated: 2026-08-19
 Status: ACTIVE — Apple M1 / 8 GB reference system; tracks **Amplify** and **Stretch**.
 
-Current checkpoint: `STRETCH_009_FOUR_TOKEN_READY`
+Current checkpoint: `STRETCH_010_SIXTEEN_TOKEN_AUTOREGRESSIVE_STABILITY_READY`
 
 ## Mission
 
@@ -28,8 +28,9 @@ Local path: `<repository-root>`
 - No new large-model acquisition while existing artifacts suffice.
 - Do not attribute whole-run host telemetry to a sub-phase without phase-scoped evidence.
 - Long child runs must not use undrained verbose stdout/stderr pipes; prefer file-backed state/final payloads.
+- Do not equate logical/repeated safetensors materialization time with physical SSD throughput; macOS page cache may satisfy reads.
 
-Verified GGUF and Direct MLX 3-bit/4-bit artifacts remain retained. Current Stretch disk is ~36.29 GiB free; no download is planned.
+Verified GGUF and Direct MLX 3-bit/4-bit artifacts remain retained. Current Stretch disk is ~36.28 GiB free; no download is planned.
 
 ## Frozen capability references
 
@@ -140,93 +141,130 @@ Harness pipefix/blob:
 
 First launch stalled after `stream_token_layer_17_complete` because verbose child-state JSON filled an undrained captured stdout pipe. It is recorded as harness I/O stall / no scientific result.
 
-Valid run `20260819-173553`:
-`ONE_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`.
-
-Frozen prompt:
-`[[1,42,2048,151935]]`.
-
-Results:
+Valid run `20260819-173553`, `ONE_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`:
 - prompt logits max/mean diff 0.0 / 0.0
 - generated token equality true; token `[[1]]`
-- resident/streamed KV after prompt: 37,748,736 B, all offsets 4
+- resident/streamed KV after prompt: 37,748,736 B, offsets 4
 - same token fed back through persisted caches
-- resident/streamed KV after feedback: 37,748,736 B, all offsets 5
+- resident/streamed KV after feedback: 37,748,736 B, offsets 5
 - post-token logits max/mean diff 0.0 / 0.0
-- post-token top-1 equality true
 - resident full model 3,583,928,320 B
 - max streamed raw-weight stage 272,269,312 B
-- ratio 13.16317396798652x
-- whole-run min free 26%, peak swap 1583.75 MB, peak child RSS 878.5 MB
-- disk 36.294 -> 36.290 GiB.
-
-Diagnostic streamed buckets:
-- prompt min free 64%, peak swap 1479.75 MB, peak RSS 347.578 MB
-- token min free 69%, peak swap 1471.75 MB, peak RSS 166.531 MB.
+- ratio 13.16317396798652x.
 
 Canonical result:
 `research/stretch/one-token-kv-autoregressive-parity-008-result.md`.
 
-Canonical interpretation:
-> LOOM has demonstrated actual one-token autoregressive cache reuse with persistent per-layer KV state while raw Qwen3-8B weights remain phase-streamed, with exact resident parity.
-
-Boundary: one deterministic token only; not yet tokenizer/text integration, sampling, long-run stability, cache-capacity boundary, physical SSD bytes/token or optimized tok/s.
-
-## Stretch 009 — Four-Token KV Autoregressive Parity — READY
+### 009 — COMPLETE PASS
 
 Plan:
 `research/stretch/four-token-kv-autoregressive-parity-009-plan.md`
 
+Runner/blob:
+- `scripts/stretch_four_token_kv_autoregressive_parity_009.py`
+- `3e0780850bb65f9dccf07946f89597fa2e4d17e1`.
+
+Valid run `20260819-183143`:
+`FOUR_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`.
+
+Frozen prompt:
+`[[1,42,2048,151935]]`.
+
+Parity/generation:
+- prompt max/mean logit diff **0.0 / 0.0**
+- all four feedback steps max/mean diff **0.0 / 0.0**
+- top-1 equality true at every step
+- resident generated sequence **`[1,374,264,4647]`**
+- streamed generated sequence **`[1,374,264,4647]`**
+- sequence equality true.
+
+KV:
+- offsets advance `4 -> 5 -> 6 -> 7 -> 8`
+- final resident offsets all 8
+- final streamed offsets all 8
+- final resident/streamed KV **37,748,736 / 37,748,736 B**
+- no new capacity block below position 256.
+
+Weight residency:
+- resident full model **3,583,928,320 B**
+- max streamed raw-weight stage **272,269,312 B**
+- ratio **13.16317396798652x**.
+
+Transformer-only per-feedback-token timing:
+- layer materialization walls `[0.188703, 0.188927, 0.188051, 0.188951]` s; mean **0.188658 s/token**
+- layer forward walls `[0.188268, 0.194739, 0.193971, 0.19229]` s; mean **0.192317 s/token**
+- combined mean transformer-only materialization+forward **0.380975 s/token**.
+
+Do not convert the transformer-only timing directly to end-to-end tok/s or physical SSD throughput. It excludes other stages/overhead and repeated reads may be page-cache served.
+
+Host/resource:
+- launch 67/67/68% free, swap 595.62 MB
+- whole-run min free **21%**, peak swap **1401.94 MB**, peak child RSS **641.656 MB**
+- resident bucket min free 21%
+- stream prompt bucket min free **64%**
+- stream tokens bucket min free **64%**, peak RSS **251.5 MB**
+- disk **36.281 -> 36.281 GiB**.
+
+Canonical result:
+`research/stretch/four-token-kv-autoregressive-parity-009-result.md`.
+
+Canonical interpretation:
+> The phase-streamed Qwen3-8B path sustains a short four-token deterministic autoregressive sequence with persistent KV state and exact official-resident parity at every step while raw-weight stage residency remains bounded at ~272.27 MB.
+
+Boundary: still no tokenizer/text integration, sampling, long-run stability, 256-position boundary, physical storage bytes/token or optimization.
+
+## Stretch 010 — Sixteen-Token Autoregressive Stability — READY
+
+Plan:
+`research/stretch/sixteen-token-autoregressive-stability-010-plan.md`
+
 Runner:
-`scripts/stretch_four_token_kv_autoregressive_parity_009.py`
+`scripts/stretch_sixteen_token_autoregressive_stability_010.py`
 
 Runner blob:
-`3e0780850bb65f9dccf07946f89597fa2e4d17e1`.
+`ff3dc83abc6388113fca15594eef6b3ec00ebe50`.
 
-Single scientific change vs valid Stretch 008:
-- autoregressive continuation depth **1 -> 4 generated/feedback tokens**.
+Frozen source:
+- exact Stretch 009 blob `3e0780850bb65f9dccf07946f89597fa2e4d17e1`.
+
+Single scientific change:
+- deterministic generated/feedback continuation depth **4 -> 16 tokens**.
 
 Preserved:
-- same Qwen3-8B 3-bit artifact/environment
 - same prompt `[[1,42,2048,151935]]`
-- same ordinary BF16 `KVCache`
-- same deterministic argmax policy
+- same Qwen3-8B 3-bit artifact/environment
 - same official resident control
+- same ordinary BF16 36-layer KVCache policy
+- same deterministic argmax
 - same phase-streamed embedding/layers/norm/head
-- same weight-stage gates and host guardrails
-- no tokenizer, sampling, KV quantization, prefetch or optimization.
+- same materialization/parity/cache gates
+- same file-backed child transport
+- same host/runtime guardrails
+- no tokenizer/sampling/KV quantization/prefetch/download.
 
-Expected cache offsets:
-- after prompt: 4
-- after feedback tokens: 5, 6, 7, 8.
+KV expectations:
+- prompt offset 4
+- 16 feedback passes advance final offset to **20**
+- expected total allocation remains **37,748,736 B**, because offset 20 remains below the 256-position capacity boundary.
 
-Expected KV allocation remains ~37,748,736 B because offset 8 is below the first 256-position capacity boundary.
+Instrumentation-only addition:
+- expose `total_pass_wall_seconds` for each streamed token pass
+- mean/median full-pass seconds/token
+- logical streamed tok/s = `1 / mean_full_pass_seconds`.
 
-Primary gates:
-- full prompt parity + first token equality
-- four feedback full-logit parity gates
-- top-1 equality at every feedback step
-- identical four-token generated sequence
-- cache count/offset/byte gates after every step
-- raw-weight stage gates on every pass
-- per-token layer materialization/forward timing.
-
-Harness architecture:
-- progress -> `child-state.json`
-- final scientific payload -> `child-final.json`
-- stdout/stderr -> file-backed handles
-- no undrained verbose captured pipe.
+Interpretation boundary:
+logical tok/s is measured runtime wall under current host/cache state, not physical SSD throughput or a claim about bytes read from disk.
 
 Primary PASS:
-`FOUR_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`.
+`SIXTEEN_TOKEN_AUTOREGRESSIVE_STABILITY_PASS`.
 
 # Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/stretch_four_token_kv_autoregressive_parity_009.py
-python3 scripts/stretch_four_token_kv_autoregressive_parity_009.py
+python3 -m py_compile scripts/stretch_sixteen_token_autoregressive_stability_010.py
+python3 scripts/stretch_sixteen_token_autoregressive_stability_010.py
 ```
 
 No download is expected.
