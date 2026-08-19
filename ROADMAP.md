@@ -50,28 +50,35 @@ Primary subject: `qwen3.5:4b-mlx` via Ollama.
 - [x] Adopt Amplify / Stretch research pivot
 - [x] Select canonical Ollama/MLX 4B as primary Amplify subject
 - [x] Keep faster llama.cpp 4B as later secondary control
-- [x] Preregister `research/amplify/capability-amplifier-001-plan.md`
-- [x] Add `scripts/capability_amplifier_001.py`
-- [x] Freeze Amplify 001 mechanism: exact baseline initial call + deterministic validation + max one repair
+- [x] Preregister Capability Amplifier 001
+- [x] Freeze mechanism: exact baseline initial call + deterministic validation + max one repair
 - [x] Freeze deterministic candidate selection by frozen test pass count
-- [x] Freeze host gate: 3 consecutive samples >=70% free
+- [x] Freeze initial host gate: 3 consecutive samples >=70% free
 - [x] Freeze runtime guardrails: free<5% / swap>5600 MB
 - [x] Freeze quality gates before result
-- [x] Run Capability Amplifier 001 (`20260819-142640`)
-- [x] Host-state gate PASS at 74%, 74%, 74% free; swap 1206.12 MB
-- [x] T01 solved on initial call with no repair
-- [x] T02 initial call completes and triggers one repair from frozen-test failure
-- [x] Frozen run aborts during T02 repair path as `PARTIAL_RESOURCE_FAIL`
-- [x] Do not assign aggregate quality score to partial run
-- [x] Freeze partial result record `research/amplify/capability-amplifier-001-partial-20260819-142640.md`
-- [x] Add read-only inspector `scripts/inspect_capability_amplifier_001.py`
-- [ ] Inspect exact failure reason and telemetry for run `20260819-142640`
-- [ ] Determine whether pressure reflects warm-state accumulation, repair-specific prompt load, or another demonstrated factor
-- [ ] Do not rerun unchanged Amplify 001 before diagnostic
-- [ ] If evidence supports warm-state accumulation, preregister a call-isolated amplification profile rather than changing the model
-- [ ] Preserve quality mechanism: validator + max one repair remains the scientific capability factor unless evidence requires otherwise
-- [ ] If a future Amplify run reaches COMPLETE, compare against single-shot 30.00/3-of-6 and Pi reference 77.15/6-of-6
-- [ ] After mechanism is established, port same amplification logic to llama.cpp 4B for capability/efficiency comparison
+- [x] Run Amplifier 001 (`20260819-142640`)
+- [x] Host gate PASS at 74%, 74%, 74%; swap 1206.12 MB
+- [x] T01 initial solves 6/6, 15/15, no repair
+- [x] T02 initial completes 3/7 and correctly triggers repair
+- [x] Amplifier 001 aborts during T02 repair as `PARTIAL_RESOURCE_FAIL`
+- [x] Run read-only resource diagnostic
+- [x] Recover exact failure: free memory 4% <5%; peak swap 2500.88 MB
+- [x] Recover T01 min free 5%, T02 initial min free 6%, T02 repair 7% -> 5% -> 5% -> 4%
+- [x] Confirm first call cold load ~3.668 s vs second warm load ~0.045 s
+- [x] Freeze `research/amplify/capability-amplifier-001-resource-diagnostic.md`
+- [x] Conclude warm-resident Amplifier 001 lacks sufficient headroom; do not claim memory leak
+- [x] Preregister one-factor Capability Amplifier 002 — Call-Isolated
+- [x] Preserve all quality logic/prompts/benchmark/scorer from Amplifier 001
+- [x] Change only residency: unload and confirm model absent between every model call
+- [x] Do not add an inter-call >=70% recovery threshold; keep single-factor design
+- [x] Add `scripts/capability_amplifier_002_call_isolated.py`
+- [x] Freeze base runner blob `9f472c60b523762276291232f6e8c6ffc1c5fcae`
+- [x] Freeze Amplifier 002 wrapper blob `df332568820e28c90baa5247df27e92cba43c0d6`
+- [ ] Run Capability Amplifier 002 — Call-Isolated
+- [ ] If COMPLETE, freeze quality/resource/efficiency and compare with single-shot + Amplifier 001
+- [ ] If PARTIAL_RESOURCE_FAIL despite isolation, do not rerun unchanged or weaken guardrail
+- [ ] If ISOLATION_FAIL, fix only demonstrated isolation-harness defect
+- [ ] After amplification mechanism is established, port same logic to llama.cpp 4B for capability/efficiency comparison
 - [ ] Later candidate capability factors: planner/verifier, tool loop, retrieval
 - [ ] Only later consider specialization / LoRA / SFT / distillation
 
