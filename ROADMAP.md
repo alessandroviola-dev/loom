@@ -42,13 +42,13 @@
 Research question:
 **Can LOOM use SSD + RAM as an explicit model-memory hierarchy rather than requiring full weight residency?**
 
-Frozen subject: Qwen3-8B 3-bit, 36 transformer layers, 151936 vocab, `tie_word_embeddings=false`, 3-bit/group64.
+Frozen subject: Qwen3-8B 3-bit, 36 transformer layers, vocab 151936, `tie_word_embeddings=false`, 3-bit/group64.
 
 ### Stretch 001 — Layer addressability — COMPLETE PASS
 - [x] `LAYER_ADDRESSABLE_IO_PASS`
 - [x] 36/36 layers exact
-- [x] Shared/non-layer payload 544,546,816 B
-- [x] One layer exact selective read
+- [x] Each transformer layer 84,427,264 B
+- [x] Exact selective one-layer I/O
 
 ### Stretch 002 — Single-layer MLX materialization/eviction — COMPLETE PASS
 - [x] `SINGLE_LAYER_MLX_EVICTION_PASS`
@@ -58,7 +58,7 @@ Frozen subject: Qwen3-8B 3-bit, 36 transformer layers, 151936 vocab, `tie_word_e
 ### Stretch 003 — Repeated bounded residency — COMPLETE PASS
 - [x] `TWO_LAYER_BOUNDED_RESIDENCY_PASS`
 - [x] layers 18 and 19 independently 0 -> 84,427,264 -> 0 B
-- [x] no cumulative cache/active growth
+- [x] no cumulative active/cache growth
 
 ### Stretch 004 — Two-layer streamed real forward — COMPLETE PASS
 - [x] `TWO_LAYER_STREAMED_FORWARD_PARITY_PASS`
@@ -72,7 +72,7 @@ Frozen subject: Qwen3-8B 3-bit, 36 transformer layers, 151936 vocab, `tie_word_e
 - [x] Resident materialized delta 675,352,572 B
 - [x] Max streamed one-layer delta 84,427,264 B
 - [x] Resident/streamed ratio 7.999223710482908x
-- [x] Numerical parity max/mean diff 0.0 / 0.0
+- [x] Numerical parity 0.0 / 0.0
 - [x] No cumulative active/cache growth
 
 ### Stretch 006 — Full 36-layer transformer-body parity — COMPLETE PASS
@@ -81,59 +81,68 @@ Frozen subject: Qwen3-8B 3-bit, 36 transformer layers, 151936 vocab, `tie_word_e
 - [x] Resident materialized delta 3,039,315,964 B
 - [x] Max streamed one-layer delta 84,427,264 B
 - [x] Resident/streamed ratio 35.99922371048291x
-- [x] Every streamed layer: pre 0 / materialized 84,427,264 / post-clear 0 / cache 0
-- [x] Numerical parity max/mean diff 0.0 / 0.0
-- [x] Stream parameter materialization wall 1.207812 s
-- [x] Stream transformer forward wall 0.440137 s
-- [x] Whole-run min free 22%; peak swap 1325.69 MB; do not attribute specifically to streamed phase
+- [x] Every streamed layer materializes exactly one payload and returns layer-weight active/cache to baseline
+- [x] Numerical parity 0.0 / 0.0
 - [x] Freeze result record
 
 ### Stretch 007A — Shared component anatomy — COMPLETE PASS
-- [x] Run `20260819-165247`
 - [x] `SHARED_COMPONENT_ANATOMY_PASS`
-- [x] Read-only; no MLX/model launch/tensor materialization/network
-- [x] Config: vocab 151936, `tie_word_embeddings=false`, RMSNorm eps 1e-6, 3-bit/group64
-- [x] Total tensor bytes 3,583,928,320 B
-- [x] Transformer-layer bytes 3,039,381,504 B
-- [x] Non-layer bytes 544,546,816 B exact
-- [x] Embedding: 3 tensors / 272,269,312 B
-- [x] Final RMSNorm: 1 tensor / 8,192 B
-- [x] LM head: 3 tensors / 272,269,312 B
-- [x] Other: 0
-- [x] Freeze `research/stretch/shared-component-anatomy-007a-result.md`
-- [x] Establish phase-streamable shared layout: embedding and LM head are separate and used at opposite ends
+- [x] Embedding: 272,269,312 B
+- [x] Final RMSNorm: 8,192 B
+- [x] LM head: 272,269,312 B
+- [x] `tie_word_embeddings=false`
+- [x] Other non-layer tensors: 0
+- [x] Freeze result record
 
-### Stretch 007B — Phase-streamed full-logit parity — CURRENT / READY
-- [x] Verify official mlx-lm v0.31.3 Qwen3 flow: embedding -> 36 blocks -> final RMSNorm -> lm_head when untied
-- [x] Verify official loader quantization predicate based on matching `.scales` tensors
-- [x] Preregister `research/stretch/phase-streamed-full-logit-parity-007b-plan.md`
-- [x] Add `scripts/stretch_phase_streamed_full_logit_parity_007b.py`
-- [x] Freeze runner blob `b08c9b44ae062ee259ab6641575e44c4d7d753e6`
-- [x] Resident control uses official `mlx_lm.utils.load_model(..., lazy=False, strict=True)`
-- [x] Frozen token IDs `[[1,42,2048,151935]]`
+### Stretch 007B — Phase-streamed full-logit parity — COMPLETE PASS
+- [x] Run `20260819-170334`
+- [x] `PHASE_STREAMED_FULL_LOGIT_PARITY_PASS`
+- [x] Resident official full-model materialized delta 3,583,928,320 B exact
 - [x] Stream embedding 272,269,312 B -> evict
-- [x] Stream all 36 transformer layers with existing per-layer gates
-- [x] Load final RMSNorm 8,192 B
-- [x] Stream separate LM head 272,269,312 B -> logits -> evict
-- [x] Compare full logits `[1,4,151936]` in float32 against official resident control
-- [x] Record top-1 token IDs as diagnostic
-- [x] Keep tokenizer/KV/autoregressive generation excluded
-- [ ] Run Stretch 007B
-- [ ] Freeze full-logit parity/residency result
+- [x] Stream all 36 transformer layers; max 84,427,264 B
+- [x] Final RMSNorm 8,192 B
+- [x] Stream LM head 272,269,312 B -> evict
+- [x] Max streamed weight-stage delta 272,269,312 B
+- [x] Resident/max-streamed-stage ratio 13.16317396798652x
+- [x] Full logits `[1,4,151936]` max/mean diff 0.0 / 0.0
+- [x] Top-1 equality true: `[[921,78,84,1]]`
+- [x] Whole-run min free 25%; peak swap 1586.0 MB; includes resident control
+- [x] Freeze `research/stretch/phase-streamed-full-logit-parity-007b-result.md`
+- [x] Establish complete token-ID-to-logit phase-streamed parity against official resident model
 
-### Stretch 008 — First KV/autoregressive token — CONDITIONAL
-- [ ] Only after 007B PASS
-- [ ] Add a tiny frozen prompt with explicit KV-cache policy
-- [ ] Compare resident vs streamed one-step next-token logits/token
-- [ ] Generate exactly one new token first
-- [ ] Preserve guardrails and explicit phase memory accounting
+### Stretch 008 — One-token KV autoregressive parity — CURRENT / READY
+- [x] Verify mlx-lm v0.31.3 default Qwen3 cache semantics
+- [x] Qwen3 has no custom cache; default is 36 ordinary `KVCache()` instances
+- [x] Freeze prompt `[[1,42,2048,151935]]`
+- [x] Deterministic next token via argmax only
+- [x] Prefill prompt with real KV cache
+- [x] Require resident and streamed cache offsets 4 after prefill
+- [x] Require identical generated token
+- [x] Feed exactly that token back through persisted cache
+- [x] Require offsets 5 after feedback
+- [x] Compare full prompt logits with cache
+- [x] Compare full post-token logits after actual cache reuse
+- [x] Expected default BF16 KV allocation ~37,748,736 B total across 36 layers
+- [x] Preserve phase-streamed raw-weight gates with cache memory accounted separately
+- [x] Preregister `research/stretch/one-token-kv-autoregressive-parity-008-plan.md`
+- [x] Add `scripts/stretch_one_token_kv_autoregressive_parity_008.py`
+- [x] Freeze runner blob `03e7a04bb42ad1e3ac4709d0a745bfdbf491e9bf`
+- [x] Add diagnostic phase-scoped host telemetry buckets
+- [ ] Run Stretch 008
+- [ ] Freeze one-token KV/autoregressive parity result
 
-### Stretch 009+ — usable streamed generation
-- [ ] Extend autoregressive generation loop
+### Stretch 009 — Short deterministic multi-token loop — CONDITIONAL
+- [ ] Only after Stretch 008 PASS
+- [ ] Extend same resident-vs-streamed cache loop to a short fixed argmax sequence
+- [ ] Keep tokenizer/text and sampling excluded initially
+- [ ] Measure per-token materialization, forward wall, cache growth, system memory and swap
+
+### Stretch 010+ — usable streamed generation / optimization
 - [ ] Add tokenizer/text prompt parity
+- [ ] Add longer generation
 - [ ] Add prefetch/double buffering
 - [ ] Measure SSD bytes/token, RAM, swap, wall time and tok/s
-- [ ] Explore residency/cache policies
+- [ ] Explore cache quantization/residency policies
 - [ ] Only later study layer skipping/early exit or MoE routing
 
 ## Phase 8 — Synthesis
