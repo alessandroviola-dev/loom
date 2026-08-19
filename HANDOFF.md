@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — llama.cpp/Metal phase has characterized the current 8B frontier at context 4096. Qwen3 8B Q2 is technically runnable but inferior on the frozen structured coding workload; Qwen3 8B Q3_K_M is API-smoke viable with NP1 + Q8_0 KV but fails the frozen 5% free-memory guardrail during the first real coding task. The main branch now moves to Phase 5 Direct MLX.
-Checkpoint: `DIRECT_MLX_SETUP_PROBE_001_READY`
+Status: ACTIVE — Phase 4 llama.cpp main branch characterized. Qwen3 8B Q2 is runnable but inferior on the frozen structured workload; Qwen3 8B Q3_K_M is API-smoke viable with NP1 + Q8_0 KV but fails the frozen 5% free-memory guardrail during the first real coding task. Phase 5 Direct MLX setup has now passed and the first 8B/3-bit native-MLX model smoke is preregistered.
+Checkpoint: `DIRECT_MLX_8B_3BIT_SMOKE_001_READY`
 
 ## Mission
 
@@ -17,18 +17,21 @@ Reference stack:
 - Pi 0.84.2
 - Qwen Code 0.21.13
 - canonical Ollama model `qwen3.5:4b-mlx`
-- canonical experimental context 4096 unless separately preregistered
+- canonical experimental context/KV cap 4096 unless separately preregistered
 
 ## Production Pi constraint
 
-Production Pi contains real auth, sessions and customizations. LOOM must never reset/replace production Pi configuration. Controlled experiments use isolated/run-local configuration. No new runtime/model profile is exposed to Pi until technical, workload-safety and quality gates are passed.
+Production Pi contains real auth, sessions and customizations. LOOM must never reset/replace production Pi configuration. Controlled experiments use isolated/run-local configuration. No new runtime/model profile is exposed to Pi until technical, workload-safety and quality gates pass.
 
 ## Storage hygiene
 
 Reuse verified artifacts and never silently delete models or canonical results. Free disk is a standard metric.
-Latest confirmed after Coding Quality Compare 002: **43.643 GiB free**. Verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 GGUF artifacts are retained.
 
-# Frozen baseline / prior results
+Latest confirmed after Direct MLX Setup Probe 001: **43.138 GiB free**.
+Verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 GGUF artifacts are retained.
+The validated MLX venv is also retained.
+
+# Frozen baseline / prior agent results
 
 ## Coding Baseline 001 — Ollama/MLX qwen3.5:4b-mlx
 Run `20260818-203156`, context 4096:
@@ -74,7 +77,7 @@ Qwen3-8B Q2_K:
 Boundary:
 > Q2 is technically runnable/API-servable but is not a practical upgrade for the frozen structured coding workload.
 
-## 8B Q3 rescue sequence
+## 8B Q3
 
 Q3 forced `-ngl -1` Capability 001:
 - minimum free memory 1%
@@ -91,110 +94,111 @@ Auto-Fit NP1 Server Smoke 001:
 - VALID FAIL
 
 Auto-Fit NP1 Q8 KV Server Smoke 001 — run `20260819-113658`:
-- Qwen3-8B Q3_K_M
 - context 4096
 - `-np 1`
-- FA auto
-- `--fit on --fit-target 1024 --fit-ctx 4096`
 - `-ctk q8_0 -ctv q8_0`
-- no forced `-ngl -1`
-- readiness 8.756 s
+- auto-fit target 1024
 - API `OK`
 - minimum free memory 6%
-- FULL_PASS
+- FULL_PASS smoke only
 
-This established API-smoke viability only.
-
-## Coding Quality Compare 002 — PARTIAL / RESOURCE FAIL
-
-Run `20260819-114848`.
-Common Q3/4B runtime:
-```text
--c 4096
--np 1
--fa auto
---fit on
---fit-target 1024
---fit-ctx 4096
--ctk q8_0
--ctv q8_0
-no forced -ngl -1
-```
-
-Q3:
-- server ready 7.360 s
+Coding Quality Compare 002 — run `20260819-114848`:
+- Q3 server ready 7.360 s
 - T01 entered real request processing
-- exact abort: `memory free 4% < 5%`
-- peak observed swap 2290.88 MB
-- minimum free memory 4%
-- no HTTP response captured because the runner terminated the server at the safety threshold
-- profile `PARTIAL_OR_RESOURCE_FAIL`
+- free memory spent substantial time at 5%, then fell to 4% at ~20.3 s
+- exact abort `memory free 4% < 5%`
+- no HTTP response because safety shutdown terminated the server
+- Q3 `PARTIAL_OR_RESOURCE_FAIL`
+- 4B under common runtime COMPLETE, minimum free 15%
+- printed `4B_HIGHER` is not a valid intrinsic quality ordering because Q3 did not complete
 
-Persisted memory timeline around T01:
-```text
-7.3 s   free 6%
-8.4 s   free 5%
-9.7 s   free 5%
-11.9 s  free 5%
-13.1 s  free 5%
-14.3 s  free 5%
-15.4 s  free 5%
-16.7 s  free 7%
-18.3 s  free 5%
-20.3 s  free 4% -> guardrail
-```
-
-4B under the same runtime:
-- COMPLETE
-- minimum free memory 15%
-- delivery-adjusted 25.72/100
-
-Canonical conclusion:
-> The exact Qwen3-8B Q3_K_M + llama.cpp + NP1 + Q8_0-KV profile is **API-smoke PASS / real-workload RESOURCE FAIL** at context 4096 under the frozen 5% free-memory boundary. Compare 002 does not establish intrinsic Q3-vs-4B quality because Q3 did not complete.
+Canonical Phase-4 boundary:
+> The exact Qwen3-8B Q3_K_M + llama.cpp + NP1 + Q8_0-KV profile is **API-smoke PASS / real-workload RESOURCE FAIL** at context 4096 under the frozen 5% free-memory boundary.
 
 Records:
 - `research/runtime/llama-cpp-coding-quality-compare-002.md`
 - `research/runtime/llama-cpp-coding-quality-compare-002-diagnostic.md`
 
-Do not expose this Q3 llama.cpp profile to Pi. Do not lower the guardrail or reinterpret printed `4B_HIGHER` as a valid quality ordering.
+Do not expose the Q3 llama.cpp profile to Pi. Do not lower the guardrail or automatically stack another llama.cpp KV rescue.
 
 # Phase 5 — Direct MLX — ACTIVE
 
-## Current checkpoint — Setup Probe 001
+## Setup Probe 001 — PASS
 
-Checkpoint: `DIRECT_MLX_SETUP_PROBE_001_READY`
+Run `20260819-120748`.
 Plan: `research/runtime/direct-mlx-setup-probe-001-plan.md`
+Result: `research/runtime/direct-mlx-setup-probe-001.md`
 Runner: `scripts/direct_mlx_setup_probe.py`
 
-Goal:
-> Establish a reproducible isolated direct-MLX environment before any new model download.
-
-Frozen environment:
-- venv: `results-local/mlx/venv-mlx-lm-0.31.3`
+Validated isolated environment:
+- venv `results-local/mlx/venv-mlx-lm-0.31.3`
+- Darwin arm64: PASS
 - `mlx-lm==0.31.3`
 - `mlx==0.31.2`
 - `transformers==5.12.1`
-- macOS arm64 required
-- complete `pip freeze` captured
-- tiny local MLX array computation required
-- **no LLM model weights downloaded by this probe**
+- tiny MLX local computation: PASS
+- disk before 43.606 GiB
+- disk after 43.138 GiB
+- environment cost approximately 0.468 GiB
+- classification PASS
 
-Candidate after setup PASS:
-- `mlx-community/Qwen3-8B-3bit`
-- practical Qwen3 8B / 3-bit direct-MLX profile
-- not bit-identical or causally equivalent to GGUF `Q3_K_M`
-- model acquisition and runtime smoke require a separate preregistration with disk accounting and the same memory safety boundary
+No LLM weights were downloaded by Setup Probe 001.
+
+## Current checkpoint — Direct MLX 8B 3-bit Smoke 001
+
+Checkpoint: `DIRECT_MLX_8B_3BIT_SMOKE_001_READY`
+Plan: `research/runtime/direct-mlx-8b-3bit-smoke-001-plan.md`
+Runner: `scripts/direct_mlx_8b_3bit_smoke.py`
+
+Candidate:
+- repo `mlx-community/Qwen3-8B-3bit`
+- pinned visible revision `619ded3`
+- native MLX 3-bit, group size 64
+- main weight `model.safetensors`
+- published main-weight size ~3.58 GB
+- required SHA256 `b9694bdb1f737223836235c0427b424ace11d566eeab0ac91ff8050143bd20a1`
+- local destination `results-local/mlx/models/Qwen3-8B-3bit`
+
+Frozen Direct MLX smoke:
+- acquisition/reuse via isolated venv
+- runtime uses local model with HF/Transformers offline mode
+- `Reply only with OK.` through Qwen3 chat template
+- `enable_thinking=False`
+- max generation 16 tokens
+- direct `stream_generate`
+- `max_kv_size=4096`
+- no KV quantization in this first Direct MLX condition
+- one attempt / no same-run rescue
+- system free memory <5% abort
+- swap >5600 MB abort
+- capture disk, model hash/size, process RSS, system memory/swap and MLX prompt/generation/peak-memory stats
+
+Important runtime distinction:
+> Direct MLX uses a rotating KV cap of 4096; this is an operational context/KV limit and is not assumed to allocate memory identically to llama.cpp server `-c 4096`.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/direct_mlx_setup_probe.py
-python3 scripts/direct_mlx_setup_probe.py
+python3 -m py_compile scripts/direct_mlx_8b_3bit_smoke.py
+python3 scripts/direct_mlx_8b_3bit_smoke.py
 ```
 
+The first run is expected to download the MLX model snapshot. No existing model is deleted or replaced.
+
 Preserve output through `Summary:`.
+
+## Decision after smoke
+
+If `FULL_PASS`:
+1. freeze acquisition/runtime telemetry;
+2. preregister a real-workload T01 safety probe under the same Direct MLX policy;
+3. only after workload-safety PASS proceed to full Coding Benchmark quality comparison and possible Pi integration.
+
+If `RESOURCE_FAIL`:
+- do not lower the 5% guardrail or change context inside the failed condition;
+- consider KV quantization (`kv_bits=8`) only as a separately preregistered rescue.
 
 ## Continuation rule
 
