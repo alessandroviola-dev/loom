@@ -42,7 +42,8 @@
 Research question:
 **Can LOOM use SSD + RAM as an explicit model-memory hierarchy rather than requiring full weight residency?**
 
-Frozen subject: Qwen3-8B 3-bit, 36 layers, each 84,427,264 B / 25 tensors.
+Frozen subject: Qwen3-8B 3-bit, 36 transformer layers, each 84,427,264 B / 25 tensors.
+Known non-layer payload: 544,546,816 B, exact composition pending Stretch 007A.
 
 ### Stretch 001 — Layer addressability — COMPLETE PASS
 - [x] `LAYER_ADDRESSABLE_IO_PASS`
@@ -66,50 +67,58 @@ Frozen subject: Qwen3-8B 3-bit, 36 layers, each 84,427,264 B / 25 tensors.
 - [x] Resident raw weights 168,854,528 B
 - [x] Streamed near one 84.4 MB layer at a time
 - [x] max/mean parity difference 0.0 / 0.0
-- [x] min free 63%; peak swap 826.5 MB
 
 ### Stretch 005 — Eight-layer streamed scaling — COMPLETE PASS
-- [x] Change depth only: 2 -> 8 layers `[14..21]`
-- [x] Run `20260819-163413`
 - [x] `EIGHT_LAYER_STREAMED_FORWARD_SCALING_PASS`
 - [x] Resident materialized delta 675,352,572 B
 - [x] Max streamed one-layer delta 84,427,264 B
 - [x] Resident/streamed ratio 7.999223710482908x
-- [x] Layers 15–21 clear exactly to 0 active/cache; layer 14 small -65,540 B bookkeeping delta within gate
 - [x] Numerical parity max/mean diff 0.0 / 0.0
-- [x] Stream materialization wall 0.042391 s
-- [x] Stream forward wall 0.067679 s
-- [x] Min free 63%; peak swap 810.5 MB; disk unchanged
-- [x] Freeze `research/stretch/eight-layer-streamed-forward-scaling-005-result.md`
+- [x] No cumulative active/cache growth
+- [x] Freeze result record
 
-### Stretch 006 — Full 36-layer transformer-body parity — CURRENT / HARNESS FIX READY
-- [x] Single changed scientific factor: depth 8 -> 36 layers `0..35`
-- [x] Preserve same tiny activation / official block / quantization / parity / streamed gates / safety
-- [x] Keep tokenizer, embedding, final norm, LM head, KV and generation excluded
-- [x] Preregister `research/stretch/full-36-layer-streamed-body-parity-006-plan.md`
-- [x] Implement frozen transform runner `scripts/stretch_full_36_layer_streamed_body_parity_006.py`
-- [x] Require exact Stretch 005 source blob `8bbfff727a0131c48d4ba71edc8de485182b7fbe`
-- [x] Resident expected body payload 3,039,381,504 B (~2.831 GiB)
-- [x] Resident tolerance +/-36 MiB, preserving +/-1 MiB-per-layer scale
-- [x] Streamed per-layer gate remains 84,427,264 B +/-1 MiB
-- [x] Post-clear active/cache gates unchanged
-- [x] Numerical parity formula unchanged
-- [x] First launch stopped before benchmark execution on transform invariant mismatch
-- [x] Classify first launch as harness transform failure / no scientific result
-- [x] Freeze harness note `research/stretch/full-36-layer-streamed-body-parity-006-harness-note.md`
-- [x] Fix only demonstrated defect: split console and summary label transform invariants
-- [x] Scientific design/gates unchanged
-- [x] Freeze corrected runner blob `ab5d74b37111b7ceae6e5c00a47c10f1e1086ca6`
-- [ ] Rerun Stretch 006
-- [ ] Freeze full-body parity/residency result
+### Stretch 006 — Full 36-layer transformer-body parity — COMPLETE PASS
+- [x] Preregister full layers `0..35`
+- [x] First launch classified harness-only/no scientific result
+- [x] Fix only transform-label invariant defect; scientific design unchanged
+- [x] Corrected runner blob `ab5d74b37111b7ceae6e5c00a47c10f1e1086ca6`
+- [x] Valid run `20260819-164605`
+- [x] `FULL_36_LAYER_STREAMED_BODY_PARITY_PASS`
+- [x] All 36 layer provenance checks PASS
+- [x] Resident expected body payload 3,039,381,504 B
+- [x] Resident observed materialized delta 3,039,315,964 B
+- [x] Max streamed one-layer materialized delta 84,427,264 B
+- [x] Resident/streamed ratio 35.99922371048291x
+- [x] Every streamed layer: pre 0 / materialized 84,427,264 / post-clear 0 / cache 0
+- [x] Numerical parity max/mean diff 0.0 / 0.0
+- [x] Stream parameter materialization wall 1.207812 s
+- [x] Stream transformer forward wall 0.440137 s
+- [x] Whole-run min free 22%; peak swap 1325.69 MB; do not attribute these specifically to streamed phase
+- [x] Freeze `research/stretch/full-36-layer-streamed-body-parity-006-result.md`
+- [x] Establish full transformer-body dense layer streaming with exact resident parity
 
-### Stretch 007 — Shared components / logits — CONDITIONAL
-- [ ] Only after Stretch 006 PASS
-- [ ] Add token embedding residency policy
+### Stretch 007A — Shared component anatomy — CURRENT / READY
+- [x] Preregister `research/stretch/shared-component-anatomy-007a-plan.md`
+- [x] Add read-only `scripts/stretch_shared_component_anatomy_007a.py`
+- [x] Freeze runner blob `7e147476119766a5cf29b697120291b1b96b9bb9`
+- [x] Require exact Stretch 001 helper blob `890444928abd6cc24e7194317c92b36b50fd994b`
+- [x] No MLX import/model launch/tensor materialization/network
+- [x] Capture config: vocab size, tie semantics, RMSNorm epsilon, quantization
+- [x] Catalog all non-layer tensors with name/dtype/shape/bytes
+- [x] Group embedding / final_norm / lm_head / other
+- [x] Require exact non-layer total 544,546,816 B
+- [ ] Run Stretch 007A
+- [ ] Freeze shared-component physical layout
+
+### Stretch 007B — Shared components + full-logit parity — CONDITIONAL
+- [ ] Only after 007A PASS
+- [ ] Use real token embedding according to observed local layout
+- [ ] Execute all 36 transformer blocks streamed
 - [ ] Add final RMSNorm
-- [ ] Add tied embedding/LM-head logit projection
+- [ ] Add output projection/LM head according to observed tie/head semantics
 - [ ] Compare final logits against resident control
-- [ ] Keep KV/autoregressive generation excluded initially
+- [ ] Keep KV cache and autoregressive generation excluded
+- [ ] Add phase-scoped resource telemetry where practical
 
 ### Stretch 008+ — end-to-end inference
 - [ ] Add KV-cache handling
