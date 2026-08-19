@@ -73,10 +73,17 @@ def main() -> int:
     )
     source = replace_exact(
         source,
-        "LOOM Stretch 005 — Eight-Layer Streamed Forward Scaling",
-        "LOOM Stretch 006 — Full 36-Layer Streamed Body Parity",
-        2,
-        "experiment labels",
+        'print("LOOM Stretch 005 — Eight-Layer Streamed Forward Scaling")',
+        'print("LOOM Stretch 006 — Full 36-Layer Streamed Body Parity")',
+        1,
+        "console experiment label",
+    )
+    source = replace_exact(
+        source,
+        '"experiment": "Stretch 005 — Eight-Layer Streamed Forward Scaling",',
+        '"experiment": "Stretch 006 — Full 36-Layer Streamed Body Parity",',
+        1,
+        "summary experiment label",
     )
     source = replace_exact(
         source,
