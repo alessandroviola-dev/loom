@@ -33,21 +33,27 @@
 - [x] Direct MLX Setup Probe 001 PASS (`20260819-120748`)
 - [x] Freeze environment: `mlx-lm==0.31.3`, `mlx==0.31.2`, `transformers==5.12.1`
 - [x] Acquire/verify `mlx-community/Qwen3-8B-3bit`
-- [x] Main weight SHA PASS; 3-bit/group-size 64 PASS
-- [x] Direct MLX Smoke safety FULL_PASS (`20260819-124440`): minimum free 23%, peak swap 1720.75 MB
-- [x] Direct MLX T01 Workload Safety FULL_PASS (`20260819-124952`): minimum free 19%, peak swap 1643.12 MB, delivery written
-- [x] Run full Direct MLX Coding Benchmark 001 (`20260819-125647`) in one loaded model session
-- [x] Full benchmark resource stability PASS: minimum free 14%, peak swap 1683.38 MB
-- [x] Full benchmark classification COMPLETE
-- [x] Freeze quality result: artifact 38.57/100, delivery-adjusted 27.86/100, structured delivery 2/6
-- [x] Freeze `research/runtime/direct-mlx-coding-benchmark-001.md`
-- [x] Add read-only `scripts/inspect_direct_mlx_coding_benchmark_001.py`
-- [ ] Diagnose T03–T06 adapter failures and scorer points from persisted run; no model rerun
-- [ ] After diagnostic, decide whether isolated Pi agentic validation is scientifically justified
-- [ ] Do not promote the 8B profile as a practical upgrade solely because runtime stability is strong
-- [ ] Do not alter prompts/parser/scorer or invent a post-hoc quality threshold
-- [ ] If quality is not competitive, move to next Direct MLX quantization/model branch or Phase 6 rather than forcing Pi integration
+- [x] 3-bit Smoke safety FULL_PASS (`20260819-124440`): minimum free 23%, peak swap 1720.75 MB
+- [x] 3-bit exact T01 Workload Safety FULL_PASS (`20260819-124952`): minimum free 19%, peak swap 1643.12 MB, delivery written
+- [x] 3-bit full Direct MLX Coding Benchmark 001 COMPLETE (`20260819-125647`)
+- [x] 3-bit full-session resource stability PASS: minimum free 14%, peak swap 1683.38 MB
+- [x] Freeze 3-bit quality: artifact 38.57/100, delivery-adjusted 27.86/100, structured delivery 2/6
+- [x] Diagnose 3-bit quality from persisted outputs
+- [x] T01 15/15, T02 12.86/15; T03–T06 delivery failures
+- [x] Establish that failures are not only formatting: T04/T06 also show independent content/instruction defects
+- [x] Freeze `research/runtime/direct-mlx-coding-benchmark-001-diagnostic.md`
+- [x] Do not promote Qwen3-8B-3bit to Pi on current quality evidence
+- [x] Select same-family next profile `mlx-community/Qwen3-8B-4bit`
+- [x] Verify 4-bit artifact metadata: revision `545dc4251c05440727734bcd94334791f6ab0192`, 4-bit/group-size 64, model weight ~4.61 GB, SHA256 `f2d29621aab300336ad645567ff38c42aac755513006ef4e8a579cf7ef5256d8`
+- [x] Preregister `research/runtime/direct-mlx-8b-4bit-smoke-001-plan.md`
+- [x] Add `scripts/direct_mlx_8b_4bit_smoke.py`
+- [ ] Run Qwen3-8B-4bit Direct MLX Smoke 001 with `max_kv_size=4096`, unquantized KV, locale-safe telemetry and unchanged 5%/5600 MB guardrails
+- [ ] If 4-bit smoke FULL_PASS, freeze result and preregister exact T01 workload-safety
+- [ ] Only after 4-bit T01 safety PASS run full frozen Coding Benchmark 01
+- [ ] Compare 4-bit vs 3-bit quality descriptively; do not infer causality from raw score gaps
+- [ ] Only after technical + workload + competitive quality gates consider Pi integration
 - [ ] Do not lower 5% free-memory / 5600 MB swap guardrails
+- [ ] Do not change KV cap/precision or prompts/parsers/scorer inside a failed condition
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
