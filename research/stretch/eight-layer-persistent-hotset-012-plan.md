@@ -1,7 +1,7 @@
 # Stretch 012 — Eight-Layer Persistent Hotset — Preregistered Plan
 
 Date: 2026-08-19
-Status: READY AFTER RUNNER FREEZE
+Status: **READY / RUNNER FROZEN**
 
 ## Motivation
 
@@ -43,6 +43,12 @@ blob `16125f7eb0b2fb662591e194de0498513a563a6d`.
 Stretch 011 canonical result:
 `research/stretch/materialization-io-attribution-011-result.md`.
 
+Stretch 012 runner:
+`scripts/stretch_eight_layer_persistent_hotset_012.py`
+blob `8e10660af778655a279f30e7d59785163bc204e3`.
+
+The runner reconstructs the exact frozen Stretch 010 workload through the frozen 010 transform, applies the frozen Stretch 011 Darwin I/O instrumentation, then applies only the preregistered persistent-hotset change.
+
 ## Frozen workload
 
 Preserve:
@@ -80,7 +86,7 @@ Before the streamed prompt:
 1. construct each hotset `TransformerBlock` using the same Qwen3 class and quantization policy;
 2. load exact frozen weights;
 3. `mx.eval(block.parameters())` once;
-4. retain the block object in a persistent dictionary/list;
+4. retain the block object in a persistent dictionary;
 5. delete temporary selected-weight dictionaries;
 6. do not evict these eight blocks until all streamed prompt/token work is complete.
 
@@ -118,31 +124,32 @@ A correctness failure is not rescued by performance improvement.
 
 Persistent hotset:
 - initial materialized delta ~675,418,112 B ±8 MiB
-- all 8 block objects remain present throughout streamed prompt + 16 token passes.
+- exact layer IDs 0..7
+- all 8 block objects retained throughout streamed prompt + 16 token passes.
 
 For hotset cycles:
-- per-pass pre-eval/materialized active delta attributable to layer weights should be near 0; tolerance ±4 MiB.
+- per-pass pre-eval/materialized active delta attributable to layer weights must remain within ±4 MiB of zero.
 
 For streamed layers 8..35:
 - pre-eval delta <=32 MiB
 - materialized delta ~84,427,264 B ±1 MiB
 - existing eviction behavior preserved relative to the persistent-hotset baseline.
 
-Actual simultaneous raw-weight budget must be reported as:
+Actual simultaneous raw-weight budget is reported as:
 - persistent hotset payload
 + maximum newly materialized streamed/shared stage.
 
 Expected worst raw-weight combination is hotset + embedding or LM head:
 675,418,112 + 272,269,312 = **947,687,424 B** (~903.79 MiB).
 
-This is intentionally higher than pure streaming's ~272.27 MB max stage but far below the complete 3.584 GB model payload.
+This is intentionally higher than pure streaming's ~272.27 MB max new stage but far below the complete 3.584 GB model payload.
 
 ## I/O hypothesis — diagnostic, not PASS threshold
 
 Stretch 011 late steady state:
 - transformer materialization process reads ~3,039,395,840 B/token.
 
-If retaining eight layers works as intended, the approximate late steady-state transformer read accounting should fall by one 8-layer payload:
+If retaining eight layers works as intended, approximate late steady-state transformer read accounting should fall by one 8-layer payload:
 3,039,395,840 - 675,418,112 ≈ **2,363,977,728 B/token**.
 
 The exact measured number is not a PASS threshold because `ri_diskio_bytesread` is process accounting, not per-file tracing.
@@ -164,11 +171,11 @@ If disk-read reduction is the dominant effect, late materialization and full-pas
 No minimum speedup is required for PASS. More retained memory can alter host caching/pressure, so measured latency is an outcome rather than a gate.
 
 Report:
-- 36-layer/hybrid materialization wall per token
+- hybrid 36-layer materialization wall per token
 - 36-layer forward wall per token
 - full-pass wall per token
 - mean/median full-pass
-- logical streamed/hybrid tok/s.
+- logical hybrid tok/s.
 
 Do not label logical tok/s as physical SSD throughput.
 
