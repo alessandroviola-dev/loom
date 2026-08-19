@@ -45,14 +45,14 @@
 - [x] Quality Compare 001 primary result: 8B Q2 delivery 0/100 vs 4B Q4 34.29/100; delta -34.29; relation `4B_HIGHER`; both profiles COMPLETE
 - [x] Inspect persisted per-task failure classes without rerunning inference
 - [x] Freeze diagnostic: all 8B requests HTTP 200 / EOS / valid JSON, but Q2 repeatedly treated prompt placeholder `filename` as a literal key; T05 generated code under `filename/value`; no transport/resource defect identified
-- [x] Record `research/runtime/llama-cpp-coding-quality-compare-001-diagnostic.md`
-- [x] Conclusion: Q2 8B is technically runnable but not a practical upgrade for this structured coding workload
+- [x] Conclusion: tested Q2 8B profile is technically runnable but not a practical upgrade for this structured coding workload
 - [x] Preregister Q3 higher-quality rescue via llama.cpp automatic fit / partial-offload policy at context 4096
-- [x] Add `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001-plan.md`
-- [x] Add `scripts/llama_cpp_8b_q3_autofit_server_smoke.py`
-- [ ] Run Q3 Auto-Fit Server Smoke 001 with unchanged 5% free-memory / 5600 MB swap guardrails
-- [ ] If Q3 auto-fit FULL_PASS, freeze actual fit/offload behavior then compare Q3 vs 4B Q4 on Coding Benchmark 01 before Pi
-- [ ] If Q3 auto-fit FAIL, preregister one-variable Q3 KV-cache compression test (Q8_0 first) and/or continue Direct MLX
+- [x] Run Q3 Auto-Fit Server Smoke 001
+- [x] Q3 Auto-Fit Server Smoke 001 VALID FAIL: model SHA PASS; 3.841 GiB; peak RSS 2121.86 MB; peak swap 2263.31 MB; minimum free memory 4%; 5% guardrail triggered; API smoke not completed successfully
+- [x] Record `research/runtime/llama-cpp-8b-q3-autofit-server-smoke-001.md`
+- [ ] Inspect saved Q3 auto-fit/offload lines, readiness state and final memory samples without rerunning inference
+- [ ] Based on diagnostic, preregister exactly one next Q3 memory intervention; candidate: KV-cache Q8_0 at context 4096 with same guardrails
+- [ ] If Q3 memory rescue remains nonviable, continue to Direct MLX rather than stacking post-hoc changes
 - [ ] Do not relax Q2 benchmark delivery rules post hoc
 - [ ] Do not test ~9B until the 8B quality/usefulness frontier is characterized
 
