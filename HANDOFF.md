@@ -1,8 +1,8 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-19
-Status: ACTIVE — Pi remains primary local agent harness; llama.cpp/Metal validated; 4B control PASS; 8B Q4 and Q3 hit frozen memory guardrails; Q2 demonstrably loads/completes a turn with usable headroom; Capability 003 Stage A is recovered PASS evidence after confirming a TTY/capture defect; Stage B-only benchmark continuation is preregistered and ready.
-Checkpoint: `LLAMA_CPP_8B_Q2_STAGE_B_001_READY`
+Status: ACTIVE — Pi remains primary local agent harness; llama.cpp/Metal validated; 4B Q4 control PASS; 8B Q4/Q3 fail frozen memory guardrail; 8B Q2 now has a canonical TECHNICAL FULL PASS; next checkpoint is a localhost llama-server API smoke before objective quality comparison.
+Checkpoint: `LLAMA_CPP_8B_Q2_SERVER_SMOKE_001_READY`
 
 ## Mission
 
@@ -27,29 +27,32 @@ Normal Pi contains real auth, sessions and customizations. LOOM must not reset o
 
 Free disk is a standard LOOM metric. Reuse verified artifacts and never silently delete models/results.
 
-Latest confirmed storage observations:
+Latest confirmed observations:
 - before 8B Q4: 56.285 GiB free
 - after 8B Q4: 50.567 GiB free
 - after 8B Q3: 46.763 GiB free
-- before first Q2 attempt: 46.746 GiB free
-- Capability 002 before: 43.686 GiB free
-- Capability 002 after: 43.674 GiB free
-- Capability 003 before/after: **43.649 GiB free**
-- verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 artifacts are retained
+- Capability 003 before/after: 43.649 GiB free
+- Q2 Stage B 001 after: **43.688 GiB free**
+- verified 4B Q4, 8B Q4, 8B Q3 and 8B Q2 artifacts retained
 
 ## Frozen baseline / agent state
 
 ### Coding Baseline 001
 - run `20260818-203156`
 - Ollama/MLX `qwen3.5:4b-mlx`, context 4096
-- artifact 40.71/100; strict 30.00/100; delivery 3/6
+- artifact 40.71/100
+- strict 30.00/100
+- delivery 3/6
 - recovered semantic diagnostic 82.86/100
-- weighted prompt 186.46 tok/s; generation 16.01 tok/s
+- weighted prompt 186.46 tok/s
+- generation 16.01 tok/s
 
 ### Pi Agentic Coding Benchmark 001
 - run `20260818-214848`
-- artifact/delivery 77.15/100; strict 60.00/100
-- delivery 6/6; protocol 4/6
+- artifact/delivery 77.15/100
+- strict 60.00/100
+- delivery 6/6
+- protocol 4/6
 - provider usage 20,209 total tokens
 
 Pi is the current primary local agent harness. Qwen Code remains secondary/deprioritized because even safe mode estimates 4363 tokens against a 4096 hard limit before first tool use.
@@ -101,7 +104,7 @@ Frozen profile:
 - size 4.682 GiB
 - context 4096
 - `-ngl -1`
-- abort below 5% memory free or above 5600 MB swap
+- abort below 5% free memory or above 5600 MB swap
 
 Stage A:
 - FAIL during load/init
@@ -127,138 +130,139 @@ Frozen profile:
 Stage A:
 - FAIL
 - wall 18.919 s
-- peak RSS 1670.484375 MB
+- peak RSS 1670.48 MB
 - peak swap 2269.38 MB
 - minimum free memory 1%
 - guardrail triggered; Stage B skipped
 
 Record: `research/runtime/llama-cpp-8b-q3-001.md`.
 
-## 8B Q2 Capability 001 — INVALID / DIAGNOSTIC ONLY
+## 8B Q2 — harness chronology
 
-Plan: `research/runtime/llama-cpp-8b-q2-001-plan.md`
-Invalid record: `research/runtime/llama-cpp-8b-q2-001-invalid.md`
-Runner: `scripts/llama_cpp_8b_q2.py`
+### Capability 001 — INVALID
+- Q2_K artifact loaded and began inference at requested context 4096
+- invalid because inherited CLI smoke remained interactive without `-st`
 
-Artifact:
-- `unsloth/Qwen3-8B-GGUF`
-- `Qwen3-8B-Q2_K.gguf`
-- observed size 3.056 GiB
+### Capability 002 — INVALID
+- `-st` corrected the interaction behavior
+- single turn completed and exited
+- min free memory 19%
+- invalid because inherited parser required optional literal log strings
+
+### Capability 003 — RECOVERED STAGE A PASS
+
+Run `20260819-103347`.
+
+Validated operational evidence:
 - SHA256 PASS
+- exact `-c 4096`
+- exact `-ngl -1`
+- `-st`
+- Metal device preflight evidence
+- exit code 0
+- no timeout
+- no guardrail abort
+- wall 7.134 s
+- peak RSS 2092.97 MB
+- peak swap 1986.56 MB
+- minimum free memory **10%**
+- visible prompt ~42.7 t/s
+- visible generation ~13.4 t/s
 
-Diagnostic:
-- model loaded and began inference at requested context 4096;
-- on-screen timing about 32.8 prompt t/s / 14.3 generation t/s;
-- invalidated because CLI remained interactive without `-st`.
+The only false validator field was `output_nonempty=False`; post-run inspection showed zero captured stdout/stderr bytes while the user visibly received CLI output. This is treated as a TTY/capture defect. Do not rerun llama-cli Stage A for this exact profile.
 
-## 8B Q2 Capability 002 — INVALID / VALIDATION DEFECT
+Record: `research/runtime/llama-cpp-8b-q2-003-recovered-stage-a.md`.
 
-Run `20260819-102747`.
+## 8B Q2 Stage B 001 — FULL PASS
 
-Observed:
-- same verified Q2 artifact;
-- single turn completed and CLI exited automatically with `-st`;
-- on-screen prompt 43.2 t/s;
-- on-screen generation 11.4 t/s;
-- wall 7.229 s;
-- peak RSS 2215.203125 MB;
-- peak swap 2181.12 MB;
-- minimum free memory 19%;
-- no guardrail breach.
-
-Invalidated because the inherited parser required optional literal Stage A log strings.
-
-Record: `research/runtime/llama-cpp-8b-q2-002-invalid.md`.
-
-## 8B Q2 Capability 003 — STAGE A RECOVERED PASS / CAPTURE DEFECT
-
-Run id: `20260819-103347`
-Plan: `research/runtime/llama-cpp-8b-q2-003-plan.md`
-Runner: `scripts/llama_cpp_8b_q2_003.py`
-Recovered Stage A record: `research/runtime/llama-cpp-8b-q2-003-recovered-stage-a.md`
-
-Frozen runtime/model condition:
-- same Q2_K artifact, SHA256 PASS;
-- context command evidence: exact `-c 4096`;
-- requested offload evidence: exact `-ngl -1`;
-- single-turn evidence: `-st`;
-- same-run Metal device preflight evidence;
-- unchanged 5% memory-free / 5600 MB swap guardrails.
-
-Observed terminal behavior:
-- model loaded successfully;
-- one inference turn executed;
-- on-screen prompt about **42.7 t/s**;
-- on-screen generation about **13.4 t/s**;
-- CLI printed `Exiting...` and returned cleanly.
-
-Runner telemetry:
-- exit code **0**;
-- timeout **False**;
-- guardrail abort **False**;
-- wall **7.134 s**;
-- peak RSS **2092.96875 MB**;
-- peak swap **1986.56 MB**;
-- minimum free memory **10%**.
-
-Post-run inspection of saved validator fields:
-- `metal_evidence=True`;
-- `context_4096_evidence=True`;
-- `requested_offload_evidence=True`;
-- `single_turn_evidence=True`;
-- `stage_a_metal_preflight_evidence=True`;
-- only `output_nonempty=False` caused `pass=False`;
-- captured stdout bytes `0`;
-- captured stderr bytes `0`.
-
-Canonical interpretation:
-> The remaining false criterion is a TTY/capture defect: the user visibly received llama-cli output while the runner pipes contained zero bytes. Capability 003 is not called a full capability PASS because Stage B never ran, but its Stage A launch/memory evidence is accepted as recovered PASS. Do not rerun llama-cli Stage A again for this exact Q2 condition.
-
-## 8B Q2 Stage B 001 — PREREGISTERED / READY
-
+Run id: `20260819-103952`
 Plan: `research/runtime/llama-cpp-8b-q2-stage-b-001-plan.md`
+Record: `research/runtime/llama-cpp-8b-q2-stage-b-001.md`
 Runner: `scripts/llama_cpp_8b_q2_stage_b.py`
 
+Frozen benchmark:
+- same verified Q2_K artifact, size 3.056 GiB
+- `llama-bench`
+- `-ngl -1`
+- flash attention auto
+- pp512 / tg128
+- 3 repetitions
+- same safety guardrails
+
+Observed:
+- pp512 **103.00 t/s ± 0.67**
+- tg128 **13.72 t/s ± 0.34**
+- backend `MTL,BLAS`
+- reported `n_gpu_layers=-1`
+- wall **53.536 s**
+- peak process RSS **2461.17 MB**
+- peak swap **1990.38 MB**
+- minimum free memory **8%**
+- no guardrail breach
+- classification **FULL_PASS**
+- disk free after **43.688 GiB**
+
+## 8B Q2 — CANONICAL TECHNICAL CONCLUSION
+
+Canonical combined record: `research/runtime/llama-cpp-8b-q2-technical-pass.md`.
+
+> Qwen3 8B Q2_K is technically runnable on the reference Apple M1 8 GB machine under pinned llama.cpp/Metal at context 4096 and completes the frozen throughput workload without violating LOOM safety guardrails.
+
+Descriptive scaling vs 4B Q4 under the same llama-bench shape:
+- prompt throughput: 103.00 vs 230.85 t/s = **44.6%** of 4B, **55.4% lower**
+- generation throughput: 13.72 vs 22.33 t/s = **61.4%** of 4B, **38.6% lower**
+- process RSS: about **28.5% higher**
+- peak swap: about **81.4% higher**
+- minimum free memory: **8% vs 22%**
+
+These are descriptive runtime comparisons only. Q2 is an aggressive quantization; parameter count alone does not establish better useful quality.
+
+## 8B Q2 Server Smoke 001 — PREREGISTERED / READY
+
+Plan: `research/runtime/llama-cpp-8b-q2-server-smoke-001-plan.md`
+Runner: `scripts/llama_cpp_8b_q2_server_smoke.py`
+
 Purpose:
-- complete the throughput portion only;
-- inherit Stage A launch/memory evidence from run `20260819-103347`;
-- avoid all further llama-cli capture/parser issues.
+- build only the `llama-server` target if it is not already present;
+- verify the existing Q2 artifact and pinned source;
+- launch localhost-only server at context 4096 / `-ngl -1` / Metal;
+- poll official `GET /health` readiness;
+- send one synchronous OpenAI-compatible `POST /v1/chat/completions` request;
+- preserve the same 5% free-memory / 5600 MB swap guardrails;
+- shut down immediately after the smoke.
 
-Frozen Stage B:
-- same Q2_K artifact and exact SHA256;
-- pinned llama.cpp build;
-- `llama-bench`;
-- `-ngl -1`;
-- flash attention auto;
-- pp512;
-- tg128;
-- 3 repetitions;
-- JSON output;
-- unchanged abort below 5% free memory or above 5600 MB swap.
+No model download is expected.
 
-Classification:
-- `FULL_PASS`: benchmark exits 0, JSON parses, positive pp512/tg128 rows exist, Metal evidence exists, no timeout/guardrail;
-- `BENCH_FAIL`: Stage A remains recovered-valid but Stage B fails/times out/breaches guardrail.
+Official pinned llama-server documentation confirms:
+- OpenAI-compatible `/v1/chat/completions` exists;
+- `GET /health` returns 503 while loading and 200 when healthy;
+- localhost host/port flags are supported;
+- Web UI can be disabled.
 
 ## Exact next step
 
-Run only the Stage B continuation:
+Run:
 
 ```bash
 cd "<repository-root>"
 git pull
-python3 -m py_compile scripts/llama_cpp_8b_q2_stage_b.py
-python3 scripts/llama_cpp_8b_q2_stage_b.py
+python3 -m py_compile scripts/llama_cpp_8b_q2_server_smoke.py
+python3 scripts/llama_cpp_8b_q2_server_smoke.py
 ```
 
-No model download and no llama-cli Stage A rerun are expected.
+Preserve output from `LOOM llama.cpp 8B Q2 Server Smoke 001` through the final `Summary:` line.
 
-Preserve complete output from `LOOM llama.cpp 8B Q2 Stage B 001` through the final `Summary:` line.
+## Decision after server smoke
 
-## Decision after Stage B
+If `FULL_PASS`:
+1. use llama-server as a clean API transport;
+2. reuse frozen Coding Benchmark 01 v1.0.1 in `single_shot` mode for a same-runtime comparison:
+   - Qwen3 4B Q4_K_M;
+   - Qwen3 8B Q2_K;
+3. use the existing objective scorer and unchanged prompts;
+4. only if Q2 quality/usefulness justifies it, evaluate Pi through the OpenAI-compatible llama-server API.
 
-- If `FULL_PASS`: freeze Q2 8B as technically runnable, compare 4B/Q2-8B throughput/memory, then test quality/usefulness/Pi compatibility before calling it a practical upgrade.
-- If `BENCH_FAIL`: stop repairing the Q2 harness and move to a separately preregistered memory/offload strategy or broader runtime comparison.
+If server smoke fails due memory pressure, retain the raw Q2 TECHNICAL PASS and choose a separately preregistered direct-quality or memory/offload path. Do not call it a model-quality failure.
 
 ## Roadmap state
 
@@ -266,7 +270,7 @@ Preserve complete output from `LOOM llama.cpp 8B Q2 Stage B 001` through the fin
 - Phase 1: DONE
 - Phase 2: DONE / FROZEN
 - Phase 3: materially complete for current needs
-- **Phase 4: ACTIVE — 4B PASS; 8B Q4 FAIL; 8B Q3 FAIL; Q2 Stage A recovered PASS; Q2 Stage B READY**
+- **Phase 4: ACTIVE — 4B Q4 PASS; 8B Q4/Q3 memory FAIL; 8B Q2 TECHNICAL FULL PASS; server smoke READY**
 - Phase 5 Direct MLX: queued
 - Phase 6 Colibrì / SSD / MoE: queued
 - Phase 7 extended runtimes: queued
