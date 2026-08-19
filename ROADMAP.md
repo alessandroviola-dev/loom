@@ -45,23 +45,23 @@
 - [x] 4-bit exact T01 Workload Safety 001 FULL_PASS (`20260819-132612`): preflight 74% free, min free 6%, peak swap 2470.31 MB
 - [x] Preregister full 4-bit six-task Coding Benchmark 001
 - [x] Freeze prospective 4-bit Pi gate before result: `COMPLETE` + delivery-adjusted >27.86 + delivery >2/6
-- [x] Run original full Qwen3-8B-4bit Coding Benchmark 001 (`20260819-133144`)
-- [x] Original 4-bit full run hits free-memory guardrail during T01: preflight 56%, min free 4%, peak swap 3028.25 MB
-- [x] Classify original 4-bit full run `PARTIAL_RESOURCE_FAIL`; no valid aggregate quality ordering
-- [x] Diagnose persisted 4-bit timeline/progress/child state; no model rerun
-- [x] Confirm no T01 result persisted; child terminated at 17.913 s while T01 running
-- [x] Confirm max swap occurred earlier than min-free sample and swap was decreasing at 4% breach
-- [x] Identify material host-state difference: failed full preflight 56% free vs successful 4-bit T01 74% and completed 3-bit full 75%
-- [x] Freeze `research/runtime/direct-mlx-8b-4bit-coding-benchmark-001-resource-diagnostic.md`
-- [x] Preregister exactly one host-state-controlled 4-bit full replication before any KV rescue
-- [x] Add `research/runtime/direct-mlx-8b-4bit-hoststate-replication-001-plan.md`
-- [x] Add `scripts/direct_mlx_8b_4bit_hoststate_replication_001.py`
-- [ ] Run host-state wrapper; require 3 consecutive prelaunch samples >=70% free memory
-- [ ] If `HOST_STATE_NOT_READY`, do not launch MLX and do not count as model failure; retry only after naturally freeing host resources
-- [ ] If controlled replication launches and resource-fails again, close 4-bit / 4096 / unquantized-KV full-session branch with no further same-profile repeats
-- [ ] If controlled replication completes, retain both original fail and replication; apply frozen quality gate (>27.86 delivery-adjusted and >2/6 delivery) before any Pi validation
-- [ ] Do not automate memory/swap purge, lower guardrails, change KV/context, prompts/parser/scorer, or retry individual tasks
+- [x] Original full 4-bit Coding Benchmark 001 (`20260819-133144`) resource-fails during T01: preflight 56%, min free 4%, peak swap 3028.25 MB
+- [x] Diagnose original 4-bit failure and identify host-state mismatch versus successful references
+- [x] Preregister exactly one host-state-controlled replication with >=70% free launch gate
+- [x] Host-state gate passes (`20260819-134010`): 72%, 74%, 74% free; swap 1381.75 MB
+- [x] Controlled full replication launches (`20260819-134012`) under unchanged model/runtime/benchmark condition
+- [x] Controlled replication progresses through T01, T02, T03 and into T04
+- [x] Controlled replication still hits free-memory guardrail: min free **4%**, peak swap 2879.38 MB
+- [x] Classify controlled replication `PARTIAL_RESOURCE_FAIL`
+- [x] Freeze `research/runtime/direct-mlx-8b-4bit-hoststate-replication-001.md`
+- [x] Close exact 4-bit / `max_kv_size=4096` / unquantized-KV continuous profile as workload RESOURCE FAIL
+- [x] Prohibit further identical replications
+- [ ] Run read-only inspector on controlled replication `20260819-134012` to recover persisted task count and task-by-task memory timeline
+- [ ] If timeline supports a memory-pressure rationale, preregister at most one one-factor rescue with **8-bit KV cache** while preserving model, benchmark, 4096 cap, host gate and 5%/5600 MB guardrails
+- [ ] If KV8 rescue resource-fails, close 4-bit branch and move on; no rescue ladder
+- [ ] No valid aggregate 4-bit quality comparison until a full benchmark reaches COMPLETE
 - [ ] Pi remains blocked until technical + workload + prospective quality gates all pass
+- [ ] Do not lower guardrails, change context, prompts/parser/scorer, or retry individual benchmark tasks
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
