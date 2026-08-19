@@ -3,7 +3,7 @@
 Last updated: 2026-08-19
 Status: ACTIVE — Apple M1 / 8 GB reference system; two tracks: **Amplify** and **Stretch**.
 
-Current checkpoint: `STRETCH_006_FULL_36_LAYER_BODY_PARITY_READY`
+Current checkpoint: `STRETCH_006_TRANSFORM_FIX_READY`
 
 ## Mission
 
@@ -213,7 +213,7 @@ Canonical interpretation:
 
 This is still a micro-forward, not end-to-end LLM inference.
 
-## Stretch 006 — Full 36-Layer Streamed Body Parity — READY
+## Stretch 006 — Full 36-Layer Streamed Body Parity — READY AFTER HARNESS FIX
 
 Plan:
 `research/stretch/full-36-layer-streamed-body-parity-006-plan.md`
@@ -221,14 +221,13 @@ Plan:
 Runner:
 `scripts/stretch_full_36_layer_streamed_body_parity_006.py`
 
-Runner blob:
-`3ec3f028305aad9927c794d5bf9d92beac4d0a12`
+Corrected runner blob:
+`ab5d74b37111b7ceae6e5c00a47c10f1e1086ca6`
 
-Implementation:
-- frozen transform of exact Stretch 005 source blob `8bbfff727a0131c48d4ba71edc8de485182b7fbe`
-- wrapper asserts every expected transformation count before execution.
+Frozen source:
+- exact Stretch 005 blob `8bbfff727a0131c48d4ba71edc8de485182b7fbe`.
 
-Single factor:
+Single scientific factor:
 - chain depth 8 -> all **36 layers, 0..35**.
 
 Preserved:
@@ -255,6 +254,24 @@ Each streamed cycle remains:
 
 Primary PASS:
 `FULL_36_LAYER_STREAMED_BODY_PARITY_PASS`.
+
+### First launch — HARNESS TRANSFORM FAIL / NO SCIENTIFIC RESULT
+
+The first launch stopped after Stretch 005 source provenance PASS and before execution of the transformed benchmark:
+- failure: `transform invariant failed for experiment labels: expected 2 occurrence(s), found 1`
+- no MLX child process or layer computation was launched
+- no resource, parity or model conclusion is permitted.
+
+Record:
+`research/stretch/full-36-layer-streamed-body-parity-006-harness-note.md`
+
+Demonstrated defect:
+- one global textual label replacement used a brittle combined occurrence invariant.
+
+Fix:
+- split console experiment label and summary experiment label into separate exact one-occurrence invariants.
+
+Scientific design/gates remain unchanged.
 
 Expected structural signal if scaling continues:
 - resident raw-weight residency ~36 layer payloads
