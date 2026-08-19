@@ -40,20 +40,22 @@
 - [x] Freeze 3-bit quality: artifact 38.57/100, delivery-adjusted 27.86/100, structured delivery 2/6
 - [x] Diagnose 3-bit quality from persisted outputs
 - [x] T01 15/15, T02 12.86/15; T03–T06 delivery failures
-- [x] Establish that failures are not only formatting: T04/T06 also show independent content/instruction defects
+- [x] Establish failures are not only formatting: T04/T06 also show content/instruction defects
 - [x] Freeze `research/runtime/direct-mlx-coding-benchmark-001-diagnostic.md`
 - [x] Do not promote Qwen3-8B-3bit to Pi on current quality evidence
-- [x] Select same-family next profile `mlx-community/Qwen3-8B-4bit`
-- [x] Verify 4-bit artifact metadata: revision `545dc4251c05440727734bcd94334791f6ab0192`, 4-bit/group-size 64, model weight ~4.61 GB, SHA256 `f2d29621aab300336ad645567ff38c42aac755513006ef4e8a579cf7ef5256d8`
-- [x] Preregister `research/runtime/direct-mlx-8b-4bit-smoke-001-plan.md`
-- [x] Add `scripts/direct_mlx_8b_4bit_smoke.py`
-- [ ] Run Qwen3-8B-4bit Direct MLX Smoke 001 with `max_kv_size=4096`, unquantized KV, locale-safe telemetry and unchanged 5%/5600 MB guardrails
-- [ ] If 4-bit smoke FULL_PASS, freeze result and preregister exact T01 workload-safety
-- [ ] Only after 4-bit T01 safety PASS run full frozen Coding Benchmark 01
-- [ ] Compare 4-bit vs 3-bit quality descriptively; do not infer causality from raw score gaps
-- [ ] Only after technical + workload + competitive quality gates consider Pi integration
-- [ ] Do not lower 5% free-memory / 5600 MB swap guardrails
-- [ ] Do not change KV cap/precision or prompts/parsers/scorer inside a failed condition
+- [x] Select same-family profile `mlx-community/Qwen3-8B-4bit`
+- [x] Verify 4-bit artifact: revision `545dc4251c05440727734bcd94334791f6ab0192`, 4-bit/group-size 64, SHA256 `f2d29621aab300336ad645567ff38c42aac755513006ef4e8a579cf7ef5256d8`
+- [x] Run Qwen3-8B-4bit Direct MLX Smoke 001 (`20260819-131009`)
+- [x] 4-bit smoke FULL_PASS: output `OK.`, minimum free 10%, peak swap 2403.31 MB, MLX peak memory 4.6833 GB
+- [x] Freeze `research/runtime/direct-mlx-8b-4bit-smoke-001.md`
+- [x] Preregister exact 4-bit T01 workload-safety gate
+- [x] Add `research/runtime/direct-mlx-8b-4bit-t01-workload-001-plan.md`
+- [x] Add `scripts/direct_mlx_8b_4bit_t01_workload.py`
+- [ ] Run 4-bit exact Coding Benchmark T01 workload safety at `max_kv_size=4096`, unquantized KV, unchanged 5%/5600 MB guardrails
+- [ ] If 4-bit T01 FULL_PASS, freeze result and preregister full six-task 4-bit Coding Benchmark 01
+- [ ] Only after COMPLETE 4-bit quality benchmark compare 4-bit vs 3-bit descriptively and decide whether Pi integration is justified
+- [ ] If 4-bit T01 RESOURCE_FAIL, diagnose before any rescue; do not lower guardrails or change KV/context inside the failed condition
+- [ ] Do not change prompts/parser/scorer or invent post-hoc thresholds
 
 ## Phase 6 — Colibrì / SSD streaming / MoE
 - [ ] Install/evaluate Colibrì
