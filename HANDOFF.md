@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_037_M1_QMV_FAST_TUNING_PREFLIGHT_HARNESS_FAILURE`
+Current checkpoint: `STRETCH_037_PREFLIGHT_HARNESS_FIX1_READY`
 
 ## Mission
 
@@ -292,9 +292,15 @@ The feasibility/preregistration, methodological amendment, and exact prepared ru
 
 This is harness-only, not a numerical or performance result. Per frozen stop rule, no retry, source fix, rescue geometry, partial ABBA, or threshold change was performed. Preserve the failure and current canonical built-in qmv path. Result: `research/stretch/m1-qmv-fast-tuning-037-result.md`.
 
+## Stretch 037 — PREFLIGHT HARNESS FIX1 READY / PRE-SCIENCE
+
+The original runner remains preserved at `scripts/stretch_m1_qmv_fast_comparison_037.py` (blob `5dd2e0bcc652d7197a06e4230d6519ced7ea73df`). Authorized distinct Fix1 `scripts/stretch_m1_qmv_fast_comparison_037_fix1.py` creates the fresh `preflight/` evidence directory with `exist_ok=False` before rendering; its only normalized harness diff is that directory setup. Static/fresh reproduction of the original at `20260820-213943` again produced the same pre-model `FileNotFoundError` at `preflight/control-final.py`.
+
+Fresh Fix1 preflight `results-local/stretch/m1-qmv-fast-tuning-037/preflight/20260820-213948/preflight-summary.json` passed render/compile, normalized source diff, literal canonical launcher/runtime provenance, both no-model markers, and four real-weight BF16 3-bit/group64 shape-class S1_R8/built-in bit-exact checks (`max_abs_diff=mean_abs_diff=0`). Scientific result remains NONE; no ABBA constituent has yet run. Detail: `research/stretch/m1-qmv-fast-tuning-037-harness-fix1.md`.
+
 ## Exact next step
 
-Do not retry Stretch 037. A future explicit authorization must first permit a distinct dispatch/preflight harness revision that creates/verifies its evidence directory before rendering, then require a fresh complete preflight and a new ABBA; no constituent from this failure may be reused.
+Commit and remote-verify this distinct Fix1 before science. Then create one wholly fresh full-model run directory, rerun its mandatory in-harness preflight, and execute `CONTROL -> S1_R8 -> S1_R8 -> CONTROL` only if that preflight passes; do not reuse any prior directory or constituent.
 
 ### Historical Stretch 031 rationale
 
