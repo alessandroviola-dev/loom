@@ -77,9 +77,9 @@ def patched_source(repo: Path) -> str:
         pressure = subprocess.run(["memory_pressure"], text=True, capture_output=True, check=False).stdout
         match = __import__("re").search(r"System-wide memory free percentage:\\s*(\\d+)%%", pressure)
         swap_text = subprocess.run(["sysctl", "-n", "vm.swapusage"], text=True, capture_output=True, check=False).stdout
-        swap_match = __import__("re").search(r"used = ([0-9.]+)([MG])", swap_text)
+        swap_match = __import__("re").search(r"used = ([0-9.,]+)([MG])", swap_text)
         free = int(match.group(1)) if match else None
-        swap = float(swap_match.group(1)) * (1024.0 if swap_match and swap_match.group(2) == "G" else 1.0) if swap_match else None
+        swap = float(swap_match.group(1).replace(",", ".")) * (1024.0 if swap_match and swap_match.group(2) == "G" else 1.0) if swap_match else None
         if free is None or swap is None:
             raise RuntimeError("STRETCH038_TELEMETRY_UNAVAILABLE")
         if free < 5 or swap > 5600:
