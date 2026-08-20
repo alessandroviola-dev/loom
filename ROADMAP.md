@@ -131,31 +131,49 @@ Usability promotion target:
 - [x] Freeze `research/stretch/eight-layer-persistent-hotset-012-result.md`
 - [x] Decide hotset-only scaling is insufficient for ~20 token/s target
 
-### Stretch 013 — Four-token oracle block verification — CURRENT / READY
+### Stretch 013 — Four-token oracle block verification — COMPLETE PASS
+- [x] Valid run `20260819-193702`
+- [x] `FOUR_TOKEN_ORACLE_BLOCK_VERIFICATION_PASS`
 - [x] Preserve Stretch 012 eight-layer hotset
-- [x] Preserve resident sequential 16-token control
-- [x] Single scientific change: 16 one-token target traversals -> four causal target blocks of four oracle tokens
-- [x] Frozen oracle sequence `[1,374,264,4647,1483,304,279,1809,315,5994,320,1654,23740,285,8,311]`
+- [x] Change 16 one-token target traversals -> four causal blocks of four oracle tokens
+- [x] All 16 oracle tokens accepted
+- [x] All 16 block-position logits exact vs resident sequential control
+- [x] Top-1 equality at all 16 positions
+- [x] Streamed KV offsets 4 -> 8 -> 12 -> 16 -> 20
+- [x] Accepted tokens/target traversal = 4.0
+- [x] Target block total wall 8.484694 s
+- [x] Oracle target-verification throughput **1.8857486198 token/s**
+- [x] Rate ratio vs Stretch 012 **3.9456668664x**
+- [x] Mean full-pass process-read accounting per accepted oracle token ~49,986,816 B
+- [x] Stream-block min free 59%
+- [x] Preserve oracle upper-bound boundary: no real drafter, no draft/rejection/rollback cost
+- [x] Freeze `research/stretch/four-token-oracle-block-verification-013-result.md`
+- [x] Decide traversal amortization is promising enough for one larger oracle block
+
+### Stretch 014 — Eight-token oracle block verification — CURRENT / READY
+- [x] Preserve exact Stretch 013 source blob `deeb0339294162f38cd4522d2890b6a0c728f96e`
+- [x] Single scientific change: oracle block size 4 -> 8
+- [x] Target traversals 4 -> 2 for the same frozen 16-token oracle sequence
+- [x] Preserve eight-layer persistent hotset
+- [x] Preserve resident sequential control
 - [x] Require all 16 oracle tokens accepted
-- [x] Compare all 16 block-position logits to corresponding resident sequential logits
-- [x] Require top-1 equality at all positions
-- [x] Expected streamed KV offsets 4 -> 8 -> 12 -> 16 -> 20
-- [x] Preserve hotset/streamed-layer materialization gates
-- [x] Preserve Darwin I/O attribution and safety guardrails
-- [x] Report accepted tokens / target traversal
-- [x] Report oracle target-verification token/s
-- [x] Explicitly classify metric as oracle target-side upper bound, excluding real draft cost/rejection/rollback
-- [x] Preregister `research/stretch/four-token-oracle-block-verification-013-plan.md`
-- [x] Add `scripts/stretch_four_token_oracle_block_verification_013.py`
-- [x] Freeze runner blob `deeb0339294162f38cd4522d2890b6a0c728f96e`
-- [ ] Run Stretch 013
+- [x] Require all 16 position-level numerical parity/top-1 gates
+- [x] Expected streamed KV offsets 4 -> 12 -> 20
+- [x] Preserve I/O attribution and all resource gates
+- [x] Preserve zero real-draft cost / oracle-upper-bound interpretation
+- [x] Preregister `research/stretch/eight-token-oracle-block-verification-014-plan.md`
+- [x] Add `scripts/stretch_eight_token_oracle_block_verification_014.py`
+- [x] Correct pre-freeze child-routing harness defect before any scientific run
+- [x] Freeze runner blob `6d7afd43969e752a7cce39ae474d7054ccc7edd8`
+- [ ] Run Stretch 014
 - [ ] Freeze result
 
-### Stretch 014+ — speed-first conditional path
-- [ ] If 013 materially amortizes traversal, test larger oracle block (likely 8) as separate preregistered factor
-- [ ] If oracle upper bound is promising, select/implement a real draft model and measure acceptance + actual end-to-end tok/s
-- [ ] Keep hotset and speculative/block-verification as separable optimization axes
-- [ ] If 013 gain is small, isolate shared-stage/block-compute/framework overhead before real drafter
+### Stretch 015+ — speed-first conditional path
+- [ ] If 014 materially improves oracle target-side throughput, test one 16-token oracle block as final upper-bound point
+- [ ] If 014 saturates, stop oracle block scaling and isolate residual target cost / move to real drafter
+- [ ] Select/implement a real draft model only after oracle upper-bound frontier is characterized
+- [ ] Measure real acceptance rate + actual end-to-end tok/s including draft cost and rejection behavior
+- [ ] Keep hotset and speculative/block verification as separable optimization axes
 - [ ] Only after speed path is characterized: tokenizer/text integration
 - [ ] Test KV capacity boundary separately
 - [ ] Test prefetch/double buffering separately
