@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_021_M5_H24_H32_BALANCED_HOTSET_COMPARISON_READY`
+Current checkpoint: `STRETCH_022_M5_H32_H36_BALANCED_HOTSET_CEILING_READY`
 
 ## Mission
 
@@ -14,11 +14,11 @@ Primary question:
 
 Tagline: **Big models. Small machines.**
 
-Interactive promotion target: approximately **20 token/s**. This is a promotion target, not a PASS threshold for intermediate experiments.
+Interactive promotion target: approximately **20 token/s**. This is a promotion target, not an intermediate PASS threshold.
 
 ## Research rules
 
-- Preserve verified models/results; do not silently delete them.
+- Preserve verified models/results; never silently delete them.
 - Runtime abort where inherited: free memory <5% OR swap >5600 MB.
 - Launch gate where preregistered: free memory >=60%, swap <=5600 MB.
 - System-wide free memory/swap are decisive; process RSS is diagnostic.
@@ -37,8 +37,7 @@ Model:
 `results-local/mlx/models/Qwen3-8B-3bit/model.safetensors`
 
 Configuration:
-- Qwen3
-- hidden size 4096
+- Qwen3, hidden size 4096
 - 36 transformer layers
 - vocab 151936
 - 32 attention heads / 8 KV heads
@@ -69,97 +68,49 @@ Frozen next Amplify work:
 - `scripts/capability_amplifier_004_compact_feedback.py`
 - runner blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`.
 
-## Stretch history
+## Stretch history / current evidence
 
-### Stretch 001–009 — COMPLETE PASS
+### Stretch 001–013 — COMPLETE PASS
 
 Established:
 - layer-addressable safetensors I/O
 - bounded MLX materialization/eviction
-- exact streamed block parity
-- full 36-layer body/full-logit parity
+- exact streamed body/full-logit parity
 - persistent ordinary KV
-- exact autoregressive feedback through four tokens.
+- exact autoregressive feedback
+- full 36-layer streamed target path
+- repeated target-weight traversal/materialization as dominant late cost
+- H8 persistent hotset improvement
+- exact M4 oracle-block verification upper bound.
 
-### Stretch 010 — COMPLETE PASS
+Key rates:
+- Stretch 010 sequential: 0.346144 token/s
+- Stretch 012 H8 sequential: 0.477929 token/s
+- Stretch 013 M4 oracle: 1.8857486198 token/s.
 
-`SIXTEEN_TOKEN_AUTOREGRESSIVE_STABILITY_PASS`, run `20260819-183844`:
-- exact 16-token sequence/parity
-- final KV offset 20
-- logical throughput 0.346144 token/s
-- late materialization slowdown isolated while forward remained much flatter.
+### Stretch 014–017 — exact block-size frontier characterized
 
-### Stretch 011 — COMPLETE PASS
+Stretch 014:
+- valid `ORACLE_BLOCK_NUMERICAL_PARITY_FAIL` at M=8.
 
-`MATERIALIZATION_IO_ATTRIBUTION_PASS`, run `20260819-185036`:
-- late transformer materialization ~3.039 GB/token process reads
-- late full pass ~3.584 GB/token
-- materialization-time/process-read Pearson 0.9995866107996246
-- logical throughput 0.312407 token/s.
+Stretch 015:
+- `QUANTIZED_LINEAR_SHAPE_DEPENDENCE_CONFIRMED`
+- first M4/M8 divergence at layer-0 `gate_proj`; attention path remains exact there.
 
-Decision: repeated target-weight traversal/materialization is the dominant late cost under current accounting.
+Stretch 016:
+- `QUANTIZED_LINEAR_M_BOUNDARY_MAPPED`
+- q/k/v/o exact through M=9; first divergence M=10
+- gate/up/down exact through M=5; first divergence M=6.
 
-### Stretch 012 — COMPLETE PASS
+Stretch 017:
+- `FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_PASS`
+- M=5 exact end-to-end across all 36 layers
+- 15/15 logits exact, 15/15 top-1 equal, all oracle tokens accepted
+- KV `4 -> 9 -> 14 -> 19`.
 
-`EIGHT_LAYER_PERSISTENT_HOTSET_PASS`, run `20260819-192349`:
-- persistent layers 0..7
-- hotset 675,418,112 B
-- exact 16-token parity
-- logical throughput 0.477929 token/s
-- ~52.98% improvement vs Stretch 011.
-
-### Stretch 013 — COMPLETE PASS
-
-`FOUR_TOKEN_ORACLE_BLOCK_VERIFICATION_PASS`, run `20260819-193702`:
-- 4 x 4-token oracle target traversals
-- all 16 position logits/top-1 exact
-- KV `4 -> 8 -> 12 -> 16 -> 20`
-- oracle target rate 1.8857486198 token/s.
-
-Boundary: oracle upper bound only; no real drafter/draft/rejection/rollback cost.
-
-### Stretch 014 — COMPLETE VALID FAIL
-
-`ORACLE_BLOCK_NUMERICAL_PARITY_FAIL`, valid run `20260820-122922`:
-- M=8 target blocks
-- numerical divergence begins at first target position
-- top-1 differs by step 16
-- KV remains correct
-- not a host/resource failure.
-
-Decision: do not relax parity and do not advance directly to larger exact blocks.
-
-### Stretch 015 — COMPLETE ATTRIBUTION PASS
-
-`QUANTIZED_LINEAR_SHAPE_DEPENDENCE_CONFIRMED`, run `20260820-124515`:
-- M4/M8 remains exact through attention/post-attention norm
-- first divergence at `gate_proj`
-- gate/up/down are shape-dependent at M8
-- q/k/v/o remain exact at M8.
-
-Canonical attribution: Stretch 014 fails because frozen MLX 0.31.2 quantized-linear execution is M/shape dependent; first observed block divergence is in the MLP, not attention/RoPE/KV.
-
-### Stretch 016 — COMPLETE PASS
-
-`QUANTIZED_LINEAR_M_BOUNDARY_MAPPED`, run `20260820-125212`:
-- q/k/v/o exact through M=9; first divergent M=10
-- gate/up/down exact through M=5; first divergent M=6.
-
-Decision:
-- MLP is limiting exactness component
-- M=5 is largest relevant exact candidate under frozen runtime
-- M>=6 is not an exact-parity path under current policy.
-
-### Stretch 017 — COMPLETE PASS
-
-`FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_PASS`, run `20260820-130124`:
-- three 5-token oracle traversals
-- all 15 logits max/mean diff 0.0 / 0.0
-- all top-1 equal
-- all 15 oracle tokens accepted
-- streamed KV `4 -> 9 -> 14 -> 19`.
-
-Decision: **M=5 = maximum demonstrated end-to-end exact oracle block** under MLX 0.31.2.
+Canonical exactness conclusion:
+- **M=5 = maximum demonstrated exact oracle block under MLX 0.31.2**
+- **M>=6 = not an exact-parity path under the frozen policy**.
 
 ### Stretch 018 — COMPLETE PASS
 
@@ -169,142 +120,159 @@ Balanced order:
 `M4 -> M5 -> M5 -> M4`.
 
 Controlled result:
-- M4 pooled target rate 1.6983236855 token/s
-- M5 pooled target rate 1.8646802766 token/s
+- M4 pooled 1.6983236855 token/s
+- M5 pooled 1.8646802766 token/s
 - M5/M4 = 1.09795340695x (~+9.80%).
 
-Decision: **M=5 is the preferred exact block**. Block-size scaling is closed for frozen MLX 0.31.2 because M>=6 is non-exact.
+Decision:
+- **M=5 is the preferred exact block**.
+- block-size scaling is closed for frozen MLX 0.31.2.
 
 ### Stretch 019 — COMPLETE PASS
 
 `M5_H8_H16_BALANCED_HOTSET_COMPARISON_PASS`, run `20260820-132820`.
 
-Balanced order:
-`H8 -> H16 -> H16 -> H8`.
-
 Controlled result:
-- H8 pooled target rate 1.6634679103 token/s
-- H16 pooled target rate 2.6094542092 token/s
+- H8 pooled 1.6634679103 token/s
+- H16 pooled 2.6094542092 token/s
 - H16/H8 = 1.56868322678x (~+56.87%)
-- H16/H8 median materialization ratio 0.10130580024x
-- H16/H8 mean full-pass process-read bytes/block ratio 0.04627184541x
-- H16 hotset 1,350,836,224 B
-- H16 minimum observed free memory 22%.
+- median materialization ratio 0.10130580024x
+- full-pass process-read bytes/block ratio 0.04627184541x.
 
-Decision: residency/materialization is the highest-leverage active speed axis.
-
-Result:
-`research/stretch/m5-h8-h16-balanced-hotset-comparison-019-result.md`
+Decision: residency/materialization is the primary active speed axis.
 
 ### Stretch 020 — COMPLETE PASS
 
-`M5_H16_H24_BALANCED_HOTSET_COMPARISON_PASS`, valid run `20260820-144043`.
-
-Plan/result:
-- `research/stretch/m5-h16-h24-balanced-hotset-comparison-020-plan.md`
-- `research/stretch/m5-h16-h24-balanced-hotset-comparison-020-result.md`.
-
-Frozen sources:
-- H16 helper blob `6a0bd001ad7a5a5bf5646b54a302f7fc372e4367`
-- H24 helper blob `09363f4ce669a7de7b2f16fe4dfb63519c72eb9f`
-- balanced runner blob `d2f891462a786f334ceb11bb2e2528e9c2f0203d`.
-
-Balanced order:
-`H16 -> H24 -> H24 -> H16`.
+`M5_H16_H24_BALANCED_HOTSET_COMPARISON_PASS`, run `20260820-144043`.
 
 Controlled result:
-- H16 pooled target rate `1.8043852696963538 token/s`
-- H24 pooled target rate `2.433357437090613 token/s`
-- H24/H16 target-rate ratio `1.3485797506538635x` (~+34.86%)
-- H16 median block wall `2.7883325 s`
-- H24 median block wall `2.0068175 s`
-- H24/H16 median materialization ratio `0.16043963086388105x`
-- H24/H16 median forward ratio `0.7771261247356858x`
-- H24/H16 mean full-pass process-read bytes/block ratio `0.024249004705030764x`.
+- H16 pooled 1.8043852697 token/s
+- H24 pooled 2.4333574371 token/s
+- H24/H16 = 1.34857975065x (~+34.86%)
+- median block-wall ratio ~0.71972x
+- median materialization ratio 0.160439630864x
+- median forward ratio 0.777126124736x
+- full-pass process reads/block ratio 0.024249004705x.
 
-Residency/resource telemetry:
-- H16 hotset `1,350,836,224 B`
-- H24 hotset `2,026,254,336 B`
-- H16 hybrid raw-weight budget `1,623,105,536 B`
-- H24 hybrid raw-weight budget `2,298,523,648 B`
-- H16 min free `16%`, peak swap `2199.81 MB`
-- H24 min free `21%`, peak swap `2288.56 MB`.
+H24:
+- hotset 2,026,254,336 B
+- hybrid raw-weight budget 2,298,523,648 B
+- min observed free 21%
+- peak swap 2288.56 MB.
 
-Interpretation:
-- H24 materially improves the controlled target rate.
-- The gain remains dominated by lower materialization/process-read cost.
-- Do not interpret H24's higher observed minimum-free percentage as intrinsically lower RAM use; system telemetry is host-state dependent.
-- Do not compare absolute rates across separate Stretch experiments causally; use within-experiment balanced ratios.
+### Stretch 021 — COMPLETE PASS
 
-Decision:
-- **M5 + H24 = best demonstrated target-side profile so far** under the frozen runtime.
-- one further bounded residency point H32 is justified.
+`M5_H24_H32_BALANCED_HOTSET_COMPARISON_PASS`, valid run `20260820-145035`.
 
-Latest disk after Stretch 020: ~35.687 GiB free.
+Plan/result:
+- `research/stretch/m5-h24-h32-balanced-hotset-comparison-021-plan.md`
+- `research/stretch/m5-h24-h32-balanced-hotset-comparison-021-result.md`.
 
-## Stretch 021 — M5 H24 vs H32 Balanced Hotset Comparison — READY
-
-Plan:
-`research/stretch/m5-h24-h32-balanced-hotset-comparison-021-plan.md`
-
-Frozen H24 source:
-- `scripts/stretch_five_token_h24_hotset_variant_020.py`
-- blob `09363f4ce669a7de7b2f16fe4dfb63519c72eb9f`.
-
-Frozen H32 helper:
-- `scripts/stretch_five_token_h32_hotset_variant_021.py`
-- blob `b6b39dfb095b905ed659d52903309783efc02be7`.
-
-Frozen balanced runner:
-- `scripts/stretch_m5_h24_h32_balanced_hotset_comparison_021.py`
-- blob `fa52f21a7ae02a4fcae6c73416ad2ef63cc0ae45`.
-
-Scientific factor only:
-- H24 persistent transformer layers `0..23`
-- H32 persistent transformer layers `0..31`.
-
-Frozen:
-- exact block size M=5
-- three 5-token oracle target traversals
-- model/runtime/quantization
-- BF16 KV
-- parity/top-1 policy
-- shared-stage streaming
-- I/O/host/resource gates
-- no drafter, prefetch, KV quantization, runtime upgrade or cache purge.
-
-Expected raw geometry:
-- H24 hotset `2,026,254,336 B`
-- H32 hotset `2,701,672,448 B`
-- H32 nominal hybrid raw-weight budget `2,973,941,760 B` (~2.77 GiB), assuming the same 272,269,312 B maximum shared stage.
+Frozen sources:
+- H24 helper blob `09363f4ce669a7de7b2f16fe4dfb63519c72eb9f`
+- H32 helper blob `b6b39dfb095b905ed659d52903309783efc02be7`
+- balanced runner blob `fa52f21a7ae02a4fcae6c73416ad2ef63cc0ae45`.
 
 Balanced order:
 `H24 -> H32 -> H32 -> H24`.
 
-Every constituent must independently reach inherited `FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_PASS`, retain M=5, accept all 15 oracle tokens, and expose the exact expected hotset IDs.
+Controlled result:
+- H24 pooled target rate `2.7358720706219777 token/s`
+- H32 pooled target rate `3.0490014164644244 token/s`
+- H32/H24 target-rate ratio `1.1144532119044803x` (~+11.45%)
+- H24 median block wall `1.807173 s`
+- H32 median block wall `1.6119785 s`
+- H32/H24 median materialization ratio `0.3422754314008055x`
+- H32/H24 median forward ratio `0.964972714944873x`
+- H32/H24 mean full-pass process-read bytes/block ratio `0.006146087778740841x`.
 
-Any partial/failing sequence => `HOTSET_COMPARISON_INCOMPLETE`; no winner is inferred and no automatic rescue/retry is allowed.
+Residency/resource telemetry:
+- H24 hotset `2,026,254,336 B`
+- H32 hotset `2,701,672,448 B`
+- H24 hybrid raw-weight budget `2,298,523,648 B`
+- H32 hybrid raw-weight budget `2,973,941,760 B`
+- H24 min free `21%`, peak swap `2076.62 MB`
+- H32 min free `25%`, peak swap `2124.25 MB`.
+
+Canonical interpretation:
+- H32 remains faster, but marginal residency gain has fallen to ~11.45%.
+- forward time is nearly unchanged while transformer materialization/process reads continue to collapse.
+- actual compute/shared-stage work is becoming the dominant residual cost.
+- do not compare absolute rates across separate Stretch experiments causally; use within-experiment balanced ratios.
+
+Decision:
+- **M5 + H32 = best demonstrated target-side profile so far**.
+- one final H36 transformer-residency ceiling experiment is justified.
+- after H36, transformer-hotset scaling closes regardless of outcome.
+
+Latest disk after Stretch 021: ~35.684 GiB free.
+
+## Stretch 022 — M5 H32 vs H36 Balanced Hotset Ceiling — READY
+
+Plan:
+`research/stretch/m5-h32-h36-balanced-hotset-comparison-022-plan.md`
+
+Frozen H32 source:
+- `scripts/stretch_five_token_h32_hotset_variant_021.py`
+- blob `b6b39dfb095b905ed659d52903309783efc02be7`.
+
+Frozen H36 helper:
+- `scripts/stretch_five_token_h36_hotset_variant_022.py`
+- blob `9111dde483206a774a9fe5426522dab6e77cecca`.
+
+Frozen balanced runner:
+- `scripts/stretch_m5_h32_h36_balanced_hotset_comparison_022.py`
+- blob `c9ed18984896835c99a22c68aaedb330d030ec7e`.
+
+Scientific factor only:
+- H32 persistent transformer layers `0..31`
+- H36 persistent transformer layers `0..35`.
+
+H36 removes transformer-layer streaming entirely; shared embedding/final norm/LM head remain handled by the inherited streamed/shared-stage path.
+
+Frozen:
+- exact block size M=5
+- 3 x 5-token oracle target traversals
+- model/runtime/quantization
+- BF16 KV
+- parity/top-1 policy
+- shared-stage behavior
+- I/O/host/resource gates
+- no real drafter, prefetch, KV quantization, runtime upgrade, download or cache purge.
+
+Expected raw geometry:
+- H32 hotset `2,701,672,448 B`
+- H36 hotset `3,039,381,504 B`
+- H32 nominal hybrid raw-weight budget `2,973,941,760 B`
+- H36 nominal hybrid raw-weight budget `3,311,650,816 B` (~3.08 GiB), assuming the same 272,269,312 B maximum shared stage.
+
+Balanced order:
+`H32 -> H36 -> H36 -> H32`.
+
+Every constituent must independently reach inherited `FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_PASS`, retain M=5, accept all 15 oracle tokens, expose exact expected hotset IDs, and pass all inherited host/resource/numerical/I-O gates.
+
+Any partial/failing sequence => `HOTSET_COMPARISON_INCOMPLETE`; no winner is inferred, no automatic retry is allowed, and H33-H35 will not be searched post-hoc.
 
 Primary PASS:
-`M5_H24_H32_BALANCED_HOTSET_COMPARISON_PASS`.
+`M5_H32_H36_BALANCED_HOTSET_COMPARISON_PASS`.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_five_token_h32_hotset_variant_021.py
-python3 -m py_compile scripts/stretch_m5_h24_h32_balanced_hotset_comparison_021.py
-python3 scripts/stretch_m5_h24_h32_balanced_hotset_comparison_021.py
+python3 -m py_compile scripts/stretch_five_token_h36_hotset_variant_022.py
+python3 -m py_compile scripts/stretch_m5_h32_h36_balanced_hotset_comparison_022.py
+python3 scripts/stretch_m5_h32_h36_balanced_hotset_comparison_022.py
 ```
 
 No download is expected.
 
-## Open questions after Stretch 021
+## Open questions after Stretch 022
 
-1. Does H32 materially improve the controlled M5 target rate versus H24?
-2. Does H32 remain inside the frozen 8 GB resource envelope without approaching the abort gates?
-3. If H32 passes and gains materially, is one separately preregistered H36 ceiling test justified?
-4. If H32 is flat/slower/resource-limited, stop residency scaling and move to prefetch/double-buffering or another independent factor.
-5. Real drafter selection remains deferred until the target-side architecture is sufficiently characterized.
-6. Any newer MLX runtime must remain a separate environment experiment and must not redefine the frozen 0.31.2 baseline.
+1. Does full transformer residency H36 materially improve the balanced M5 target rate over H32?
+2. Does H36 remain within the frozen 8 GB resource envelope?
+3. How much residual wall remains in forward/shared stages once transformer rematerialization is eliminated?
+4. Regardless of result, transformer-hotset scaling closes after Stretch 022.
+5. Next factor should be selected from residual evidence: shared-stage residency/prefetch, double-buffering, or a separately preregistered runtime/kernel experiment.
+6. Real drafter selection remains deferred until target-side architecture is sufficiently characterized.
