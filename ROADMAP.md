@@ -123,7 +123,7 @@ Promotion target: ~20 token/s.
 - [x] Freeze `research/stretch/single-pass-compute-reattribution-028-result.md`
 - [x] Select quantized MLP projection path as first compute optimization axis
 
-### Stretch 029 — GATE+UP QUANTIZED FUSION — CURRENT / READY
+### Stretch 029 — GATE+UP QUANTIZED FUSION — CURRENT / HARNESS FIX1 READY
 - [x] Keep M5 frozen
 - [x] Keep H36 frozen
 - [x] Keep full raw-weight persistence frozen
@@ -138,12 +138,22 @@ Promotion target: ~20 token/s.
 - [x] Treat frozen numerical/top1/acceptance mismatch as valid scientific fusion FAIL
 - [x] No rescue ordering / partial fusion / threshold relaxation / automatic retry
 - [x] Balanced order `CONTROL -> FUSED -> FUSED -> CONTROL`
-- [x] FUSED helper `scripts/stretch_gate_up_quantized_fusion_029.py`
-- [x] FUSED blob `c37ff6313106807c1e2e5070b7fb8f19e97abea6`
-- [x] Runner `scripts/stretch_gate_up_quantized_fusion_comparison_029.py`
-- [x] Runner blob `8d89665b5d3061891a53f1734e19331aa1a4fb34`
+- [x] Original FUSED helper `scripts/stretch_gate_up_quantized_fusion_029.py`
+- [x] Original FUSED blob `c37ff6313106807c1e2e5070b7fb8f19e97abea6`
+- [x] Original runner `scripts/stretch_gate_up_quantized_fusion_comparison_029.py`
+- [x] Original runner blob `8d89665b5d3061891a53f1734e19331aa1a4fb34`
 - [x] Preregister `research/stretch/gate-up-quantized-fusion-029-plan.md`
-- [ ] Run Stretch 029
+- [x] Preserve run `20260820-170503` as harness defect / no scientific result
+- [x] Exact defect: wrapper preflight required post-callback `single_quantized_matmul_gate_up` before callback execution
+- [x] Record `research/stretch/gate-up-quantized-fusion-029-harness-defect-20260820-170503.md`
+- [x] Prepare harness-only Fix1 without changing original `add_gate_up_fusion()`
+- [x] Fix1 FUSED helper `scripts/stretch_gate_up_quantized_fusion_029_fix1.py`
+- [x] Fix1 FUSED blob `93d985a526f4433b10fec39fbaf5807059807821`
+- [x] Fix1 runner `scripts/stretch_gate_up_quantized_fusion_comparison_029_fix1.py`
+- [x] Fix1 runner blob `3e8c32292763c10d2acea234152d0ff835fe985d`
+- [x] Preregister Fix1 `research/stretch/gate-up-quantized-fusion-029-harness-fix1.md`
+- [x] Require fresh complete ABBA; do not reuse CONTROL from `170503`
+- [ ] Run Stretch 029 Fix1
 - [ ] Freeze PASS or valid scientific fusion FAIL
 - [ ] Select next independent compute factor
 
