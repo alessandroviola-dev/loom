@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_040_GC_COMPOSITION_FEASIBILITY_NO_GO_CHECKPOINT_REVIEW`
+Current checkpoint: `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE_CHECKPOINT_REVIEW`
 
 ## Mission
 
@@ -446,13 +446,20 @@ post-cycle serialization harness defect; the complete Fix1 evidence is
 `results-local/stretch/s1r8-gc-cleanup-composition-040-feasibility/20260820-212227/summary.json`.
 Artifact: `research/stretch/s1r8-gc-cleanup-composition-040-feasibility.md`.
 
+## Stretch 041 — current bottleneck map complete
+
+Stretch 041 rendered the exact promoted runtime and ran investigation-only diagnostics; it did not rerun Stretch 037/038/039/040, create a treatment, or make a promotion decision. The successful evidence is `results-local/stretch/current-bottleneck-attribution-041/20260820-213903/summary.json`; the report is `research/stretch/current-bottleneck-attribution-041.md`.
+
+The six-cycle canonical ten-token/two-M5 diagnostic averaged 710.063 ms (median 707.791 ms, 14.0833 diagnostic tok/s), with 24% minimum free memory, 2076.19 MB peak swap and stable final MLX active/cache state. The exact promoted path has two per-layer `mx.eval` boundaries; per ten-token constituent it has 186 `mx.eval`, 48 `.item()` and zero `mx.synchronize()` calls. Four profiled cycles perturb wall by 1.75625x, so their absolute broad-stage times are attribution-only.
+
+Actual-payload isolated measurements establish that the LM head is a separate built-in affine 3-bit/group64 QuantizedLinear path (effective K=4096/N=151936), not S1_R8; its 22.394 ms median is only 3.154% of the target wall and is `CLOSED_BY_UPPER_BOUND`. Reused unchanged Stretch-039 SDPA evidence is also below the independent gate. Stretch-040 cleanup composition remains frozen NO-GO. Evaluation/materialization cadence exists in source but its scheduling benefit and memory bound are not yet sufficient to claim >=5% plausibly. Generic qmv scale/bias metadata caching is not proposed: MLX issue #3251 reports no g64 penalty versus g128 and 20–30% regression for attempted register/`simd_shuffle` caching.
+
+Classification: `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE`. Exact recommendation: **no next optimization factor is defensibly recommended**. Transition toward radical kernel/model techniques, speculative drafter/acceptance work, or serving/productization rather than sub-5% micro-optimizations.
+
 ## Exact next step
 
-Checkpoint: `STRETCH_040_GC_COMPOSITION_FEASIBILITY_NO_GO_CHECKPOINT_REVIEW`.
-Do not rerun Stretch 037, Stretch 038, Stretch 039, or Stretch 040. Preserve
-the frozen S1_R8 + `gc.collect() -> mx.clear_cache() -> gc.collect()`
-one-cleanup-every-two-M5-block baseline. Any new independent factor requires
-separate authorization.
+Checkpoint: `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE_CHECKPOINT_REVIEW`.
+Preserve Qwen3-8B affine 3-bit/group64 BF16 M5/H36/full persistence/BF16 KV/S1_R8 and `gc.collect() -> mx.clear_cache() -> gc.collect()` once per two M5 blocks. Do not rerun Stretch 037, 038, 039 or 040. Obtain separate authorization before any new radical direction; no micro-optimization factor is currently selected.
 
 ### Historical Stretch 031 rationale
 

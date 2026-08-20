@@ -219,6 +219,15 @@ Promotion target: ~20 token/s.
 - [x] MLX active/cache recovered stably after retained clear (`3,666,913,308 -> 3,665,291,272 B`; cache `2,867,744–2,868,260 B`), min free `24%`, peak swap `2021.44 MB`; but treatment tracked Python objects rose strictly `84,797 -> 85,354` across 24 cycles, so MLX-only recovery is insufficient
 - [x] `STRETCH_040_GC_COMPOSITION_FEASIBILITY_NO_GO`; retain the full promoted cleanup composition/cadence, create no preregistration and run no scientific ABBA; preserve report `research/stretch/s1r8-gc-cleanup-composition-040-feasibility.md`
 
+### Stretch 041 — post-promotion bottleneck re-attribution — COMPLETE
+- [x] Render/audit the exact promoted S1_R8 + once-per-two-M5 cleanup runtime; record 2 per-layer `mx.eval` boundaries, 186 `mx.eval`, 48 `.item()`, and zero `mx.synchronize()` calls per two-M5/ten-token constituent
+- [x] Fresh six-cycle canonical diagnostic: 710.063 ms mean / 707.791 ms median ten-token wall, 14.0833 diagnostic tok/s; min free 24%, peak swap 2076.19 MB, stable MLX active/cache recovery
+- [x] Four-cycle broad profile used only for attribution: 1.75625x canonical wall perturbation; never treat its absolute stage wall as canonical
+- [x] Capture actual M5 layer-0/18/35 payloads and measure q/k/v/o, gate/up/down, RMSNorm, residual, SwiGLU, final norm and LM head with 40 excluded warmups and 120 synchronized samples
+- [x] Audit LM head as affine 3-bit/group64 `QuantizedLinear`, effective K=4096/N=151936, built-in `mx.quantized_matmul` path and S1_R8-ineligible; 22.394 ms / 3.154% target wall, `CLOSED_BY_UPPER_BOUND`
+- [x] Reuse valid Stretch-039 SDPA and Stretch-040 cleanup evidence; no closed experiment was rerun
+- [x] `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE`; no low-risk independent factor has defensible >=5% plausible upside, so recommend no next factor; preserve `research/stretch/current-bottleneck-attribution-041.md` and evidence `results-local/stretch/current-bottleneck-attribution-041/20260820-213903/summary.json`
+
 ### Stretch 041+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; S1_R8 beat fresh built-in MLX CONTROL in Stretch 037; retain both decisions for their frozen scopes
 - [ ] Do not rerun Stretch 037, Stretch 038 feasibility/the completed ABBA, Stretch 039, or Stretch 040. Select a new independent factor only after separate authorization. Do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, MLX 0.32 runtime comparison, this GQA shared-KV idea, or GC-composition removal without a new authorization
