@@ -51,6 +51,12 @@ def patched_source(repo: Path) -> str:
     )
     source = patch_once(
         source,
+        "def child_main(argv: list[str]) -> int:\n",
+        "def child_main(argv: list[str]) -> int:\n    global __stretch038_cleanup_enabled, __stretch038_pre_cleanup_hook\n",
+        "child cadence global scope",
+    )
+    source = patch_once(
+        source,
         "        shared_cleanup_pre_active = int(mx.get_active_memory())\n        shared_cleanup_started = time.perf_counter()\n        gc.collect()\n        mx.clear_cache()\n        gc.collect()\n        shared_cleanup_wall = time.perf_counter() - shared_cleanup_started\n        shared_cleanup_post_active = int(mx.get_active_memory())\n        stage_records[\"shared_stage_cleanup\"] = {\n            \"policy\": \"single_cleanup_after_full_pass\",\n            \"pre_active_bytes\": shared_cleanup_pre_active,\n            \"post_active_bytes\": shared_cleanup_post_active,\n            \"active_delta_bytes\": shared_cleanup_post_active - shared_cleanup_pre_active,\n            \"wall_seconds\": round(shared_cleanup_wall, 6),\n        }\n",
         "        shared_cleanup_pre_active = int(mx.get_active_memory())\n        shared_cleanup_started = time.perf_counter()\n        if __stretch038_cleanup_enabled:\n            if __stretch038_pre_cleanup_hook is not None:\n                __stretch038_pre_cleanup_hook()\n            gc.collect()\n            mx.clear_cache()\n            gc.collect()\n        shared_cleanup_wall = time.perf_counter() - shared_cleanup_started\n        shared_cleanup_post_active = int(mx.get_active_memory())\n        stage_records[\"shared_stage_cleanup\"] = {\n            \"policy\": \"single_cleanup_after_full_pass\" if __stretch038_cleanup_enabled else \"deferred_to_second_m5_block\",\n            \"executed\": bool(__stretch038_cleanup_enabled),\n            \"pre_active_bytes\": shared_cleanup_pre_active,\n            \"post_active_bytes\": shared_cleanup_post_active,\n            \"active_delta_bytes\": shared_cleanup_post_active - shared_cleanup_pre_active,\n            \"wall_seconds\": round(shared_cleanup_wall, 6),\n        }\n",
         "final cleanup guard",
