@@ -140,9 +140,15 @@ Promotion target: ~20 token/s.
 - [x] MLP-only diagnostic weighting estimates `-5.3249%` of Stretch 031 M5 median block wall; no Stretch 032 plan/ABBA
 - [x] Preserve `research/stretch/m5-row-chunked-quantized-matmul-032-feasibility.md`; monolithic M5 qmatmul remains canonical
 
-### Stretch 033+ — CONDITIONAL
+### Stretch 033 candidate — outer `mx.compile` MLP — NO-GO
+- [x] Real M5 BF16 layer-0 MLP feasibility under canonical MLX 0.31.2 with captured immutable 3-bit/group64 weights
+- [x] First outer-compile invocation measured separately; fixed callable/input/weights and excluded warmups support steady-state reuse
+- [x] Exact output, but compiled/eager `0.9979923` for one MLP and `0.9999800` for three real MLPs; weighted upside `0.1880%`
+- [x] No Stretch 033 plan/ABBA; preserve `research/stretch/m5-compiled-mlp-033-feasibility.md` and canonical eager outer MLP
+
+### Stretch 034+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; retain M5 geometry and move only to another independently preregistered compute factor
-- [ ] Select a new independent compute factor; do not revisit M geometry or row splits without a new authorization
+- [ ] Select a new independent compute factor; do not revisit M geometry, row splits, or outer MLP compile without a new authorization
 - [ ] Consider attention/SDPA separately after geometry decision
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized

@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_032_ROW_CHUNKED_FEASIBILITY_NO_GO`
+Current checkpoint: `STRETCH_033_COMPILED_MLP_FEASIBILITY_NO_GO`
 
 ## Mission
 
@@ -239,6 +239,14 @@ Diagnostic only; no Stretch 032 plan, source transform, preflight, or ABBA was c
 All q/k/v/o/gate/up/down outputs were bit-exact (`max_abs_diff=mean_abs_diff=0`) and shapes matched, but chunked/monolithic median ratios were all slower: q `1.062675`, k `1.178569`, v `1.186259`, o `1.091189`, gate `1.061970`, up `1.068221`, down `1.061597`. Applying only the matching Stretch 028 MLP component telemetry estimates a `-0.0185683 s/block` loss, `-5.3249%` of the valid Stretch 031 M5 median block wall. Even the explicitly optimistic attention-inclusive bound is negative (`-8.9908%`).
 
 Classification: `STRETCH_032_ROW_CHUNKED_FEASIBILITY_NO_GO`. M5 monolithic qmatmul remains canonical. Do not retry this measurement, do not try `1+1+...` or `3+2`, and do not launch an ABBA; each alternative is a separate factor. Artifact: `research/stretch/m5-row-chunked-quantized-matmul-032-feasibility.md`; evidence: `results-local/stretch/m5-row-chunked-quantized-matmul-032-feasibility/20260820-185103/summary.json`. Next exact step: select and separately preregister a new independent compute factor.
+
+## Stretch 033 candidate — outer `mx.compile` MLP feasibility — NO-GO
+
+Diagnostic only; no Stretch 033 plan, scientific source transform, preflight, or ABBA was created. Under the literal canonical venv and real 3-bit/group64 layer-0 payloads, the pure Qwen3 MLP expression was compared as eager outer graph versus `mx.compile(..., inputs=layer0)` with immutable weight trees captured. M5 BF16 input, monolithic qmatmuls and no cache purge were retained. The installed mlx-lm `swiglu` is itself `@partial(mx.compile, shapeless=True)`; the factor is only the proposed outer MLP compile.
+
+First compiled invocation plus eval was `0.2991603 s` (factory call `0.0000068 s`); excluded warmup median was `0.0056032 s`. The 120-side interleaved steady benchmark was exact (`max_abs=mean_abs=0`): eager `5.9251 ms`, compiled `5.9132 ms`, ratio `0.9979923`. A three-real-MLP sequence was also exact and flat: `16.7317` vs `16.7314 ms`, ratio `0.9999800`. Fixed callable/input/weight identity and no second compile-scale timed outlier are the available MLX 0.31.2 reuse evidence; no public compilation counter exists.
+
+Stretch-028-weighted diagnostic saving is only `0.0006557 s/block`, `0.1880%` of the valid Stretch-031 M5 median block wall, far below 5%. Classification: `STRETCH_033_COMPILED_MLP_FEASIBILITY_NO_GO`. Keep canonical outer eager MLP / monolithic M5 qmatmul; do not create an ABBA or rescue this factor. Artifact: `research/stretch/m5-compiled-mlp-033-feasibility.md`; evidence: `results-local/stretch/m5-compiled-mlp-033-feasibility/20260820-190058/summary.json`. Next exact step: select a different independently preregistered compute factor.
 
 ### Rationale
 
