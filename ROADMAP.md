@@ -110,40 +110,55 @@ Usability promotion target: ~20 token/s.
 - [x] Use frozen first-15 oracle prefix
 - [x] Resident sequential continuation length 15
 - [x] Stream target as 3 x 5-token blocks
-- [x] Exact prompt parity
-- [x] Exact all 15 position logits: max/mean diff 0.0 / 0.0
-- [x] Top-1 equality at all 15 positions
+- [x] Exact all 15 position logits/top-1
 - [x] All 15 oracle tokens accepted
 - [x] Streamed KV `4 -> 9 -> 14 -> 19`
-- [x] Final resident/streamed KV bytes 37,748,736 / 37,748,736 B
 - [x] Freeze M=5 as maximum demonstrated end-to-end exact oracle block under MLX 0.31.2
-- [x] Observe secondary M5 target rate 1.3629385391 token/s
-- [x] Preserve warning that Stretch 013 vs 017 timing is not a controlled A/B due host/cache/I-O differences
+- [x] Preserve standalone-timing warning due host/cache/I-O differences
 - [x] Freeze `research/stretch/five-token-oracle-block-confirmation-017-result.md`
 
-### Stretch 018 — Balanced M4 vs M5 target-cost comparison — CURRENT / READY
-- [x] Preregister `research/stretch/m4-m5-balanced-target-cost-comparison-018-plan.md`
-- [x] Add `scripts/stretch_m4_m5_balanced_target_cost_comparison_018.py`
-- [x] Freeze runner blob `0a745a2ea4fd6adf70d33b82156ec9c3889a1498`
-- [x] Preserve frozen M4 Stretch 013 and M5 Stretch 017 runners
-- [x] Use balanced order `M4 -> M5 -> M5 -> M4`
+### Stretch 018 — COMPLETE PASS
+- [x] Valid run `20260820-131448`
+- [x] `M4_M5_BALANCED_TARGET_COST_COMPARISON_PASS`
+- [x] Balanced order `M4 -> M5 -> M5 -> M4`
 - [x] No deliberate cache purge
-- [x] Require every constituent run to reach its inherited scientific PASS
-- [x] Aggregate normalized block wall/materialization/forward/process-read metrics
-- [x] Compare pooled accepted-token target rate, not whole-script elapsed time
-- [ ] Run Stretch 018
-- [ ] Freeze balanced comparison result
-- [ ] Select operational exact block-size sweet spot only after controlled evidence
+- [x] Every constituent inherited PASS gate succeeded
+- [x] M4 pooled target rate `1.6983236855 token/s`
+- [x] M5 pooled target rate `1.8646802766 token/s`
+- [x] M5/M4 target-rate ratio `1.09795340695x` (~+9.80%)
+- [x] M5/M4 median materialization ratio `2.19265232975x`
+- [x] M5/M4 median forward ratio `1.16365164669x`
+- [x] M5/M4 mean full-pass process-read bytes/block ratio `1.72894269309x`
+- [x] Freeze M=5 as preferred exact block under controlled M4/M5 evidence
+- [x] Close block-size scaling axis for frozen MLX 0.31.2; M>=6 remains non-exact
+- [x] Freeze `research/stretch/m4-m5-balanced-target-cost-comparison-018-result.md`
 
-### Stretch 019+ — conditional path
-- [ ] If M4 is robustly faster under balanced conditions, freeze M4 as operational exact block baseline while retaining M5 as maximum exactness frontier
-- [ ] If M5 is equal/faster after balancing I/O/cache state, retain M5 as preferred exact oracle block
-- [ ] If cache/I-O effects remain dominant, run narrower materialization/cache attribution before selecting M
-- [ ] Evaluate additional residency/hotset as a separate speed axis
-- [ ] Test prefetch/double buffering separately
+### Stretch 019 — Balanced M5 H8 vs H16 hotset comparison — CURRENT / READY
+- [x] Keep exact block size M=5 frozen
+- [x] Scientific factor = persistent transformer residency H8 -> H16 only
+- [x] H8 layers `0..7`, expected raw hotset 675,418,112 B
+- [x] H16 layers `0..15`, expected raw hotset 1,350,836,224 B
+- [x] Preserve model/runtime/quantization/KV/parity/I-O/safety policy
+- [x] Preserve no-cache-purge policy
+- [x] Add H16 helper `scripts/stretch_five_token_h16_hotset_variant_019.py`
+- [x] Freeze H16 helper blob `6a0bd001ad7a5a5bf5646b54a302f7fc372e4367`
+- [x] Add balanced runner `scripts/stretch_m5_h8_h16_balanced_hotset_comparison_019.py`
+- [x] Freeze balanced runner blob `8ad0666624069d4852daed1188d634806b570ecc`
+- [x] Preregister `research/stretch/m5-h8-h16-balanced-hotset-comparison-019-plan.md`
+- [x] Balanced order `H8 -> H16 -> H16 -> H8`
+- [x] Require every constituent to reach inherited PASS and exact expected hotset IDs
+- [x] Any partial sequence => `HOTSET_COMPARISON_INCOMPLETE`, no winner
+- [ ] Run Stretch 019
+- [ ] Freeze H8/H16 result
+- [ ] Decide whether further bounded residency scaling is justified
+
+### Stretch 020+ — conditional path
+- [ ] If H16 materially improves M5 target rate and resource headroom remains adequate, consider one further preregistered residency point
+- [ ] If H16 is flat/slower or resource-limited, stop hotset scaling and inspect prefetch/double-buffering
+- [ ] Test prefetch/double-buffering as a separate factor
 - [ ] Consider a newer-MLX experiment only as a separately preregistered environment change
 - [ ] Never overwrite/reinterpret frozen MLX 0.31.2 results with newer-runtime results
-- [ ] Select a real drafter only after exact oracle target-side frontier is settled
+- [ ] Select a real drafter only after target-side performance architecture is sufficiently characterized
 - [ ] Measure real acceptance rate and end-to-end tok/s including draft/rejection/rollback cost
 - [ ] Test KV capacity and KV quantization separately
 - [ ] Do not promote interactive profile until speed approaches frozen ~20 token/s target
