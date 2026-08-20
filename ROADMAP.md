@@ -68,13 +68,12 @@ Promotion target: ~20 token/s.
 - [x] PERSISTENT/STREAMED ~+59.89%
 - [x] Full persistent raw model `3,583,928,320 B`
 - [x] Shared setup mean `0.3723145 s`; break-even `0.4392464321` target blocks
-- [x] Freeze `M5 + H36 + full raw-weight persistence` as best target architecture
+- [x] Freeze `M5 + H36 + full raw-weight persistence` as best weight-residency architecture
 - [x] Close raw-weight residency
 - [x] Freeze result file
 
 ### Stretch 024 — COMPUTE/FRAMEWORK ATTRIBUTION — COMPLETE PASS
 - [x] Preserve Fix1 telemetry defect `20260820-155313` / no scientific result
-- [x] Apply parent-geometry Fix2 only
 - [x] Valid Fix2 ABBA `20260820-160140`
 - [x] `FULL_PERSISTENT_COMPUTE_ATTRIBUTION_PASS`
 - [x] Transformer compute `0.8081826820 s/block`
@@ -86,43 +85,61 @@ Promotion target: ~20 token/s.
 - [x] Residual unattributed `0.0995254846 s/block`
 - [x] Accounted share ~94.74%
 - [x] Identify cleanup/framework path as largest measured remaining category
-- [x] Freeze `research/stretch/full-persistent-compute-kernel-attribution-024-result.md`
+- [x] Freeze result
 
 ### Stretch 025 — BATCHED TRANSFORMER CLEANUP — COMPLETE PASS
-- [x] Valid ABBA run `20260820-161317`
+- [x] Valid ABBA `20260820-161317`
 - [x] `FULL_PERSISTENT_BATCHED_CLEANUP_COMPARISON_PASS`
 - [x] CONTROL pooled `2.7615996621 token/s`
 - [x] BATCHED pooled `10.6674479980 token/s`
 - [x] BATCHED/CONTROL `3.8627785715x` (~+286.28%)
-- [x] CONTROL median block `1.5667445 s`
-- [x] BATCHED median block `0.464723 s` (~70.34% lower)
+- [x] Median block wall ~70.34% lower
 - [x] BATCHED mean one-per-body cleanup `0.060996 s`
 - [x] BATCHED min free `23%`; peak swap `2535.12 MB`
-- [x] Freeze `M5 + H36 + full persistence + one transformer cleanup/body` as preferred execution schedule
+- [x] Freeze one transformer cleanup/body as preferred schedule
 - [x] Freeze `research/stretch/full-persistent-batched-cleanup-comparison-025-result.md`
 
-### Stretch 026 — SHARED-STAGE BATCHED CLEANUP — CURRENT / READY
+### Stretch 026 — SHARED-STAGE BATCHED CLEANUP — COMPLETE PASS
+- [x] Valid ABBA `20260820-162951`
+- [x] `FULL_PERSISTENT_SHARED_BATCHED_CLEANUP_COMPARISON_PASS`
+- [x] BATCHED pooled `11.1287398594 token/s`
+- [x] SHARED_BATCHED pooled `12.6986760784 token/s`
+- [x] SHARED_BATCHED/BATCHED `1.1410704391x` (~+14.11%)
+- [x] BATCHED median block `0.4502915 s`
+- [x] SHARED_BATCHED median block `0.399913 s` (~11.19% lower)
+- [x] SHARED_BATCHED mean body cleanup `0.0477333333 s`
+- [x] SHARED_BATCHED mean post-shared cleanup `0.031349 s`
+- [x] SHARED_BATCHED min free `25%`; peak swap `2465.75 MB`
+- [x] Freeze two-point schedule: one cleanup after body + one after LM head
+- [x] Freeze `research/stretch/full-persistent-shared-batched-cleanup-comparison-026-result.md`
+
+### Stretch 027 — SINGLE END-OF-PASS CLEANUP — CURRENT / READY
 - [x] Keep M5 frozen
 - [x] Keep H36 frozen
-- [x] Keep full raw-weight persistence frozen
-- [x] Keep Stretch 025 one-per-transformer-body cleanup frozen in both variants
-- [x] Scientific factor = shared-stage cleanup schedule only
-- [x] BATCHED baseline blob `5ca3572f3269899e7c3fc23b9e136381ce864d99`
-- [x] SHARED_BATCHED treatment removes individual embedding/norm/head cleanup and performs one post-head cleanup
-- [x] SHARED_BATCHED helper `scripts/stretch_full_persistent_shared_batched_cleanup_026.py`
-- [x] SHARED_BATCHED blob `6926e1b1b9a851f23d88ba6b1f1023e13336098a`
-- [x] Balanced runner `scripts/stretch_full_persistent_shared_batched_cleanup_comparison_026.py`
-- [x] Runner blob `e958bde5d8a239ffa5fd192922e0693854d478e0`
-- [x] Balanced order `BATCHED -> SHARED_BATCHED -> SHARED_BATCHED -> BATCHED`
-- [x] Preregister `research/stretch/full-persistent-shared-batched-cleanup-comparison-026-plan.md`
-- [x] No automatic retry / no cache purge / no partial shared-stage cleanup rescue
-- [ ] Run Stretch 026
+- [x] Keep all raw model weights persistent
+- [x] Keep MLX 0.31.2 / model / KV / parity / resource policy frozen
+- [x] Scientific factor = cleanup points per target pass only
+- [x] SHARED_BATCHED baseline = one cleanup after transformer body + one after LM head
+- [x] SINGLE_PASS = remove body cleanup; retain one final post-head cleanup
+- [x] Explicitly do not test zero cleanup
+- [x] Baseline blob `6926e1b1b9a851f23d88ba6b1f1023e13336098a`
+- [x] SINGLE_PASS helper `scripts/stretch_full_persistent_single_pass_cleanup_027.py`
+- [x] SINGLE_PASS blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`
+- [x] Balanced runner `scripts/stretch_full_persistent_single_pass_cleanup_comparison_027.py`
+- [x] Runner blob `665ca882f5067e65779e7e3f1a0c352432aeb113`
+- [x] Balanced order `SHARED_BATCHED -> SINGLE_PASS -> SINGLE_PASS -> SHARED_BATCHED`
+- [x] Preregister `research/stretch/full-persistent-single-pass-cleanup-comparison-027-plan.md`
+- [x] No automatic retry / no cache purge / no zero-cleanup rescue
+- [ ] Run Stretch 027
 - [ ] Freeze result
-- [ ] Select next factor from controlled evidence
+- [ ] Close cleanup-frequency axis at preferred valid schedule
+- [ ] Select next compute/kernel factor
 
-### Stretch 027+ — CONDITIONAL NEXT AXIS
-- [ ] If SHARED_BATCHED wins materially, test merging transformer-body + shared-path cleanup into one end-of-pass cleanup as a separate factor
-- [ ] If cleanup gains saturate, return to Stretch 024 compute evidence: MLP ~2.66x attention, with gate/up/down major projections
+### Stretch 028+ — NEXT COMPUTE AXIS
+- [ ] Return to Stretch 024 attribution once cleanup schedule closes
+- [ ] MLP measured ~2.66x attention under profiled baseline
+- [ ] gate/up/down projections are the main measured MLP kernels
+- [ ] Select one kernel/runtime factor at a time
 - [ ] Consider newer MLX only as separately preregistered environment comparison
 - [ ] Never overwrite frozen MLX 0.31.2 evidence with newer runtime results
 - [ ] Select a real drafter only after target-side architecture is sufficiently optimized
