@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_033_COMPILED_MLP_FEASIBILITY_NO_GO`
+Current checkpoint: `STRETCH_034_FUSED_RESIDUAL_RMSNORM_FEASIBILITY_NO_GO`
 
 ## Mission
 
@@ -248,6 +248,18 @@ First compiled invocation plus eval was `0.2991603 s` (factory call `0.0000068 s
 
 Stretch-028-weighted diagnostic saving is only `0.0006557 s/block`, `0.1880%` of the valid Stretch-031 M5 median block wall, far below 5%. Classification: `STRETCH_033_COMPILED_MLP_FEASIBILITY_NO_GO`. Keep canonical outer eager MLP / monolithic M5 qmatmul; do not create an ABBA or rescue this factor. Artifact: `research/stretch/m5-compiled-mlp-033-feasibility.md`; evidence: `results-local/stretch/m5-compiled-mlp-033-feasibility/20260820-190058/summary.json`. Next exact step: select a different independently preregistered compute factor.
 
+## Stretch 034 candidate — fused residual add + RMSNorm feasibility — NO-GO
+
+Diagnostic only; no Stretch 034 scientific runner, preregistration, source transform, preflight, or ABBA was created. Under the literal canonical MLX 0.31.2 venv, actual Qwen3 BF16 layer-0 `input_layernorm` and `post_attention_layernorm` weights and final model norm all confirmed shape `[4096]`, dtype BF16. The control was the already canonical `h = x + r; n = mx.fast.rms_norm(h, weight, 1e-6)` with both outputs evaluated. The treatment was one custom `mx.fast.metal_kernel`, specialized to BF16 `[1,5,4096]`, producing both raw `h` and normalized `n`; it used FP32 accumulation, a 256-thread row reduction and `metal::rsqrt` with unchanged `1e-6`.
+
+Three controlled random BF16 seeds with both actual layer norm vectors produced bit-exact `h`; normalized output was reduction-order non-bit-exact but diagnostically compatible (worst max/mean absolute difference `0.00390625 / 0.0001372101`, within predeclared `0.03125 / 0.0009765625`). One custom kernel object/fixed BF16 template was reused; factory cost was `0.0430 ms`, first dispatch plus eval `101.4082 ms`, and excluded fused warmup median `270.854 µs`.
+
+The 120-sample-per-side synchronized mirrored benchmark found control pair `245.31 µs` and fused pair `276.10 µs`: fused/control `1.1255195`, a `30.7915 µs` loss per pair. Add alone was `212.52 µs`; canonical `mx.fast.rms_norm` alone was `231.69 µs`. Active/peak diagnostic memory was `516,112 / 663,568 B`. The conditional two-pair layer pattern was also slower: control `240.10 µs`, fused `265.79 µs`, ratio `1.1069828`.
+
+There are 36 simple intra-layer opportunities, 35 cross-layer scheduling opportunities and one potential final pair; layer-0 input norm remains standalone. Applying the measured loss to Stretch 031’s `0.3487060 s` M5 median block gives intra-only `-1.10849 ms/block` (`-0.31789%`), intra+cross `-2.18620 ms/block` (`-0.62695%`), and optimistic +final `-2.21699 ms/block` (`-0.63578%`). Cross-layer use would require exposing each final raw residual and restructuring `Qwen3Model` scheduling; it was not implemented and the measured loss does not justify it.
+
+Decision: `STRETCH_034_FUSED_RESIDUAL_RMSNORM_FEASIBILITY_NO_GO`. Keep separate residual add + canonical `mx.fast.rms_norm`; do not create an ABBA or rescue variant. Artifact: `research/stretch/fused-residual-rmsnorm-034-feasibility.md`; evidence: `results-local/stretch/fused-residual-rmsnorm-034-feasibility/20260820-201000/summary.json`.
+
 ### Rationale
 
 The old Stretch 018 M4/M5 result predates H36 full persistence and the large cleanup-frequency reductions. Therefore the throughput-optimal block geometry must be rechecked on the current schedule.
@@ -316,7 +328,7 @@ If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common
 
 ## Exact next step
 
-Do **not** rerun Stretch 031 geometry. Preserve M5 as canonical and prepare only a separately preregistered independent compute-factor experiment; retain the venv-launcher regression guard in every future subprocess harness.
+Do **not** rerun Stretch 031 geometry or Stretch 034 fused residual/RMSNorm. Preserve M5 and separate residual add + canonical `mx.fast.rms_norm`; select a different independently preregistered compute factor before any scientific run, retaining the venv-launcher regression guard in every future subprocess harness.
 
 ## Other track
 

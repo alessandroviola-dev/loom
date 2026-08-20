@@ -146,9 +146,17 @@ Promotion target: ~20 token/s.
 - [x] Exact output, but compiled/eager `0.9979923` for one MLP and `0.9999800` for three real MLPs; weighted upside `0.1880%`
 - [x] No Stretch 033 plan/ABBA; preserve `research/stretch/m5-compiled-mlp-033-feasibility.md` and canonical eager outer MLP
 
-### Stretch 034+ — CONDITIONAL
+### Stretch 034 candidate — fused residual add + RMSNorm — NO-GO
+- [x] Diagnostic BF16 `[1,5,4096]` custom `mx.fast.metal_kernel` with two outputs (`h`, normalized `n`), real Qwen3 norm vectors and unchanged FP32 accumulation / eps `1e-6`
+- [x] Raw residual exact across three controlled seeds and input/post-attention weights; normalized reduction-order differences diagnostically compatible
+- [x] 120-side synchronized control `245.31 µs`, fused `276.10 µs`, fused/control `1.12552`: no practical upside
+- [x] Two-pair layer pattern also slower (`1.10698`); 36 intra, 35 cross-layer and final-pair arithmetic is negative
+- [x] No preregistration, source transform, preflight or scientific ABBA; retain separate residual add + canonical `mx.fast.rms_norm`
+- [x] Preserve `research/stretch/fused-residual-rmsnorm-034-feasibility.md`
+
+### Stretch 035+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; retain M5 geometry and move only to another independently preregistered compute factor
-- [ ] Select a new independent compute factor; do not revisit M geometry, row splits, or outer MLP compile without a new authorization
+- [ ] Select a new independent compute factor; do not revisit M geometry, row splits, outer MLP compile, or fused residual/RMSNorm without a new authorization
 - [ ] Consider attention/SDPA separately after geometry decision
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized
