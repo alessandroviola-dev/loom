@@ -190,17 +190,21 @@ Promotion target: ~20 token/s.
 - [x] `M1_QMV_FAST_TUNING_PASS`: fresh CONTROL `13.725329 tok/s`, S1_R8 `15.002682 tok/s`, ratio `1.093065` (+9.306539%); median block `0.363852` vs `0.331027 s`; promote M1-specific process-local S1_R8 for the frozen M1 Qwen3-8B 3-bit/group64 BF16 M5 H36 path
 - [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-harness-fix2-result.md` and evidence `results-local/stretch/m1-qmv-fast-tuning-037-fix2/20260820-215547/summary.json`
 
-### Stretch 038 — S1_R8 cleanup cadence feasibility — GO / ABBA NOT RUN
+### Stretch 038 — S1_R8 cleanup cadence — COMPLETE PASS / promoted
 - [x] Audit promoted S1_R8 rendered source: final `gc.collect() -> mx.clear_cache() -> gc.collect()` is after the persistent LM head, once per M5 target pass; baseline is 2 cleanup calls / ten-token constituent
 - [x] Freeze sole factor: CONTROL = 2 cleanup / 10 tokens; TREATMENT = defer after block 1, 1 cleanup / 10 tokens; no qmv or other runtime change
 - [x] One-load feasibility run with inherited CONTROL warmup, four interleaved CONTROL and eight TREATMENT cycles
 - [x] All timed cycles exact (logits/top-1/oracle/sequence), 10 accepted tokens and full raw persistence `3,583,928,320 B`; final treatment cleanup recovered stable active/cache state without cumulative trajectory
 - [x] Timed mean wall CONTROL `0.704799 s` vs TREATMENT `0.647084 s`; ratio `0.91811037`, improvement `8.188963%`; minimum free memory `24%`, peak swap `1849.06 MB`
-- [x] `STRETCH_038_CLEANUP_CADENCE_FEASIBILITY_GO`; preserve feasibility report/evidence and separate preregistration; no scientific ABBA yet
+- [x] `STRETCH_038_CLEANUP_CADENCE_FEASIBILITY_GO`; preserve feasibility report/evidence and separate preregistration unchanged
+- [x] Distinct remote-verified scientific runner `scripts/stretch_s1r8_deferred_cleanup_comparison_038.py`; fresh in-harness compile/render/normalized cadence-only diff/literal-launcher/S1_R8-hash/runtime/no-model/metric-semantics preflight PASS
+- [x] Fresh balanced ABBA `CONTROL -> TREATMENT -> TREATMENT -> CONTROL`: all four constituents exact, ten accepted oracle tokens each, full raw persistence `3,583,928,320 B`, four S1_R8 specializations and zero target-time recompilation
+- [x] `STRETCH_038_CLEANUP_CADENCE_PASS`: CONTROL `13.245044 tok/s`, TREATMENT `13.990655 tok/s`, ratio `1.056294` (+5.629362%); total-wall ratio `0.946706` (5.329353% reduction); min free `24%`, peak swap `2127.88 MB`, stable final-cleanup recovery/no cumulative problematic cache growth
+- [x] Promote frozen M1 S1_R8 + one explicit cleanup every two M5 blocks (cadence reduced from 2 to 1 cleanup / 10 accepted tokens; cleanup not eliminated); preserve result `research/stretch/s1r8-deferred-cleanup-038-result.md` and evidence `results-local/stretch/s1r8-deferred-cleanup-038-comparison/20260820-224921/summary.json`
 
 ### Stretch 039+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; S1_R8 beat fresh built-in MLX CONTROL in Stretch 037; retain both decisions for their frozen scopes
-- [ ] Do not rerun Stretch 037 or Stretch 038 feasibility. A fresh scientific ABBA of only the preregistered Stretch 038 cadence factor requires separate authorization; otherwise select a new independent factor only after separate authorization. Do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, or MLX 0.32 runtime comparison without a new authorization
+- [ ] Do not rerun Stretch 037, Stretch 038 feasibility, or the completed Stretch 038 ABBA. Select a new independent factor only after separate authorization. Do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, or MLX 0.32 runtime comparison without a new authorization
 - [ ] Consider attention/SDPA separately after geometry decision
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized

@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_038_CLEANUP_CADENCE_FEASIBILITY_GO_CHECKPOINT_REVIEW`
+Current checkpoint: `STRETCH_038_CLEANUP_CADENCE_PASS_CHECKPOINT_REVIEW`
 
 ## Mission
 
@@ -332,7 +332,7 @@ compute path for the frozen M1 Qwen3-8B 3-bit/group64 BF16 M5 H36 configuration;
 retain built-in MLX elsewhere. Artifact:
 `research/stretch/m1-qmv-fast-tuning-037-harness-fix2-result.md`.
 
-## Stretch 038 — S1_R8 cleanup cadence feasibility — GO
+## Stretch 038 — S1_R8 cleanup cadence — PASS / promoted
 
 The exact audit of the promoted Stretch-037 rendered S1_R8 source established
 that its final `shared_stage_cleanup` is `gc.collect() -> mx.clear_cache() ->
@@ -355,18 +355,38 @@ wall ratio 0.91811037, improvement 8.188963%; cleanup wall fell 0.126737 to
 0.062129 s. This is feasibility only, not a scientific ABBA or a replacement
 for Stretch 037's validated 15.0026817294 tok/s.
 
-Classification: `STRETCH_038_CLEANUP_CADENCE_FEASIBILITY_GO`.
-Artifacts: `research/stretch/s1r8-deferred-cleanup-038-feasibility.md`,
-`research/stretch/s1r8-deferred-cleanup-038-preregistration.md`; evidence:
-`results-local/stretch/s1r8-deferred-cleanup-038-feasibility/20260820-222911/summary.json`.
+The separately committed/pushed scientific runner then completed a fresh
+balanced `CONTROL -> TREATMENT -> TREATMENT -> CONTROL` at
+`results-local/stretch/s1r8-deferred-cleanup-038-comparison/20260820-224921/`.
+Its fresh in-harness preflight passed compile/render, literal launcher,
+promoted-S1_R8 hash, four-specialization provenance, normalized cadence-only
+diff, metric semantics, and both parent/child no-model markers. Every
+constituent passed all logits/top-1/oracle/sequence gates, exactly ten tokens,
+full `3,583,928,320 B` persistence and zero target-time recompilation.
+
+Primary pooled throughput was 13.245043710 tok/s CONTROL versus
+13.990655117 tok/s TREATMENT: ratio 1.056293616, **+5.629361621%**. Pooled
+constituent wall was 1.509998792 versus 1.429525625 s: wall ratio 0.946706469,
+**5.329353065%** reduction. The target wall was directly bounded from target
+block-1 start through block-2 final cleanup, so it includes the factor. Final
+cleanup restored MLX active memory to 3,665,291,272 B in every constituent;
+minimum free memory was 24%, peak swap 2127.88 MB and no cumulative problematic
+active/cache growth occurred.
+
+Classification: `STRETCH_038_CLEANUP_CADENCE_PASS`. Promote the frozen M1
+canonical configuration as **S1_R8 + one explicit cleanup every two M5
+blocks**: cadence reduced from 2 to 1 cleanup per ten accepted tokens, not
+cleanup eliminated. Artifacts:
+`research/stretch/s1r8-deferred-cleanup-038-result.md`,
+`scripts/stretch_s1r8_deferred_cleanup_comparison_038.py`, and the evidence
+root above. Preserve feasibility and preregistration unchanged.
 
 ## Exact next step
 
-Checkpoint: `STRETCH_038_CLEANUP_CADENCE_FEASIBILITY_GO_CHECKPOINT_REVIEW`.
-Review the committed/pushed feasibility report and preregistration. Do not
-rerun Stretch 037 or this feasibility. A fresh, separately authorized balanced
-scientific ABBA may use only the preregistered CONTROL (2 cleanup/10 tokens)
-and TREATMENT (1 cleanup/10 tokens) definitions.
+Checkpoint: `STRETCH_038_CLEANUP_CADENCE_PASS_CHECKPOINT_REVIEW`.
+Review the committed/pushed Stretch 038 result and promoted frozen cadence. Do
+not rerun Stretch 037, Stretch 038 feasibility, or the Stretch 038 ABBA. A new
+independent factor requires separate authorization.
 
 ### Historical Stretch 031 rationale
 
