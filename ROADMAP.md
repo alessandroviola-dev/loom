@@ -169,9 +169,17 @@ Promotion target: ~20 token/s.
 - [x] `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`; no scientific plan/ABBA/cache integration; retain canonical monolithic M5 qmatmul
 - [x] Preserve `research/stretch/persistent-dequantized-projection-036-feasibility.md`
 
-### Stretch 037+ — CONDITIONAL
+### Stretch 037 — M1-specific qmv_fast execution geometry — FEASIBILITY GO
+- [x] Audit exact MLX v0.31.2 M1 qmv_fast source and classify immutable packing/affine/reduction invariants versus neutral output-row execution geometry
+- [x] Implement process-local canonical `mx.fast.metal_kernel` clone for BF16 affine 3-bit/group64 non-batched M5; all q/k/v/o/gate/up/down real-payload probes bit-exact, worst clone/canonical median `1.006870`
+- [x] Predeclare and measure exactly four bounded variants; `s1_r8` is bit-exact and improves gate/up/down, with matched Stretch-028 MLP estimate `+5.2120%` of canonical Stretch-031 block wall
+- [x] No installed runtime change, persistent cache, model integration, preflight or full-model ABBA
+- [x] Prepare review-ready `research/stretch/m1-qmv-fast-tuning-037-plan.md`; explicit approval required before treatment integration/ABBA
+- [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-feasibility.md`
+
+### Stretch 038+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; retain M5 geometry and move only to another independently preregistered compute factor
-- [ ] Select a new independent compute factor; do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, or MLX 0.32 runtime comparison without a new authorization
+- [ ] Select a new independent compute factor if Stretch 037 is not approved; do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, or MLX 0.32 runtime comparison without a new authorization
 - [ ] Consider attention/SDPA separately after geometry decision
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized

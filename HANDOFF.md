@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`
+Current checkpoint: `STRETCH_037_M1_QMV_FAST_TUNING_GO_PREREGISTRATION_READY`
 
 ## Mission
 
@@ -278,9 +278,17 @@ All seven BF16 dense outputs had matching shapes but were non-bit-exact for all 
 
 Classification: `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`. Retain canonical monolithic M5 affine quantized matmul. Do not create a Stretch-036 scientific preregistration or ABBA. Artifact: `research/stretch/persistent-dequantized-projection-036-feasibility.md`; evidence: `results-local/stretch/persistent-dequantized-projection-036-feasibility/20260820-205800/summary.json`.
 
+## Stretch 037 — M1-specific qmv_fast tuning feasibility — GO
+
+Diagnostic only; no installed MLX package, model source, 36-layer cache, or scientific ABBA was changed/run. From exact MLX v0.31.2 source `68cf2fddd8de5edd8ab3d926391772b2e2cedad8`, a process-local `mx.fast.metal_kernel` clone of M1 `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0` was specialized to non-batched M5. It retained the 3-bit packed decode, group64 affine correction, 16 values/lane, 512-K loop, float `simd_sum`, BF16 output and exact real layer-0 payloads. The canonical clone was bit-exact across all q/k/v/o/gate/up/down and three BF16 probes; worst clone/canonical median ratio was `1.006870`.
+
+Four bounded execution-geometry variants were preregistered before timing. `s1_r8` (one SIMD group/threadgroup, eight output rows/SIMD) was bit-exact in all 21 direct comparisons, saved gate/up/down medians `139.81/127.48/132.94 µs`, and gives a matched Stretch-028 MLP arithmetic estimate `0.01817795 s/block` (`5.2120%` of Stretch-031 M5 median block). The explicit attention-inclusive upper bound is `6.0239%`. Isolated active/peak allocations remained about `85.0/85.2 MB`; no persistent cache is introduced.
+
+Classification: `STRETCH_037_M1_QMV_FAST_TUNING_GO`. A separate review-ready preregistration exists, but no source integration or ABBA is authorized by feasibility alone. Artifacts: `research/stretch/m1-qmv-fast-tuning-037-feasibility.md`, `research/stretch/m1-qmv-fast-tuning-037-plan.md`; evidence: `results-local/stretch/m1-qmv-fast-tuning-037-feasibility/20260820-211047/summary.json`.
+
 ## Exact next step
 
-Do not retry or rescue persistent dequantized BF16 caches from this feasibility result. Select a new independently authorized compute factor while preserving the canonical M5 monolithic 3-bit/group64 affine `mx.quantized_matmul`, H36, full raw-weight persistence, single final cleanup, MLX/mlx-metal 0.31.2, and BF16 KV.
+Review and explicitly approve the separate Stretch-037 preregistration before creating the isolated treatment integration/preflight and any full-model ABBA. Do not rerun persistent BF16 caching or alter the canonical runtime until that approval.
 
 ### Historical Stretch 031 rationale
 
@@ -350,7 +358,7 @@ If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common
 
 ## Exact next step
 
-Do **not** rerun Stretch 031 geometry, Stretch 032 row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm, Stretch 036 persistent dequantized BF16 projection caching, or a 0.32 full-runtime comparison. Preserve M5 monolithic qmv_fast affine quantized matmul and canonical separate residual add + `mx.fast.rms_norm`; select a different independently authorized compute factor before any scientific run, retaining the venv-launcher regression guard.
+Do not rerun Stretch 031 geometry, Stretch 032 row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm, Stretch 036 persistent dequantized BF16 projection caching, or a 0.32 full-runtime comparison. Stretch 037 has feasibility GO only: review and explicitly approve `research/stretch/m1-qmv-fast-tuning-037-plan.md` before any isolated treatment integration/preflight or full-model ABBA. Preserve M5 monolithic qmv_fast affine quantized matmul and canonical separate residual add + `mx.fast.rms_norm` until then, retaining the venv-launcher regression guard.
 
 ## Other track
 
