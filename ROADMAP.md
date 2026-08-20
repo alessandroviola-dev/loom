@@ -88,31 +88,41 @@ Promotion target: ~20 token/s.
 - [x] Identify cleanup/framework path as largest measured remaining category
 - [x] Freeze `research/stretch/full-persistent-compute-kernel-attribution-024-result.md`
 
-### Stretch 025 — BATCHED TRANSFORMER CLEANUP — CURRENT / READY
+### Stretch 025 — BATCHED TRANSFORMER CLEANUP — COMPLETE PASS
+- [x] Valid ABBA run `20260820-161317`
+- [x] `FULL_PERSISTENT_BATCHED_CLEANUP_COMPARISON_PASS`
+- [x] CONTROL pooled `2.7615996621 token/s`
+- [x] BATCHED pooled `10.6674479980 token/s`
+- [x] BATCHED/CONTROL `3.8627785715x` (~+286.28%)
+- [x] CONTROL median block `1.5667445 s`
+- [x] BATCHED median block `0.464723 s` (~70.34% lower)
+- [x] BATCHED mean one-per-body cleanup `0.060996 s`
+- [x] BATCHED min free `23%`; peak swap `2535.12 MB`
+- [x] Freeze `M5 + H36 + full persistence + one transformer cleanup/body` as preferred execution schedule
+- [x] Freeze `research/stretch/full-persistent-batched-cleanup-comparison-025-result.md`
+
+### Stretch 026 — SHARED-STAGE BATCHED CLEANUP — CURRENT / READY
 - [x] Keep M5 frozen
 - [x] Keep H36 frozen
 - [x] Keep full raw-weight persistence frozen
-- [x] Keep MLX 0.31.2 / model / KV / parity / resource policy frozen
-- [x] Scientific factor = transformer cleanup schedule only
-- [x] CONTROL = cleanup after every transformer layer
-- [x] BATCHED = same cleanup once after complete 36-layer body
-- [x] Keep shared-stage cleanup unchanged
-- [x] CONTROL blob `120ad7be2f275559898bf636ca8e8fe039a56c60`
-- [x] BATCHED helper `scripts/stretch_full_persistent_batched_cleanup_025.py`
-- [x] BATCHED blob `5ca3572f3269899e7c3fc23b9e136381ce864d99`
-- [x] Balanced runner `scripts/stretch_full_persistent_batched_cleanup_comparison_025.py`
-- [x] Runner blob `5fa702d7236888a55b33031c832ce12c79c0e55a`
-- [x] Preregister `research/stretch/full-persistent-batched-cleanup-comparison-025-plan.md`
-- [x] Balanced `CONTROL -> BATCHED -> BATCHED -> CONTROL`
-- [x] No automatic retry / no cache purge / no post-hoc intermediate cleanup-frequency sweep
-- [ ] Run Stretch 025
+- [x] Keep Stretch 025 one-per-transformer-body cleanup frozen in both variants
+- [x] Scientific factor = shared-stage cleanup schedule only
+- [x] BATCHED baseline blob `5ca3572f3269899e7c3fc23b9e136381ce864d99`
+- [x] SHARED_BATCHED treatment removes individual embedding/norm/head cleanup and performs one post-head cleanup
+- [x] SHARED_BATCHED helper `scripts/stretch_full_persistent_shared_batched_cleanup_026.py`
+- [x] SHARED_BATCHED blob `6926e1b1b9a851f23d88ba6b1f1023e13336098a`
+- [x] Balanced runner `scripts/stretch_full_persistent_shared_batched_cleanup_comparison_026.py`
+- [x] Runner blob `e958bde5d8a239ffa5fd192922e0693854d478e0`
+- [x] Balanced order `BATCHED -> SHARED_BATCHED -> SHARED_BATCHED -> BATCHED`
+- [x] Preregister `research/stretch/full-persistent-shared-batched-cleanup-comparison-026-plan.md`
+- [x] No automatic retry / no cache purge / no partial shared-stage cleanup rescue
+- [ ] Run Stretch 026
 - [ ] Freeze result
-- [ ] If BATCHED wins safely, freeze faster cleanup schedule
-- [ ] Select Stretch 026 from remaining evidence
+- [ ] Select next factor from controlled evidence
 
-### Stretch 026+ — CONDITIONAL NEXT AXIS
-- [ ] If BATCHED wins, decide whether to re-profile under new schedule or move directly to MLP/quantized-linear optimization
-- [ ] If BATCHED is flat/slower, retain per-layer cleanup and target MLP/quantized-linear path
+### Stretch 027+ — CONDITIONAL NEXT AXIS
+- [ ] If SHARED_BATCHED wins materially, test merging transformer-body + shared-path cleanup into one end-of-pass cleanup as a separate factor
+- [ ] If cleanup gains saturate, return to Stretch 024 compute evidence: MLP ~2.66x attention, with gate/up/down major projections
 - [ ] Consider newer MLX only as separately preregistered environment comparison
 - [ ] Never overwrite frozen MLX 0.31.2 evidence with newer runtime results
 - [ ] Select a real drafter only after target-side architecture is sufficiently optimized
