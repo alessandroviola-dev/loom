@@ -52,14 +52,25 @@ def replace_all(source: str, old: str, new: str, label: str) -> str:
 
 
 def inject_geometry_callback(wrapper_source: str) -> str:
-    anchor = "    source = __stretch027_apply_single_pass_cleanup(source)\n"
-    if wrapper_source.count(anchor) != 1:
-        raise RuntimeError("Stretch 031 M5 wrapper invariant failed: Stretch 027 callback missing")
-    return wrapper_source.replace(
-        anchor,
-        anchor + "    source = __stretch031_apply_geometry(source)\n",
-        1,
+    # Geometry must be applied only after the inherited Stretch 017/H36 wrapper
+    # has validated its frozen M5 reconstruction. Applying it earlier would make
+    # the provenance preflight reject the intentional Stretch 031 geometry.
+    anchor = (
+        "    missing = [fragment for fragment in required_fragments if fragment not in source]\n"
+        "    if missing:\n"
+        "        raise RuntimeError(f\"oracle transformed-source invariant failed; missing {missing}\")\n\n"
+        "    if not is_child:\n"
     )
+    replacement = (
+        "    missing = [fragment for fragment in required_fragments if fragment not in source]\n"
+        "    if missing:\n"
+        "        raise RuntimeError(f\"oracle transformed-source invariant failed; missing {missing}\")\n\n"
+        "    source = __stretch031_apply_geometry(source)\n\n"
+        "    if not is_child:\n"
+    )
+    if wrapper_source.count(anchor) != 1:
+        raise RuntimeError("Stretch 031 M5 wrapper invariant failed: post-preflight injection anchor missing")
+    return wrapper_source.replace(anchor, replacement, 1)
 
 
 def add_geometry(source: str) -> str:
@@ -181,6 +192,7 @@ def main() -> int:
     required_wrapper = [
         "__stretch027_apply_single_pass_cleanup(source)",
         "__stretch031_apply_geometry(source)",
+        "oracle transformed-source invariant failed",
         "MAX_SWAP_MB = 5600.0",
     ]
     missing = [fragment for fragment in required_wrapper if fragment not in wrapper]
@@ -190,6 +202,7 @@ def main() -> int:
     if not is_child:
         print("Source provenance: PASS")
         print("Geometry: 2 x M5 blocks over the same frozen first-10 oracle tokens")
+        print("Geometry callback phase: AFTER inherited M5 reconstruction preflight")
         print("M5 / MLX 0.31.2 / H36 / full persistence / single cleanup / KV / gates: UNCHANGED")
 
     namespace = {
