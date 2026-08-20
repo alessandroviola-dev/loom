@@ -32,7 +32,7 @@
 ## Phase 7 — Stretch / Memory Hierarchy + Compute — ACTIVE
 
 Frozen subject: Qwen3-8B 3-bit/group64, 36 layers, Apple M1 / 8 GB.
-Historical canonical runtime through Stretch 029: mlx 0.31.2 + mlx-metal 0.31.2, mlx-lm 0.31.3, transformers 5.12.1.
+Preferred runtime after Stretch 030: mlx 0.31.2 + mlx-metal 0.31.2, mlx-lm 0.31.3, transformers 5.12.1.
 Promotion target: ~20 token/s.
 
 ### Stretch 001–017 — COMPLETE / EXACT BLOCK FRONTIER
@@ -47,7 +47,7 @@ Promotion target: ~20 token/s.
 - [x] Freeze M5 as maximum demonstrated exact block under MLX 0.31.2
 
 ### Stretch 018 — COMPLETE PASS
-- [x] M5 ~+9.80% vs M4
+- [x] M5 ~+9.80% vs M4 on the pre-persistence/pre-cleanup schedule
 
 ### Stretch 019–022 — TRANSFORMER RESIDENCY — COMPLETE
 - [x] H8 -> H16 ~+56.87%
@@ -88,41 +88,51 @@ Promotion target: ~20 token/s.
 - [x] FUSED `12.3524 token/s`
 - [x] FUSED exact but ~6.62% slower
 - [x] Do not promote fusion; no rescue variants
-- [x] Restore Stretch 027 as preferred 0.31.2 architecture
 
-### Stretch 030 — COHERENT MLX 0.31.2 vs 0.32.0 — CURRENT / FIX3 READY
-- [x] Preregister runtime as one independent factor
-- [x] Freeze Qwen3, M5, H36, full persistence, one cleanup/pass, BF16 KV and gates
-- [x] Keep mlx-lm 0.31.3 / Transformers 5.12.1 fixed
-- [x] Preserve original shell-Python setup failure / no science
-- [x] Setup Fix1 clones canonical venv and upgrades clone only
-- [x] Setup Fix1 PASS: CONTROL mlx/mlx-metal 0.31.2; TREATMENT 0.32.0
-- [x] Preserve treatment clone `.venvs/stretch030-mlx0320-fix1`
+### Stretch 030 — COHERENT MLX 0.31.2 vs 0.32.0 — COMPLETE PASS / 0.32.0 NOT PROMOTED
+- [x] Preregister runtime as independent factor
+- [x] Preserve original setup failure / no science
+- [x] Setup Fix1 creates isolated coherent mlx/mlx-metal 0.32.0 treatment clone
 - [x] Preserve runner Fix1 invariant failure / no science
-- [x] Preserve runner Fix2 environment-provenance failure / no science
-- [x] Fix2 root cause: `.resolve()` dereferenced macOS venv `bin/python` symlink to framework Python
-- [x] Record Fix2 defect `research/stretch/mlx-0312-0320-runtime-comparison-030-runner-defect-fix2-20260820-1745.md`
-- [x] Create portable workload Fix1 `scripts/stretch_runtime_portable_single_pass_030_fix1.py`
-- [x] Portable Fix1 blob `44251a524c77a379f43445444fa8a2643f1bfbdf`
-- [x] Inner child keeps `Path(sys.executable)` without `.resolve()`
-- [x] Inner runtime gate allows only preregistered mlx `{0.31.2, 0.32.0}` and keeps mlx-lm/Transformers fixed
-- [x] Create balanced runner Fix3 `scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix3.py`
-- [x] Runner Fix3 blob `108aed0e7e66fafe9b3213e33a57c34f9e0602d2`
-- [x] CONTROL executes canonical venv `bin/python` without resolving symlink
-- [x] TREATMENT executes validated treatment clone `bin/python`
-- [x] Runner gates actual inner-child runtime provenance per variant
-- [x] Balanced order `MLX0312 -> MLX0320 -> MLX0320 -> MLX0312`
-- [x] Genuine treatment exactness outcome = `MLX_0320_RUNTIME_EXACTNESS_FAIL`
-- [x] Complete exact ABBA outcome = `MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`
-- [x] Preregister Fix3 `research/stretch/mlx-0312-0320-runtime-comparison-030-harness-fix3.md`
-- [ ] Run fresh Fix3 ABBA
-- [ ] Freeze scientific outcome
+- [x] Preserve runner Fix2 venv-symlink provenance failure / no science
+- [x] Fix3 preserves selected venv `bin/python` paths and gates real child runtime
+- [x] Valid Fix3 ABBA `20260820-175251`
+- [x] `MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`
+- [x] MLX0312 `13.0748237296 token/s`
+- [x] MLX0320 `12.3417530144 token/s`
+- [x] MLX0320/0312 `0.9439326502x` (~5.61% slower)
+- [x] Median block wall treatment ~6.84% higher
+- [x] MLX 0.32.0 exact at M5 but not promoted
+- [x] Retain coherent MLX 0.31.2 runtime
+- [x] Do not remap M under 0.32.0 because `exact + faster` condition failed
+- [x] Freeze `research/stretch/mlx-0312-0320-runtime-comparison-030-result.md`
 
-### Stretch 031+ — CONDITIONAL
-- [ ] If MLX 0.32.0 exact + faster: separately remap M exactness boundary under 0.32.0
-- [ ] If exact + flat/slower: retain 0.31.2 and choose another compute factor
-- [ ] If exactness FAIL: preserve FAIL; no mixed-package rescue
-- [ ] Consider attention/SDPA separately
+### Stretch 031 — CURRENT / READY — SINGLE_PASS M2 vs M5 GEOMETRY
+- [x] Re-open throughput-optimal block geometry on the current optimized schedule
+- [x] Keep MLX 0.31.2, H36, full persistence, one cleanup/pass, BF16 KV frozen
+- [x] Normalize both variants to the same first 10 frozen oracle tokens
+- [x] M5 CONTROL = 2 x 5-token blocks
+- [x] M2 TREATMENT = 5 x 2-token blocks
+- [x] Apply geometry only after inherited Stretch 017/H36 source-provenance preflight
+- [x] M5 helper `scripts/stretch_single_pass_m5_ten_token_control_031.py`
+- [x] M5 blob `5f047b9e5f42bed959ced59e9329a8c8d7e3fc25`
+- [x] M2 helper `scripts/stretch_single_pass_m2_ten_token_variant_031.py`
+- [x] M2 blob `6005ff3a285760457d3255bc6505f2987c1fa4e8`
+- [x] Balanced runner `scripts/stretch_single_pass_m2_m5_geometry_comparison_031.py`
+- [x] Runner blob `bc3b21ff504c65d0852aad68a566cba924888d90`
+- [x] Balanced order `M5 -> M2 -> M2 -> M5`
+- [x] Primary metric = pooled accepted oracle tokens / target-block wall seconds
+- [x] First genuine M2 frozen-gate failure = valid `M2_SINGLE_PASS_GEOMETRY_EXACTNESS_FAIL`; stop/no rescue
+- [x] Complete exact ABBA = `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`
+- [x] Preregister `research/stretch/single-pass-m2-m5-geometry-comparison-031-plan.md`
+- [ ] Run Stretch 031
+- [ ] Freeze outcome
+
+### Stretch 032+ — CONDITIONAL
+- [ ] If M2 beats M5: separately compare M2 vs M3 at common depth; do not call M2 globally optimal yet
+- [ ] If M5 beats M2: retain M5 and move to another independent compute factor
+- [ ] Consider attention/SDPA separately after geometry decision
+- [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized
 - [ ] Measure real acceptance and end-to-end tok/s including draft/rejection/rollback
 - [ ] Test KV capacity/quantization separately
