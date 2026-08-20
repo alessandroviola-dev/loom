@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_037_M1_QMV_FAST_TUNING_FIX1_RESOURCE_INCOMPLETE`
+Current checkpoint: `STRETCH_038_CLEANUP_CADENCE_FEASIBILITY_GO_CHECKPOINT_REVIEW`
 
 ## Mission
 
@@ -332,12 +332,41 @@ compute path for the frozen M1 Qwen3-8B 3-bit/group64 BF16 M5 H36 configuration;
 retain built-in MLX elsewhere. Artifact:
 `research/stretch/m1-qmv-fast-tuning-037-harness-fix2-result.md`.
 
+## Stretch 038 — S1_R8 cleanup cadence feasibility — GO
+
+The exact audit of the promoted Stretch-037 rendered S1_R8 source established
+that its final `shared_stage_cleanup` is `gc.collect() -> mx.clear_cache() ->
+gc.collect()` after the persistent LM head, once per M5 target pass. Thus it
+runs once per M5 block and twice per ten-token/two-block constituent; the
+cadence factor was genuinely available.
+
+A distinct one-load feasibility harness preserved every frozen S1_R8 condition
+and ran four CONTROL plus eight TREATMENT cycles interleaved. CONTROL retained
+two final cleanups/ten tokens; TREATMENT deferred block-1 cleanup and executed
+one final cleanup after block 2. All cycles passed prompt/ten-token logits,
+top-1, oracle acceptance, sequence and `3,583,928,320 B` full-persistence
+gates. Across eight treatment cycles, free memory stayed 24–25%, swap stayed
+1849.06 MB, MLX active memory returned from 3,666,913,308 B before final
+cleanup to its stable 3,665,291,272 B, and cache returned to a stable
+2,867,748–2,868,260 B band without cumulative growth.
+
+Timed mean 10-token wall was 0.704799 s CONTROL vs 0.647084 s TREATMENT:
+wall ratio 0.91811037, improvement 8.188963%; cleanup wall fell 0.126737 to
+0.062129 s. This is feasibility only, not a scientific ABBA or a replacement
+for Stretch 037's validated 15.0026817294 tok/s.
+
+Classification: `STRETCH_038_CLEANUP_CADENCE_FEASIBILITY_GO`.
+Artifacts: `research/stretch/s1r8-deferred-cleanup-038-feasibility.md`,
+`research/stretch/s1r8-deferred-cleanup-038-preregistration.md`; evidence:
+`results-local/stretch/s1r8-deferred-cleanup-038-feasibility/20260820-222911/summary.json`.
+
 ## Exact next step
 
-Checkpoint: `STRETCH_037_M1_QMV_FAST_TUNING_FIX2_CHECKPOINT_REVIEW`.
-Review the committed/pushed Fix2 result and promotion decision; do not rerun
-Stretch 037, alter its gates/factor, or begin a new compute experiment without
-separate authorization.
+Checkpoint: `STRETCH_038_CLEANUP_CADENCE_FEASIBILITY_GO_CHECKPOINT_REVIEW`.
+Review the committed/pushed feasibility report and preregistration. Do not
+rerun Stretch 037 or this feasibility. A fresh, separately authorized balanced
+scientific ABBA may use only the preregistered CONTROL (2 cleanup/10 tokens)
+and TREATMENT (1 cleanup/10 tokens) definitions.
 
 ### Historical Stretch 031 rationale
 
@@ -405,9 +434,15 @@ Outcome policy:
 
 If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common depth. If M5 wins, retain M5 and move to another compute factor.
 
-## Exact next step
+## Historical-note boundary
 
-Do not rerun Stretch 031 geometry, Stretch 032 row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm, Stretch 036 persistent dequantized BF16 projection caching, or a 0.32 full-runtime comparison. Stretch 037 full-model launch stopped at a harness preflight failure with scientific result NONE; do not retry it. Preserve M5 monolithic qmv_fast affine quantized matmul and canonical separate residual add + `mx.fast.rms_norm`. A new explicit authorization is required for a distinct preflight-harness revision and fresh ABBA, retaining the venv-launcher regression guard.
+The preceding Stretch 031-era next-step text is superseded by the current
+Stretch 038 checkpoint above. Do not rerun Stretch 031 geometry, Stretch 032
+row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm,
+Stretch 036 persistent dequantized BF16 projection caching, Stretch 037, or a
+0.32 full-runtime comparison. Preserve M5 and promoted S1_R8; only the
+separately preregistered Stretch 038 cadence ABBA may be considered after fresh
+explicit authorization.
 
 ## Other track
 
