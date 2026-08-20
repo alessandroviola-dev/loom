@@ -164,7 +164,7 @@ def patched_source(repo: Path) -> str:
     )
     run_dir_old = '    run_dir = repo / "results-local" / "stretch" / "m5-ten-token-single-pass-control-031-fix3" / run_id\n'
     source = patch_once(source, run_dir_old, '    run_dir = Path(os.environ["STRETCH038_RUN_DIR"])\n', "evidence directory")
-    source = patch_once(source, "import traceback\n", "import traceback\n\nsys.path.insert(0, str(Path(os.environ.get(\"LOOM_REPO\", \".\")) / \"scripts\"))\n", "scripts import path")
+    source = patch_once(source, "import traceback\n", "import traceback\n\nsys.path.insert(0, str(__import__(\"pathlib\").Path(os.environ.get(\"LOOM_REPO\", \".\")) / \"scripts\"))\n", "scripts import path")
     return source
 
 
