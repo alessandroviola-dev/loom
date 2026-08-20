@@ -150,28 +150,44 @@ Usability promotion target:
 - [x] Freeze `research/stretch/four-token-oracle-block-verification-013-result.md`
 - [x] Decide traversal amortization is promising enough for one larger oracle block
 
-### Stretch 014 — Eight-token oracle block verification — CURRENT / READY
+### Stretch 014 — Eight-token oracle block verification — COMPLETE VALID FAIL
 - [x] Preserve exact Stretch 013 source blob `deeb0339294162f38cd4522d2890b6a0c728f96e`
 - [x] Single scientific change: oracle block size 4 -> 8
 - [x] Target traversals 4 -> 2 for the same frozen 16-token oracle sequence
-- [x] Preserve eight-layer persistent hotset
-- [x] Preserve resident sequential control
-- [x] Require all 16 oracle tokens accepted
-- [x] Require all 16 position-level numerical parity/top-1 gates
-- [x] Expected streamed KV offsets 4 -> 12 -> 20
-- [x] Preserve I/O attribution and all resource gates
-- [x] Preserve zero real-draft cost / oracle-upper-bound interpretation
+- [x] Preserve eight-layer persistent hotset / resident sequential control / ordinary BF16 KV
 - [x] Preregister `research/stretch/eight-token-oracle-block-verification-014-plan.md`
-- [x] Add `scripts/stretch_eight_token_oracle_block_verification_014.py`
-- [x] Correct pre-freeze child-routing harness defect before any scientific run
 - [x] Freeze runner blob `6d7afd43969e752a7cce39ae474d7054ccc7edd8`
-- [ ] Run Stretch 014
-- [ ] Freeze result
+- [x] Earlier launch-only attempt classified `HOST_STATE_NOT_READY`; no scientific result
+- [x] Valid run `20260820-122922` passed host gate at 63% / 64% / 65% free
+- [x] Prompt parity exact: max/mean diff 0.0 / 0.0
+- [x] `ORACLE_BLOCK_NUMERICAL_PARITY_FAIL`
+- [x] Numerical divergence starts at block 1 position 0 / global step 1: max abs diff `0.34375`
+- [x] All 16 position-level numerical gates fail
+- [x] Top-1 remains equal through steps 1–15 and differs at step 16
+- [x] Final resident/streamed KV offsets both 20; KV bytes both 37,748,736 B
+- [x] Stream-block minimum free memory 56%; failure is not a resource abort
+- [x] Freeze `research/stretch/eight-token-oracle-block-verification-014-result.md`
+- [x] Do not relax parity threshold and do not advance directly to a 16-token block
 
-### Stretch 015+ — speed-first conditional path
-- [ ] If 014 materially improves oracle target-side throughput, test one 16-token oracle block as final upper-bound point
-- [ ] If 014 saturates, stop oracle block scaling and isolate residual target cost / move to real drafter
-- [ ] Select/implement a real draft model only after oracle upper-bound frontier is characterized
+### Stretch 015 — Eight-token divergence attribution — CURRENT / READY
+- [x] Preserve frozen Stretch 014 runner/model/runtime
+- [x] Keep MLX `0.31.2`, mlx-lm `0.31.3`, transformers `5.12.1`
+- [x] Compare identical first-row inputs at `M=1`, `M=4`, `M=8`
+- [x] Directly test actual layer-0 quantized `q/k/v/o/gate/up/down` projections
+- [x] Trace layer-0 causal checkpoints from input RMSNorm through block output
+- [x] Preserve real four-token prompt and ordinary BF16 KV cache
+- [x] Preregister `research/stretch/eight-token-divergence-attribution-015-plan.md`
+- [x] Add `scripts/stretch_eight_token_divergence_attribution_015.py`
+- [x] Freeze runner blob `933c366220625e845e788b2ab1521ae78d9e7d15`
+- [ ] Run Stretch 015
+- [ ] Freeze attribution result
+
+### Stretch 016+ — conditional path
+- [ ] If direct quantized-linear M4/M8 divergence is confirmed, freeze it before changing kernel/runtime policy
+- [ ] Test shape-independent/strict quantized path only as a separately preregistered factor
+- [ ] If direct quantized-linear probes are exact, extend attribution from the earliest block-internal divergence
+- [ ] Resume oracle block-size scaling only after the numerical boundary is understood
+- [ ] Select/implement a real draft model only after the oracle target-side boundary is characterized
 - [ ] Measure real acceptance rate + actual end-to-end tok/s including draft cost and rejection behavior
 - [ ] Keep hotset and speculative/block verification as separable optimization axes
 - [ ] Only after speed path is characterized: tokenizer/text integration
