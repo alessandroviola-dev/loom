@@ -64,7 +64,7 @@ Promotion target: ~20 token/s.
 ### Stretch 024 — COMPUTE/FRAMEWORK ATTRIBUTION — COMPLETE PASS
 - [x] Preserve telemetry defect
 - [x] MLP/attention `2.6608x`
-- [x] Identify 36x cleanup as largest old-schedule cost
+- [x] Identify old 36x cleanup as largest old-schedule cost
 
 ### Stretch 025–027 — CLEANUP SCHEDULE — COMPLETE
 - [x] 025 BATCHED/CONTROL `3.8628x`
@@ -90,33 +90,32 @@ Promotion target: ~20 token/s.
 - [x] Do not promote fusion; no rescue variants
 - [x] Restore Stretch 027 as preferred 0.31.2 architecture
 
-### Stretch 030 — COHERENT MLX 0.31.2 vs 0.32.0 — CURRENT / FIX2 READY
-- [x] Preregister runtime as independent factor
+### Stretch 030 — COHERENT MLX 0.31.2 vs 0.32.0 — CURRENT / FIX3 READY
+- [x] Preregister runtime as one independent factor
 - [x] Freeze Qwen3, M5, H36, full persistence, one cleanup/pass, BF16 KV and gates
 - [x] Keep mlx-lm 0.31.3 / Transformers 5.12.1 fixed
 - [x] Preserve original shell-Python setup failure / no science
-- [x] Identify canonical LOOM interpreter `results-local/mlx/venv-mlx-lm-0.31.3/bin/python`
-- [x] Correct runtime factor to coherent package pair `mlx + mlx-metal`
 - [x] Setup Fix1 clones canonical venv and upgrades clone only
-- [x] Setup Fix1 PASS: CONTROL 0.31.2/0.31.2 and TREATMENT 0.32.0/0.32.0 validated
+- [x] Setup Fix1 PASS: CONTROL mlx/mlx-metal 0.31.2; TREATMENT 0.32.0
 - [x] Preserve treatment clone `.venvs/stretch030-mlx0320-fix1`
-- [x] Preserve runner Fix1 preflight failure / no science
-- [x] Exact Fix1 defect: required nonexistent `MLX_0320_RUNTIME_NUMERICAL_PARITY_FAIL`
-- [x] Record `research/stretch/mlx-0312-0320-runtime-comparison-030-runner-defect-20260820-1738.md`
-- [x] Identify historical inner-child hard-coded canonical venv problem before scientific rerun
-- [x] Create identical runtime-portable workload for both variants
-- [x] Portable workload `scripts/stretch_runtime_portable_single_pass_030.py`
-- [x] Portable blob `16243fd78a6eb5a831c426e0c1e432a4f45db988`
-- [x] Inner child inherits selected outer `sys.executable`
-- [x] Inner version gate allows only preregistered mlx `{0.31.2, 0.32.0}` while keeping mlx-lm/Transformers fixed
-- [x] Create balanced runner Fix2 `scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix2.py`
-- [x] Runner Fix2 blob `6dd993418bff0bf9ec65c6b9a80f4bb382eb4976`
-- [x] Runner gates actual inner child version per ABBA variant
+- [x] Preserve runner Fix1 invariant failure / no science
+- [x] Preserve runner Fix2 environment-provenance failure / no science
+- [x] Fix2 root cause: `.resolve()` dereferenced macOS venv `bin/python` symlink to framework Python
+- [x] Record Fix2 defect `research/stretch/mlx-0312-0320-runtime-comparison-030-runner-defect-fix2-20260820-1745.md`
+- [x] Create portable workload Fix1 `scripts/stretch_runtime_portable_single_pass_030_fix1.py`
+- [x] Portable Fix1 blob `44251a524c77a379f43445444fa8a2643f1bfbdf`
+- [x] Inner child keeps `Path(sys.executable)` without `.resolve()`
+- [x] Inner runtime gate allows only preregistered mlx `{0.31.2, 0.32.0}` and keeps mlx-lm/Transformers fixed
+- [x] Create balanced runner Fix3 `scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix3.py`
+- [x] Runner Fix3 blob `108aed0e7e66fafe9b3213e33a57c34f9e0602d2`
+- [x] CONTROL executes canonical venv `bin/python` without resolving symlink
+- [x] TREATMENT executes validated treatment clone `bin/python`
+- [x] Runner gates actual inner-child runtime provenance per variant
 - [x] Balanced order `MLX0312 -> MLX0320 -> MLX0320 -> MLX0312`
-- [x] Correct genuine treatment exactness outcome = `MLX_0320_RUNTIME_EXACTNESS_FAIL`
+- [x] Genuine treatment exactness outcome = `MLX_0320_RUNTIME_EXACTNESS_FAIL`
 - [x] Complete exact ABBA outcome = `MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`
-- [x] Preregister Fix2 `research/stretch/mlx-0312-0320-runtime-comparison-030-harness-fix2.md`
-- [ ] Run fresh Fix2 ABBA
+- [x] Preregister Fix3 `research/stretch/mlx-0312-0320-runtime-comparison-030-harness-fix3.md`
+- [ ] Run fresh Fix3 ABBA
 - [ ] Freeze scientific outcome
 
 ### Stretch 031+ — CONDITIONAL
