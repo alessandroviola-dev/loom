@@ -15,7 +15,7 @@ ORIGINAL_RUNNER_BLOB = "0d0a27549067cef61a1dca7d3bf8f0e1f954d98b"
 SETUP_FIX1_PATH = Path("scripts/stretch_mlx_0320_env_setup_030_fix1.py")
 SETUP_FIX1_BLOB = "dfcc05aa6f730756056a75d5bf867bbd717ac31f"
 PORTABLE_WORKLOAD_PATH = Path("scripts/stretch_runtime_portable_single_pass_030.py")
-PORTABLE_WORKLOAD_BLOB = "58aaac3d04844b07d32ffdca1c3df0f6b099ef86"
+PORTABLE_WORKLOAD_BLOB = "16243fd78a6eb5a831c426e0c1e432a4f45db988"
 
 
 def git_blob(path: Path, repo: Path) -> str:
@@ -156,6 +156,38 @@ def main() -> int:
         "result root",
     )
 
+    source = replace_once(
+        source,
+        '        attempt["classification"] = child_class\n        attempt["failure_reason"] = child.get("failure_reason")\n\n        if variant == "MLX0320" and child_class in RUNTIME_SCIENTIFIC_FAIL_CLASSES:\n',
+        '        attempt["classification"] = child_class\n'
+        '        attempt["failure_reason"] = child.get("failure_reason")\n'
+        '        child_versions = child.get("versions") or {}\n'
+        '        expected_child_mlx = EXPECTED_CONTROL_MLX if variant == "MLX0312" else EXPECTED_TREATMENT_MLX\n'
+        '        child_runtime_ok = (\n'
+        '            child_versions.get("mlx") == expected_child_mlx\n'
+        '            and child_versions.get("mlx-lm") == EXPECTED_MLX_LM\n'
+        '            and child_versions.get("transformers") == EXPECTED_TRANSFORMERS\n'
+        '        )\n'
+        '        attempt["child_versions"] = child_versions\n'
+        '        attempt["child_runtime_ok"] = child_runtime_ok\n'
+        '        if not child_runtime_ok:\n'
+        '            attempt["usable"] = False\n'
+        '            summary["attempts"].append(attempt)\n'
+        '            save()\n'
+        '            return finish_incomplete(\n'
+        '                f"attempt {index} {variant}: inner child runtime provenance mismatch: {child_versions}",\n'
+        '                4,\n'
+        '            )\n\n'
+        '        if variant == "MLX0320" and child_class in RUNTIME_SCIENTIFIC_FAIL_CLASSES:\n',
+        "inner child runtime provenance gate",
+    )
+    source = replace_once(
+        source,
+        '        attempt["usable"] = (\n            proc.returncode == 0\n            and child_class == EXPECTED_PASS_CLASSIFICATION\n',
+        '        attempt["usable"] = (\n            proc.returncode == 0\n            and child_runtime_ok\n            and child_class == EXPECTED_PASS_CLASSIFICATION\n',
+        "usable child runtime provenance",
+    )
+
     required = [
         'RUN_ORDER = ["MLX0312", "MLX0320", "MLX0320", "MLX0312"]',
         'SOURCE_PATH = Path("scripts/stretch_runtime_portable_single_pass_030.py")',
@@ -167,6 +199,7 @@ def main() -> int:
         '"MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS"',
         '"MLX_0320_RUNTIME_EXACTNESS_FAIL"',
         '"MLX_0312_0320_RUNTIME_COMPARISON_INCOMPLETE"',
+        'child_runtime_ok',
         'mlx-0312-0320-runtime-comparison-030-fix2',
     ]
     missing = [fragment for fragment in required if fragment not in source]
@@ -176,7 +209,7 @@ def main() -> int:
     print("Source provenance: PASS")
     print("Validated treatment venv from setup Fix1 is reused; no installation occurs here")
     print("Scientific ABBA / model / M5 / H36 / persistence / cleanup / KV / exactness / resource gates: UNCHANGED")
-    print("Harness Fix2: correct failure-class invariant + identical runtime-portable workload")
+    print("Harness Fix2: correct failure-class invariant + identical runtime-portable workload + child runtime provenance")
 
     namespace = {
         "__name__": "__main__",
