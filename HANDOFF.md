@@ -3,7 +3,7 @@
 Last updated: 2026-08-20
 Status: ACTIVE — Apple M1 / 8 GB reference system; tracks **Amplify** and **Stretch**.
 
-Current checkpoint: `STRETCH_014_EIGHT_TOKEN_ORACLE_BLOCK_VERIFICATION_READY`
+Current checkpoint: `STRETCH_015_EIGHT_TOKEN_DIVERGENCE_ATTRIBUTION_READY`
 
 ## Mission
 
@@ -40,7 +40,7 @@ Canonical decision:
 - Do not equate logical safetensors materialization time or Darwin process disk-I/O accounting with forensic model-file SSD throughput.
 - Do not purge macOS caches casually to manufacture a cold-cache state.
 
-Verified GGUF and Direct MLX 3-bit/4-bit artifacts remain retained. Stretch disk remains ~36.27 GiB free; no download is planned.
+Verified GGUF and Direct MLX 3-bit/4-bit artifacts remain retained. Latest Stretch run ended with ~36.706 GiB free; no download is planned.
 
 ## Frozen capability references
 
@@ -294,63 +294,106 @@ Result:
 
 Decision: test one larger oracle block before selecting a real drafter.
 
-## Stretch 014 — Eight-Token Oracle Block Verification — READY
+### 014 — COMPLETE VALID FAIL
 
 Plan:
 `research/stretch/eight-token-oracle-block-verification-014-plan.md`
 
+Runner/blob:
+- `scripts/stretch_eight_token_oracle_block_verification_014.py`
+- `6d7afd43969e752a7cce39ae474d7054ccc7edd8`.
+
+Earlier attempt:
+- launch-only run classified `HOST_STATE_NOT_READY` at 52% free memory;
+- no resident control, streamed target block, or scientific measurement executed;
+- preserved as `research/stretch/eight-token-oracle-block-verification-014-host-note.md`.
+
+Valid scientific run `20260820-122922`:
+`ORACLE_BLOCK_NUMERICAL_PARITY_FAIL`.
+
+Launch/provenance:
+- source/frozen transform/version/config/layer provenance PASS
+- host gate PASS at 63% / 64% / 65% free
+- launch swap 727.19 MB.
+
+Correctness:
+- prompt max/mean diff 0.0 / 0.0
+- first target position already diverges: max abs `0.34375`, mean abs `0.05856526270508766`
+- all 16 position numerical gates fail under the unchanged preregistered threshold
+- top-1 equality remains true through steps 1–15 and becomes false at step 16
+- max position diff reaches `0.84375` at steps 11 and 12.
+
+State/resource:
+- final resident/streamed KV offsets 20 / 20
+- final resident/streamed KV bytes 37,748,736 / 37,748,736 B
+- persistent hotset 675,418,112 B
+- stream-block minimum free 56%
+- peak swap 1544.38 MB
+- peak child RSS 980.734 MB.
+
+Important interpretation boundary:
+- the streamed token list equals the frozen oracle list by construction; it is not independent generated-sequence evidence;
+- position-level logits/top-1 are decisive;
+- failure is scientific and numerical, not a host/resource abort;
+- root cause remains unresolved between shape-dependent quantized linear execution, attention/causal-block behavior, or another block-internal path.
+
+Result:
+`research/stretch/eight-token-oracle-block-verification-014-result.md`.
+
+Decision: freeze the failure, do not relax parity and do not advance directly to a 16-token block.
+
+## Stretch 015 — Eight-Token Divergence Attribution — READY
+
+Plan:
+`research/stretch/eight-token-divergence-attribution-015-plan.md`
+
 Runner:
-`scripts/stretch_eight_token_oracle_block_verification_014.py`
+`scripts/stretch_eight_token_divergence_attribution_015.py`
 
 Frozen runner blob:
-`6d7afd43969e752a7cce39ae474d7054ccc7edd8`.
+`933c366220625e845e788b2ab1521ae78d9e7d15`.
 
-Frozen source:
-- exact Stretch 013 blob `deeb0339294162f38cd4522d2890b6a0c728f96e`.
+Question:
+> Does the actual frozen layer-0 computation become numerically shape-dependent when `M` changes from 4 to 8, and where is the earliest divergence?
 
-Single scientific change:
-- oracle block size **4 -> 8**
-- target traversals for the same 16-token oracle sequence **4 -> 2**.
-
-Preserved:
-- same 16-token oracle sequence
-- resident sequential control
-- eight-layer hotset 0..7
-- layers 8..35 streamed
-- shared stages streamed
+Frozen:
+- Stretch 014 model/runtime/quantization
+- MLX 0.31.2 / mlx-lm 0.31.3 / transformers 5.12.1
+- same local Qwen3-8B 3-bit/group64 artifact
+- prompt `[1,42,2048,151935]`
+- first eight oracle tokens `[1,374,264,4647,1483,304,279,1809]`
 - ordinary BF16 KVCache
-- exact per-position numerical parity/top-1 gates
-- Darwin I/O attribution
-- host/runtime guardrails
-- file-backed child transport
-- no tokenizer/sampling/real drafter/KV quantization/prefetch/download.
+- no MLX upgrade, strict mode, threshold relaxation, download, tokenizer, sampling, KV quantization, or prefetch.
 
-Expected streamed KV offsets:
-`4 -> 12 -> 20`.
+Diagnostic A:
+- direct actual QuantizedLinear probes for layer-0 `q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`
+- identical first-row input with only `M=1`, `M=4`, `M=8` changed
+- exact first-row comparisons for M1/M4, M1/M8, M4/M8.
 
-Primary metric:
-`oracle_target_verification_tokens_per_second` for 16 accepted tokens across two target traversals.
+Diagnostic B:
+- real four-token prompt prefilled into ordinary layer-0 KVCache
+- causal trace for M1/M4/M8
+- checkpoints from input RMSNorm through Q/K/V, RoPE, SDPA, O projection, residual, post-attention norm, MLP projections/SwiGLU/down projection, and final block output
+- primary attribution point = earliest nonzero M4/M8 difference.
 
-Primary PASS:
-`EIGHT_TOKEN_ORACLE_BLOCK_VERIFICATION_PASS`.
-
-Harness note:
-- an earlier pre-freeze 014 wrapper revision routed the inherited child through the Stretch 013 path;
-- corrected before any Stretch 014 scientific run;
-- final frozen wrapper routes both parent and child through 014 so the same 8-token transform is applied in both processes;
-- no scientific result exists for the pre-freeze revision.
+Possible scientific classifications:
+- `QUANTIZED_LINEAR_SHAPE_DEPENDENCE_CONFIRMED`
+- `BLOCK_INTERNAL_SHAPE_DEPENDENCE_CONFIRMED`
+- `LAYER0_M8_DIVERGENCE_NOT_REPRODUCED`.
 
 # Exact next step
 
 ```bash
 cd "<repository-root>"
-git pull
-python3 -m py_compile scripts/stretch_eight_token_oracle_block_verification_014.py
-python3 scripts/stretch_eight_token_oracle_block_verification_014.py
+git fetch origin
+git switch research/stretch-015-divergence-attribution
+git pull --ff-only
+python3 -m py_compile scripts/stretch_eight_token_divergence_attribution_015.py
+python3 scripts/stretch_eight_token_divergence_attribution_015.py
 ```
 
 No download is expected.
 
-If 014 materially improves target-side throughput, preregister one final 16-token oracle block upper-bound point before introducing a real drafter. If scaling saturates, stop increasing block size and move to residual-cost/real-drafter work.
+After the run, freeze the attribution result before changing MLX/kernel policy or resuming block-size scaling. If direct quantized-linear shape dependence is confirmed, any strict/shape-independent-kernel experiment must be separately preregistered because it introduces a new scientific factor.
 
 After every meaningful result/decision, update `HANDOFF.md` and `ROADMAP.md` before advancing.
