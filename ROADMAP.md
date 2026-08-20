@@ -144,54 +144,60 @@ Usability promotion target:
 - [x] Target block total wall 8.484694 s
 - [x] Oracle target-verification throughput **1.8857486198 token/s**
 - [x] Rate ratio vs Stretch 012 **3.9456668664x**
-- [x] Mean full-pass process-read accounting per accepted oracle token ~49,986,816 B
-- [x] Stream-block min free 59%
-- [x] Preserve oracle upper-bound boundary: no real drafter, no draft/rejection/rollback cost
 - [x] Freeze `research/stretch/four-token-oracle-block-verification-013-result.md`
-- [x] Decide traversal amortization is promising enough for one larger oracle block
 
 ### Stretch 014 — Eight-token oracle block verification — COMPLETE VALID FAIL
 - [x] Preserve exact Stretch 013 source blob `deeb0339294162f38cd4522d2890b6a0c728f96e`
-- [x] Single scientific change: oracle block size 4 -> 8
-- [x] Target traversals 4 -> 2 for the same frozen 16-token oracle sequence
-- [x] Preserve eight-layer persistent hotset / resident sequential control / ordinary BF16 KV
-- [x] Preregister `research/stretch/eight-token-oracle-block-verification-014-plan.md`
 - [x] Freeze runner blob `6d7afd43969e752a7cce39ae474d7054ccc7edd8`
-- [x] Earlier launch-only attempt classified `HOST_STATE_NOT_READY`; no scientific result
-- [x] Valid run `20260820-122922` passed host gate at 63% / 64% / 65% free
-- [x] Prompt parity exact: max/mean diff 0.0 / 0.0
+- [x] Earlier launch-only attempt `HOST_STATE_NOT_READY`; no scientific result
+- [x] Valid run `20260820-122922`
 - [x] `ORACLE_BLOCK_NUMERICAL_PARITY_FAIL`
-- [x] Numerical divergence starts at block 1 position 0 / global step 1: max abs diff `0.34375`
+- [x] Prompt parity exact
+- [x] Numerical divergence starts at global step 1; max abs diff `0.34375`
 - [x] All 16 position-level numerical gates fail
-- [x] Top-1 remains equal through steps 1–15 and differs at step 16
+- [x] Top-1 differs at step 16
 - [x] Final resident/streamed KV offsets both 20; KV bytes both 37,748,736 B
-- [x] Stream-block minimum free memory 56%; failure is not a resource abort
+- [x] Failure is not a resource abort
 - [x] Freeze `research/stretch/eight-token-oracle-block-verification-014-result.md`
-- [x] Do not relax parity threshold and do not advance directly to a 16-token block
+- [x] Do not relax parity or advance directly to a 16-token block
 
-### Stretch 015 — Eight-token divergence attribution — CURRENT / READY
-- [x] Preserve frozen Stretch 014 runner/model/runtime
-- [x] Keep MLX `0.31.2`, mlx-lm `0.31.3`, transformers `5.12.1`
-- [x] Compare identical first-row inputs at `M=1`, `M=4`, `M=8`
-- [x] Directly test actual layer-0 quantized `q/k/v/o/gate/up/down` projections
-- [x] Trace layer-0 causal checkpoints from input RMSNorm through block output
-- [x] Preserve real four-token prompt and ordinary BF16 KV cache
-- [x] Preregister `research/stretch/eight-token-divergence-attribution-015-plan.md`
-- [x] Add `scripts/stretch_eight_token_divergence_attribution_015.py`
-- [x] Freeze runner blob `933c366220625e845e788b2ab1521ae78d9e7d15`
-- [ ] Run Stretch 015
-- [ ] Freeze attribution result
+### Stretch 015 — Eight-token divergence attribution — COMPLETE ATTRIBUTION PASS
+- [x] Valid run `20260820-124515`
+- [x] `QUANTIZED_LINEAR_SHAPE_DEPENDENCE_CONFIRMED`
+- [x] Host-state/provenance/version/config/layer-0 gates PASS
+- [x] `M=1` vs `M=4`: no traced layer-0 divergence
+- [x] `M=4` vs `M=8`: q/k/v/o remain exact
+- [x] First direct QuantizedLinear divergence: `gate_proj`
+- [x] Direct `gate_proj` M4/M8 max abs diff `0.001220703125`
+- [x] Direct `up_proj` M4/M8 max abs diff `0.0009765625`
+- [x] Direct `down_proj` M4/M8 max abs diff `1.75`
+- [x] Layer-0 trace remains exact through post-attention layernorm
+- [x] First traced divergence: `gate_proj`
+- [x] Block-output M4/M8 max abs diff `0.0625`
+- [x] Freeze `research/stretch/eight-token-divergence-attribution-015-result.md`
+- [x] Attribute Stretch 014 failure to shape-dependent quantized-linear execution under frozen MLX 0.31.2
 
-### Stretch 016+ — conditional path
-- [ ] If direct quantized-linear M4/M8 divergence is confirmed, freeze it before changing kernel/runtime policy
-- [ ] Test shape-independent/strict quantized path only as a separately preregistered factor
-- [ ] If direct quantized-linear probes are exact, extend attribution from the earliest block-internal divergence
+### Stretch 016 — QuantizedLinear M-boundary mapping — CURRENT / READY
+- [x] Preserve MLX 0.31.2 / mlx-lm 0.31.3 / transformers 5.12.1
+- [x] Preserve Qwen3-8B 3-bit/group64 and actual layer-0 quantized weights
+- [x] Sweep `M=1..16`
+- [x] Compare identical first output row vs `M=1`
+- [x] Test q/k/v/o/gate/up/down independently
+- [x] Keep down-projection probe independent of upstream gate/up divergence
+- [x] Preregister `research/stretch/quantized-linear-m-boundary-mapping-016-plan.md`
+- [x] Add `scripts/stretch_quantized_linear_m_boundary_mapping_016.py`
+- [x] Freeze runner blob `a5c3f4acd6a4150d2db7477f3f20d01a00b4f759`
+- [ ] Run Stretch 016
+- [ ] Freeze exact M-boundary result
+
+### Stretch 017+ — conditional path
+- [ ] If a sharp M boundary is mapped, preserve block size 4 as the exact 0.31.2 baseline unless evidence supports another exact size
+- [ ] Decide between another speed axis and a separately preregistered runtime/kernel experiment
+- [ ] Do not assume MLX 0.32 `qmv_wide` fixes Apple M1 affine 3-bit; its affine path is gated to newer GPU generations
 - [ ] Resume oracle block-size scaling only after the numerical boundary is understood
 - [ ] Select/implement a real draft model only after the oracle target-side boundary is characterized
 - [ ] Measure real acceptance rate + actual end-to-end tok/s including draft cost and rejection behavior
 - [ ] Keep hotset and speculative/block verification as separable optimization axes
-- [ ] Only after speed path is characterized: tokenizer/text integration
-- [ ] Test KV capacity boundary separately
 - [ ] Test prefetch/double buffering separately
 - [ ] Test KV quantization separately
 - [ ] Do not promote any profile as interactive until speed approaches the frozen usability target
