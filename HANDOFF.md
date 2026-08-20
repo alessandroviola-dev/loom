@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_028_SINGLE_PASS_COMPUTE_REATTRIBUTION_READY`
+Current checkpoint: `STRETCH_029_GATE_UP_QUANTIZED_FUSION_READY`
 
 ## Mission
 
@@ -18,26 +18,25 @@ Interactive promotion target: approximately **20 token/s**. This is a promotion 
 
 ## Research rules
 
-- Preserve verified results plus failed scientific/harness runs.
+- Preserve verified results plus scientific/harness failures.
+- Change one scientific factor at a time.
+- No post-hoc gate weakening, hidden rescue ladders, or automatic retries.
 - Runtime abort where inherited: free memory <5% OR swap >5600 MB.
 - Launch gate where preregistered: free memory >=60%, swap <=5600 MB.
 - System-wide free memory/swap are decisive; process RSS is diagnostic.
 - Harness defects are not model failures.
-- Do not weaken numerical/resource gates post-hoc.
-- Change one scientific factor at a time.
-- No hidden rescue ladders or automatic retries.
 - No deliberate macOS cache purge to manufacture host state.
 - Darwin process-I/O counters are diagnostic, not forensic physical-SSD reads.
-- Runtime upgrades are separate preregistered environment changes.
 - Absolute throughput across separate experiments is host/cache-state dependent; balanced within-experiment ratios are the causal evidence.
-- Update this file and `ROADMAP.md` after meaningful checkpoints.
+- Runtime/model upgrades are separate preregistered factors and do not rewrite frozen evidence.
+- Update `HANDOFF.md` and `ROADMAP.md` after meaningful checkpoints.
 
 ## Frozen target/environment
 
 Model:
 `results-local/mlx/models/Qwen3-8B-3bit/model.safetensors`
 
-Qwen3:
+Qwen3 geometry:
 - hidden 4096
 - 36 transformer layers
 - vocab 151936
@@ -45,7 +44,7 @@ Qwen3:
 - head dim 128
 - RMSNorm eps 1e-6
 - untied embedding/head
-- 3-bit / group64 quantization.
+- 3-bit/group64 affine quantization.
 
 Frozen runtime:
 - mlx 0.31.2
@@ -60,7 +59,7 @@ Raw weights:
 - final RMSNorm `8,192 B`
 - LM head `272,269,312 B`.
 
-Ordinary BF16 KV remains frozen for this sequence.
+Ordinary BF16 KV remains frozen.
 
 ## Other track
 
@@ -73,12 +72,12 @@ Frozen next Amplify work:
 
 ## Canonical Stretch evidence
 
-### Stretch 001–017 — architecture + exact block frontier
+### Stretch 001–017 — exact architecture/block frontier
 
-Established layer-addressable I/O, bounded materialization, exact streamed/full-logit parity, persistent BF16 KV, materialization/process-I/O attribution, persistent hotsets and oracle target verification.
+Established layer-addressable I/O, bounded materialization, exact streamed/full-logit parity, persistent BF16 KV, persistent hotsets and oracle target verification.
 
 Exactness frontier under MLX 0.31.2:
-- M8 valid numerical parity FAIL;
+- M8 valid numerical-parity FAIL;
 - q/k/v/o exact through M9, first divergence M10;
 - gate/up/down exact through M5, first divergence M6;
 - Stretch 017 confirms M5 exact end-to-end over 15 oracle tokens.
@@ -88,10 +87,9 @@ Decision: **M=5 is the maximum demonstrated exact oracle block under MLX 0.31.2.
 ### Stretch 018 — COMPLETE PASS
 
 `M4_M5_BALANCED_TARGET_COST_COMPARISON_PASS`
-
 - M5/M4 `1.09795340695x` (~+9.80%).
 
-Decision: freeze M5 as preferred exact block; block-size scaling closed for frozen runtime.
+Decision: freeze M5; block-size scaling closed for frozen runtime.
 
 ### Stretch 019–022 — transformer residency COMPLETE
 
@@ -101,206 +99,191 @@ Controlled gains:
 - H24 -> H32 ~+11.45%
 - H32 -> H36 ~+10.50%.
 
-Decision: H36 is the physical transformer-residency ceiling; transformer residency is closed.
+Decision: H36 is the physical transformer-residency ceiling; transformer residency closed.
 
-### Stretch 023 — COMPLETE PASS / full raw-weight persistence
+### Stretch 023 — full raw-weight persistence COMPLETE PASS
 
 Initial `20260820-151540` preserved as harness defect / no scientific result.
 
 Valid Fix1 `20260820-153308`:
 `M5_H36_SHARED_STAGE_BALANCED_COMPARISON_PASS`
-
-- PERSISTENT/STREAMED `1.5988607373590418x` = ~+59.89%
+- PERSISTENT/STREAMED `1.5988607373590418x` (~+59.89%)
 - full persistent raw model `3,583,928,320 B`
-- mean one-time shared setup `0.3723145 s`
+- shared setup `0.3723145 s`
 - break-even `0.439246432072825` target blocks.
 
-Decision: **M5 + H36 + full raw-weight persistence** is the frozen weight-residency architecture. Raw-weight residency is closed.
+Decision: freeze **M5 + H36 + full raw-weight persistence**. Raw-weight residency closed.
 
 Canonical result:
 `research/stretch/m5-h36-shared-stage-persistence-023-result.md`
 
-### Stretch 024 — COMPLETE PASS / compute + framework attribution
+### Stretch 024 — compute/framework attribution COMPLETE PASS
 
 Fix1 `20260820-155313` preserved as telemetry harness defect / no scientific result.
 
 Valid Fix2 `20260820-160140`:
 `FULL_PERSISTENT_COMPUTE_ATTRIBUTION_PASS`
+- transformer compute `0.8081826820 s/block`
+- attention path `0.2207656117 s/block`
+- MLP path `0.5874170703 s/block`
+- MLP/attention `2.6608178049x`
+- old per-layer cleanup sum `0.9268928333 s/block`.
 
-Old-schedule attribution per target block:
-- transformer compute `0.808182682027109 s`
-- attention path `0.22076561170009276 s`
-- MLP path `0.5874170703270162 s`
-- MLP/attention `2.6608178049261344x`
-- per-layer cleanup sum `0.9268928333333333 s`
-- shared forward `0.05525783333333333 s`
-- residual unattributed `0.09952548463955764 s`
-- accounted share ~94.74%.
-
-Largest transformer components in that profiled schedule:
-- up_proj ~23.36%
-- gate_proj ~23.24%
-- attention ~22.75%
-- down_proj ~22.21%.
-
-Decision: cleanup/framework overhead was the largest measured category; optimize cleanup before kernel/runtime changes.
+Decision: cleanup/framework was the largest category; optimize schedule first.
 
 Canonical result:
 `research/stretch/full-persistent-compute-kernel-attribution-024-result.md`
 
-### Stretch 025 — COMPLETE PASS / batched transformer cleanup
+### Stretch 025 — batched transformer cleanup COMPLETE PASS
 
 Valid `20260820-161317`:
 `FULL_PERSISTENT_BATCHED_CLEANUP_COMPARISON_PASS`
+- BATCHED/CONTROL `3.8627785715x` (~+286.28%)
+- median block wall ~70.34% lower
+- one post-body cleanup `0.060996 s/block`.
 
-- CONTROL pooled `2.761599662127487 token/s`
-- BATCHED pooled `10.667447997968917 token/s`
-- BATCHED/CONTROL `3.8627785715149265x` = **~+286.28%**
-- median block wall reduction ~70.34%
-- BATCHED mean one-per-body cleanup `0.060996 s`.
-
-Decision: replace 36 per-layer cleanup sequences with one post-transformer-body cleanup.
+Decision: replace 36 per-layer cleanups with one post-body cleanup.
 
 Canonical result:
 `research/stretch/full-persistent-batched-cleanup-comparison-025-result.md`
 
-### Stretch 026 — COMPLETE PASS / shared-stage batched cleanup
+### Stretch 026 — shared-stage cleanup consolidation COMPLETE PASS
 
 Valid `20260820-162951`:
 `FULL_PERSISTENT_SHARED_BATCHED_CLEANUP_COMPARISON_PASS`
+- SHARED_BATCHED/BATCHED `1.1410704391x` (~+14.11%)
+- median block wall ~11.19% lower.
 
-- BATCHED pooled `11.1287398593995 token/s`
-- SHARED_BATCHED pooled `12.69867607836099 token/s`
-- ratio `1.1410704391329174x` = **~+14.11%**
-- median block wall reduction ~11.19%
-- SHARED_BATCHED mean body cleanup `0.047733333333333336 s`
-- SHARED_BATCHED mean post-shared cleanup `0.031349 s`.
-
-Decision: consolidate embedding/norm/head cleanup to one post-head cleanup while retaining one post-body cleanup.
+Decision: one body cleanup + one post-head cleanup.
 
 Canonical result:
 `research/stretch/full-persistent-shared-batched-cleanup-comparison-026-result.md`
 
-## Stretch 027 — COMPLETE PASS / single final cleanup
+### Stretch 027 — single final cleanup COMPLETE PASS
 
-Plan:
-`research/stretch/full-persistent-single-pass-cleanup-comparison-027-plan.md`
-
-Valid run:
-`20260820-163715`
-
-Classification:
+Valid `20260820-163715`:
 `FULL_PERSISTENT_SINGLE_PASS_CLEANUP_COMPARISON_PASS`
-
-Balanced order:
-`SHARED_BATCHED -> SINGLE_PASS -> SINGLE_PASS -> SHARED_BATCHED`.
-
-Frozen sources:
-- SHARED_BATCHED baseline blob `6926e1b1b9a851f23d88ba6b1f1023e13336098a`
-- SINGLE_PASS treatment blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`
-- runner blob `665ca882f5067e65779e7e3f1a0c352432aeb113`.
-
-Scientific factor only:
-- baseline has one cleanup after transformer body plus one after LM head;
-- SINGLE_PASS removes the intermediate body cleanup and retains one final post-head cleanup for the full pass;
-- zero-cleanup was not tested.
-
-Controlled result:
 - SHARED_BATCHED pooled `11.71484200192592 token/s`
 - SINGLE_PASS pooled `12.730685322495841 token/s`
-- SINGLE_PASS/SHARED_BATCHED `1.0867142143618256x` = **~+8.67%**
-- SHARED_BATCHED median block `0.4188015 s`
-- SINGLE_PASS median block `0.396305 s`
-- median reduction **~5.37%**.
+- SINGLE_PASS/SHARED_BATCHED `1.0867142143618256x` (~+8.67%)
+- median block `0.396305 s`
+- final cleanup `0.05584016666666667 s/block`
+- min free `23%`
+- peak swap `2562.94 MB`.
 
-Cleanup telemetry:
-- baseline body cleanup `0.05322433333333333 s/block`
-- baseline final cleanup `0.03469283333333333 s/block`
-- baseline combined `0.08791716666666666 s/block`
-- SINGLE_PASS final cleanup `0.05584016666666667 s/block`.
-
-Resource telemetry:
-- SHARED_BATCHED min free `18%`, peak swap `2509.62 MB`
-- SINGLE_PASS min free `23%`, peak swap `2562.94 MB`
-- disk after `35.660 GiB`.
-
-Decision:
-**Freeze `M5 + H36 + full raw-weight persistence + one final cleanup per pass` as the preferred frozen-runtime target schedule.**
-
-Cleanup-frequency consolidation is closed at one final cleanup per pass. The remaining measured cleanup is ~14.1% of the observed median wall; even idealized removal of all of it would imply only ~`14.7 token/s` from the same median geometry, still below the ~20 token/s promotion target. Further gains must mainly come from compute/kernel/runtime work.
+Decision: freeze **M5 + H36 + full persistence + one final cleanup/pass**. Cleanup-frequency axis closed; zero-cleanup remains unproven.
 
 Canonical result:
 `research/stretch/full-persistent-single-pass-cleanup-comparison-027-result.md`
 
-## Stretch 028 — SINGLE_PASS compute re-attribution — READY
+## Stretch 028 — COMPLETE PASS / compute re-attribution on SINGLE_PASS
+
+Valid run:
+`20260820-164802`
+
+Classification:
+`SINGLE_PASS_COMPUTE_REATTRIBUTION_PASS`
+
+Frozen sources:
+- CONTROL Stretch 027 blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`
+- PROFILED blob `0858e39a46bf09fe7750691b6dcd95b6753e5c70`
+- runner blob `65d1c93967ed786623a3899e0f510ad9ef8de1e2`.
+
+Balanced order:
+`CONTROL -> PROFILED -> PROFILED -> CONTROL`.
+
+Instrumentation perturbation:
+- CONTROL pooled `12.707685947332573 token/s`
+- PROFILED pooled `8.706180343302105 token/s`
+- PROFILED/CONTROL `0.6851113868713122x`
+- CONTROL median block `0.394962 s`
+- PROFILED median block `0.609049 s`.
+
+PROFILED absolute speed is not an optimization result.
+
+Synchronized re-attribution:
+- transformer compute `0.44969600122810033 s/block`
+- attention path `0.1231006117692838 s/block`
+- MLP path `0.3265953894588165 s/block`
+- MLP/attention `2.653076899982628x`
+- up_proj `0.09931493003387004 s/block`
+- attention `0.09857969474978745 s/block`
+- gate_proj `0.0965807989705354 s/block`
+- down_proj `0.09428692991302039 s/block`
+- final cleanup `0.0617505 s/block`
+- shared forward `0.028035333333333332 s/block`
+- residual unattributed `0.034740665438566354 s/block`
+- accounted share `0.9395083002891038` (~93.95%).
+
+Interpretation:
+- true transformer compute is now the main optimization target;
+- MLP remains ~2.653x attention because it contains three large quantized projections;
+- gate/up/down together are ~`0.29018 s/block` in the synchronized PROFILED path;
+- individually up/attention/gate/down are all near the same ~0.095–0.099 s/block scale.
+
+Canonical result:
+`research/stretch/single-pass-compute-reattribution-028-result.md`
+
+## Stretch 029 — GATE+UP QUANTIZED FUSION — READY
 
 Plan:
-`research/stretch/single-pass-compute-reattribution-028-plan.md`
+`research/stretch/gate-up-quantized-fusion-029-plan.md`
 
-Question:
-> Under the new canonical one-cleanup-per-pass schedule, which synchronized compute components now dominate the target block?
-
-Reason:
-Stretch 024 profiling was collected under the obsolete per-layer cleanup schedule. It remains valid historical evidence but should not be the final component ranking for the optimized path.
+Official frozen-runtime anatomy supporting the design:
+- mlx-lm v0.31.3 Qwen3 MLP: `down_proj(swiglu(gate_proj(x), up_proj(x)))`;
+- MLX v0.31.2 QuantizedLinear delegates to `mx.quantized_matmul(..., transpose=True)`.
 
 CONTROL:
 - `scripts/stretch_full_persistent_single_pass_cleanup_027.py`
 - blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`.
 
-PROFILED:
-- `scripts/stretch_single_pass_compute_reattribution_028_profiled.py`
-- blob `0858e39a46bf09fe7750691b6dcd95b6753e5c70`.
+FUSED:
+- `scripts/stretch_gate_up_quantized_fusion_029.py`
+- blob `c37ff6313106807c1e2e5070b7fb8f19e97abea6`.
+
+FUSED changes one factor only:
+- gate + up packed weight/scales/affine biases are concatenated once by output row during block setup;
+- the original two persistent module references are removed after fused materialization;
+- no per-forward weight concatenation;
+- one `mx.quantized_matmul` produces gate+up output, then `mx.split` restores the two halves;
+- SwiGLU and down_proj are unchanged.
 
 Balanced runner:
-- `scripts/stretch_single_pass_compute_reattribution_comparison_028.py`
-- blob `65d1c93967ed786623a3899e0f510ad9ef8de1e2`.
+- `scripts/stretch_gate_up_quantized_fusion_comparison_029.py`
+- blob `8d89665b5d3061891a53f1734e19331aa1a4fb34`.
 
 Balanced order:
-`CONTROL -> PROFILED -> PROFILED -> CONTROL`.
+`CONTROL -> FUSED -> FUSED -> CONTROL`.
 
-Scientific change:
-explicit `mx.eval` timing boundaries on target transformer components only. Prompt, M5, H36, full persistence, one-final-cleanup schedule, runtime, KV and all inherited gates remain unchanged.
+Critical preregistered exactness rule:
+- if the first FUSED produces prompt/oracle numerical, top-1, acceptance, or generated-sequence mismatch, stop immediately;
+- classify `GATE_UP_QUANTIZED_FUSION_NUMERICAL_PARITY_FAIL` as a valid scientific result;
+- no rescue ordering, partial fusion, threshold relaxation, or retry.
 
-PROFILED throughput is perturbation telemetry only, not an optimization result.
+Complete exact ABBA success:
+`GATE_UP_QUANTIZED_FUSION_BALANCED_COMPARISON_PASS`.
 
-Primary outputs:
-- transformer compute/block
-- attention path
-- MLP path
-- MLP/attention ratio
-- component ranking
-- final cleanup wall
-- shared-stage forward/materialization
-- residual unattributed wall
-- accounted share
-- slowest layer candidates.
-
-Success:
-`SINGLE_PASS_COMPUTE_REATTRIBUTION_PASS`.
-
-Failure/incomplete:
-`SINGLE_PASS_COMPUTE_REATTRIBUTION_INCOMPLETE`.
-
-No automatic retry/rescue.
+Harness/resource/provenance failure:
+`GATE_UP_QUANTIZED_FUSION_COMPARISON_INCOMPLETE`.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_single_pass_compute_reattribution_028_profiled.py
-python3 -m py_compile scripts/stretch_single_pass_compute_reattribution_comparison_028.py
-python3 scripts/stretch_single_pass_compute_reattribution_comparison_028.py
+python3 -m py_compile scripts/stretch_gate_up_quantized_fusion_029.py
+python3 -m py_compile scripts/stretch_gate_up_quantized_fusion_comparison_029.py
+python3 scripts/stretch_gate_up_quantized_fusion_comparison_029.py
 ```
 
 No download is expected.
 
-## Open questions after Stretch 028
+## Open questions after Stretch 029
 
-1. Does MLP remain the dominant compute path after cleanup optimization?
-2. Which of gate/up/down/attention now dominates synchronized wall?
-3. Is residual/framework wall now small enough to justify direct kernel work?
-4. If MLP dominates, choose one separately preregistered MLP/quantized-linear factor.
-5. If attention dominates, choose an attention/SDPA factor instead.
-6. A newer MLX runtime remains a separate environment comparison and must not rewrite MLX 0.31.2 evidence.
-7. Real drafter integration remains separate; current rates are oracle target-verification upper bounds.
+1. Is one fused gate+up quantized call exact under frozen M5 gates?
+2. If exact, does it beat separate gate/up within balanced ABBA?
+3. Does the fused representation preserve full persistent raw-weight/resource behavior?
+4. If fusion fails exactness, preserve the FAIL and move to a different compute factor rather than rescuing the fusion.
+5. If fusion is exact but flat/slower, close this fusion implementation and choose the next independent kernel factor.
+6. A newer MLX runtime remains a separate environment factor.
+7. Real drafter integration remains separate; current target rates are oracle verification upper bounds.
