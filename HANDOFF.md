@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_030_MLX_0312_0320_RUNTIME_COMPARISON_ENV_SETUP_READY`
+Current checkpoint: `STRETCH_030_MLX_0312_0320_RUNTIME_COMPARISON_ENV_FIX1_READY`
 
 ## Mission
 
@@ -19,7 +19,7 @@ Interactive promotion target: approximately **20 token/s**. This is a promotion 
 ## Research rules
 
 - One scientific factor at a time.
-- Preserve valid PASS, scientific FAIL and harness-defect evidence.
+- Preserve valid PASS, scientific FAIL and harness/setup-defect evidence.
 - No post-hoc gate weakening, hidden rescue ladders or automatic retries.
 - Runtime abort where inherited: free memory <5% OR swap >5600 MB.
 - Launch gate where preregistered: free memory >=60%, swap <=5600 MB.
@@ -47,8 +47,12 @@ Qwen3 geometry:
 
 Canonical historical runtime:
 - mlx 0.31.2
+- mlx-metal 0.31.2
 - mlx-lm 0.31.3
 - transformers 5.12.1.
+
+Canonical MLX child interpreter:
+`results-local/mlx/venv-mlx-lm-0.31.3/bin/python`
 
 Raw weights:
 - total `3,583,928,320 B`
@@ -73,14 +77,9 @@ Frozen next Amplify work:
 
 ### Stretch 001–017 — exact architecture / block frontier
 
-Established:
-- layer-addressable I/O and bounded materialization;
-- streamed/full-logit parity;
-- persistent BF16 KV;
-- persistent transformer hotsets;
-- target oracle verification.
+Established layer-addressable I/O, streamed/full-logit parity, persistent BF16 KV, persistent hotsets and oracle target verification.
 
-Frozen 0.31.2 exactness frontier:
+Frozen MLX 0.31.2 exactness frontier:
 - M8 valid numerical-parity FAIL;
 - q/k/v/o exact through M9, first divergence M10;
 - gate/up/down exact through M5, first divergence M6;
@@ -115,9 +114,6 @@ Valid Fix1 `20260820-153308`:
 - full persistent raw model `3,583,928,320 B`.
 
 Decision: freeze M5 + H36 + full persistence.
-
-Result:
-`research/stretch/m5-h36-shared-stage-persistence-023-result.md`
 
 ### Stretch 024 — compute/framework attribution — COMPLETE PASS
 
@@ -161,7 +157,7 @@ Valid `20260820-163715`:
 
 Decision: freeze **M5 + H36 + full persistence + one final cleanup/pass**.
 
-Canonical workload helper:
+Canonical workload:
 `scripts/stretch_full_persistent_single_pass_cleanup_027.py`
 blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`.
 
@@ -185,37 +181,22 @@ Key synchronized attribution:
 
 Decision: true transformer compute is now primary target.
 
-Result:
-`research/stretch/single-pass-compute-reattribution-028-result.md`
-
 ### Stretch 029 — gate+up quantized fusion — COMPLETE PASS / NOT PROMOTED
 
-Scientific plan:
-`research/stretch/gate-up-quantized-fusion-029-plan.md`
-
-Initial run `20260820-170503`:
-- `GATE_UP_QUANTIZED_FUSION_COMPARISON_INCOMPLETE`
-- pure wrapper-phase harness defect;
-- FUSED treatment never launched;
+Initial `20260820-170503`:
+- wrapper-phase harness defect;
+- FUSED never launched;
 - scientific result NONE.
 
-Preserved defect:
-`research/stretch/gate-up-quantized-fusion-029-harness-defect-20260820-170503.md`
-
-Harness Fix1 preserved original scientific fusion callback unchanged.
-
-Valid fresh ABBA `20260820-171714`:
+Valid fresh Fix1 ABBA `20260820-171714`:
 `GATE_UP_QUANTIZED_FUSION_BALANCED_COMPARISON_PASS`
 
 Metrics:
 - CONTROL `13.228627278575932 token/s`
 - FUSED `12.352399124132555 token/s`
 - FUSED/CONTROL `0.933762730176664x` (~6.62% slower)
-- CONTROL median block `0.374359 s`
-- FUSED median block `0.406644 s`
-- FUSED/CONTROL median wall `1.0862407475177571x` (~8.62% higher)
-- CONTROL mean final cleanup `0.05385683333333333 s`
-- FUSED mean final cleanup `0.06512233333333334 s`
+- CONTROL median `0.374359 s`
+- FUSED median `0.406644 s` (~8.62% higher)
 - CONTROL min free `19%`
 - FUSED min free `22%`
 - CONTROL peak swap `2575.56 MB`
@@ -227,80 +208,130 @@ Interpretation:
 - do not promote;
 - no rescue ordering, partial fusion or threshold relaxation.
 
-Canonical result:
+Result:
 `research/stretch/gate-up-quantized-fusion-029-result.md`
 
-Decision: restore Stretch 027 SINGLE_PASS as preferred 0.31.2 architecture and close this fusion path.
+Decision: Stretch 027 SINGLE_PASS remains preferred 0.31.2 architecture.
 
-## Stretch 030 — isolated MLX 0.31.2 vs 0.32.0 runtime comparison — READY FOR ENV SETUP
+## Stretch 030 — isolated coherent MLX 0.31.2 vs 0.32.0 runtime comparison — ENV FIX1 READY
 
-Plan:
+Original preregistration:
 `research/stretch/mlx-0312-0320-runtime-comparison-030-plan.md`
 
 Scientific question:
-Does changing only MLX `0.31.2 -> 0.32.0` preserve frozen M5 correctness and improve target-verification cost?
+Does changing only the coherent macOS MLX runtime version from 0.31.2 to 0.32.0 preserve frozen M5 correctness and improve target-verification cost?
 
-Motivation frozen before run:
-- official MLX v0.32.0 release includes `[Metal][Performance]: Add split-K for quantized matmul (small M)` and generated qmm implementation changes;
-- official mlx-lm 0.31.3 metadata accepts `mlx>=0.31.2` on Darwin.
-
-CONTROL and MLX0320 execute the **same exact workload source**:
+CONTROL and TREATMENT execute the same exact workload:
 `scripts/stretch_full_persistent_single_pass_cleanup_027.py`
 blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`.
 
-Treatment environment:
-`.venvs/stretch030-mlx0320`
+### Original setup failure — PRE-RUN DEFECT / NO SCIENCE
 
-Environment setup utility:
-`scripts/stretch_mlx_0320_env_setup_030.py`
-blob `fde39967be02cba81ea14bb043c9fdacd24db861`.
+The original setup utility was launched through shell Python:
+`/Library/Frameworks/Python.framework/Versions/3.13/bin/python3`
 
-Setup policy:
-- `venv --system-site-packages` from canonical interpreter;
-- overlay only `mlx==0.32.0 --no-deps`;
-- canonical environment untouched;
-- require same Python, mlx-lm 0.31.3, Transformers 5.12.1, NumPy and safetensors;
-- no package installation during the scientific comparison.
+It observed `mlx`, `mlx-lm`, Transformers and safetensors as MISSING and stopped with:
 
-Balanced runner:
-`scripts/stretch_mlx_0312_0320_runtime_comparison_030.py`
-blob `0d0a27549067cef61a1dca7d3bf8f0e1f954d98b`.
+`RuntimeError: canonical mlx must be 0.31.2, observed MISSING`
 
-Balanced order:
+Root cause:
+- shell `sys.executable` is not the canonical LOOM MLX child interpreter;
+- LOOM workloads actually use `results-local/mlx/venv-mlx-lm-0.31.3/bin/python`;
+- original `--system-site-packages` treatment design also could not guarantee inheritance from another venv;
+- macOS MLX runtime is version-coupled across `mlx` and `mlx-metal`, so changing `mlx` alone with `--no-deps` was insufficient.
+
+The failure occurred before a valid treatment environment or scientific ABBA existed.
+
+Scientific result: **NONE**.
+
+Defect record:
+`research/stretch/mlx-0312-0320-runtime-comparison-030-setup-defect-20260820.md`
+
+### Environment / Harness Fix1
+
+Canonical CONTROL venv:
+`results-local/mlx/venv-mlx-lm-0.31.3`
+
+Required CONTROL runtime:
+- mlx 0.31.2
+- mlx-metal 0.31.2
+- mlx-lm 0.31.3
+- transformers 5.12.1.
+
+Treatment clone:
+`.venvs/stretch030-mlx0320-fix1`
+
+Provisioning policy:
+1. verify canonical venv;
+2. clone canonical venv exactly;
+3. modify clone only;
+4. install `mlx==0.32.0` and `mlx-metal==0.32.0` with `--no-deps --upgrade`;
+5. verify Python, mlx-lm, Transformers, NumPy and safetensors remain identical;
+6. never modify canonical venv;
+7. no package installation occurs during scientific ABBA.
+
+Setup Fix1:
+`scripts/stretch_mlx_0320_env_setup_030_fix1.py`
+blob `dfcc05aa6f730756056a75d5bf867bbd717ac31f`.
+
+Runner Fix1:
+`scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix1.py`
+blob `eb629a518edba8b9665785858bfe37402adc17e2`.
+
+Fix1 preregistration:
+`research/stretch/mlx-0312-0320-runtime-comparison-030-harness-fix1.md`
+
+Balanced order remains:
 `MLX0312 -> MLX0320 -> MLX0320 -> MLX0312`.
 
+Frozen besides runtime:
+- Qwen3-8B 3-bit/group64
+- M5
+- H36
+- full persistence
+- one final cleanup/pass
+- mlx-lm 0.31.3
+- Transformers 5.12.1
+- BF16 KV
+- oracle sequence
+- numerical/top-1/acceptance gates
+- I/O/resource policy
+- no cache purge.
+
 Outcome policy:
-- first MLX0320 frozen numerical/top1/oracle failure => `MLX_0320_RUNTIME_EXACTNESS_FAIL`, valid scientific FAIL, stop, no rescue;
+- first MLX0320 frozen numerical/top1/oracle failure => `MLX_0320_RUNTIME_EXACTNESS_FAIL`, valid scientific FAIL, stop/no rescue;
 - complete exact ABBA => `MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`;
 - environment/harness/resource failure => `MLX_0312_0320_RUNTIME_COMPARISON_INCOMPLETE`.
 
-If 0.32.0 is exact + faster, do **not** immediately increase M inside Stretch 030. First freeze 030, then separately preregister a new M-boundary mapping under 0.32.0 because the old M5 ceiling is 0.31.2-specific.
+If 0.32.0 is exact + faster, freeze Stretch 030 first, then separately preregister M-boundary remapping under 0.32.0. Never inherit the MLX 0.31.2 M5 ceiling as a fact about 0.32.0.
 
 ## Exact next step
-
-From canonical repo path:
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_mlx_0320_env_setup_030.py
-python3 scripts/stretch_mlx_0320_env_setup_030.py
+python3 -m py_compile scripts/stretch_mlx_0320_env_setup_030_fix1.py
+python3 scripts/stretch_mlx_0320_env_setup_030_fix1.py
 ```
 
-Only if setup prints `Environment setup: PASS`:
+Only if setup prints:
+
+`Environment setup FIX1: PASS`
+
+run:
 
 ```bash
-python3 -m py_compile scripts/stretch_mlx_0312_0320_runtime_comparison_030.py
-python3 scripts/stretch_mlx_0312_0320_runtime_comparison_030.py
+python3 -m py_compile scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix1.py
+python3 scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix1.py
 ```
 
-Do not run the canonical workload manually between balanced constituents. Do not delete/rebuild the treatment venv unless setup reports it invalid.
+Do not run the original setup/runner. Do not manually modify either venv.
 
 ## Open questions after Stretch 030
 
-1. Does MLX 0.32.0 preserve frozen M5 exactness?
+1. Does coherent MLX 0.32.0 preserve frozen M5 exactness?
 2. If exact, what is the balanced target-rate ratio vs 0.31.2?
 3. Does resource behavior remain acceptable on 8 GB?
 4. If exact + faster, where is the new M exactness boundary under 0.32.0?
-5. If exact + flat/slower, which independent compute axis is next: attention/SDPA or another kernel/runtime mechanism?
+5. If exact + flat/slower, which independent compute axis is next?
 6. Real drafter integration remains separate; current target rates are oracle-verification upper bounds.
