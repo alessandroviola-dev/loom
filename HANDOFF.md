@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_035_KERNEL_PATH_INVESTIGATION_ONLY`
+Current checkpoint: `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`
 
 ## Mission
 
@@ -270,7 +270,19 @@ MLX `v0.32.0` adds qmv_wide, but its literal affine gate is `architecture_gen >=
 
 No isolated prototype was justified or benchmarked. Upstream explicitly says affine qmv_wide only beats qmv on gen15+, but that does not disprove every theoretical M1-specific future kernel. Therefore `STRETCH_035_KERNEL_PATH_INVESTIGATION_ONLY`: no numerical/timing treatment or defensible weighted >=5% estimate exists. Keep monolithic canonical M5 `mx.quantized_matmul`; any custom M1 kernel needs fresh explicit authorization and a separately preregistered correctness-first feasibility factor. Artifact: `research/stretch/m5-quantized-kernel-path-035-investigation.md`; evidence: `results-local/stretch/m5-quantized-kernel-path-035/20260820-202259/summary.json`.
 
-### Rationale
+## Stretch 036 — persistent dequantized BF16 projection feasibility — NO-GO
+
+Diagnostic only; no scientific plan, source transform, 36-layer cache, or full-model ABBA was created. Under the literal canonical MLX 0.31.2 venv, real layer-0 Qwen3 3-bit/group64 affine packed tensors were dequantized only with `mx.dequantize(packed, scales, biases, group_size=64, bits=3)`, materialized/persisted BF16 one projection at a time, and compared to canonical M5 `mx.quantized_matmul`. No original floating-point weights, requantization, scale/bias change, cache purge, or full-model cache was used.
+
+All seven BF16 dense outputs had matching shapes but were non-bit-exact for all three deterministic BF16 probes; no compatibility threshold was invented. Median BF16/quantized ratios were q `0.979333`, k `1.034484`, v `1.035620`, o `0.933584`, gate `1.869357`, up `1.867642`, down `1.273514`. Direct x36 arithmetic gives Q `+0.2688%`, O `+1.0677%`, Q+O `+1.3365%`; K/V and all MLP classes are slower. Conservative BOTH-resident BF16 cache cost is Q/O `1,152 MiB` each, K/V `288 MiB` each, MLP `3,456 MiB` each. Linear diagnostic use of the observed Stretch-031 18% minimum free memory projects Q/O to `3.94%`, below the historical 5% abort; Q+O projects `-10.12%`. The largest positive arithmetic candidate is therefore both below the 5% upside gate and memory-risky.
+
+Classification: `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`. Retain canonical monolithic M5 affine quantized matmul. Do not create a Stretch-036 scientific preregistration or ABBA. Artifact: `research/stretch/persistent-dequantized-projection-036-feasibility.md`; evidence: `results-local/stretch/persistent-dequantized-projection-036-feasibility/20260820-205800/summary.json`.
+
+## Exact next step
+
+Do not retry or rescue persistent dequantized BF16 caches from this feasibility result. Select a new independently authorized compute factor while preserving the canonical M5 monolithic 3-bit/group64 affine `mx.quantized_matmul`, H36, full raw-weight persistence, single final cleanup, MLX/mlx-metal 0.31.2, and BF16 KV.
+
+### Historical Stretch 031 rationale
 
 The old Stretch 018 M4/M5 result predates H36 full persistence and the large cleanup-frequency reductions. Therefore the throughput-optimal block geometry must be rechecked on the current schedule.
 
@@ -338,7 +350,7 @@ If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common
 
 ## Exact next step
 
-Do **not** rerun Stretch 031 geometry, Stretch 032 row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm, or a 0.32 full-runtime comparison. Preserve M5 monolithic qmv_fast quantized matmul and canonical separate residual add + `mx.fast.rms_norm`; select a different independently preregistered compute factor before any scientific run, retaining the venv-launcher regression guard.
+Do **not** rerun Stretch 031 geometry, Stretch 032 row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm, Stretch 036 persistent dequantized BF16 projection caching, or a 0.32 full-runtime comparison. Preserve M5 monolithic qmv_fast affine quantized matmul and canonical separate residual add + `mx.fast.rms_norm`; select a different independently authorized compute factor before any scientific run, retaining the venv-launcher regression guard.
 
 ## Other track
 

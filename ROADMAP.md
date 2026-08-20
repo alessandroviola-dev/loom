@@ -161,9 +161,17 @@ Promotion target: ~20 token/s.
 - [x] Review PR #3764 and issues #3553/#3839/#3852 with M1/M2/M3/M4/M5 and quant-mode transfer limits separated
 - [x] No prototype, source transform, MLX patch, runtime upgrade comparison, preregistration or scientific ABBA; preserve `research/stretch/m5-quantized-kernel-path-035-investigation.md`
 
-### Stretch 036+ — CONDITIONAL
+### Stretch 036 — persistent dequantized BF16 projection cache — NO-GO
+- [x] Layer-0 real packed 3-bit/group64 affine tensors only; materialize each treatment exclusively through `mx.dequantize(..., group_size=64, bits=3)` to persistent BF16, with no original floating weights/requantization/scale-bias change
+- [x] Measure exact bytes, separate one-time dequantization/materialization, three BF16 numerical probes, and 120-side M5 interleaved Q/BF16 samples for q/k/v/o/gate/up/down
+- [x] All outputs shape-match but are non-bit-exact; Q/O isolated positive medians remain <5% projected block upside and their 1,152 MiB x36 caches project below the 5% minimum-free-memory abort boundary
+- [x] K/V and every MLP class are slower; MLP individual cache is 3,456 MiB x36
+- [x] `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`; no scientific plan/ABBA/cache integration; retain canonical monolithic M5 qmatmul
+- [x] Preserve `research/stretch/persistent-dequantized-projection-036-feasibility.md`
+
+### Stretch 037+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; retain M5 geometry and move only to another independently preregistered compute factor
-- [ ] Select a new independent compute factor; do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, or MLX 0.32 runtime comparison without a new authorization
+- [ ] Select a new independent compute factor; do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, or MLX 0.32 runtime comparison without a new authorization
 - [ ] Consider attention/SDPA separately after geometry decision
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized
