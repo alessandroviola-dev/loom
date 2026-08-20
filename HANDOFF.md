@@ -1,9 +1,11 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-20
-Status: ACTIVE — Apple M1 / 8 GB reference system; tracks **Amplify** and **Stretch**.
-
-Current checkpoint: `STRETCH_016_QUANTIZED_LINEAR_M_BOUNDARY_MAPPING_READY`
+Status: ACTIVE — Apple M1 / 8 GB reference system
+Repository: `Ilcoach/loom`
+Local path: `<repository-root>`
+Current branch: `research/stretch-015-divergence-attribution`
+Current checkpoint: `STRETCH_017_FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_READY`
 
 ## Mission
 
@@ -11,349 +13,229 @@ Primary question:
 > **What is the greatest useful capability that can be produced by an 8 GB local system?**
 
 Tagline: **Big models. Small machines.**
-Repository: `Ilcoach/loom`
-Local path: `<repository-root>`
 
-## Promotion target
+Interactive promotion target: approximately **20 token/s**. This remains a promotion target, not a PASS threshold for intermediate research.
 
-Interactive usability target: approximately **20 token/s**.
+## Research rules
 
-This is a profile-promotion target, not a scientific PASS threshold for intermediate experiments.
-
-Canonical decision:
-`research/usability-speed-target-v1.md`.
-
-## Safety / research constraints
-
-- Never reset or replace production Pi configuration.
+- Never reset/replace production Pi configuration.
 - Never silently delete verified models or canonical results.
 - Record disk around model/runtime work.
-- Runtime guardrail where applicable: free memory <5% OR swap >5600 MB abort.
-- Launch-state gate where preregistered: >=60% free memory and swap <=5600 MB.
+- Runtime abort where applicable: free memory <5% OR swap >5600 MB.
+- Launch gate where preregistered: free memory >=60%, swap <=5600 MB.
 - System-wide free memory/swap are decisive; process RSS is diagnostic.
-- Harness/parser/capture defects are not model failures.
-- Do not weaken guardrails or parity thresholds post-hoc.
+- Harness defects are not model failures.
+- Do not weaken resource or parity gates post-hoc.
 - Change one scientific factor at a time where causal attribution matters.
-- No automatic rescue ladders or hidden retries.
-- No new large-model acquisition while existing artifacts suffice.
-- Do not attribute whole-run host telemetry to a sub-phase without phase-scoped evidence.
-- Long child runs use file-backed state/final/stdout/stderr or drained pipes.
-- Do not equate logical safetensors materialization time or Darwin process disk-I/O accounting with forensic model-file SSD throughput.
-- Do not purge macOS caches casually to manufacture a cold-cache state.
+- No hidden rescue ladders/retries.
+- No new large-model download while existing artifacts suffice.
+- Treat Darwin process-I/O accounting as diagnostic, not forensic per-file SSD tracing.
+- Do not purge macOS caches to manufacture host state.
+- After every meaningful result/decision update `HANDOFF.md` and `ROADMAP.md`.
 
-Verified GGUF and Direct MLX 3-bit/4-bit artifacts remain retained. Latest valid Stretch run ended with ~36.715 GiB free. No download is planned for Stretch 016.
+## Frozen target/environment
 
-## Frozen capability references
-
-Canonical Ollama/MLX 4B `qwen3.5:4b-mlx`, context 4096:
-- Coding Baseline 001: artifact 40.71, delivery-adjusted 30.00, delivery 3/6, generation 16.01 tok/s
-- Pi Agentic Coding 001: delivery-adjusted 77.15, strict 60.00, delivery 6/6, ~612 s.
-
-llama.cpp 4B Q4 efficiency reference:
-- pp512 230.85 tok/s
-- tg128 22.33 tok/s.
-
-Direct MLX Qwen3-8B 3-bit coding reference:
-- technically stable full session
-- min free 14%
-- artifact 38.57
-- delivery-adjusted 27.86
-- delivery 2/6
-- not promoted on quality.
-
-## Track A — Amplify
-
-Amplifier 001–003 characterized a resource boundary in the canonical 4B repair workflow. Do not claim leak/KV/allocator root cause.
-
-Amplifier 004 remains preregistered/queued:
-- `research/amplify/capability-amplifier-004-compact-feedback-plan.md`
-- `scripts/capability_amplifier_004_compact_feedback.py`
-- blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`
-- single change: repair-feedback variable detail capped at 768 UTF-8 bytes.
-
-Stretch remains primary while the architectural speed/memory frontier is improving.
-
-# Track B — Stretch / Memory Hierarchy
-
-Frozen subject:
+Model:
 `results-local/mlx/models/Qwen3-8B-3bit/model.safetensors`
 
-Environment/config:
-- Qwen3, hidden 4096, 36 layers, vocab 151936
-- 32 attention heads, 8 KV heads, head dim 128
+Configuration:
+- Qwen3
+- hidden size 4096
+- 36 transformer layers
+- vocab 151936
+- 32 attention heads / 8 KV heads
+- head dim 128
 - RMSNorm eps 1e-6
-- `tie_word_embeddings=false`
-- 3-bit/group64
-- mlx 0.31.2, mlx-lm 0.31.3, transformers 5.12.1.
+- untied embedding/head
+- quantization 3-bit / group64
 
-Weight layout:
-- complete tensor payload 3,583,928,320 B
+Frozen runtime:
+- mlx 0.31.2
+- mlx-lm 0.31.3
+- transformers 5.12.1
+
+Weights:
+- total 3,583,928,320 B
 - embedding 272,269,312 B
 - transformer body 3,039,381,504 B
-- each transformer layer 84,427,264 B / 25 tensors
+- each layer 84,427,264 B / 25 tensors
 - final RMSNorm 8,192 B
-- LM head 272,269,312 B.
-
-## Frozen Stretch history
-
-### 001–005 — COMPLETE PASS
-
-- 001 `LAYER_ADDRESSABLE_IO_PASS`: all 36 layers exactly addressable/selectively readable.
-- 002 `SINGLE_LAYER_MLX_EVICTION_PASS`: one layer materializes 0 -> 84,427,264 -> 0 B active.
-- 003 `TWO_LAYER_BOUNDED_RESIDENCY_PASS`: repeated one-layer cycles remain bounded.
-- 004 `TWO_LAYER_STREAMED_FORWARD_PARITY_PASS`: real Qwen3 block compute with exact resident/streamed activation parity.
-- 005 `EIGHT_LAYER_STREAMED_FORWARD_SCALING_PASS`: exact parity; resident/streamed layer-weight ratio ~8x.
-
-### 006 — COMPLETE PASS
-
-`FULL_36_LAYER_STREAMED_BODY_PARITY_PASS`, valid run `20260819-164605`:
-- body 3,039,315,964 B resident vs max streamed layer 84,427,264 B
-- ratio 35.99922371048291x
-- exact full-body parity.
-
-### 007A / 007B — COMPLETE PASS
-
-007A `SHARED_COMPONENT_ANATOMY_PASS`:
-- embedding 272,269,312 B
-- norm 8,192 B
 - LM head 272,269,312 B
-- untied embedding/head.
 
-007B `PHASE_STREAMED_FULL_LOGIT_PARITY_PASS`, run `20260819-170334`:
-- resident full model 3,583,928,320 B
-- max streamed raw-weight stage 272,269,312 B
-- ratio 13.16317396798652x
-- full logits exact.
+## Stretch history
 
-### 008 — COMPLETE PASS
+### Stretch 001–009 — COMPLETE PASS
 
-`ONE_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`, run `20260819-173553`:
-- first persistent-KV autoregressive streamed proof
-- exact prompt/post-token logits
-- KV offsets 4 -> 5
-- KV total 37,748,736 B.
+Established:
+- layer-addressable safetensors I/O
+- bounded MLX materialization/eviction
+- exact resident/streamed block parity
+- full 36-layer streamed body parity
+- exact full-logit parity
+- persistent ordinary KV cache
+- exact sequential autoregressive parity through 4 feedback tokens.
 
-### 009 — COMPLETE PASS
+Key checkpoint files remain under `research/stretch/` and `scripts/`.
 
-`FOUR_TOKEN_KV_AUTOREGRESSIVE_PARITY_PASS`, run `20260819-183143`:
-- exact resident/streamed sequence `[1,374,264,4647]`
-- exact logits all feedback steps
-- KV offsets 4 -> 8
-- mean layer materialization 0.188658 s/token
-- mean layer forward 0.192317 s/token.
-
-### 010 — COMPLETE PASS
+### Stretch 010 — COMPLETE PASS
 
 `SIXTEEN_TOKEN_AUTOREGRESSIVE_STABILITY_PASS`, run `20260819-183844`:
 - exact prompt + 16 feedback logits
-- identical frozen 16-token sequence
-- final KV offset 20, 37,748,736 B
-- mean full pass 2.888971 s/token
+- identical sequence `[1,374,264,4647,1483,304,279,1809,315,5994,320,1654,23740,285,8,311]`
+- final KV offset 20
 - logical throughput 0.346144 token/s
-- materialization transition ~0.19 s early -> ~1.4 s late while forward stays ~0.19 s.
+- late materialization cost rises strongly while layer forward stays ~0.19 s/token.
 
-Result:
-`research/stretch/sixteen-token-autoregressive-stability-010-result.md`.
-
-### 011 — COMPLETE PASS
+### Stretch 011 — COMPLETE PASS
 
 `MATERIALIZATION_IO_ATTRIBUTION_PASS`, run `20260819-185036`:
-- correctness/KV gates exact
-- late transformer materialization process reads ~3,039,395,840 B/token
-- late full-pass process reads ~3.584 GB/token
+- late transformer materialization reads ~3.039 GB/token under Darwin process accounting
+- late full pass ~3.584 GB/token
 - materialization-time/disk-read Pearson 0.9995866107996246
-- mean forward 0.191414 s/token
 - logical throughput 0.312407 token/s.
 
-Canonical interpretation: pure one-layer dense autoregressive streaming reaches approximately one target-weight traversal per generated token under Darwin process-I/O accounting. This is diagnostic evidence, not forensic per-file tracing.
+Decision: repeated target-weight traversal is the dominant late cost under current accounting.
 
-Result:
-`research/stretch/materialization-io-attribution-011-result.md`.
+### Stretch 012 — COMPLETE PASS
 
-### 012 — COMPLETE PASS
-
-Valid run `20260819-192349`:
-`EIGHT_LAYER_PERSISTENT_HOTSET_PASS`.
-
-Single change vs 011:
-- layers 0..7 retained persistently across prompt + 16 tokens.
-
-Key result:
-- exact prompt + all 16 feedback logits
+`EIGHT_LAYER_PERSISTENT_HOTSET_PASS`, run `20260819-192349`:
+- persistent layers 0..7
 - hotset 675,418,112 B
 - hybrid simultaneous raw-weight budget 947,687,424 B
-- resident/hybrid ratio 3.7817620338074676x
-- mean full pass 2.092360 s/token
+- exact 16-token parity
 - logical throughput **0.477929 token/s**
-- improvement vs 011 ~52.98%
-- late full-pass process reads ~899,052,885 B/token
-- stream-token min free 59%.
+- ~52.98% improvement vs 011.
 
-Result:
-`research/stretch/eight-layer-persistent-hotset-012-result.md`.
+Decision: residency helps but is insufficient alone for ~20 token/s.
 
-Decision: residency helps but remains far below the ~20 token/s target; test traversal amortization.
+### Stretch 013 — COMPLETE PASS
 
-### 013 — COMPLETE PASS
-
-Plan:
-`research/stretch/four-token-oracle-block-verification-013-plan.md`
-
-Runner/blob:
-- `scripts/stretch_four_token_oracle_block_verification_013.py`
-- `deeb0339294162f38cd4522d2890b6a0c728f96e`.
-
-Valid run `20260819-193702`:
-`FOUR_TOKEN_ORACLE_BLOCK_VERIFICATION_PASS`.
-
-Single scientific change vs 012:
-- 16 one-token target traversals -> 4 causal traversals of 4 known-correct oracle tokens each.
-
-Correctness/performance:
+`FOUR_TOKEN_ORACLE_BLOCK_VERIFICATION_PASS`, run `20260819-193702`:
+- four causal target traversals x four known-correct oracle tokens
 - all 16 position logits exact vs resident sequential control
-- top-1 equality all 16 positions
 - all oracle tokens accepted
-- streamed KV offsets 4 -> 8 -> 12 -> 16 -> 20
+- streamed KV `4 -> 8 -> 12 -> 16 -> 20`
 - target-block total wall 8.484694 s
 - oracle target-verification throughput **1.8857486198 token/s**
-- ratio vs Stretch 012 **3.9456668664x**.
+- rate ratio vs Stretch 012: **3.9456668664x**.
 
-Boundary:
-- no real drafter
-- zero draft/rejection/rollback cost
-- metric is an oracle target-side upper bound, not deployable speculative throughput.
+Boundary: oracle upper bound only; no real drafter/draft/rejection/rollback cost.
+
+### Stretch 014 — COMPLETE VALID FAIL
+
+`ORACLE_BLOCK_NUMERICAL_PARITY_FAIL`, valid run `20260820-122922`:
+- block size 8 / two traversals
+- prompt exact
+- first target position already diverges, max abs 0.34375
+- all 16 numerical gates fail
+- top-1 differs by step 16
+- KV state/bytes remain correct
+- failure is numerical, not host/resource.
+
+Decision: do not relax parity and do not advance to M=16.
+
+### Stretch 015 — COMPLETE ATTRIBUTION PASS
+
+`QUANTIZED_LINEAR_SHAPE_DEPENDENCE_CONFIRMED`, run `20260820-124515`:
+- M1 vs M4 exact through layer-0 trace
+- M4 vs M8 exact through attention/post-attention norm
+- first M4/M8 divergence: `gate_proj`
+- `gate_proj`, `up_proj`, `down_proj` shape-dependent at M8
+- q/k/v/o remain exact at M8.
+
+Canonical attribution:
+> Stretch 014 fails because the frozen MLX 0.31.2 quantized-linear path is shape-dependent; the first observed full-block divergence is in the MLP, not attention/RoPE/KV.
 
 Result:
-`research/stretch/four-token-oracle-block-verification-013-result.md`.
+`research/stretch/eight-token-divergence-attribution-015-result.md`
 
-### 014 — COMPLETE VALID FAIL
+### Stretch 016 — COMPLETE PASS
 
-Plan:
-`research/stretch/eight-token-oracle-block-verification-014-plan.md`
+`QUANTIZED_LINEAR_M_BOUNDARY_MAPPED`, run `20260820-125212`.
 
 Runner/blob:
-- `scripts/stretch_eight_token_oracle_block_verification_014.py`
-- `6d7afd43969e752a7cce39ae474d7054ccc7edd8`.
+- `scripts/stretch_quantized_linear_m_boundary_mapping_016.py`
+- `a5c3f4acd6a4150d2db7477f3f20d01a00b4f759`
 
-Earlier launch-only attempt:
-- `HOST_STATE_NOT_READY` at 52% free memory
-- no scientific result.
+Exact M boundary on actual layer-0 quantized projections:
 
-Valid scientific run `20260820-122922`:
-`ORACLE_BLOCK_NUMERICAL_PARITY_FAIL`.
+Attention-side:
+- q_proj exact through M=9; first divergent M=10
+- k_proj exact through M=9; first divergent M=10
+- v_proj exact through M=9; first divergent M=10
+- o_proj exact through M=9; first divergent M=10
 
-Key observations:
-- host gate PASS at 63% / 64% / 65% free
-- prompt parity exact
-- first target position already diverges: max abs `0.34375`
-- all 16 position numerical gates fail
-- top-1 equality remains true through steps 1–15 and fails at step 16
-- final resident/streamed KV offsets both 20
-- final KV bytes both 37,748,736 B
-- stream-block min free 56%
-- failure is scientific/numerical, not resource-related.
+MLP-side:
+- gate_proj exact through M=5; first divergent M=6
+- up_proj exact through M=5; first divergent M=6
+- down_proj exact through M=5; first divergent M=6
+
+Largest relevant exact candidate under frozen runtime: **M=5**.
 
 Result:
-`research/stretch/eight-token-oracle-block-verification-014-result.md`.
+`research/stretch/quantized-linear-m-boundary-mapping-016-result.md`
 
-Decision: freeze failure; do not relax parity; do not advance directly to block size 16.
+Decision:
+- MLP sets the first exactness boundary.
+- do not treat M>=6 as exact under MLX 0.31.2.
+- confirm M=5 across the full 36-layer streamed/hotset oracle path before promoting it as the exact block-size frontier.
 
-### 015 — COMPLETE ATTRIBUTION PASS
-
-Plan:
-`research/stretch/eight-token-divergence-attribution-015-plan.md`
-
-Runner/blob:
-- `scripts/stretch_eight_token_divergence_attribution_015.py`
-- `933c366220625e845e788b2ab1521ae78d9e7d15`.
-
-Valid run `20260820-124515`:
-`QUANTIZED_LINEAR_SHAPE_DEPENDENCE_CONFIRMED`.
-
-Launch/provenance:
-- source/version/config/layer-0 provenance PASS
-- host samples 71% / 71% / 72% free
-- launch swap 1232.62 MB.
-
-Direct QuantizedLinear M4/M8:
-- q_proj exact
-- k_proj exact
-- v_proj exact
-- o_proj exact
-- gate_proj **diverges**, max abs `0.001220703125`
-- up_proj **diverges**, max abs `0.0009765625`
-- down_proj **diverges**, max abs `1.75`.
-
-Layer-0 causal trace:
-- exact through input norm, q/k/v, q/k norm, RoPE, SDPA, o_proj, attention residual and post-attention layernorm
-- first M4/M8 divergence: **gate_proj**
-- gate_proj trace max abs `0.0078125`
-- up_proj trace max abs `0.00439453125`
-- SwiGLU max abs `0.005859375`
-- down_proj max abs `0.03125`
-- final block output max abs `0.0625`
-- first M1/M4 traced divergence: none.
-
-Resource:
-- peak MLX memory 272,389,176 B
-- disk after 36.715 GiB free.
-
-Canonical interpretation:
-> **The Stretch 014 eight-token parity failure is attributable to shape-dependent quantized-linear execution in the frozen MLX 0.31.2 / Qwen3-8B 3-bit path. At layer 0, M=4 remains numerically identical while M=8 first diverges at gate_proj and propagates through the MLP.**
-
-Upstream context:
-- MLX 0.31.x documents `quantized_matmul` dispatch dependent on `M` and different reduction trees.
-- This is consistent with the observation but does not by itself identify the exact internal kernel used by this M1/3-bit run.
-- Later `qmv_wide` work targets small-M speculative verification, but affine quantization is gated to newer GPU generations; do not assume an MLX upgrade fixes the M1 path without a separate controlled experiment.
-
-Result:
-`research/stretch/eight-token-divergence-attribution-015-result.md`.
-
-Decision: map the exact M transition under the frozen environment before changing runtime/kernel policy.
-
-## Stretch 016 — QuantizedLinear M-Boundary Mapping — READY
+## Stretch 017 — Five-Token Oracle Block Confirmation — READY
 
 Plan:
-`research/stretch/quantized-linear-m-boundary-mapping-016-plan.md`
+`research/stretch/five-token-oracle-block-confirmation-017-plan.md`
 
 Runner:
-`scripts/stretch_quantized_linear_m_boundary_mapping_016.py`
+`scripts/stretch_five_token_oracle_block_confirmation_017.py`
 
 Frozen runner blob:
-`a5c3f4acd6a4150d2db7477f3f20d01a00b4f759`.
+`6171440736badf5150297f9c8945209fe49d0826`
 
-Question:
-> At what exact `M` in 1..16 does each actual frozen layer-0 quantized projection stop reproducing the `M=1` first-row result?
+Frozen source:
+- Stretch 013 blob `deeb0339294162f38cd4522d2890b6a0c728f96e`.
 
-Frozen:
-- MLX 0.31.2 / mlx-lm 0.31.3 / transformers 5.12.1
-- Qwen3-8B 3-bit/group64 artifact
-- actual layer-0 quantized weights
-- no runtime upgrade
-- no strict-mode patch
-- no threshold relaxation
-- no download.
+Diagnostic workload:
+- resident sequential continuation: first 15 frozen oracle tokens
+- streamed target: 3 x 5-token oracle blocks
+- oracle prefix: `[1,374,264,4647,1483,304,279,1809,315,5994,320,1654,23740,285,8]`
+- expected streamed KV offsets: `4 -> 9 -> 14 -> 19`.
 
-Sweep:
-- `M=1..16`
-- q_proj / k_proj / v_proj / o_proj / gate_proj / up_proj / down_proj
-- first input row bit-identical across all M
-- down-projection probe independent of gate/up so its boundary is not confounded.
+Preserved:
+- Qwen3-8B 3-bit artifact
+- MLX 0.31.2 / mlx-lm 0.31.3
+- eight-layer hotset
+- layers 8..35 streamed
+- shared stages streamed
+- resident sequential control
+- ordinary BF16 KV
+- exact parity/top-1 gates
+- I/O/resource/host gates
+- file-backed child routing
+- no real drafter
+- no runtime upgrade/download.
 
-Primary classification:
-`QUANTIZED_LINEAR_M_BOUNDARY_MAPPED`.
+Primary PASS:
+`FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_PASS`.
 
-# Exact next step
+Interpretation boundary:
+- this is a correctness confirmation of M=5, not a pure throughput A/B against Stretch 013 because continuation length is 15 rather than 16.
+- per-block/per-accepted-token timings are secondary characterization only.
+
+## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_quantized_linear_m_boundary_mapping_016.py
-python3 scripts/stretch_quantized_linear_m_boundary_mapping_016.py
+python3 -m py_compile scripts/stretch_five_token_oracle_block_confirmation_017.py
+python3 scripts/stretch_five_token_oracle_block_confirmation_017.py
 ```
 
 No download is expected.
 
-After the run, freeze the exact M boundary before deciding between preserving the exact block-size frontier and introducing a separately preregistered runtime/kernel experiment.
+## Open questions after Stretch 017
 
-After every meaningful result/decision, update `HANDOFF.md` and `ROADMAP.md` before advancing.
+1. Does M=5 remain exact end-to-end across all 36 layers and persisted KV state?
+2. If yes, is the M=5 frontier worth retaining operationally, given block geometry and real speculative acceptance constraints?
+3. Should the next speed axis be residual I/O/residency/prefetch or a separately preregistered newer-MLX runtime experiment?
+4. A newer MLX runtime must not overwrite or redefine the frozen 0.31.2 baseline.
+5. Real drafter selection remains deferred until the exact oracle target-side frontier is settled.
