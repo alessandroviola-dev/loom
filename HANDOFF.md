@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_031_COMPLETE_PASS_M5_GEOMETRY_RETAINED`
+Current checkpoint: `STRETCH_032_ROW_CHUNKED_FEASIBILITY_NO_GO`
 
 ## Mission
 
@@ -206,7 +206,7 @@ Decision:
 Result:
 `research/stretch/mlx-0312-0320-runtime-comparison-030-result.md`
 
-## Stretch 031 — M2 vs M5 on current SINGLE_PASS schedule — HARNESS BLOCKED
+## Stretch 031 — M2 vs M5 on current SINGLE_PASS schedule — COMPLETE PASS
 
 ### Checkpoint 20260820-182206
 
@@ -231,6 +231,14 @@ Fix3 preserved the literal canonical venv launcher, added a static venv-derefere
 Fresh ABBA `M5 -> M2 -> M2 -> M5` completed at `results-local/stretch/single-pass-m2-m5-geometry-comparison-031-fix3/20260820-184128/summary.json`: all four constituents were exact, accepted ten tokens, retained H36/full persistence/single cleanup, and passed resources. Scientific result: `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`. M5 pooled `14.3307127237 tok/s`; M2 `11.8349427869 tok/s`; M2/M5 `0.8258446747`; wall/token `0.06978020` vs `0.08449555`; median block `0.3487060 s` vs `0.1672135 s`; cleanup/token `0.0091132 s` vs `0.0169262 s`; minimum free memory `18%` vs `24%`; peak swap `2068.12` vs `2083.69 MB`.
 
 Decision: M5 wins and remains canonical geometry. M2 is not rescued and no optimum claim is made. Fix2 failure `20260820-183232` remains harness-only evidence; all prior failed attempts remain unused. Files/result: `research/stretch/single-pass-m2-m5-geometry-comparison-031-fix3-amendment.md` and `research/stretch/single-pass-m2-m5-geometry-comparison-031-result.md`. Next exact step: do not rerun geometry; prepare a separately preregistered independent compute-factor experiment.
+
+## Stretch 032 candidate — M5 row-chunked quantized matmul feasibility — NO-GO
+
+Diagnostic only; no Stretch 032 plan, source transform, preflight, or ABBA was created. The real layer-0 Qwen3-8B 3-bit affine weights were measured under the canonical venv with M5 BF16 inputs. CONTROL was one M5 `mx.quantized_matmul`; TREATMENT was `2+2+1` qmatmuls plus concatenate. Each projection had 40 excluded warmups and 120 synchronized samples per side interleaved `CONTROL -> CHUNKED -> CHUNKED -> CONTROL`, with no deliberate cache purge.
+
+All q/k/v/o/gate/up/down outputs were bit-exact (`max_abs_diff=mean_abs_diff=0`) and shapes matched, but chunked/monolithic median ratios were all slower: q `1.062675`, k `1.178569`, v `1.186259`, o `1.091189`, gate `1.061970`, up `1.068221`, down `1.061597`. Applying only the matching Stretch 028 MLP component telemetry estimates a `-0.0185683 s/block` loss, `-5.3249%` of the valid Stretch 031 M5 median block wall. Even the explicitly optimistic attention-inclusive bound is negative (`-8.9908%`).
+
+Classification: `STRETCH_032_ROW_CHUNKED_FEASIBILITY_NO_GO`. M5 monolithic qmatmul remains canonical. Do not retry this measurement, do not try `1+1+...` or `3+2`, and do not launch an ABBA; each alternative is a separate factor. Artifact: `research/stretch/m5-row-chunked-quantized-matmul-032-feasibility.md`; evidence: `results-local/stretch/m5-row-chunked-quantized-matmul-032-feasibility/20260820-185103/summary.json`. Next exact step: select and separately preregister a new independent compute factor.
 
 ### Rationale
 

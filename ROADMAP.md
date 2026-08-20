@@ -134,9 +134,15 @@ Promotion target: ~20 token/s.
 - [x] M5 `14.3307 tok/s`, M2 `11.8349 tok/s`, M2/M5 `0.82584`; retain M5 geometry
 - [x] Freeze result `research/stretch/single-pass-m2-m5-geometry-comparison-031-result.md`
 
-### Stretch 032+ — CONDITIONAL
-- [ ] If M2 beats M5: separately compare M2 vs M3 at common depth; do not call M2 globally optimal yet
-- [x] M5 beat M2 in Stretch 031; retain M5 and move only to another independently preregistered compute factor
+### Stretch 032 candidate — M5 row-chunked quantized matmul — NO-GO
+- [x] Diagnostic real-weight M5 `2+2+1` feasibility, layer 0, 3-bit/group64 affine, canonical venv
+- [x] All q/k/v/o/gate/up/down outputs bit-exact; chunked slower for every projection
+- [x] MLP-only diagnostic weighting estimates `-5.3249%` of Stretch 031 M5 median block wall; no Stretch 032 plan/ABBA
+- [x] Preserve `research/stretch/m5-row-chunked-quantized-matmul-032-feasibility.md`; monolithic M5 qmatmul remains canonical
+
+### Stretch 033+ — CONDITIONAL
+- [x] M5 beat M2 in Stretch 031; retain M5 geometry and move only to another independently preregistered compute factor
+- [ ] Select a new independent compute factor; do not revisit M geometry or row splits without a new authorization
 - [ ] Consider attention/SDPA separately after geometry decision
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized
