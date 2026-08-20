@@ -154,9 +154,16 @@ Promotion target: ~20 token/s.
 - [x] No preregistration, source transform, preflight or scientific ABBA; retain separate residual add + canonical `mx.fast.rms_norm`
 - [x] Preserve `research/stretch/fused-residual-rmsnorm-034-feasibility.md`
 
-### Stretch 035+ — CONDITIONAL
+### Stretch 035 — M5 quantized kernel path — INVESTIGATION_ONLY
+- [x] Trace exact MLX 0.31.2 M1 `applegpu_g13g` dispatch: all real M5 affine BF16 3-bit/group64 projections take `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0`
+- [x] Map real layer-0 payloads M1–M8 with >=100 synchronized samples per shape; source-predicted M6 qmm/split-K transitions recorded without changing canonical M5
+- [x] Establish MLX 0.32 qmv_wide is affine-gated to gen15+, hence unreachable on M1 gen13; do not infer the Stretch 030 regression cause from this source fact
+- [x] Review PR #3764 and issues #3553/#3839/#3852 with M1/M2/M3/M4/M5 and quant-mode transfer limits separated
+- [x] No prototype, source transform, MLX patch, runtime upgrade comparison, preregistration or scientific ABBA; preserve `research/stretch/m5-quantized-kernel-path-035-investigation.md`
+
+### Stretch 036+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; retain M5 geometry and move only to another independently preregistered compute factor
-- [ ] Select a new independent compute factor; do not revisit M geometry, row splits, outer MLP compile, or fused residual/RMSNorm without a new authorization
+- [ ] Select a new independent compute factor; do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, or MLX 0.32 runtime comparison without a new authorization
 - [ ] Consider attention/SDPA separately after geometry decision
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized

@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_034_FUSED_RESIDUAL_RMSNORM_FEASIBILITY_NO_GO`
+Current checkpoint: `STRETCH_035_KERNEL_PATH_INVESTIGATION_ONLY`
 
 ## Mission
 
@@ -260,6 +260,16 @@ There are 36 simple intra-layer opportunities, 35 cross-layer scheduling opportu
 
 Decision: `STRETCH_034_FUSED_RESIDUAL_RMSNORM_FEASIBILITY_NO_GO`. Keep separate residual add + canonical `mx.fast.rms_norm`; do not create an ABBA or rescue variant. Artifact: `research/stretch/fused-residual-rmsnorm-034-feasibility.md`; evidence: `results-local/stretch/fused-residual-rmsnorm-034-feasibility/20260820-201000/summary.json`.
 
+## Stretch 035 — M5 quantized kernel-path investigation — INVESTIGATION_ONLY
+
+No scientific ABBA, source transform, MLX patch, venv modification, or runtime comparison was created. Exact upstream MLX `v0.31.2` source (`68cf2fddd8de5edd8ab3d926391772b2e2cedad8`) plus `mx.device_info()` establishes the canonical M1 as `applegpu_g13g`: generation 13, size `g`. At affine BF16/group64/3-bit M5, all layer-0 q/k/v/o/gate/up/down projections follow `QuantizedMatmul::eval_gpu -> dispatch_qmv -> qmv`; all satisfy the fast predicate `N % 8 == 0 && K % 512 == 0` and dispatch concrete `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0`. The gen13/size-g vector limit is 10 for q/k/v/o and 6 for gate/up/down, so M5 remains qmv_fast; qmv_quad, qmm and split-K do not apply at M5.
+
+The 100-sample-per-shape real-payload BF16 M1–M8 map confirms source-predicted M6 discontinuities only for gate/up (qmm) and down (split-K). M5 medians were q `1533.38 µs`, k `675.31`, v `731.48`, o `1527.06`, gate `2197.58`, up `2195.92`, down `2145.69`. The installed 0.31.2 metallib contains the exact qmv_fast plus fallback qmm/split-K symbols; MLX exposes no public per-dispatch symbol log.
+
+MLX `v0.32.0` adds qmv_wide, but its literal affine gate is `architecture_gen >= 15`; M1 gen13 cannot select it and would continue to select old qmv/qmv_fast at M5. Thus source does not explain Stretch 030’s `0.94393` end-to-end 0.32/0.31 ratio: qmv_wide is unreachable, while other runtime changes exist. PR #3764 reports no M1/3-bit case; its affine M2-Pro row remains qmv. Issues #3553/#3839/#3852 supply M4/M3/M1-Pro mixed 4-bit/2-bit or group-size-different motivation only, not transfer proof.
+
+No isolated prototype was justified or benchmarked. Upstream explicitly says affine qmv_wide only beats qmv on gen15+, but that does not disprove every theoretical M1-specific future kernel. Therefore `STRETCH_035_KERNEL_PATH_INVESTIGATION_ONLY`: no numerical/timing treatment or defensible weighted >=5% estimate exists. Keep monolithic canonical M5 `mx.quantized_matmul`; any custom M1 kernel needs fresh explicit authorization and a separately preregistered correctness-first feasibility factor. Artifact: `research/stretch/m5-quantized-kernel-path-035-investigation.md`; evidence: `results-local/stretch/m5-quantized-kernel-path-035/20260820-202259/summary.json`.
+
 ### Rationale
 
 The old Stretch 018 M4/M5 result predates H36 full persistence and the large cleanup-frequency reductions. Therefore the throughput-optimal block geometry must be rechecked on the current schedule.
@@ -328,7 +338,7 @@ If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common
 
 ## Exact next step
 
-Do **not** rerun Stretch 031 geometry or Stretch 034 fused residual/RMSNorm. Preserve M5 and separate residual add + canonical `mx.fast.rms_norm`; select a different independently preregistered compute factor before any scientific run, retaining the venv-launcher regression guard in every future subprocess harness.
+Do **not** rerun Stretch 031 geometry, Stretch 032 row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm, or a 0.32 full-runtime comparison. Preserve M5 monolithic qmv_fast quantized matmul and canonical separate residual add + `mx.fast.rms_norm`; select a different independently preregistered compute factor before any scientific run, retaining the venv-launcher regression guard.
 
 ## Other track
 
