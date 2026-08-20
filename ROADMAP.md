@@ -107,7 +107,7 @@ Promotion target: ~20 token/s.
 - [x] Do not remap M under 0.32.0 because `exact + faster` condition failed
 - [x] Freeze `research/stretch/mlx-0312-0320-runtime-comparison-030-result.md`
 
-### Stretch 031 — CURRENT / HARNESS BLOCKED — SINGLE_PASS M2 vs M5 GEOMETRY
+### Stretch 031 — COMPLETE PASS — M5 GEOMETRY RETAINED
 - [x] Re-open throughput-optimal block geometry on the current optimized schedule
 - [x] Keep MLX 0.31.2, H36, full persistence, one cleanup/pass, BF16 KV frozen
 - [x] Normalize both variants to the same first 10 frozen oracle tokens
@@ -129,13 +129,14 @@ Promotion target: ~20 token/s.
 - [x] Add Fix1 generated-runtime-source preflight; M5/M2 render, compile, frozen facts and normalized single-factor diff PASS
 - [x] Preserve Fix1 fresh M5 parent/child-dispatch harness failure `20260820-182206`; scientific result NONE, no retry
 - [x] Preserve Fix2 source/render PASS but M5 no-model dispatch-preflight failure `20260820-183232`; `.resolve()` dereferenced canonical venv Python, scientific result NONE
-- [ ] Preserve literal canonical venv `bin/python` path and obtain M5+M2 no-model dispatch markers (Fix2a/Fix3)
-- [ ] Run one fresh valid Stretch 031 ABBA only after Fix2a/Fix3 preflight
-- [ ] Freeze outcome
+- [x] Fix3 preserves literal canonical venv `bin/python`; static regression guard and M5+M2 no-model dispatch markers PASS
+- [x] Fresh valid Fix3 ABBA `20260820-184128`: `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`
+- [x] M5 `14.3307 tok/s`, M2 `11.8349 tok/s`, M2/M5 `0.82584`; retain M5 geometry
+- [x] Freeze result `research/stretch/single-pass-m2-m5-geometry-comparison-031-result.md`
 
 ### Stretch 032+ — CONDITIONAL
 - [ ] If M2 beats M5: separately compare M2 vs M3 at common depth; do not call M2 globally optimal yet
-- [ ] If M5 beats M2: retain M5 and move to another independent compute factor
+- [x] M5 beat M2 in Stretch 031; retain M5 and move only to another independently preregistered compute factor
 - [ ] Consider attention/SDPA separately after geometry decision
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized

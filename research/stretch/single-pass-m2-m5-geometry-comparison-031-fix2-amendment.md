@@ -26,3 +26,7 @@ This is a no-model harness failure, scientific result **NONE**. It is not an M5 
 ## Required next action
 
 Create a distinct Fix2a/Fix3 dispatch revision that preserves the literal canonical venv `bin/python` path (no `.resolve()`), then rerun the complete source-plus-dispatch preflight. It must produce valid markers for **both** M5 and M2 before a new fresh ABBA is allowed.
+
+## Resolution
+
+Fix3 preserved the literal launcher, added a static dereference regression guard, and passed both M5/M2 no-model dispatch markers at `20260820-184109`. The subsequent fresh ABBA `20260820-184128` completed validly; this Fix2 failure remains preserved as harness-only evidence and contributes no measurement. See `research/stretch/single-pass-m2-m5-geometry-comparison-031-fix3-amendment.md` and `research/stretch/single-pass-m2-m5-geometry-comparison-031-result.md`.

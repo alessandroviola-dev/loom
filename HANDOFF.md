@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_031_FIX2_CANONICAL_VENV_DISPATCH_PREFLIGHT_BLOCKED`
+Current checkpoint: `STRETCH_031_COMPLETE_PASS_M5_GEOMETRY_RETAINED`
 
 ## Mission
 
@@ -25,6 +25,7 @@ Interactive promotion target: approximately **20 token/s**. This is a promotion 
 - Launch gate where preregistered: free memory >=60%, swap <=5600 MB.
 - System-wide free memory/swap are decisive; process RSS is diagnostic.
 - No deliberate macOS cache purge to manufacture host state.
+- Never dereference a virtualenv `bin/python` path before subprocess execution; preserve the venv launcher path and validate environment identity through `sys.prefix`/package metadata.
 - Balanced within-experiment ratios are causal evidence; absolute cross-experiment throughput is host/cache-state dependent.
 - Runtime/model upgrades are separately preregistered and never rewrite historical evidence.
 - Update HANDOFF and ROADMAP after meaningful checkpoints.
@@ -223,6 +224,14 @@ Fix2 created distinct shims, common harness and runner with explicit launcher-pa
 
 Scientific result remains **NONE**. No ABBA began, no measurement was created/reused, and no retry occurred. Next exact step: preserve this checkpoint; create a distinct dispatch revision preserving the literal venv `bin/python` path (no `.resolve()`), then require fresh M5 **and** M2 no-model marker PASS before a new ABBA.
 
+### Fix3 and valid ABBA checkpoint 20260820-184128
+
+Fix3 preserved the literal canonical venv launcher, added a static venv-dereference regression guard, and added no-model M5/M2 parent-to-child markers. The preflight `20260820-184109` passed rendered M5/M2 source facts, normalized geometry-only diff, canonical `sys.prefix` and runtime metadata (mlx/mlx-metal `0.31.2`, mlx-lm `0.31.3`, transformers `5.12.1`), and both marker paths with `model_loaded=false` and `target_compute_executed=false`.
+
+Fresh ABBA `M5 -> M2 -> M2 -> M5` completed at `results-local/stretch/single-pass-m2-m5-geometry-comparison-031-fix3/20260820-184128/summary.json`: all four constituents were exact, accepted ten tokens, retained H36/full persistence/single cleanup, and passed resources. Scientific result: `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`. M5 pooled `14.3307127237 tok/s`; M2 `11.8349427869 tok/s`; M2/M5 `0.8258446747`; wall/token `0.06978020` vs `0.08449555`; median block `0.3487060 s` vs `0.1672135 s`; cleanup/token `0.0091132 s` vs `0.0169262 s`; minimum free memory `18%` vs `24%`; peak swap `2068.12` vs `2083.69 MB`.
+
+Decision: M5 wins and remains canonical geometry. M2 is not rescued and no optimum claim is made. Fix2 failure `20260820-183232` remains harness-only evidence; all prior failed attempts remain unused. Files/result: `research/stretch/single-pass-m2-m5-geometry-comparison-031-fix3-amendment.md` and `research/stretch/single-pass-m2-m5-geometry-comparison-031-result.md`. Next exact step: do not rerun geometry; prepare a separately preregistered independent compute-factor experiment.
+
 ### Rationale
 
 The old Stretch 018 M4/M5 result predates H36 full persistence and the large cleanup-frequency reductions. Therefore the throughput-optimal block geometry must be rechecked on the current schedule.
@@ -291,7 +300,7 @@ If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common
 
 ## Exact next step
 
-Do **not** rerun Stretch 031. Create a distinct Fix2a/Fix3 dispatch revision that preserves the literal canonical `results-local/mlx/venv-mlx-lm-0.31.3/bin/python` path (without `.resolve()`), then run only its local preflight. Require render/diff PASS plus concrete M5 and M2 parent/child marker PASS with no MLX/model load; inspect artifacts, and only then start one fresh `M5 -> M2 -> M2 -> M5` ABBA.
+Do **not** rerun Stretch 031 geometry. Preserve M5 as canonical and prepare only a separately preregistered independent compute-factor experiment; retain the venv-launcher regression guard in every future subprocess harness.
 
 ## Other track
 
