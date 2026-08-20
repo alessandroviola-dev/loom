@@ -107,7 +107,7 @@ Promotion target: ~20 token/s.
 - [x] Do not remap M under 0.32.0 because `exact + faster` condition failed
 - [x] Freeze `research/stretch/mlx-0312-0320-runtime-comparison-030-result.md`
 
-### Stretch 031 — CURRENT / READY — SINGLE_PASS M2 vs M5 GEOMETRY
+### Stretch 031 — CURRENT / HARNESS BLOCKED — SINGLE_PASS M2 vs M5 GEOMETRY
 - [x] Re-open throughput-optimal block geometry on the current optimized schedule
 - [x] Keep MLX 0.31.2, H36, full persistence, one cleanup/pass, BF16 KV frozen
 - [x] Normalize both variants to the same first 10 frozen oracle tokens
@@ -125,7 +125,11 @@ Promotion target: ~20 token/s.
 - [x] First genuine M2 frozen-gate failure = valid `M2_SINGLE_PASS_GEOMETRY_EXACTNESS_FAIL`; stop/no rescue
 - [x] Complete exact ABBA = `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`
 - [x] Preregister `research/stretch/single-pass-m2-m5-geometry-comparison-031-plan.md`
-- [ ] Run Stretch 031
+- [x] Preserve original M5 source-transform harness defect `20260820-180652`; scientific result NONE
+- [x] Add Fix1 generated-runtime-source preflight; M5/M2 render, compile, frozen facts and normalized single-factor diff PASS
+- [x] Preserve Fix1 fresh M5 parent/child-dispatch harness failure `20260820-182206`; scientific result NONE, no retry
+- [ ] Fix concrete generated parent/child script dispatch and add no-model transport preflight (Fix2)
+- [ ] Run one fresh valid Stretch 031 ABBA only after Fix2 preflight
 - [ ] Freeze outcome
 
 ### Stretch 032+ — CONDITIONAL

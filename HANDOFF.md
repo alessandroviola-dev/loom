@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_031_SINGLE_PASS_M2_M5_GEOMETRY_COMPARISON_READY`
+Current checkpoint: `STRETCH_031_FIX1_PARENT_CHILD_DISPATCH_HARNESS_BLOCKED`
 
 ## Mission
 
@@ -205,7 +205,17 @@ Decision:
 Result:
 `research/stretch/mlx-0312-0320-runtime-comparison-030-result.md`
 
-## Stretch 031 — M2 vs M5 on current SINGLE_PASS schedule — READY
+## Stretch 031 — M2 vs M5 on current SINGLE_PASS schedule — HARNESS BLOCKED
+
+### Checkpoint 20260820-182206
+
+Objective remains a fresh, valid `M5 -> M2 -> M2 -> M5` comparison at common ten-token depth. Scientific result: **NONE**; no constituent reached numerical/top-1/oracle gates and no measurement is reusable.
+
+The original failed run `20260820-180652` is preserved as a source-transform failure: its M5 geometry callback searched for a nonexistent final-source Stretch 027 summary literal. Fix1 preserved the originals, corrected that anchor, and added local final-source rendering/preflight. Fix1 preflight passed for both sides: M5 rendered SHA-256 `413af14cb19bc4b7c28110d78289080747ba46887c4b7a6bc885086cef0a4b69`; M2 `d09c6498c7bef6d8b7f80e501513cc0cf600ccd38d1dfb019d717acbf58b5b58`; normalized source equality proved geometry is the only scientific difference. It also confirmed the actual model-child interpreter path and versions: MLX `0.31.2`, mlx-lm `0.31.3`, transformers `5.12.1`.
+
+The fresh Fix1 ABBA `20260820-182206` then stopped at M5 before model work: the inherited parent derived its child executable script from `__file__`, but the new common-module shim supplied its own path. The canonical child executed that import-only module, exited `0`, and produced no child final/state payload. Parent classification is `SINGLE_PASS_M2_M5_GEOMETRY_COMPARISON_INCOMPLETE`; M5 child classification is `RUNTIME_FAIL`. Host gate metrics were free memory `71%` minimum and swap `1258.81 MB` peak. This is harness-only. No retry occurred.
+
+Decision: preserve both failures and stop. Modified/created Fix1 files and exact evidence are recorded in `research/stretch/single-pass-m2-m5-geometry-comparison-031-harness-defect-20260820-180652.md`. Open problem: preflight must validate concrete final parent/child dispatch, not only rendered source/interpreter availability.
 
 ### Rationale
 
@@ -275,16 +285,7 @@ If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common
 
 ## Exact next step
 
-```bash
-cd "<repository-root>"
-git pull --ff-only
-python3 -m py_compile scripts/stretch_single_pass_m5_ten_token_control_031.py
-python3 -m py_compile scripts/stretch_single_pass_m2_ten_token_variant_031.py
-python3 -m py_compile scripts/stretch_single_pass_m2_m5_geometry_comparison_031.py
-python3 scripts/stretch_single_pass_m2_m5_geometry_comparison_031.py
-```
-
-If the runner stops, preserve the run and inspect it before any rerun.
+Do **not** rerun Stretch 031. Create a distinct Fix2 that passes the invoking shim path into the generated wrapper, then extend `--preflight` to assert the concrete child script path has a `__main__` dispatcher and to exercise a no-model parent/child transport sentinel. Compile all Fix2 files, run only the local preflight, inspect its rendered sources/dispatch evidence, and only then start one fresh `M5 -> M2 -> M2 -> M5` ABBA.
 
 ## Other track
 

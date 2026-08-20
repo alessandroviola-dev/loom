@@ -67,3 +67,18 @@ python3 scripts/stretch_single_pass_m2_m5_geometry_comparison_031_fix1.py --pref
 ```
 
 The preflight must render both final runtime sources, compile them, check the final-source facts and prove normalized M5 == M2. Only then may one fresh `M5 -> M2 -> M2 -> M5` run begin. The failed constituent must never be used.
+
+## Fix1 execution checkpoint — 20260820-182206
+
+Fix1 preflight passed and rendered/compiled both final runtime sources, but the fresh ABBA stopped at its first M5 constituent:
+
+- parent: `results-local/stretch/single-pass-m2-m5-geometry-comparison-031-fix1/20260820-182206/summary.json`;
+- constituent: `results-local/stretch/m5-ten-token-single-pass-control-031-fix1/20260820-182207/summary.json`;
+- classification: `SINGLE_PASS_M2_M5_GEOMETRY_COMPARISON_INCOMPLETE` / child `RUNTIME_FAIL`;
+- child exit: `0`, but neither `child-final.json` nor `child-state.json` was created;
+- child stdout/stderr: both empty;
+- host gate passed (minimum free memory `71%`, peak swap `1258.81 MB`); canonical child version lock passed.
+
+This is also harness-only and has scientific result **NONE**. The original Fix1 preflight rendered the final source correctly, but did not verify executable dispatch at the parent/child boundary. The Fix1 shim imports `run_variant()` from `stretch_single_pass_geometry_harness_031_fix1.py`; that module set generated-wrapper `__file__` to its own common-module path. The inherited source derives `script_path = Path(__file__).resolve()` and therefore launched the common module as its model child. That module has no script entry point, so the child exited zero without writing the expected final payload.
+
+No retry was performed. A subsequent repair must pass the actual shim path into `run_variant()` (so the inherited child launcher executes the shim), and extend the no-model preflight to assert the concrete final parent `script_path` and dispatch contract before any new ABBA.
