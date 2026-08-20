@@ -224,7 +224,7 @@ Promotion target: ~20 token/s.
 - [x] Fresh six-cycle canonical diagnostic: 710.063 ms mean / 707.791 ms median ten-token wall, 14.0833 diagnostic tok/s; min free 24%, peak swap 2076.19 MB, stable MLX active/cache recovery
 - [x] Four-cycle broad profile used only for attribution: 1.75625x canonical wall perturbation; never treat its absolute stage wall as canonical
 - [x] Capture actual M5 layer-0/18/35 payloads and measure q/k/v/o, gate/up/down, RMSNorm, residual, SwiGLU, final norm and LM head with 40 excluded warmups and 120 synchronized samples
-- [x] Audit LM head as affine 3-bit/group64 `QuantizedLinear`, effective K=4096/N=151936, built-in `mx.quantized_matmul` path and S1_R8-ineligible; 22.394 ms / 3.154% target wall, `CLOSED_BY_UPPER_BOUND`
+- [x] Audit LM head as affine 3-bit/group64 `QuantizedLinear`, effective K=4096/N=151936, built-in `mx.quantized_matmul`/qmv_fast path and S1_R8-ineligible; 22.394 ms / 3.154% target wall, `CLOSED_BY_UPPER_BOUND`
 - [x] Reuse valid Stretch-039 SDPA and Stretch-040 cleanup evidence; no closed experiment was rerun
 - [x] `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE`; no low-risk independent factor has defensible >=5% plausible upside, so recommend no next factor; preserve `research/stretch/current-bottleneck-attribution-041.md` and evidence `results-local/stretch/current-bottleneck-attribution-041/20260820-213903/summary.json`
 
