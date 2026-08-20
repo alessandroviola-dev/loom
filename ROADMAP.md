@@ -67,7 +67,6 @@ Promotion target: ~20 token/s.
 - [x] `M5_H36_SHARED_STAGE_BALANCED_COMPARISON_PASS`
 - [x] PERSISTENT/STREAMED ~+59.89%
 - [x] Full persistent raw model `3,583,928,320 B`
-- [x] Shared setup mean `0.3723145 s`; break-even `0.4392464321` target blocks
 - [x] Freeze M5 + H36 + full raw-weight persistence
 - [x] Close raw-weight residency
 
@@ -75,71 +74,84 @@ Promotion target: ~20 token/s.
 - [x] Preserve Fix1 telemetry defect `20260820-155313`
 - [x] Valid Fix2 `20260820-160140`
 - [x] `FULL_PERSISTENT_COMPUTE_ATTRIBUTION_PASS`
-- [x] Transformer compute `0.8081826820 s/block`
-- [x] Attention path `0.2207656117 s/block`
-- [x] MLP path `0.5874170703 s/block`
 - [x] MLP/attention `2.6608178049x`
-- [x] Per-layer cleanup sum `0.9268928333 s/block`
-- [x] Identify cleanup/framework as largest measured category
+- [x] Old per-layer cleanup sum `0.9268928333 s/block`
+- [x] Identify cleanup/framework as largest old-schedule category
 - [x] Freeze result
 
 ### Stretch 025 — BATCHED TRANSFORMER CLEANUP — COMPLETE PASS
 - [x] Valid ABBA `20260820-161317`
 - [x] `FULL_PERSISTENT_BATCHED_CLEANUP_COMPARISON_PASS`
 - [x] BATCHED/CONTROL `3.8627785715x` (~+286.28%)
-- [x] Median block wall ~70.34% lower
-- [x] Replace 36 per-layer cleanup calls with one cleanup/body
+- [x] Replace 36 per-layer cleanups with one post-body cleanup
 - [x] Freeze result
 
 ### Stretch 026 — SHARED-STAGE BATCHED CLEANUP — COMPLETE PASS
 - [x] Valid ABBA `20260820-162951`
 - [x] `FULL_PERSISTENT_SHARED_BATCHED_CLEANUP_COMPARISON_PASS`
 - [x] SHARED_BATCHED/BATCHED `1.1410704391x` (~+14.11%)
-- [x] Median block wall ~11.19% lower
 - [x] Consolidate embedding/norm/head cleanup to one post-head cleanup
 - [x] Freeze result
 
 ### Stretch 027 — SINGLE END-OF-PASS CLEANUP — COMPLETE PASS
 - [x] Valid ABBA `20260820-163715`
 - [x] `FULL_PERSISTENT_SINGLE_PASS_CLEANUP_COMPARISON_PASS`
-- [x] SHARED_BATCHED pooled `11.7148420019 token/s`
-- [x] SINGLE_PASS pooled `12.7306853225 token/s`
 - [x] SINGLE_PASS/SHARED_BATCHED `1.0867142144x` (~+8.67%)
-- [x] Median block wall `0.4188015 -> 0.396305 s` (~5.37% lower)
-- [x] SINGLE_PASS final cleanup `0.0558401667 s/block`
-- [x] SINGLE_PASS min free `23%`; peak swap `2562.94 MB`
-- [x] Freeze one final cleanup/pass as preferred schedule
-- [x] Explicitly do not promote zero-cleanup
-- [x] Close cleanup-frequency consolidation axis
-- [x] Freeze `research/stretch/full-persistent-single-pass-cleanup-comparison-027-result.md`
+- [x] SINGLE_PASS pooled `12.7306853225 token/s`
+- [x] Median block `0.396305 s`
+- [x] Freeze one final cleanup/pass
+- [x] Do not promote zero-cleanup
+- [x] Close cleanup-frequency axis
+- [x] Freeze result
 
-### Stretch 028 — SINGLE_PASS COMPUTE RE-ATTRIBUTION — CURRENT / READY
+### Stretch 028 — SINGLE_PASS COMPUTE RE-ATTRIBUTION — COMPLETE PASS
+- [x] Valid ABBA `20260820-164802`
+- [x] `SINGLE_PASS_COMPUTE_REATTRIBUTION_PASS`
+- [x] CONTROL pooled `12.7076859473 token/s`
+- [x] PROFILED/CONTROL instrumentation ratio `0.6851113869x`
+- [x] Transformer compute `0.4496960012 s/block`
+- [x] Attention path `0.1231006118 s/block`
+- [x] MLP path `0.3265953895 s/block`
+- [x] MLP/attention `2.6530769000x`
+- [x] up_proj `0.0993149300 s/block`
+- [x] attention `0.0985796947 s/block`
+- [x] gate_proj `0.0965807990 s/block`
+- [x] down_proj `0.0942869299 s/block`
+- [x] Final cleanup `0.0617505 s/block`
+- [x] Shared forward `0.0280353333 s/block`
+- [x] Accounted share ~93.95%
+- [x] Freeze `research/stretch/single-pass-compute-reattribution-028-result.md`
+- [x] Select quantized MLP projection path as first compute optimization axis
+
+### Stretch 029 — GATE+UP QUANTIZED FUSION — CURRENT / READY
 - [x] Keep M5 frozen
 - [x] Keep H36 frozen
 - [x] Keep full raw-weight persistence frozen
 - [x] Keep one final cleanup/pass frozen
-- [x] Keep MLX 0.31.2 / model / KV / parity / resource policy frozen
-- [x] CONTROL = canonical Stretch 027 helper blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`
-- [x] PROFILED = target-block-only explicit `mx.eval` component boundaries
-- [x] Prompt remains unprofiled
-- [x] Measure norm, attention, residual1, post norm, gate, up, SwiGLU, down, residual2
-- [x] Preserve final cleanup and shared-stage telemetry
-- [x] Balanced order `CONTROL -> PROFILED -> PROFILED -> CONTROL`
-- [x] Treat PROFILED/CONTROL speed only as instrumentation perturbation
-- [x] PROFILED helper `scripts/stretch_single_pass_compute_reattribution_028_profiled.py`
-- [x] PROFILED blob `0858e39a46bf09fe7750691b6dcd95b6753e5c70`
-- [x] Runner `scripts/stretch_single_pass_compute_reattribution_comparison_028.py`
-- [x] Runner blob `65d1c93967ed786623a3899e0f510ad9ef8de1e2`
-- [x] Preregister `research/stretch/single-pass-compute-reattribution-028-plan.md`
-- [x] No automatic retry/rescue
-- [ ] Run Stretch 028
-- [ ] Freeze re-attribution result
-- [ ] Select first compute/kernel optimization from new ranking
+- [x] Keep MLX 0.31.2 / model / KV / resource policy frozen
+- [x] CONTROL = Stretch 027 SINGLE_PASS blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`
+- [x] Scientific factor = gate_proj + up_proj two quantized matmuls -> one fused quantized matmul
+- [x] Concatenate packed quantized weight/scales/affine biases once by output row during setup
+- [x] No per-forward weight concatenation
+- [x] Remove original gate/up module references after fused materialization
+- [x] Keep SwiGLU and down_proj unchanged
+- [x] Treat frozen numerical/top1/acceptance mismatch as valid scientific fusion FAIL
+- [x] No rescue ordering / partial fusion / threshold relaxation / automatic retry
+- [x] Balanced order `CONTROL -> FUSED -> FUSED -> CONTROL`
+- [x] FUSED helper `scripts/stretch_gate_up_quantized_fusion_029.py`
+- [x] FUSED blob `c37ff6313106807c1e2e5070b7fb8f19e97abea6`
+- [x] Runner `scripts/stretch_gate_up_quantized_fusion_comparison_029.py`
+- [x] Runner blob `8d89665b5d3061891a53f1734e19331aa1a4fb34`
+- [x] Preregister `research/stretch/gate-up-quantized-fusion-029-plan.md`
+- [ ] Run Stretch 029
+- [ ] Freeze PASS or valid scientific fusion FAIL
+- [ ] Select next independent compute factor
 
-### Stretch 029+ — COMPUTE/KERNEL OPTIMIZATION
-- [ ] If MLP dominates re-attribution, choose one quantized-linear/MLP factor
-- [ ] If attention dominates, choose one attention/SDPA factor
-- [ ] If residual/framework wall remains material, isolate it first
+### Stretch 030+ — CONDITIONAL COMPUTE/RUNTIME AXIS
+- [ ] If gate+up fusion is exact and faster, promote it and remeasure residual compute
+- [ ] If fusion fails exactness, preserve FAIL and choose a different compute factor
+- [ ] If fusion is exact but flat/slower, close this implementation path
+- [ ] Consider attention/SDPA separately
 - [ ] Consider newer MLX only as separately preregistered environment comparison
 - [ ] Never overwrite frozen MLX 0.31.2 evidence with newer runtime results
 - [ ] Select a real drafter only after target-side architecture is sufficiently optimized
