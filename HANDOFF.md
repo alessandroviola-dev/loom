@@ -300,9 +300,44 @@ Fresh in-harness preflight passed at `results-local/stretch/m1-qmv-fast-tuning-0
 
 The fresh first CONTROL child then stopped at its inherited host launch gate before target compute: free memory `59%` (< required `60%`), swap `634.44 MB`; child classification `HOST_STATE_NOT_READY`. The outer result is `M1_QMV_FAST_TUNING_COMPARISON_INCOMPLETE`, scientific result NONE. No target block, accepted token, cleanup/wall metric or S1_R8 constituent exists. This is a resource/preflight stop, not science; no retry or reuse is permitted. Detail: `research/stretch/m1-qmv-fast-tuning-037-harness-fix1-result.md`.
 
+## Stretch 037 — FIX2 RESOURCE-FRESH PASS / S1_R8 PROMOTED
+
+The separately authorized Fix2 source identity
+`STRETCH_037_FIX2_RESOURCE_FRESH_ATTEMPT` was committed and remote-verified as
+`7291df6` before science. Its normalized Fix1→Fix2 diff passed with only that
+identity/provenance metadata and fresh Fix2 output paths; the preserved
+original and Fix1 source files remain unchanged. The fresh standalone and
+in-harness preflights passed py_compile, source/render checks, literal canonical
+venv/runtime provenance, both no-model markers, and all four real-weight BF16
+3-bit/group64/M5 parity classes with exact equality and zero max/mean
+absolute difference.
+
+Fresh ABBA root `results-local/stretch/m1-qmv-fast-tuning-037-fix2/20260820-215547/`
+completed `CONTROL -> S1_R8 -> S1_R8 -> CONTROL`. Every constituent passed its
+three-sample >=60% free-memory / <=5600 MB swap launch gate, completed two M5
+blocks, accepted ten exact oracle tokens, and passed full-model logits/top-1/
+sequence/oracle correctness. CONTROL pooled `13.7253287216 tok/s`; S1_R8 pooled
+`15.0026817294 tok/s`; ratio `1.0930653854` (`+9.3065385%`). Median block wall
+was `0.3638520 s` CONTROL versus `0.3310265 s` S1_R8; wall/token `0.0728580 s`
+versus `0.06665475 s`; final cleanup/token `0.00949715 s` versus `0.00911480 s`.
+Minimum free memory was `20%`/`25%`, peak swap `1584.31`/`1571.75 MB`, and
+observable peak MLX memory `3,632,130,592`/`3,632,130,080 B`. Four treatment
+specializations were prepared outside timing; recompilation during target work
+was zero. No cache purge or host-state manipulation occurred.
+
+Classification: `M1_QMV_FAST_TUNING_PASS` (raw harness:
+`M1_QMV_FAST_TUNING_BALANCED_COMPARISON_PASS`, `VALID_ABBA`). Promote the
+M1-specific process-local S1_R8 custom qmv implementation as the canonical
+compute path for the frozen M1 Qwen3-8B 3-bit/group64 BF16 M5 H36 configuration;
+retain built-in MLX elsewhere. Artifact:
+`research/stretch/m1-qmv-fast-tuning-037-harness-fix2-result.md`.
+
 ## Exact next step
 
-Do not retry Fix1. Any future Stretch-037 run requires separate explicit authorization for a new source identity and wholly fresh preflight/run directory; retain the frozen factor, launch/resource gates and `CONTROL -> S1_R8 -> S1_R8 -> CONTROL` order.
+Checkpoint: `STRETCH_037_M1_QMV_FAST_TUNING_FIX2_CHECKPOINT_REVIEW`.
+Review the committed/pushed Fix2 result and promotion decision; do not rerun
+Stretch 037, alter its gates/factor, or begin a new compute experiment without
+separate authorization.
 
 ### Historical Stretch 031 rationale
 

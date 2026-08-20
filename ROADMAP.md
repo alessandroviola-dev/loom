@@ -169,7 +169,7 @@ Promotion target: ~20 token/s.
 - [x] `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`; no scientific plan/ABBA/cache integration; retain canonical monolithic M5 qmatmul
 - [x] Preserve `research/stretch/persistent-dequantized-projection-036-feasibility.md`
 
-### Stretch 037 — M1-specific qmv_fast custom implementation — FIX1 RESOURCE INCOMPLETE
+### Stretch 037 — M1-specific qmv_fast custom implementation — FIX1 RESOURCE INCOMPLETE / FIX2 PASS
 - [x] Audit exact MLX v0.31.2 M1 qmv_fast source and classify immutable packing/affine/reduction invariants versus neutral output-row execution geometry
 - [x] Implement process-local canonical `mx.fast.metal_kernel` clone for BF16 affine 3-bit/group64 non-batched M5; all q/k/v/o/gate/up/down real-payload probes bit-exact, worst clone/canonical median `1.006870`
 - [x] Predeclare and measure exactly four bounded variants; `s1_r8` is bit-exact and improves gate/up/down, with matched Stretch-028 MLP estimate `+5.2120%` of canonical Stretch-031 block wall
@@ -184,10 +184,15 @@ Promotion target: ~20 token/s.
 - [x] Fresh first CONTROL stopped before target compute: inherited launch gate free memory `59%` (<60%), swap `634.44 MB`; `HOST_STATE_NOT_READY`, outer `M1_QMV_FAST_TUNING_COMPARISON_INCOMPLETE`, scientific result NONE
 - [x] No target block, accepted token, cleanup/timing metric or S1_R8 constituent; no retry or reuse permitted
 - [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-feasibility.md`, `research/stretch/m1-qmv-fast-tuning-037-result.md`, `research/stretch/m1-qmv-fast-tuning-037-harness-fix1.md`, and `research/stretch/m1-qmv-fast-tuning-037-harness-fix1-result.md`
+- [x] Separately authorized Fix2 source identity `STRETCH_037_FIX2_RESOURCE_FRESH_ATTEMPT`; normalized Fix1→Fix2 diff allows only revision/provenance identity and fresh output paths; Fix2 commit `7291df6` remote-verified before science
+- [x] Standalone and fresh in-harness Fix2 preflight `20260820-215510` / `20260820-215547`: compile/render/diff/literal launcher/runtime/no-model gates PASS; all four real-weight BF16 3-bit/group64 M5 shape classes bit-exact
+- [x] Fresh ABBA `CONTROL -> S1_R8 -> S1_R8 -> CONTROL` completed under unchanged per-constituent 60%/5600 MB launch gate: all four exact, 10 accepted oracle tokens each, no cache purge or artifact reuse
+- [x] `M1_QMV_FAST_TUNING_PASS`: fresh CONTROL `13.725329 tok/s`, S1_R8 `15.002682 tok/s`, ratio `1.093065` (+9.306539%); median block `0.363852` vs `0.331027 s`; promote M1-specific process-local S1_R8 for the frozen M1 Qwen3-8B 3-bit/group64 BF16 M5 H36 path
+- [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-harness-fix2-result.md` and evidence `results-local/stretch/m1-qmv-fast-tuning-037-fix2/20260820-215547/summary.json`
 
 ### Stretch 038+ — CONDITIONAL
-- [x] M5 beat M2 in Stretch 031; retain M5 geometry and move only to another independently preregistered compute factor
-- [ ] Select a new independent compute factor if Stretch 037 is not approved; do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, or MLX 0.32 runtime comparison without a new authorization
+- [x] M5 beat M2 in Stretch 031; S1_R8 beat fresh built-in MLX CONTROL in Stretch 037; retain both decisions for their frozen scopes
+- [ ] Select a new independent compute factor only after separate authorization; do not rerun Stretch 037 or revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, or MLX 0.32 runtime comparison without a new authorization
 - [ ] Consider attention/SDPA separately after geometry decision
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized
