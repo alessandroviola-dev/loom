@@ -4,6 +4,9 @@
 Frozen transform of Stretch 013. The only scientific workload change is the
 oracle verification block size: 4 tokens -> 8 tokens, with the same 16-token
 frozen oracle sequence and all other model/KV/safety gates unchanged.
+
+Parent and child execution both route through this wrapper so the exact same
+8-token transform is applied in both processes.
 """
 from __future__ import annotations
 
@@ -69,20 +72,29 @@ def transform_stretch_013(source: str) -> str:
         "two target traversals x eight oracle tokens",
         "block-loop description",
     )
+    source = replace_all(
+        source,
+        "FOUR_TOKEN_ORACLE_BLOCK_VERIFICATION_PASS",
+        "EIGHT_TOKEN_ORACLE_BLOCK_VERIFICATION_PASS",
+        "PASS classification",
+    )
 
     return source
 
 
 def main() -> int:
     repo = Path(__file__).resolve().parents[1]
+    wrapper_path = Path(__file__).resolve()
     source_path = repo / SOURCE_013_PATH
     if not source_path.is_file():
         print(f"ERROR: frozen source missing: {source_path}", file=sys.stderr)
         return 2
 
     actual_blob = git_blob(source_path, repo)
-    print("LOOM Stretch 014 — Eight-Token Oracle Block Verification frozen transform")
-    print(f"Stretch 013 source blob: {actual_blob}")
+    is_child = len(sys.argv) > 1 and sys.argv[1] == "--child"
+    if not is_child:
+        print("LOOM Stretch 014 — Eight-Token Oracle Block Verification frozen transform")
+        print(f"Stretch 013 source blob: {actual_blob}")
     if actual_blob != SOURCE_013_BLOB:
         print(
             "Source provenance: FAIL "
@@ -90,18 +102,39 @@ def main() -> int:
             file=sys.stderr,
         )
         return 3
-    print("Source provenance: PASS")
+    if not is_child:
+        print("Source provenance: PASS")
 
     source = source_path.read_text(encoding="utf-8")
     transformed = transform_stretch_013(source)
-    print("Frozen transform: PASS")
-    print("Scientific change: oracle block size 4 -> 8 ONLY")
-    print("Model/KV/parity/I-O/safety policy: UNCHANGED")
 
+    required = [
+        "ORACLE_BLOCK_SIZE = 8",
+        "ORACLE_BLOCK_COUNT = 2",
+        "EIGHT_TOKEN_ORACLE_BLOCK_VERIFICATION_PASS",
+        "oracle_target_verification_tokens_per_second",
+        "HOTSET_LAYER_IDS = tuple(range(8))",
+        "MIN_FREE_PERCENT = 5",
+        "MAX_SWAP_MB = 5600.0",
+    ]
+    missing = [fragment for fragment in required if fragment not in transformed]
+    if missing:
+        raise RuntimeError(f"Stretch 014 transformed-source invariant failed; missing {missing}")
+
+    if not is_child:
+        print("Frozen transform: PASS")
+        print("Scientific change: oracle block size 4 -> 8 ONLY")
+        print("Target traversals: 4 -> 2 for the same 16 oracle tokens")
+        print("Model/KV/parity/I-O/safety policy: UNCHANGED")
+        print("Parent/child wrapper routing: PRESERVED")
+
+    # Critical: expose the 014 wrapper path as __file__. The inherited 013
+    # scientific parent uses __file__ as the child script_path; therefore the
+    # child must re-enter this wrapper and receive the same 8-token transform.
     code = compile(transformed, str(source_path), "exec")
     namespace = {
         "__name__": "__main__",
-        "__file__": str(source_path),
+        "__file__": str(wrapper_path),
         "__package__": None,
         "__cached__": None,
     }
