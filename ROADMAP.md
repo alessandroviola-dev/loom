@@ -103,28 +103,49 @@ Usability promotion target: ~20 token/s.
 - [x] Freeze M=5 as largest layer-0 exact candidate under MLX 0.31.2
 - [x] Freeze `research/stretch/quantized-linear-m-boundary-mapping-016-result.md`
 
-### Stretch 017 — Five-token oracle block confirmation — CURRENT / READY
-- [x] Preregister `research/stretch/five-token-oracle-block-confirmation-017-plan.md`
-- [x] Add `scripts/stretch_five_token_oracle_block_confirmation_017.py`
-- [x] Freeze runner blob `6171440736badf5150297f9c8945209fe49d0826`
+### Stretch 017 — COMPLETE PASS
+- [x] Valid run `20260820-130124`
+- [x] `FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_PASS`
 - [x] Preserve Stretch 013 runtime/model/KV/hotset/parity/safety policy
 - [x] Use frozen first-15 oracle prefix
 - [x] Resident sequential continuation length 15
 - [x] Stream target as 3 x 5-token blocks
-- [x] Expected streamed KV `4 -> 9 -> 14 -> 19`
-- [x] Treat timing as secondary characterization, not pure A/B vs Stretch 013
-- [ ] Run Stretch 017
-- [ ] Freeze result
+- [x] Exact prompt parity
+- [x] Exact all 15 position logits: max/mean diff 0.0 / 0.0
+- [x] Top-1 equality at all 15 positions
+- [x] All 15 oracle tokens accepted
+- [x] Streamed KV `4 -> 9 -> 14 -> 19`
+- [x] Final resident/streamed KV bytes 37,748,736 / 37,748,736 B
+- [x] Freeze M=5 as maximum demonstrated end-to-end exact oracle block under MLX 0.31.2
+- [x] Observe secondary M5 target rate 1.3629385391 token/s
+- [x] Preserve warning that Stretch 013 vs 017 timing is not a controlled A/B due host/cache/I-O differences
+- [x] Freeze `research/stretch/five-token-oracle-block-confirmation-017-result.md`
 
-### Stretch 018+ — conditional path
-- [ ] If Stretch 017 passes, freeze M=5 as maximum demonstrated exact oracle block under MLX 0.31.2
-- [ ] Decide whether M=5 offers enough operational value to retain
-- [ ] Evaluate residual I/O/residency/prefetch as a separate speed axis
+### Stretch 018 — Balanced M4 vs M5 target-cost comparison — CURRENT / READY
+- [x] Preregister `research/stretch/m4-m5-balanced-target-cost-comparison-018-plan.md`
+- [x] Add `scripts/stretch_m4_m5_balanced_target_cost_comparison_018.py`
+- [x] Freeze runner blob `0a745a2ea4fd6adf70d33b82156ec9c3889a1498`
+- [x] Preserve frozen M4 Stretch 013 and M5 Stretch 017 runners
+- [x] Use balanced order `M4 -> M5 -> M5 -> M4`
+- [x] No deliberate cache purge
+- [x] Require every constituent run to reach its inherited scientific PASS
+- [x] Aggregate normalized block wall/materialization/forward/process-read metrics
+- [x] Compare pooled accepted-token target rate, not whole-script elapsed time
+- [ ] Run Stretch 018
+- [ ] Freeze balanced comparison result
+- [ ] Select operational exact block-size sweet spot only after controlled evidence
+
+### Stretch 019+ — conditional path
+- [ ] If M4 is robustly faster under balanced conditions, freeze M4 as operational exact block baseline while retaining M5 as maximum exactness frontier
+- [ ] If M5 is equal/faster after balancing I/O/cache state, retain M5 as preferred exact oracle block
+- [ ] If cache/I-O effects remain dominant, run narrower materialization/cache attribution before selecting M
+- [ ] Evaluate additional residency/hotset as a separate speed axis
+- [ ] Test prefetch/double buffering separately
 - [ ] Consider a newer-MLX experiment only as a separately preregistered environment change
 - [ ] Never overwrite/reinterpret frozen MLX 0.31.2 results with newer-runtime results
 - [ ] Select a real drafter only after exact oracle target-side frontier is settled
 - [ ] Measure real acceptance rate and end-to-end tok/s including draft/rejection/rollback cost
-- [ ] Test KV capacity, KV quantization and prefetch separately
+- [ ] Test KV capacity and KV quantization separately
 - [ ] Do not promote interactive profile until speed approaches frozen ~20 token/s target
 
 ## Phase 8 — Synthesis
