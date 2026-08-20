@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_030_MLX_0312_0320_RUNTIME_COMPARISON_FIX3_READY`
+Current checkpoint: `STRETCH_031_SINGLE_PASS_M2_M5_GEOMETRY_COMPARISON_READY`
 
 ## Mission
 
@@ -29,11 +29,12 @@ Interactive promotion target: approximately **20 token/s**. This is a promotion 
 - Runtime/model upgrades are separately preregistered and never rewrite historical evidence.
 - Update HANDOFF and ROADMAP after meaningful checkpoints.
 
-## Frozen model / historical runtime
+## Frozen model / preferred runtime
 
-Model: `results-local/mlx/models/Qwen3-8B-3bit/model.safetensors`
+Model:
+`results-local/mlx/models/Qwen3-8B-3bit/model.safetensors`
 
-Qwen3 geometry:
+Qwen3:
 - hidden 4096
 - 36 layers
 - vocab 151936
@@ -42,15 +43,15 @@ Qwen3 geometry:
 - untied embedding/head
 - 3-bit/group64 affine quantization.
 
-Historical canonical runtime through Stretch 029:
+Preferred runtime after Stretch 030:
 - mlx 0.31.2
 - mlx-metal 0.31.2
 - mlx-lm 0.31.3
 - transformers 5.12.1
 - Python 3.13.0.
 
-Canonical MLX venv/interpreter:
-`results-local/mlx/venv-mlx-lm-0.31.3/bin/python`
+Canonical MLX venv:
+`results-local/mlx/venv-mlx-lm-0.31.3`
 
 Raw weights:
 - total `3,583,928,320 B`
@@ -74,11 +75,13 @@ MLX 0.31.2 exactness frontier:
 - gate/up/down exact through M5, first divergence M6;
 - M5 exact end-to-end over 15 oracle tokens.
 
-Decision: M5 is maximum demonstrated exact oracle block under MLX 0.31.2.
+Decision: M5 is the maximum demonstrated exact oracle block under MLX 0.31.2, but not necessarily the throughput-optimal block size after later framework optimizations.
 
 ### Stretch 018 — M4/M5 cost — COMPLETE PASS
 
 - M5/M4 `1.09795340695x` (~+9.80%).
+
+This comparison predates full persistence and cleanup schedule optimization.
 
 ### Stretch 019–022 — transformer residency — COMPLETE
 
@@ -95,7 +98,7 @@ Decision: H36 is the physical transformer-residency ceiling.
 Valid Fix1 `20260820-153308`:
 - PERSISTENT/STREAMED `1.5988607374x` (~+59.89%).
 
-Decision: freeze M5 + H36 + full persistence.
+Decision: freeze H36 + full persistence.
 
 ### Stretch 024 — compute/framework attribution — COMPLETE PASS
 
@@ -120,7 +123,7 @@ Decision: cleanup/framework first.
 - pooled `12.7306853225 token/s`
 - median block `0.396305 s`.
 
-Decision: freeze **M5 + H36 + full persistence + one final cleanup/pass**.
+Decision: freeze **H36 + full persistence + one final cleanup/pass**.
 
 Canonical Stretch 027 workload:
 `scripts/stretch_full_persistent_single_pass_cleanup_027.py`
@@ -133,151 +136,155 @@ Valid `20260820-164802`:
 - attention path `0.1231006118 s/block`
 - MLP path `0.3265953895 s/block`
 - MLP/attention `2.6530769000x`
-- up/attention/gate/down each ~0.095–0.099 s/block.
+- up/attention/gate/down each ~0.095–0.099 s/block
+- accounted wall ~93.95%.
 
 Decision: true transformer compute is primary target.
 
-### Stretch 029 — gate+up fusion — COMPLETE PASS / NOT PROMOTED
+### Stretch 029 — gate+up quantized fusion — COMPLETE PASS / NOT PROMOTED
 
-Initial `20260820-170503`: harness defect / no science.
+Initial `20260820-170503`: wrapper harness defect / no science.
 
 Valid Fix1 ABBA `20260820-171714`:
 - CONTROL `13.2286272786 token/s`
 - FUSED `12.3523991241 token/s`
 - FUSED/CONTROL `0.9337627302x` (~6.62% slower)
 - FUSED exact at M5
-- FUSED median wall ~8.62% higher.
+- median wall ~8.62% higher.
 
-Decision: do not promote; fusion path closed under MLX 0.31.2. Stretch 027 remains preferred 0.31.2 architecture.
+Decision: fusion path closed under MLX 0.31.2; no rescue variants.
 
-Canonical result:
+Result:
 `research/stretch/gate-up-quantized-fusion-029-result.md`
 
-## Stretch 030 — coherent MLX 0.31.2 vs 0.32.0 — FIX3 READY
+### Stretch 030 — coherent MLX 0.31.2 vs 0.32.0 — COMPLETE PASS / 0.32.0 NOT PROMOTED
 
-Scientific question:
-Does changing only the coherent macOS MLX runtime pair (`mlx` + `mlx-metal`) from 0.31.2 to 0.32.0 preserve frozen M5 correctness and improve target-verification cost?
+Preserved pre-science defects:
+1. original setup used shell Python instead of canonical LOOM venv;
+2. runner Fix1 required a nonexistent failure-class string;
+3. runner Fix2 dereferenced macOS venv `bin/python` symlinks with `.resolve()` and lost venv identity.
 
-Scientific factor:
-- CONTROL: mlx 0.31.2 + mlx-metal 0.31.2
-- TREATMENT: mlx 0.32.0 + mlx-metal 0.32.0.
+All three occurred before a valid scientific constituent and have scientific result NONE.
 
-Frozen besides runtime:
-- Qwen3-8B 3-bit/group64
-- M5
-- H36
-- full persistence
-- one final cleanup/pass
-- mlx-lm 0.31.3
-- transformers 5.12.1
-- NumPy 2.5.2
-- safetensors 0.8.0
-- Python 3.13.0
-- BF16 KV
-- oracle/numerical/top-1/acceptance gates
-- resource/I-O policy
-- no cache purge.
+Setup Fix1 successfully created and validated treatment clone:
+`.venvs/stretch030-mlx0320-fix1`
 
-### Environment Setup Fix1 — VALID / PRESERVED
-
-Original shell-Python setup failed before science because shell `python3` was not the canonical LOOM venv. Scientific result NONE.
-
-Setup Fix1 then passed and must **not** be rerun.
-
-CONTROL venv:
-`results-local/mlx/venv-mlx-lm-0.31.3`
-- mlx 0.31.2
-- mlx-metal 0.31.2
+Treatment clone:
+- mlx 0.32.0
+- mlx-metal 0.32.0
 - mlx-lm 0.31.3
 - transformers 5.12.1
 - numpy 2.5.2
-- safetensors 0.8.0.
+- safetensors 0.8.0
+- Python 3.13.0.
 
-TREATMENT clone:
-`.venvs/stretch030-mlx0320-fix1`
-- mlx 0.32.0
-- mlx-metal 0.32.0
-- tracked non-runtime package versions identical.
+Valid Fix3 ABBA `20260820-175251`:
+`MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`
 
-Setup utility:
-`scripts/stretch_mlx_0320_env_setup_030_fix1.py`
-blob `dfcc05aa6f730756056a75d5bf867bbd717ac31f`.
+Metrics:
+- MLX0312 pooled `13.074823729584752 token/s`
+- MLX0320 pooled `12.341753014370326 token/s`
+- MLX0320/MLX0312 `0.9439326502310171x` (~5.61% slower)
+- MLX0312 median block `0.3795345 s`
+- MLX0320 median block `0.405476 s`
+- median wall ratio `1.068350835036077x` (~6.84% higher)
+- final cleanup mean `0.0554298333 s` vs `0.0636248333 s`
+- minimum free memory `17%` vs `22%`
+- peak swap `2801.88 MB` vs `2809.25 MB`.
 
-### Runner Fix1 defect — NO SCIENCE
+Interpretation:
+- MLX 0.32.0 is exact/admissible at frozen M5;
+- it is slower on the M1 reference system;
+- memory capacity is not the limiting difference.
 
-Fix1 stopped before Attempt 1 because its invariant required nonexistent `MLX_0320_RUNTIME_NUMERICAL_PARITY_FAIL`; the frozen class is `MLX_0320_RUNTIME_EXACTNESS_FAIL`.
+Decision:
+- retain coherent mlx/mlx-metal 0.31.2;
+- do not remap M under 0.32.0 because the preregistered `exact + faster` condition was not met;
+- preserve treatment venv for audit only.
 
-Preserved:
-`research/stretch/mlx-0312-0320-runtime-comparison-030-runner-defect-20260820-1738.md`.
+Result:
+`research/stretch/mlx-0312-0320-runtime-comparison-030-result.md`
 
-### Runner Fix2 defect — NO SCIENCE
+## Stretch 031 — M2 vs M5 on current SINGLE_PASS schedule — READY
 
-Fix2 also stopped before Attempt 1 at environment provenance.
+### Rationale
 
-Observed CONTROL executable became framework Python with MLX packages MISSING, despite the canonical venv path being selected.
+The old Stretch 018 M4/M5 result predates H36 full persistence and the large cleanup-frequency reductions. Therefore the throughput-optimal block geometry must be rechecked on the current schedule.
 
-Root cause:
-- Fix2 used `(repo / CONTROL_VENV / "bin/python").resolve()`;
-- on macOS the venv `bin/python` is a symlink;
-- resolving it before execution dereferenced to `/Library/Frameworks/Python.framework/...` and lost venv identity.
+Upstream MLX performance reports indicate nonlinear quantized-matmul cost in the small-M range, including a low-cost M2 region before a higher-cost M3+ region. This is motivation only; the M1 result must be measured locally.
 
-The same issue existed in the portable inner-child path via `Path(sys.executable).resolve()` and was identified before any child launch.
+### Scientific question
 
-Preserved defect:
-`research/stretch/mlx-0312-0320-runtime-comparison-030-runner-defect-fix2-20260820-1745.md`.
+At identical 10-token oracle continuation depth, is M2 faster per accepted token than M5 on the preferred MLX 0.31.2 architecture?
 
-### Portable workload Fix1
+### Common frozen depth
 
-`scripts/stretch_runtime_portable_single_pass_030_fix1.py`
-blob `44251a524c77a379f43445444fa8a2643f1bfbdf`.
+Oracle prefix in both variants:
+`[1,374,264,4647,1483,304,279,1809,315,5994]`
 
-Harness-only behavior:
-- retains the previous two-version portable preflight (`mlx` only 0.31.2 or 0.32.0; mlx-lm/Transformers fixed);
-- changes inner child path from `Path(sys.executable).resolve()` to `Path(sys.executable)`;
-- preserves the selected venv through the child process boundary;
-- scientific Stretch 027 workload unchanged.
+CONTROL:
+- M5
+- 2 target blocks
+- 10 accepted oracle tokens.
 
-### Balanced runner Fix3
+TREATMENT:
+- M2
+- 5 target blocks
+- 10 accepted oracle tokens.
 
-`scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix3.py`
-blob `108aed0e7e66fafe9b3213e33a57c34f9e0602d2`.
+Frozen besides block size:
+- Qwen3-8B 3-bit/group64
+- MLX 0.31.2 + mlx-metal 0.31.2
+- mlx-lm 0.31.3
+- H36
+- full raw-weight persistence
+- one final cleanup/pass
+- BF16 KV
+- exactness/top-1/acceptance/resource/I-O gates
+- no cache purge.
 
-Harness-only changes over Fix2:
-- common workload -> portable Fix1 blob above;
-- CONTROL path uses `repo / CONTROL_VENV / "bin/python"` without `.resolve()`;
-- TREATMENT keeps `.venvs/stretch030-mlx0320-fix1/bin/python`;
-- child runtime provenance remains mandatory;
-- fresh result root `mlx-0312-0320-runtime-comparison-030-fix3`.
+Geometry callback is applied only after inherited Stretch 017/H36 source-provenance checks pass.
 
-Fix3 preregistration:
-`research/stretch/mlx-0312-0320-runtime-comparison-030-harness-fix3.md`.
+M5 helper:
+`scripts/stretch_single_pass_m5_ten_token_control_031.py`
+blob `5f047b9e5f42bed959ced59e9329a8c8d7e3fc25`.
 
-Balanced order remains:
-`MLX0312 -> MLX0320 -> MLX0320 -> MLX0312`.
+M2 helper:
+`scripts/stretch_single_pass_m2_ten_token_variant_031.py`
+blob `6005ff3a285760457d3255bc6505f2987c1fa4e8`.
+
+Balanced runner:
+`scripts/stretch_single_pass_m2_m5_geometry_comparison_031.py`
+blob `bc3b21ff504c65d0852aad68a566cba924888d90`.
+
+Plan:
+`research/stretch/single-pass-m2-m5-geometry-comparison-031-plan.md`
+
+Balanced order:
+`M5 -> M2 -> M2 -> M5`.
+
+Primary metric:
+pooled accepted oracle tokens / total target-block wall seconds.
 
 Outcome policy:
-- first genuine MLX0320 numerical/top-1/oracle failure => `MLX_0320_RUNTIME_EXACTNESS_FAIL`, valid scientific FAIL, stop/no rescue;
-- complete exact ABBA => `MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`;
-- environment/harness/resource/runtime-provenance issue => `MLX_0312_0320_RUNTIME_COMPARISON_INCOMPLETE`.
+- first genuine M2 numerical/top-1/oracle failure => `M2_SINGLE_PASS_GEOMETRY_EXACTNESS_FAIL`, valid scientific FAIL, stop/no rescue;
+- complete exact ABBA => `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`;
+- harness/resource/provenance failure => `SINGLE_PASS_M2_M5_GEOMETRY_COMPARISON_INCOMPLETE`.
+
+If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common depth. If M5 wins, retain M5 and move to another compute factor.
 
 ## Exact next step
-
-Do not rerun setup. Do not run runner Fix1 or Fix2.
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_runtime_portable_single_pass_030_fix1.py
-python3 -m py_compile scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix3.py
-python3 scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix3.py
+python3 -m py_compile scripts/stretch_single_pass_m5_ten_token_control_031.py
+python3 -m py_compile scripts/stretch_single_pass_m2_ten_token_variant_031.py
+python3 -m py_compile scripts/stretch_single_pass_m2_m5_geometry_comparison_031.py
+python3 scripts/stretch_single_pass_m2_m5_geometry_comparison_031.py
 ```
 
-## After Stretch 030
-
-- If 0.32.0 is exact + faster: freeze 030, then separately remap M exactness boundary under 0.32.0.
-- If exact + flat/slower: retain 0.31.2 and choose another compute factor.
-- If exactness FAIL: preserve it; no mixed-package rescue.
-- Real drafter integration remains separate; current rates are oracle-verification upper bounds.
+If the runner stops, preserve the run and inspect it before any rerun.
 
 ## Other track
 
