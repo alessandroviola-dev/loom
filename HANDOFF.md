@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_018_M4_M5_BALANCED_TARGET_COST_COMPARISON_READY`
+Current checkpoint: `STRETCH_019_M5_H8_H16_BALANCED_HOTSET_COMPARISON_READY`
 
 ## Mission
 
@@ -138,7 +138,7 @@ Decision: do not relax parity and do not advance to M=16.
 - M1 vs M4 exact through layer-0 trace
 - M4 vs M8 exact through attention/post-attention norm
 - first M4/M8 divergence: `gate_proj`
-- `gate_proj`, `up_proj`, `down_proj` shape-dependent at M8
+- gate/up/down shape-dependent at M8
 - q/k/v/o remain exact at M8.
 
 Canonical attribution:
@@ -155,23 +155,14 @@ Runner/blob:
 - `scripts/stretch_quantized_linear_m_boundary_mapping_016.py`
 - `a5c3f4acd6a4150d2db7477f3f20d01a00b4f759`
 
-Exact M boundary on actual layer-0 quantized projections:
-
-Attention-side:
-- q/k/v/o exact through M=9; first divergent M=10.
-
-MLP-side:
+Exact M boundary:
+- q/k/v/o exact through M=9; first divergent M=10
 - gate/up/down exact through M=5; first divergent M=6.
 
 Largest relevant exact candidate under frozen runtime: **M=5**.
 
 Result:
 `research/stretch/quantized-linear-m-boundary-mapping-016-result.md`
-
-Decision:
-- MLP sets the first exactness boundary.
-- do not treat M>=6 as exact under MLX 0.31.2.
-- confirm M=5 end-to-end before promoting it as the exact block-size frontier.
 
 ### Stretch 017 — COMPLETE PASS
 
@@ -198,76 +189,119 @@ Correctness:
 Canonical exactness conclusion:
 > M=5 is demonstrated exact end-to-end across the full 36-layer streamed/hotset target path under the frozen MLX 0.31.2 baseline.
 
-Therefore:
-- **M=5 = maximum demonstrated exact oracle block**
-- **M>=6 = not an exact-parity path under frozen MLX 0.31.2**, based on Stretch 016 layer-0 MLP boundary.
+Secondary standalone performance from 017:
+- oracle target rate 1.3629385391 token/s
+- process-I/O state differed materially from Stretch 013, so 013-vs-017 historical timing is not a causal M4/M5 A/B.
 
-Secondary performance characterization from 017:
-- target block walls `[3.718927, 3.659837, 3.626868]` s
-- total target-block wall 11.005632 s
-- oracle target-verification throughput **1.3629385391 token/s**
-- mean full-pass process reads per accepted token ~582,136,081 B
-- stream-block minimum free 49%
-- peak swap 1731.56 MB
-- peak child RSS 881.984 MB.
+### Stretch 018 — COMPLETE PASS
 
-Important performance boundary:
-- Stretch 013 M4 observed 1.8857486198 token/s, but 013 and 017 were not paired performance runs.
-- Stretch 017 process-read accounting was much larger than Stretch 013.
-- Do **not** causally conclude that M4 is intrinsically faster from those two historical runs alone.
+`M4_M5_BALANCED_TARGET_COST_COMPARISON_PASS`, valid run `20260820-131448`.
 
-Latest disk after Stretch 017: ~35.696 GiB free.
+Plan/result:
+- `research/stretch/m4-m5-balanced-target-cost-comparison-018-plan.md`
+- `research/stretch/m4-m5-balanced-target-cost-comparison-018-result.md`
 
-## Stretch 018 — Balanced M4 vs M5 Target-Cost Comparison — READY
-
-Plan:
-`research/stretch/m4-m5-balanced-target-cost-comparison-018-plan.md`
-
-Runner:
-`scripts/stretch_m4_m5_balanced_target_cost_comparison_018.py`
-
-Frozen runner blob:
-`0a745a2ea4fd6adf70d33b82156ec9c3889a1498`
-
-Frozen constituent sources:
-- M4 Stretch 013 blob `deeb0339294162f38cd4522d2890b6a0c728f96e`
-- M5 Stretch 017 blob `6171440736badf5150297f9c8945209fe49d0826`.
+Runner/blob:
+- `scripts/stretch_m4_m5_balanced_target_cost_comparison_018.py`
+- `0a745a2ea4fd6adf70d33b82156ec9c3889a1498`
 
 Balanced order:
-`M4 -> M5 -> M5 -> M4`.
+`M4 -> M5 -> M5 -> M4`
 
-No deliberate cache purge.
+No deliberate cache purge; every constituent inherited PASS gate succeeded.
 
-Each constituent run must independently reach its inherited scientific PASS classification. Any host-state/correctness/harness failure makes Stretch 018 `CONTROLLED_COMPARISON_INCOMPLETE`; no winner is inferred from a partial sequence.
+Controlled result:
+- M4 pooled target-verification rate: `1.6983236855 token/s`
+- M5 pooled target-verification rate: `1.8646802766 token/s`
+- M5/M4 rate ratio: `1.09795340695x` (~+9.80%)
+- M4 median block wall: `2.261242 s`
+- M5 median block wall: `2.7130515 s`
+- M5/M4 median materialization ratio: `2.19265232975x`
+- M5/M4 median forward ratio: `1.16365164669x`
+- M5/M4 mean full-pass process-read bytes/block ratio: `1.72894269309x`.
 
-Primary comparison outputs:
-- pooled accepted-token target verification tok/s
-- median target-block wall
+Canonical performance conclusion:
+> M5 is both the maximum demonstrated exact block and the better measured exact block in the controlled M4/M5 comparison, improving pooled target rate by ~9.8% despite higher per-block materialization/forward/I-O cost.
+
+Therefore the frozen MLX 0.31.2 block-size axis is considered sufficiently characterized:
+- preferred exact block: **M=5**
+- M>=6: not exact under current numerical policy.
+
+Latest disk after Stretch 018: ~35.691 GiB free.
+
+## Stretch 019 — Balanced M5 H8 vs H16 Hotset Comparison — READY
+
+Plan:
+`research/stretch/m5-h8-h16-balanced-hotset-comparison-019-plan.md`
+
+Frozen H8 source:
+- `scripts/stretch_five_token_oracle_block_confirmation_017.py`
+- blob `6171440736badf5150297f9c8945209fe49d0826`.
+
+Frozen H16 helper:
+- `scripts/stretch_five_token_h16_hotset_variant_019.py`
+- blob `6a0bd001ad7a5a5bf5646b54a302f7fc372e4367`.
+
+Balanced comparison runner:
+- `scripts/stretch_m5_h8_h16_balanced_hotset_comparison_019.py`
+- blob `8ad0666624069d4852daed1188d634806b570ecc`.
+
+Scientific factor:
+- H8 persistent layers `0..7` -> H16 persistent layers `0..15` ONLY.
+
+Frozen:
+- exact block size M=5
+- 3 x 5-token oracle traversals over the frozen first-15 sequence
+- Qwen3-8B 3-bit/group64
+- MLX 0.31.2 / mlx-lm 0.31.3 / transformers 5.12.1
+- ordinary BF16 KV
+- exact parity/top-1 gates
+- shared-stage streaming
+- I/O/resource/host gates
+- no real drafter, tokenizer, sampling, KV quantization, prefetch, runtime upgrade or cache purge.
+
+Expected raw hotsets:
+- H8: 675,418,112 B
+- H16: 1,350,836,224 B.
+
+Derived hybrid raw-weight budgets if max new shared stage stays 272,269,312 B:
+- H8: 947,687,424 B
+- H16: 1,623,105,536 B (~1.51 GiB).
+
+Balanced order:
+`H8 -> H16 -> H16 -> H8`.
+
+Every constituent must independently reach inherited `FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_PASS` and expose exact expected hotset IDs. Any failure yields `HOTSET_COMPARISON_INCOMPLETE`; no winner is inferred from partial data.
+
+Primary PASS:
+`M5_H8_H16_BALANCED_HOTSET_COMPARISON_PASS`.
+
+Primary outputs:
+- pooled target-verification token/s
+- median block wall
 - median materialization wall
 - median forward wall
-- process-read bytes/block and bytes/accepted-token
-- M5/M4 ratios for each.
-
-Interpretation goal:
-- separate genuine M4-vs-M5 compute/dispatch cost from host/cache/materialization effects;
-- choose an operational exact block-size sweet spot without changing the exactness frontier.
+- process-read bytes/block and per token
+- actual hotset/hybrid raw-weight bytes
+- minimum free memory / peak swap.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_m4_m5_balanced_target_cost_comparison_018.py
-python3 scripts/stretch_m4_m5_balanced_target_cost_comparison_018.py
+python3 -m py_compile scripts/stretch_five_token_h16_hotset_variant_019.py
+python3 -m py_compile scripts/stretch_m5_h8_h16_balanced_hotset_comparison_019.py
+python3 scripts/stretch_m5_h8_h16_balanced_hotset_comparison_019.py
 ```
 
 No download is expected.
 
-## Open questions after Stretch 018
+## Open questions after Stretch 019
 
-1. Is M4 still faster than M5 under balanced host/cache ordering?
-2. Does any target-rate gap track forward compute, materialization, process-read accounting, or a mixture?
-3. Should M4 become the operational exact block baseline while M5 remains the maximum exactness frontier?
-4. Which next independent speed axis has the highest expected leverage: more residency/hotset, prefetch/double-buffering, or a separately preregistered newer-MLX runtime experiment?
-5. Real drafter selection remains deferred until the target-side exact/performance frontier is settled.
+1. Does doubling persistent transformer residency improve M5 pooled target rate under balanced host/cache ordering?
+2. Does any gain track reduced materialization time/process reads strongly enough to justify further bounded residency scaling?
+3. Is H16 still comfortably inside the 8 GB system-wide resource envelope?
+4. If residency saturates or hurts, should the next independent speed axis be prefetch/double-buffering or a separately preregistered newer-MLX runtime experiment?
+5. Real drafter selection remains deferred until the target-side performance architecture is sufficiently characterized.
 6. Any newer MLX runtime must remain a separate environment experiment and must not overwrite the frozen 0.31.2 baseline.
