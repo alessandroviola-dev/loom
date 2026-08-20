@@ -102,8 +102,8 @@ At all final cleanups MLX active memory returned from the pre-cleanup
 `3,666,913,308 B` to the stable `3,665,291,272 B` baseline; no cumulative
 active/cache growth occurred.  Cache after final cleanup remained in the
 stable 2,867,744–2,868,256 B band.  Minimum free memory was 24%; peak swap
-was 2127.88 MB; observed MLX peak was 3,671,402,524 B (CONTROL 1–3) or
-3,671,402,520 B (CONTROL 2).  No runtime abort fired.
+was 2127.88 MB; observed MLX peak was 3,671,402,524 B in the first three
+constituents and 3,671,402,520 B in the fourth.  No runtime abort fired.
 
 ## Decision and promotion
 
