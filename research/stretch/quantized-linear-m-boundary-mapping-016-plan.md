@@ -36,6 +36,12 @@ Stretch 015 runner provenance:
 Canonical Stretch 015 result:
 `research/stretch/eight-token-divergence-attribution-015-result.md`.
 
+Stretch 016 runner:
+`scripts/stretch_quantized_linear_m_boundary_mapping_016.py`
+
+Frozen Stretch 016 runner blob:
+`a5c3f4acd6a4150d2db7477f3f20d01a00b4f759`.
+
 ## Experimental factor
 
 The only changed independent variable is the number of rows/tokens `M` supplied to each already-frozen quantized projection.
