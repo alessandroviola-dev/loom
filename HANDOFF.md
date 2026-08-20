@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_017_FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_READY`
+Current checkpoint: `STRETCH_018_M4_M5_BALANCED_TARGET_COST_COMPARISON_READY`
 
 ## Mission
 
@@ -74,8 +74,6 @@ Established:
 - exact full-logit parity
 - persistent ordinary KV cache
 - exact sequential autoregressive parity through 4 feedback tokens.
-
-Key checkpoint files remain under `research/stretch/` and `scripts/`.
 
 ### Stretch 010 — COMPLETE PASS
 
@@ -160,15 +158,10 @@ Runner/blob:
 Exact M boundary on actual layer-0 quantized projections:
 
 Attention-side:
-- q_proj exact through M=9; first divergent M=10
-- k_proj exact through M=9; first divergent M=10
-- v_proj exact through M=9; first divergent M=10
-- o_proj exact through M=9; first divergent M=10
+- q/k/v/o exact through M=9; first divergent M=10.
 
 MLP-side:
-- gate_proj exact through M=5; first divergent M=6
-- up_proj exact through M=5; first divergent M=6
-- down_proj exact through M=5; first divergent M=6
+- gate/up/down exact through M=5; first divergent M=6.
 
 Largest relevant exact candidate under frozen runtime: **M=5**.
 
@@ -178,64 +171,103 @@ Result:
 Decision:
 - MLP sets the first exactness boundary.
 - do not treat M>=6 as exact under MLX 0.31.2.
-- confirm M=5 across the full 36-layer streamed/hotset oracle path before promoting it as the exact block-size frontier.
+- confirm M=5 end-to-end before promoting it as the exact block-size frontier.
 
-## Stretch 017 — Five-Token Oracle Block Confirmation — READY
+### Stretch 017 — COMPLETE PASS
+
+`FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_PASS`, valid run `20260820-130124`.
+
+Plan/result:
+- `research/stretch/five-token-oracle-block-confirmation-017-plan.md`
+- `research/stretch/five-token-oracle-block-confirmation-017-result.md`
+
+Runner/blob:
+- `scripts/stretch_five_token_oracle_block_confirmation_017.py`
+- `6171440736badf5150297f9c8945209fe49d0826`
+
+Correctness:
+- resident continuation = first 15 frozen oracle tokens
+- streamed target = 3 x 5-token oracle blocks
+- prompt exact
+- all 15 position logits max/mean diff 0.0 / 0.0
+- top-1 equality all 15 positions
+- all 15 oracle tokens accepted
+- resident/streamed KV final offset 19
+- final KV bytes 37,748,736 / 37,748,736 B.
+
+Canonical exactness conclusion:
+> M=5 is demonstrated exact end-to-end across the full 36-layer streamed/hotset target path under the frozen MLX 0.31.2 baseline.
+
+Therefore:
+- **M=5 = maximum demonstrated exact oracle block**
+- **M>=6 = not an exact-parity path under frozen MLX 0.31.2**, based on Stretch 016 layer-0 MLP boundary.
+
+Secondary performance characterization from 017:
+- target block walls `[3.718927, 3.659837, 3.626868]` s
+- total target-block wall 11.005632 s
+- oracle target-verification throughput **1.3629385391 token/s**
+- mean full-pass process reads per accepted token ~582,136,081 B
+- stream-block minimum free 49%
+- peak swap 1731.56 MB
+- peak child RSS 881.984 MB.
+
+Important performance boundary:
+- Stretch 013 M4 observed 1.8857486198 token/s, but 013 and 017 were not paired performance runs.
+- Stretch 017 process-read accounting was much larger than Stretch 013.
+- Do **not** causally conclude that M4 is intrinsically faster from those two historical runs alone.
+
+Latest disk after Stretch 017: ~35.696 GiB free.
+
+## Stretch 018 — Balanced M4 vs M5 Target-Cost Comparison — READY
 
 Plan:
-`research/stretch/five-token-oracle-block-confirmation-017-plan.md`
+`research/stretch/m4-m5-balanced-target-cost-comparison-018-plan.md`
 
 Runner:
-`scripts/stretch_five_token_oracle_block_confirmation_017.py`
+`scripts/stretch_m4_m5_balanced_target_cost_comparison_018.py`
 
 Frozen runner blob:
-`6171440736badf5150297f9c8945209fe49d0826`
+`0a745a2ea4fd6adf70d33b82156ec9c3889a1498`
 
-Frozen source:
-- Stretch 013 blob `deeb0339294162f38cd4522d2890b6a0c728f96e`.
+Frozen constituent sources:
+- M4 Stretch 013 blob `deeb0339294162f38cd4522d2890b6a0c728f96e`
+- M5 Stretch 017 blob `6171440736badf5150297f9c8945209fe49d0826`.
 
-Diagnostic workload:
-- resident sequential continuation: first 15 frozen oracle tokens
-- streamed target: 3 x 5-token oracle blocks
-- oracle prefix: `[1,374,264,4647,1483,304,279,1809,315,5994,320,1654,23740,285,8]`
-- expected streamed KV offsets: `4 -> 9 -> 14 -> 19`.
+Balanced order:
+`M4 -> M5 -> M5 -> M4`.
 
-Preserved:
-- Qwen3-8B 3-bit artifact
-- MLX 0.31.2 / mlx-lm 0.31.3
-- eight-layer hotset
-- layers 8..35 streamed
-- shared stages streamed
-- resident sequential control
-- ordinary BF16 KV
-- exact parity/top-1 gates
-- I/O/resource/host gates
-- file-backed child routing
-- no real drafter
-- no runtime upgrade/download.
+No deliberate cache purge.
 
-Primary PASS:
-`FIVE_TOKEN_ORACLE_BLOCK_CONFIRMATION_PASS`.
+Each constituent run must independently reach its inherited scientific PASS classification. Any host-state/correctness/harness failure makes Stretch 018 `CONTROLLED_COMPARISON_INCOMPLETE`; no winner is inferred from a partial sequence.
 
-Interpretation boundary:
-- this is a correctness confirmation of M=5, not a pure throughput A/B against Stretch 013 because continuation length is 15 rather than 16.
-- per-block/per-accepted-token timings are secondary characterization only.
+Primary comparison outputs:
+- pooled accepted-token target verification tok/s
+- median target-block wall
+- median materialization wall
+- median forward wall
+- process-read bytes/block and bytes/accepted-token
+- M5/M4 ratios for each.
+
+Interpretation goal:
+- separate genuine M4-vs-M5 compute/dispatch cost from host/cache/materialization effects;
+- choose an operational exact block-size sweet spot without changing the exactness frontier.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_five_token_oracle_block_confirmation_017.py
-python3 scripts/stretch_five_token_oracle_block_confirmation_017.py
+python3 -m py_compile scripts/stretch_m4_m5_balanced_target_cost_comparison_018.py
+python3 scripts/stretch_m4_m5_balanced_target_cost_comparison_018.py
 ```
 
 No download is expected.
 
-## Open questions after Stretch 017
+## Open questions after Stretch 018
 
-1. Does M=5 remain exact end-to-end across all 36 layers and persisted KV state?
-2. If yes, is the M=5 frontier worth retaining operationally, given block geometry and real speculative acceptance constraints?
-3. Should the next speed axis be residual I/O/residency/prefetch or a separately preregistered newer-MLX runtime experiment?
-4. A newer MLX runtime must not overwrite or redefine the frozen 0.31.2 baseline.
-5. Real drafter selection remains deferred until the exact oracle target-side frontier is settled.
+1. Is M4 still faster than M5 under balanced host/cache ordering?
+2. Does any target-rate gap track forward compute, materialization, process-read accounting, or a mixture?
+3. Should M4 become the operational exact block baseline while M5 remains the maximum exactness frontier?
+4. Which next independent speed axis has the highest expected leverage: more residency/hotset, prefetch/double-buffering, or a separately preregistered newer-MLX runtime experiment?
+5. Real drafter selection remains deferred until the target-side exact/performance frontier is settled.
+6. Any newer MLX runtime must remain a separate environment experiment and must not overwrite the frozen 0.31.2 baseline.
