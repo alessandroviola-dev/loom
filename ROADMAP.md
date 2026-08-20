@@ -169,7 +169,7 @@ Promotion target: ~20 token/s.
 - [x] `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`; no scientific plan/ABBA/cache integration; retain canonical monolithic M5 qmatmul
 - [x] Preserve `research/stretch/persistent-dequantized-projection-036-feasibility.md`
 
-### Stretch 037 — M1-specific qmv_fast custom implementation — FIX1 READY / PRE-SCIENCE
+### Stretch 037 — M1-specific qmv_fast custom implementation — FIX1 RESOURCE INCOMPLETE
 - [x] Audit exact MLX v0.31.2 M1 qmv_fast source and classify immutable packing/affine/reduction invariants versus neutral output-row execution geometry
 - [x] Implement process-local canonical `mx.fast.metal_kernel` clone for BF16 affine 3-bit/group64 non-batched M5; all q/k/v/o/gate/up/down real-payload probes bit-exact, worst clone/canonical median `1.006870`
 - [x] Predeclare and measure exactly four bounded variants; `s1_r8` is bit-exact and improves gate/up/down, with matched Stretch-028 MLP estimate `+5.2120%` of canonical Stretch-031 block wall
@@ -179,8 +179,11 @@ Promotion target: ~20 token/s.
 - [x] Preserve fresh mandatory preflight harness failure `20260820-212659`: missing `preflight/` evidence directory before render; no CONTROL/S1_R8 constituent began, scientific result NONE, no retry
 - [x] Authorized distinct Fix1 runner preserves the defect source and creates fresh `preflight/` evidence with `exist_ok=False`; normalized harness diff contains only that setup
 - [x] Fresh Fix1 preflight `20260820-213948`: render/source/launcher/no-model/runtime and four real-weight shape-class bit-exact checks PASS; no scientific constituent yet run
-- [x] `STRETCH_037_PREFLIGHT_HARNESS_FIX1_READY`; commit/push Fix1 before a wholly fresh in-harness preflight and ABBA
-- [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-feasibility.md`, `research/stretch/m1-qmv-fast-tuning-037-result.md`, and `research/stretch/m1-qmv-fast-tuning-037-harness-fix1.md`
+- [x] `STRETCH_037_PREFLIGHT_HARNESS_FIX1_READY`; Fix1 commit `f9d8096` remote-verified before science
+- [x] Fresh in-harness preflight `20260820-214110` passed source/no-model/launcher/runtime/four-shape bit-exact gates
+- [x] Fresh first CONTROL stopped before target compute: inherited launch gate free memory `59%` (<60%), swap `634.44 MB`; `HOST_STATE_NOT_READY`, outer `M1_QMV_FAST_TUNING_COMPARISON_INCOMPLETE`, scientific result NONE
+- [x] No target block, accepted token, cleanup/timing metric or S1_R8 constituent; no retry or reuse permitted
+- [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-feasibility.md`, `research/stretch/m1-qmv-fast-tuning-037-result.md`, `research/stretch/m1-qmv-fast-tuning-037-harness-fix1.md`, and `research/stretch/m1-qmv-fast-tuning-037-harness-fix1-result.md`
 
 ### Stretch 038+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; retain M5 geometry and move only to another independently preregistered compute factor

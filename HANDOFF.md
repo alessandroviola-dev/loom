@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_037_PREFLIGHT_HARNESS_FIX1_READY`
+Current checkpoint: `STRETCH_037_M1_QMV_FAST_TUNING_FIX1_RESOURCE_INCOMPLETE`
 
 ## Mission
 
@@ -292,15 +292,17 @@ The feasibility/preregistration, methodological amendment, and exact prepared ru
 
 This is harness-only, not a numerical or performance result. Per frozen stop rule, no retry, source fix, rescue geometry, partial ABBA, or threshold change was performed. Preserve the failure and current canonical built-in qmv path. Result: `research/stretch/m1-qmv-fast-tuning-037-result.md`.
 
-## Stretch 037 — PREFLIGHT HARNESS FIX1 READY / PRE-SCIENCE
+## Stretch 037 — PREFLIGHT HARNESS FIX1 / RESOURCE INCOMPLETE / SCIENTIFIC RESULT NONE
 
-The original runner remains preserved at `scripts/stretch_m1_qmv_fast_comparison_037.py` (blob `5dd2e0bcc652d7197a06e4230d6519ced7ea73df`). Authorized distinct Fix1 `scripts/stretch_m1_qmv_fast_comparison_037_fix1.py` creates the fresh `preflight/` evidence directory with `exist_ok=False` before rendering; its only normalized harness diff is that directory setup. Static/fresh reproduction of the original at `20260820-213943` again produced the same pre-model `FileNotFoundError` at `preflight/control-final.py`.
+The original runner remains preserved at `scripts/stretch_m1_qmv_fast_comparison_037.py` (blob `5dd2e0bcc652d7197a06e4230d6519ced7ea73df`). Distinct Fix1 `scripts/stretch_m1_qmv_fast_comparison_037_fix1.py` (blob `3ae67ab6af37f420eaf5098f6c20448c0f0f8d96`) created `preflight/` with `exist_ok=False` before rendering; its only normalized harness diff is that directory setup. Fix1 commit `f9d8096` was remote-verified before science.
 
-Fresh Fix1 preflight `results-local/stretch/m1-qmv-fast-tuning-037/preflight/20260820-213948/preflight-summary.json` passed render/compile, normalized source diff, literal canonical launcher/runtime provenance, both no-model markers, and four real-weight BF16 3-bit/group64 shape-class S1_R8/built-in bit-exact checks (`max_abs_diff=mean_abs_diff=0`). Scientific result remains NONE; no ABBA constituent has yet run. Detail: `research/stretch/m1-qmv-fast-tuning-037-harness-fix1.md`.
+Fresh in-harness preflight passed at `results-local/stretch/m1-qmv-fast-tuning-037/20260820-214110/preflight/preflight-summary.json`: render/compile, source diff, literal launcher/runtime, both no-model markers and four real-weight BF16 3-bit/group64 shape-class S1_R8/built-in bit-exact checks (`max_abs_diff=mean_abs_diff=0`). JIT startup was outside timing.
+
+The fresh first CONTROL child then stopped at its inherited host launch gate before target compute: free memory `59%` (< required `60%`), swap `634.44 MB`; child classification `HOST_STATE_NOT_READY`. The outer result is `M1_QMV_FAST_TUNING_COMPARISON_INCOMPLETE`, scientific result NONE. No target block, accepted token, cleanup/wall metric or S1_R8 constituent exists. This is a resource/preflight stop, not science; no retry or reuse is permitted. Detail: `research/stretch/m1-qmv-fast-tuning-037-harness-fix1-result.md`.
 
 ## Exact next step
 
-Commit and remote-verify this distinct Fix1 before science. Then create one wholly fresh full-model run directory, rerun its mandatory in-harness preflight, and execute `CONTROL -> S1_R8 -> S1_R8 -> CONTROL` only if that preflight passes; do not reuse any prior directory or constituent.
+Do not retry Fix1. Any future Stretch-037 run requires separate explicit authorization for a new source identity and wholly fresh preflight/run directory; retain the frozen factor, launch/resource gates and `CONTROL -> S1_R8 -> S1_R8 -> CONTROL` order.
 
 ### Historical Stretch 031 rationale
 
