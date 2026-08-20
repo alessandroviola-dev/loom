@@ -2,10 +2,9 @@
 """LOOM Stretch 030 — runtime-portable Stretch 027 workload harness.
 
 Harness-only derivative of the frozen Stretch 027 workload. Scientific workload
-is unchanged. The sole harness portability repair makes the historical inner MLX
-child inherit the Python interpreter that launched this script, allowing the same
-exact workload to run under either the canonical 0.31.2 venv or the isolated
-0.32.0 treatment venv.
+is unchanged. The portability repair makes the historical inner MLX child inherit
+the Python interpreter that launched this script and makes the historical fixed
+0.31.2 version preflight accept only the two preregistered runtime variants.
 """
 from __future__ import annotations
 
@@ -48,17 +47,53 @@ def inject_runtime_portable_callback(wrapper_source: str) -> str:
     )
 
 
-def add_runtime_portable(source: str) -> str:
-    old = '    venv_py = mlx_root / "venv-mlx-lm-0.31.3" / "bin" / "python"\n'
-    new = '    venv_py = Path(sys.executable).resolve()\n'
+def replace_once(source: str, old: str, new: str, label: str) -> str:
     count = source.count(old)
     if count != 1:
         raise RuntimeError(
-            f"Stretch 030 portable child-interpreter transform failed: expected 1 occurrence, found {count}"
+            f"Stretch 030 portable transform failed for {label}: expected 1 occurrence, found {count}"
         )
-    source = source.replace(old, new, 1)
-    if old in source or source.count(new) != 1:
+    return source.replace(old, new, 1)
+
+
+def add_runtime_portable(source: str) -> str:
+    source = replace_once(
+        source,
+        'EXPECTED_VERSIONS = {"mlx": "0.31.2", "mlx-lm": "0.31.3", "transformers": "5.12.1"}\n',
+        'EXPECTED_VERSIONS = {"mlx-lm": "0.31.3", "transformers": "5.12.1"}\n'
+        'ALLOWED_STRETCH030_MLX = {"0.31.2", "0.32.0"}\n',
+        "runtime-portable version constants",
+    )
+    source = replace_once(
+        source,
+        '    if versions != EXPECTED_VERSIONS:\n'
+        '        summary["classification"] = "PREFLIGHT_FAIL"\n'
+        '        summary["failure_reason"] = f"version lock mismatch: {versions!r}"\n'
+        '        return finish(2)\n',
+        '    version_lock_ok = (\n'
+        '        versions.get("mlx") in ALLOWED_STRETCH030_MLX\n'
+        '        and versions.get("mlx-lm") == EXPECTED_VERSIONS["mlx-lm"]\n'
+        '        and versions.get("transformers") == EXPECTED_VERSIONS["transformers"]\n'
+        '    )\n'
+        '    if not version_lock_ok:\n'
+        '        summary["classification"] = "PREFLIGHT_FAIL"\n'
+        '        summary["failure_reason"] = f"Stretch030 portable version lock mismatch: {versions!r}"\n'
+        '        return finish(2)\n',
+        "runtime-portable inner version gate",
+    )
+    source = replace_once(
+        source,
+        '    venv_py = mlx_root / "venv-mlx-lm-0.31.3" / "bin" / "python"\n',
+        '    venv_py = Path(sys.executable).resolve()\n',
+        "selected child interpreter",
+    )
+
+    if 'venv_py = mlx_root / "venv-mlx-lm-0.31.3"' in source:
         raise RuntimeError("Stretch 030 portable child-interpreter postcondition failed")
+    if source.count('venv_py = Path(sys.executable).resolve()') != 1:
+        raise RuntimeError("Stretch 030 portable child interpreter is not unique")
+    if source.count('ALLOWED_STRETCH030_MLX = {"0.31.2", "0.32.0"}') != 1:
+        raise RuntimeError("Stretch 030 portable MLX version set is not unique")
     return source
 
 
@@ -73,7 +108,7 @@ def main() -> int:
         print(f"Frozen Stretch 027 blob: {observed027}")
         print(f"Outer interpreter / inherited child interpreter: {Path(sys.executable).resolve()}")
         print("Scientific workload: UNCHANGED")
-        print("Harness-only change: historical hard-coded MLX child venv -> current sys.executable")
+        print("Harness-only changes: selected child interpreter + two-version preregistered MLX preflight")
 
     if observed027 != SOURCE_027_BLOB:
         print(
@@ -149,7 +184,7 @@ def main() -> int:
 
     if not is_child:
         print("Source provenance: PASS")
-        print("M5 / H36 / full persistence / single cleanup / model / KV / gates: UNCHANGED")
+        print("M5 / H36 / full persistence / single cleanup / model / KV / numerical/resource gates: UNCHANGED")
 
     exec(compile(wrapper, str(paths["s013"]), "exec"), namespace)
     return 0
