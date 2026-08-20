@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_031_FIX1_PARENT_CHILD_DISPATCH_HARNESS_BLOCKED`
+Current checkpoint: `STRETCH_031_FIX2_CANONICAL_VENV_DISPATCH_PREFLIGHT_BLOCKED`
 
 ## Mission
 
@@ -217,6 +217,12 @@ The fresh Fix1 ABBA `20260820-182206` then stopped at M5 before model work: the 
 
 Decision: preserve both failures and stop. Modified/created Fix1 files and exact evidence are recorded in `research/stretch/single-pass-m2-m5-geometry-comparison-031-harness-defect-20260820-180652.md`. Open problem: preflight must validate concrete final parent/child dispatch, not only rendered source/interpreter availability.
 
+### Fix2 preflight checkpoint 20260820-183232
+
+Fix2 created distinct shims, common harness and runner with explicit launcher-path propagation, rendered-source facts and a no-model parent/child marker contract. All Fix2 Python files passed `py_compile`; M5 and M2 source rendering/compilation and normalized geometry-only diff passed. The required M5 dispatch preflight then failed **before any model load**: `dispatch_preflight()` resolved the canonical venv `bin/python` symlink to framework Python (`/Library/Frameworks/.../python3.13`), so the child could not find `mlx` metadata and did not create its marker. Evidence: `results-local/stretch/single-pass-m2-m5-geometry-comparison-031-fix2/preflight/20260820-183232/` and `research/stretch/single-pass-m2-m5-geometry-comparison-031-fix2-amendment.md`.
+
+Scientific result remains **NONE**. No ABBA began, no measurement was created/reused, and no retry occurred. Next exact step: preserve this checkpoint; create a distinct dispatch revision preserving the literal venv `bin/python` path (no `.resolve()`), then require fresh M5 **and** M2 no-model marker PASS before a new ABBA.
+
 ### Rationale
 
 The old Stretch 018 M4/M5 result predates H36 full persistence and the large cleanup-frequency reductions. Therefore the throughput-optimal block geometry must be rechecked on the current schedule.
@@ -285,7 +291,7 @@ If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common
 
 ## Exact next step
 
-Do **not** rerun Stretch 031. Create a distinct Fix2 that passes the invoking shim path into the generated wrapper, then extend `--preflight` to assert the concrete child script path has a `__main__` dispatcher and to exercise a no-model parent/child transport sentinel. Compile all Fix2 files, run only the local preflight, inspect its rendered sources/dispatch evidence, and only then start one fresh `M5 -> M2 -> M2 -> M5` ABBA.
+Do **not** rerun Stretch 031. Create a distinct Fix2a/Fix3 dispatch revision that preserves the literal canonical `results-local/mlx/venv-mlx-lm-0.31.3/bin/python` path (without `.resolve()`), then run only its local preflight. Require render/diff PASS plus concrete M5 and M2 parent/child marker PASS with no MLX/model load; inspect artifacts, and only then start one fresh `M5 -> M2 -> M2 -> M5` ABBA.
 
 ## Other track
 

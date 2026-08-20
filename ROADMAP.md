@@ -128,8 +128,9 @@ Promotion target: ~20 token/s.
 - [x] Preserve original M5 source-transform harness defect `20260820-180652`; scientific result NONE
 - [x] Add Fix1 generated-runtime-source preflight; M5/M2 render, compile, frozen facts and normalized single-factor diff PASS
 - [x] Preserve Fix1 fresh M5 parent/child-dispatch harness failure `20260820-182206`; scientific result NONE, no retry
-- [ ] Fix concrete generated parent/child script dispatch and add no-model transport preflight (Fix2)
-- [ ] Run one fresh valid Stretch 031 ABBA only after Fix2 preflight
+- [x] Preserve Fix2 source/render PASS but M5 no-model dispatch-preflight failure `20260820-183232`; `.resolve()` dereferenced canonical venv Python, scientific result NONE
+- [ ] Preserve literal canonical venv `bin/python` path and obtain M5+M2 no-model dispatch markers (Fix2a/Fix3)
+- [ ] Run one fresh valid Stretch 031 ABBA only after Fix2a/Fix3 preflight
 - [ ] Freeze outcome
 
 ### Stretch 032+ — CONDITIONAL
