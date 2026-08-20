@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_029_GATE_UP_QUANTIZED_FUSION_READY`
+Current checkpoint: `STRETCH_029_GATE_UP_QUANTIZED_FUSION_HARNESS_FIX1_READY`
 
 ## Mission
 
@@ -129,7 +129,7 @@ Valid Fix2 `20260820-160140`:
 - MLP/attention `2.6608178049x`
 - old per-layer cleanup sum `0.9268928333 s/block`.
 
-Decision: cleanup/framework was the largest category; optimize schedule first.
+Decision: cleanup/framework was the largest old-schedule category.
 
 Canonical result:
 `research/stretch/full-persistent-compute-kernel-attribution-024-result.md`
@@ -142,8 +142,6 @@ Valid `20260820-161317`:
 - median block wall ~70.34% lower
 - one post-body cleanup `0.060996 s/block`.
 
-Decision: replace 36 per-layer cleanups with one post-body cleanup.
-
 Canonical result:
 `research/stretch/full-persistent-batched-cleanup-comparison-025-result.md`
 
@@ -153,8 +151,6 @@ Valid `20260820-162951`:
 `FULL_PERSISTENT_SHARED_BATCHED_CLEANUP_COMPARISON_PASS`
 - SHARED_BATCHED/BATCHED `1.1410704391x` (~+14.11%)
 - median block wall ~11.19% lower.
-
-Decision: one body cleanup + one post-head cleanup.
 
 Canonical result:
 `research/stretch/full-persistent-shared-batched-cleanup-comparison-026-result.md`
@@ -176,12 +172,9 @@ Decision: freeze **M5 + H36 + full persistence + one final cleanup/pass**. Clean
 Canonical result:
 `research/stretch/full-persistent-single-pass-cleanup-comparison-027-result.md`
 
-## Stretch 028 — COMPLETE PASS / compute re-attribution on SINGLE_PASS
+### Stretch 028 — compute re-attribution on SINGLE_PASS COMPLETE PASS
 
-Valid run:
-`20260820-164802`
-
-Classification:
+Valid `20260820-164802`:
 `SINGLE_PASS_COMPUTE_REATTRIBUTION_PASS`
 
 Frozen sources:
@@ -189,19 +182,9 @@ Frozen sources:
 - PROFILED blob `0858e39a46bf09fe7750691b6dcd95b6753e5c70`
 - runner blob `65d1c93967ed786623a3899e0f510ad9ef8de1e2`.
 
-Balanced order:
-`CONTROL -> PROFILED -> PROFILED -> CONTROL`.
-
-Instrumentation perturbation:
+Key evidence:
 - CONTROL pooled `12.707685947332573 token/s`
-- PROFILED pooled `8.706180343302105 token/s`
-- PROFILED/CONTROL `0.6851113868713122x`
-- CONTROL median block `0.394962 s`
-- PROFILED median block `0.609049 s`.
-
-PROFILED absolute speed is not an optimization result.
-
-Synchronized re-attribution:
+- PROFILED/CONTROL instrumentation ratio `0.6851113868713122x`
 - transformer compute `0.44969600122810033 s/block`
 - attention path `0.1231006117692838 s/block`
 - MLP path `0.3265953894588165 s/block`
@@ -212,73 +195,90 @@ Synchronized re-attribution:
 - down_proj `0.09428692991302039 s/block`
 - final cleanup `0.0617505 s/block`
 - shared forward `0.028035333333333332 s/block`
-- residual unattributed `0.034740665438566354 s/block`
-- accounted share `0.9395083002891038` (~93.95%).
+- accounted share ~93.95%.
 
-Interpretation:
-- true transformer compute is now the main optimization target;
-- MLP remains ~2.653x attention because it contains three large quantized projections;
-- gate/up/down together are ~`0.29018 s/block` in the synchronized PROFILED path;
-- individually up/attention/gate/down are all near the same ~0.095–0.099 s/block scale.
+Decision: true transformer compute is now the main target; quantized MLP projection path selected first.
 
 Canonical result:
 `research/stretch/single-pass-compute-reattribution-028-result.md`
 
-## Stretch 029 — GATE+UP QUANTIZED FUSION — READY
+## Stretch 029 — GATE+UP QUANTIZED FUSION — HARNESS FIX1 READY
 
-Plan:
+Scientific plan:
 `research/stretch/gate-up-quantized-fusion-029-plan.md`
 
-Official frozen-runtime anatomy supporting the design:
-- mlx-lm v0.31.3 Qwen3 MLP: `down_proj(swiglu(gate_proj(x), up_proj(x)))`;
-- MLX v0.31.2 QuantizedLinear delegates to `mx.quantized_matmul(..., transpose=True)`.
+Frozen scientific factor:
+- gate_proj + up_proj two quantized matmuls -> one persistent fused quantized matmul;
+- concatenate packed weight/scales/affine biases once during setup;
+- no per-forward concat;
+- split fused output into gate/up halves;
+- SwiGLU and down_proj unchanged.
 
-CONTROL:
-- `scripts/stretch_full_persistent_single_pass_cleanup_027.py`
-- blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`.
-
-FUSED:
+Original FUSED helper:
 - `scripts/stretch_gate_up_quantized_fusion_029.py`
 - blob `c37ff6313106807c1e2e5070b7fb8f19e97abea6`.
 
-FUSED changes one factor only:
-- gate + up packed weight/scales/affine biases are concatenated once by output row during block setup;
-- the original two persistent module references are removed after fused materialization;
-- no per-forward weight concatenation;
-- one `mx.quantized_matmul` produces gate+up output, then `mx.split` restores the two halves;
-- SwiGLU and down_proj are unchanged.
-
-Balanced runner:
+Original runner:
 - `scripts/stretch_gate_up_quantized_fusion_comparison_029.py`
 - blob `8d89665b5d3061891a53f1734e19331aa1a4fb34`.
 
-Balanced order:
+### Initial run — HARNESS DEFECT / NO SCIENTIFIC RESULT
+
+Run `20260820-170503`:
+- outer classification `GATE_UP_QUANTIZED_FUSION_COMPARISON_INCOMPLETE`;
+- attempt 1 CONTROL valid inherited PASS, audit-only;
+- attempt 2 FUSED returned `1` in ~`0.304 s` with no child summary;
+- exact failure: `Stretch 029 wrapper invariant failed; missing ['single_quantized_matmul_gate_up']`.
+
+Root cause:
+- preflight checked the intermediate wrapper for post-callback runtime text before `__stretch029_apply_gate_up_fusion(source)` executed;
+- FUSED treatment never launched;
+- no MLX fused call, parity gate, or resource gate was reached;
+- **scientific result: NONE**.
+
+Defect record:
+`research/stretch/gate-up-quantized-fusion-029-harness-defect-20260820-170503.md`
+
+### Harness Fix1
+
+Fix1 helper:
+- `scripts/stretch_gate_up_quantized_fusion_029_fix1.py`
+- blob `93d985a526f4433b10fec39fbaf5807059807821`.
+
+Fix1 runner:
+- `scripts/stretch_gate_up_quantized_fusion_comparison_029_fix1.py`
+- blob `3e8c32292763c10d2acea234152d0ff835fe985d`.
+
+Fix1 preregistration:
+`research/stretch/gate-up-quantized-fusion-029-harness-fix1.md`
+
+Harness-only change:
+- original `add_gate_up_fusion()` is imported unchanged;
+- wrapper preflight now validates the injected callback rather than requiring generated runtime content before callback execution;
+- Fix1 runner changes only FUSED path/blob, result root and harness metadata;
+- no data from `20260820-170503` is reused.
+
+Balanced order remains:
 `CONTROL -> FUSED -> FUSED -> CONTROL`.
 
-Critical preregistered exactness rule:
-- if the first FUSED produces prompt/oracle numerical, top-1, acceptance, or generated-sequence mismatch, stop immediately;
-- classify `GATE_UP_QUANTIZED_FUSION_NUMERICAL_PARITY_FAIL` as a valid scientific result;
-- no rescue ordering, partial fusion, threshold relaxation, or retry.
-
-Complete exact ABBA success:
-`GATE_UP_QUANTIZED_FUSION_BALANCED_COMPARISON_PASS`.
-
-Harness/resource/provenance failure:
-`GATE_UP_QUANTIZED_FUSION_COMPARISON_INCOMPLETE`.
+Critical outcome policy remains:
+- first FUSED numerical/top1/acceptance mismatch => valid `GATE_UP_QUANTIZED_FUSION_NUMERICAL_PARITY_FAIL`, stop, no rescue;
+- complete exact ABBA => `GATE_UP_QUANTIZED_FUSION_BALANCED_COMPARISON_PASS`;
+- harness/resource/provenance issue => `GATE_UP_QUANTIZED_FUSION_COMPARISON_INCOMPLETE`.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_gate_up_quantized_fusion_029.py
-python3 -m py_compile scripts/stretch_gate_up_quantized_fusion_comparison_029.py
-python3 scripts/stretch_gate_up_quantized_fusion_comparison_029.py
+python3 -m py_compile scripts/stretch_gate_up_quantized_fusion_029_fix1.py
+python3 -m py_compile scripts/stretch_gate_up_quantized_fusion_comparison_029_fix1.py
+python3 scripts/stretch_gate_up_quantized_fusion_comparison_029_fix1.py
 ```
 
-No download is expected.
+Do not run the FUSED helper separately. Do not reuse or rerun the original `20260820-170503` sequence.
 
-## Open questions after Stretch 029
+## Open questions after valid Stretch 029 outcome
 
 1. Is one fused gate+up quantized call exact under frozen M5 gates?
 2. If exact, does it beat separate gate/up within balanced ABBA?
