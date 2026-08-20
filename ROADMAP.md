@@ -29,10 +29,10 @@
 - [x] Amplifier 004 compact-feedback plan/runner frozen
 - [ ] Run Amplifier 004 after current Stretch architectural sequence
 
-## Phase 7 — Stretch / Memory Hierarchy — ACTIVE
+## Phase 7 — Stretch / Memory Hierarchy + Compute — ACTIVE
 
 Frozen subject: Qwen3-8B 3-bit/group64, 36 layers, Apple M1 / 8 GB.
-Frozen runtime: mlx 0.31.2, mlx-lm 0.31.3, transformers 5.12.1.
+Historical canonical runtime through Stretch 029: mlx 0.31.2, mlx-lm 0.31.3, transformers 5.12.1.
 Promotion target: ~20 token/s.
 
 ### Stretch 001–017 — COMPLETE / EXACT BLOCK FRONTIER
@@ -50,8 +50,7 @@ Promotion target: ~20 token/s.
 ### Stretch 018 — COMPLETE PASS
 - [x] `M4_M5_BALANCED_TARGET_COST_COMPARISON_PASS`
 - [x] M5 ~+9.80% vs M4
-- [x] Freeze M5 as preferred exact block
-- [x] Close block-size scaling
+- [x] Freeze M5 as preferred exact block for 0.31.2
 
 ### Stretch 019–022 — TRANSFORMER RESIDENCY — COMPLETE
 - [x] H8 -> H16 ~+56.87%
@@ -59,115 +58,94 @@ Promotion target: ~20 token/s.
 - [x] H24 -> H32 ~+11.45%
 - [x] H32 -> H36 ~+10.50%
 - [x] Freeze H36 physical transformer-residency ceiling
-- [x] Close transformer residency
 
 ### Stretch 023 — FULL RAW-WEIGHT PERSISTENCE — COMPLETE PASS
 - [x] Preserve initial harness defect `20260820-151540`
 - [x] Valid Fix1 `20260820-153308`
-- [x] `M5_H36_SHARED_STAGE_BALANCED_COMPARISON_PASS`
 - [x] PERSISTENT/STREAMED ~+59.89%
-- [x] Full persistent raw model `3,583,928,320 B`
-- [x] Freeze M5 + H36 + full raw-weight persistence
-- [x] Close raw-weight residency
+- [x] Freeze full persistent raw model `3,583,928,320 B`
 
 ### Stretch 024 — COMPUTE/FRAMEWORK ATTRIBUTION — COMPLETE PASS
-- [x] Preserve Fix1 telemetry defect `20260820-155313`
+- [x] Preserve telemetry defect `20260820-155313`
 - [x] Valid Fix2 `20260820-160140`
-- [x] `FULL_PERSISTENT_COMPUTE_ATTRIBUTION_PASS`
 - [x] MLP/attention `2.6608178049x`
-- [x] Old per-layer cleanup sum `0.9268928333 s/block`
-- [x] Identify cleanup/framework as largest old-schedule category
-- [x] Freeze result
+- [x] Identify old 36x cleanup as largest old-schedule category
 
 ### Stretch 025 — BATCHED TRANSFORMER CLEANUP — COMPLETE PASS
 - [x] Valid ABBA `20260820-161317`
-- [x] `FULL_PERSISTENT_BATCHED_CLEANUP_COMPARISON_PASS`
 - [x] BATCHED/CONTROL `3.8627785715x` (~+286.28%)
-- [x] Replace 36 per-layer cleanups with one post-body cleanup
-- [x] Freeze result
+- [x] 36 per-layer cleanups -> one post-body cleanup
 
 ### Stretch 026 — SHARED-STAGE BATCHED CLEANUP — COMPLETE PASS
 - [x] Valid ABBA `20260820-162951`
-- [x] `FULL_PERSISTENT_SHARED_BATCHED_CLEANUP_COMPARISON_PASS`
 - [x] SHARED_BATCHED/BATCHED `1.1410704391x` (~+14.11%)
-- [x] Consolidate embedding/norm/head cleanup to one post-head cleanup
-- [x] Freeze result
+- [x] Shared-stage cleanup 3x -> 1x post-head
 
-### Stretch 027 — SINGLE END-OF-PASS CLEANUP — COMPLETE PASS
+### Stretch 027 — SINGLE END-OF-PASS CLEANUP — COMPLETE PASS / CANONICAL WORKLOAD
 - [x] Valid ABBA `20260820-163715`
-- [x] `FULL_PERSISTENT_SINGLE_PASS_CLEANUP_COMPARISON_PASS`
 - [x] SINGLE_PASS/SHARED_BATCHED `1.0867142144x` (~+8.67%)
 - [x] SINGLE_PASS pooled `12.7306853225 token/s`
-- [x] Median block `0.396305 s`
 - [x] Freeze one final cleanup/pass
-- [x] Do not promote zero-cleanup
-- [x] Close cleanup-frequency axis
-- [x] Freeze result
+- [x] Close cleanup-frequency axis; zero-cleanup remains unproven
+- [x] Canonical workload blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`
 
 ### Stretch 028 — SINGLE_PASS COMPUTE RE-ATTRIBUTION — COMPLETE PASS
 - [x] Valid ABBA `20260820-164802`
-- [x] `SINGLE_PASS_COMPUTE_REATTRIBUTION_PASS`
-- [x] CONTROL pooled `12.7076859473 token/s`
-- [x] PROFILED/CONTROL instrumentation ratio `0.6851113869x`
 - [x] Transformer compute `0.4496960012 s/block`
 - [x] Attention path `0.1231006118 s/block`
 - [x] MLP path `0.3265953895 s/block`
 - [x] MLP/attention `2.6530769000x`
-- [x] up_proj `0.0993149300 s/block`
-- [x] attention `0.0985796947 s/block`
-- [x] gate_proj `0.0965807990 s/block`
-- [x] down_proj `0.0942869299 s/block`
-- [x] Final cleanup `0.0617505 s/block`
-- [x] Shared forward `0.0280353333 s/block`
-- [x] Accounted share ~93.95%
-- [x] Freeze `research/stretch/single-pass-compute-reattribution-028-result.md`
-- [x] Select quantized MLP projection path as first compute optimization axis
+- [x] up/attention/gate/down each ~0.095–0.099 s/block
+- [x] Select quantized compute path as next axis
 
-### Stretch 029 — GATE+UP QUANTIZED FUSION — CURRENT / HARNESS FIX1 READY
-- [x] Keep M5 frozen
-- [x] Keep H36 frozen
-- [x] Keep full raw-weight persistence frozen
-- [x] Keep one final cleanup/pass frozen
-- [x] Keep MLX 0.31.2 / model / KV / resource policy frozen
-- [x] CONTROL = Stretch 027 SINGLE_PASS blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`
-- [x] Scientific factor = gate_proj + up_proj two quantized matmuls -> one fused quantized matmul
-- [x] Concatenate packed quantized weight/scales/affine biases once by output row during setup
-- [x] No per-forward weight concatenation
-- [x] Remove original gate/up module references after fused materialization
-- [x] Keep SwiGLU and down_proj unchanged
-- [x] Treat frozen numerical/top1/acceptance mismatch as valid scientific fusion FAIL
-- [x] No rescue ordering / partial fusion / threshold relaxation / automatic retry
-- [x] Balanced order `CONTROL -> FUSED -> FUSED -> CONTROL`
-- [x] Original FUSED helper `scripts/stretch_gate_up_quantized_fusion_029.py`
-- [x] Original FUSED blob `c37ff6313106807c1e2e5070b7fb8f19e97abea6`
-- [x] Original runner `scripts/stretch_gate_up_quantized_fusion_comparison_029.py`
-- [x] Original runner blob `8d89665b5d3061891a53f1734e19331aa1a4fb34`
-- [x] Preregister `research/stretch/gate-up-quantized-fusion-029-plan.md`
-- [x] Preserve run `20260820-170503` as harness defect / no scientific result
-- [x] Exact defect: wrapper preflight required post-callback `single_quantized_matmul_gate_up` before callback execution
-- [x] Record `research/stretch/gate-up-quantized-fusion-029-harness-defect-20260820-170503.md`
-- [x] Prepare harness-only Fix1 without changing original `add_gate_up_fusion()`
-- [x] Fix1 FUSED helper `scripts/stretch_gate_up_quantized_fusion_029_fix1.py`
-- [x] Fix1 FUSED blob `93d985a526f4433b10fec39fbaf5807059807821`
-- [x] Fix1 runner `scripts/stretch_gate_up_quantized_fusion_comparison_029_fix1.py`
-- [x] Fix1 runner blob `3e8c32292763c10d2acea234152d0ff835fe985d`
-- [x] Preregister Fix1 `research/stretch/gate-up-quantized-fusion-029-harness-fix1.md`
-- [x] Require fresh complete ABBA; do not reuse CONTROL from `170503`
-- [ ] Run Stretch 029 Fix1
-- [ ] Freeze PASS or valid scientific fusion FAIL
-- [ ] Select next independent compute factor
+### Stretch 029 — GATE+UP QUANTIZED FUSION — COMPLETE PASS / PATH CLOSED
+- [x] Preregister exact single-factor fusion
+- [x] Preserve initial `20260820-170503` wrapper harness defect / no scientific result
+- [x] Harness Fix1 leaves original scientific fusion callback unchanged
+- [x] Fresh valid ABBA `20260820-171714`
+- [x] `GATE_UP_QUANTIZED_FUSION_BALANCED_COMPARISON_PASS`
+- [x] CONTROL `13.2286272786 token/s`
+- [x] FUSED `12.3523991241 token/s`
+- [x] FUSED/CONTROL `0.9337627302x` (~6.62% slower)
+- [x] FUSED exact under frozen M5 gates
+- [x] FUSED median block wall ~8.62% higher
+- [x] Do not promote fusion
+- [x] No rescue ordering / partial fusion / threshold relaxation
+- [x] Freeze `research/stretch/gate-up-quantized-fusion-029-result.md`
+- [x] Restore Stretch 027 SINGLE_PASS as preferred 0.31.2 workload
 
-### Stretch 030+ — CONDITIONAL COMPUTE/RUNTIME AXIS
-- [ ] If gate+up fusion is exact and faster, promote it and remeasure residual compute
-- [ ] If fusion fails exactness, preserve FAIL and choose a different compute factor
-- [ ] If fusion is exact but flat/slower, close this implementation path
+### Stretch 030 — ISOLATED MLX 0.31.2 vs 0.32.0 — CURRENT / READY FOR ENV SETUP
+- [x] Preregister runtime as one independent factor
+- [x] CONTROL and TREATMENT execute exact same Stretch 027 source/blob
+- [x] Keep Qwen3 3-bit/group64, M5, H36, full persistence, one cleanup/pass, BF16 KV and gates frozen
+- [x] Keep mlx-lm 0.31.3 and transformers 5.12.1 frozen
+- [x] Treatment venv uses `--system-site-packages`
+- [x] Overlay only `mlx==0.32.0 --no-deps`
+- [x] Require Python/NumPy/safetensors parity across environments
+- [x] Do not modify canonical environment
+- [x] Do not install packages during scientific runner
+- [x] Environment setup utility `scripts/stretch_mlx_0320_env_setup_030.py`
+- [x] Setup blob `fde39967be02cba81ea14bb043c9fdacd24db861`
+- [x] Balanced runner `scripts/stretch_mlx_0312_0320_runtime_comparison_030.py`
+- [x] Runner blob `0d0a27549067cef61a1dca7d3bf8f0e1f954d98b`
+- [x] Balanced order `MLX0312 -> MLX0320 -> MLX0320 -> MLX0312`
+- [x] First MLX0320 frozen numerical/top1/oracle failure = valid `MLX_0320_RUNTIME_EXACTNESS_FAIL`; stop/no rescue
+- [x] Complete exact ABBA = `MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`
+- [x] Preregister `research/stretch/mlx-0312-0320-runtime-comparison-030-plan.md`
+- [ ] Provision isolated MLX0320 environment and require `Environment setup: PASS`
+- [ ] Run balanced Stretch 030
+- [ ] Freeze scientific outcome
+
+### Stretch 031+ — CONDITIONAL
+- [ ] If MLX 0.32.0 exact + faster: promote only on new runtime evidence branch
+- [ ] If 0.32.0 exact + faster: separately remap M exactness boundary under 0.32.0; never inherit old M5 ceiling blindly
+- [ ] If 0.32.0 exact + flat/slower: retain 0.31.2 and choose different compute factor
+- [ ] If 0.32.0 exactness FAIL: preserve FAIL, no rescue package mix
 - [ ] Consider attention/SDPA separately
-- [ ] Consider newer MLX only as separately preregistered environment comparison
-- [ ] Never overwrite frozen MLX 0.31.2 evidence with newer runtime results
-- [ ] Select a real drafter only after target-side architecture is sufficiently optimized
-- [ ] Measure real acceptance and end-to-end tok/s including draft/rejection/rollback cost
+- [ ] Real drafter only after target-side architecture is sufficiently optimized
+- [ ] Measure real acceptance and end-to-end tok/s including draft/rejection/rollback
 - [ ] Test KV capacity/quantization separately
-- [ ] Do not promote interactive profile until speed approaches ~20 token/s target
+- [ ] Promote interactive profile only when speed/quality evidence supports ~20 token/s target
 
 ## Phase 8 — Synthesis
 - [ ] Capability vs memory vs time frontier
