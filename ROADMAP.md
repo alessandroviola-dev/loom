@@ -210,9 +210,18 @@ Promotion target: ~20 token/s.
 - [x] Attempt required process-local canonical clone; it is non-bit-exact/non-representative on every real payload, so its timings are invalid and no treatment is admitted
 - [x] `STRETCH_039_GQA_SHARED_KV_SDPA_INVESTIGATION_ONLY`; no shared-KV treatment, MLX patch, preregistration, integration or ABBA. Preserve `research/stretch/gqa-shared-kv-sdpa-039-feasibility.md`
 
-### Stretch 040+ — CONDITIONAL
+### Stretch 040 — explicit Python GC cleanup composition — COMPLETE NO-GO
+- [x] Audit promoted once-per-two-M5 cleanup as exact `gc.collect() -> mx.clear_cache() -> gc.collect()`; runner blob `97339280aec0a9bb2fb4b196795f05cd23ef52a4`, promoted S1_R8 render `82888b...5fcbe3`, literal cleanup snippet SHA-256 `6ce1b715...59568baf`
+- [x] One-load Fix1 feasibility: 8 canonical component diagnostics, then eligible `C,T,T` x6 primary and 12 T-only stability cycles; every cycle retained exactly one cleanup event / two M5 blocks / ten accepted tokens
+- [x] All 38 cycles exact under inherited prompt/all-logit/top-1/oracle/sequence/10-token/full-persistence `3,583,928,320 B` gates; S1_R8 unchanged, 4 specializations, zero target-time recompilation
+- [x] Component means first GC / clear / second GC `19.805 / 0.333 / 16.385 ms`; both GC calls returned zero objects in all 8 diagnostic cycles; perfect-elimination upper bound `1.0506681` (+5.0668118%) made one retained-clear-only treatment admissible for feasibility
+- [x] Primary equal-cycle means: CONTROL `0.754609 s`, TREATMENT `0.720190 s` / ten tokens; T/C `1.0477905` (+4.7790463%), below the 5% gate
+- [x] MLX active/cache recovered stably after retained clear (`3,666,913,308 -> 3,665,291,272 B`; cache `2,867,744–2,868,260 B`), min free `24%`, peak swap `2021.44 MB`; but treatment tracked Python objects rose strictly `84,797 -> 85,354` across 24 cycles, so MLX-only recovery is insufficient
+- [x] `STRETCH_040_GC_COMPOSITION_FEASIBILITY_NO_GO`; retain the full promoted cleanup composition/cadence, create no preregistration and run no scientific ABBA; preserve report `research/stretch/s1r8-gc-cleanup-composition-040-feasibility.md`
+
+### Stretch 041+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; S1_R8 beat fresh built-in MLX CONTROL in Stretch 037; retain both decisions for their frozen scopes
-- [ ] Do not rerun Stretch 037, Stretch 038 feasibility/the completed ABBA, or Stretch 039. Select a new independent factor only after separate authorization. Do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, MLX 0.32 runtime comparison, or this GQA shared-KV idea without a new authorization
+- [ ] Do not rerun Stretch 037, Stretch 038 feasibility/the completed ABBA, Stretch 039, or Stretch 040. Select a new independent factor only after separate authorization. Do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, MLX 0.32 runtime comparison, this GQA shared-KV idea, or GC-composition removal without a new authorization
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized
 - [ ] Measure real acceptance and end-to-end tok/s including draft/rejection/rollback

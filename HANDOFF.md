@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_038_CLEANUP_CADENCE_PASS_CHECKPOINT_REVIEW`
+Current checkpoint: `STRETCH_040_GC_COMPOSITION_FEASIBILITY_NO_GO_CHECKPOINT_REVIEW`
 
 ## Mission
 
@@ -412,12 +412,47 @@ preregistration or full-model ABBA was created. Classification:
 `research/stretch/gqa-shared-kv-sdpa-039-feasibility.md`; evidence:
 `results-local/stretch/gqa-shared-kv-sdpa-039-feasibility/20260820-210451/summary.json`.
 
+## Stretch 040 — explicit Python GC cleanup composition — NO-GO
+
+The frozen once-per-two-M5-block cleanup source was audited as exactly
+`gc.collect() -> mx.clear_cache() -> gc.collect()`: Stretch-038 runner blob
+`97339280aec0a9bb2fb4b196795f05cd23ef52a4`, promoted S1_R8 render SHA-256
+`82888b134a6c4e0ba56bb24896bce2fd37c9d78c899380af35e0e823ad5fcbe3`, cleanup
+snippet SHA-256 `6ce1b7154fbacbb3aa0b60c36e4ba26841e543382f74ea53e823d55c59568baf`.
+
+A one-load Fix1 feasibility run first completed eight canonical two-M5/ten-token
+component diagnostics, then (because the ideal upper bound was 5.0668118%)
+ran `C,T,T` x6 primary cycles plus 12 T-only stability cycles.  CONTROL retained
+the exact triple; TREATMENT retained only `mx.clear_cache()` at the identical
+one-event/ten-token location.  All 38 cycles passed prompt/all-target logits,
+top-1, exact oracle/sequence, 10/10 acceptance, full raw persistence
+`3,583,928,320 B`, promoted S1_R8 and zero target-time recompilation.
+
+First/clear/second component means were 19.805/0.333/16.385 ms (medians
+19.842/0.311/16.337 ms); both explicit GC calls collected zero in every 8/8
+diagnostic cycle.  Correct equal-cycle primary comparison was CONTROL 0.754609
+s versus TREATMENT 0.720190 s per ten tokens, T/C throughput-equivalent
+1.0477905 (+4.7790463%), below the 5% gate.  MLX active/cache recovery was
+stable (3,666,913,308 -> 3,665,291,272 B; post-clear cache
+2,867,744–2,868,260 B), minimum free 24%, peak swap 2021.44 MB.  However,
+treatment tracked objects rose strictly over all 24 treatment cycles
+84,797 -> 85,354 (+557), with later `gc.get_count()[0]` growth 495 -> 1,030.
+
+Classification: `STRETCH_040_GC_COMPOSITION_FEASIBILITY_NO_GO`.  Retain both
+explicit Python GC calls and `mx.clear_cache()` at the frozen cadence.  No
+Stretch-040 scientific preregistration or ABBA was created.  The initial
+`20260820-212047` generated-source run is preserved as an excluded
+post-cycle serialization harness defect; the complete Fix1 evidence is
+`results-local/stretch/s1r8-gc-cleanup-composition-040-feasibility/20260820-212227/summary.json`.
+Artifact: `research/stretch/s1r8-gc-cleanup-composition-040-feasibility.md`.
+
 ## Exact next step
 
-Checkpoint: `STRETCH_039_GQA_SHARED_KV_SDPA_INVESTIGATION_ONLY_CHECKPOINT_REVIEW`.
-Do not rerun Stretch 037, Stretch 038, or Stretch 039. Preserve the frozen
-S1_R8 + one-cleanup-every-two-M5-block baseline. Any new independent factor
-requires separate authorization.
+Checkpoint: `STRETCH_040_GC_COMPOSITION_FEASIBILITY_NO_GO_CHECKPOINT_REVIEW`.
+Do not rerun Stretch 037, Stretch 038, Stretch 039, or Stretch 040. Preserve
+the frozen S1_R8 + `gc.collect() -> mx.clear_cache() -> gc.collect()`
+one-cleanup-every-two-M5-block baseline. Any new independent factor requires
+separate authorization.
 
 ### Historical Stretch 031 rationale
 
