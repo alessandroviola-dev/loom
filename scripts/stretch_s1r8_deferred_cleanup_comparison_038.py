@@ -174,7 +174,7 @@ def render_final(repo: Path, kind: str) -> tuple[str, dict]:
     source = patch_once(source, '        "expected_kv_total_bytes": EXPECTED_KV_TOTAL_BYTES,\n', '        "expected_kv_total_bytes": EXPECTED_KV_TOTAL_BYTES,\n        "stretch038": __stretch038_result,\n', "result payload")
     source = source.replace("    repo = Path(__file__).resolve().parents[1]\n    script_path = Path(__file__).resolve()\n", "    repo = Path(os.environ[\"LOOM_REPO\"])\n    script_path = Path(__file__).resolve()\n", 1)
     source = patch_once(source, '    run_dir = repo / "results-local" / "stretch" / "m5-ten-token-single-pass-control-031-fix3" / run_id\n', '    run_dir = Path(os.environ["STRETCH038_RUN_DIR"])\n', "evidence root")
-    source = patch_once(source, "import traceback\n", "import traceback\n\nsys.path.insert(0, str(Path(os.environ.get(\"LOOM_REPO\", \".\")) / \"scripts\"))\n", "source import path")
+    source = patch_once(source, "import traceback\n", "import traceback\n\nsys.path.insert(0, str(__import__(\"pathlib\").Path(os.environ.get(\"LOOM_REPO\", \".\")) / \"scripts\"))\n", "source import path")
     return source, {"promoted_s1_r8": provenance, "cadence_kind": kind, "rendered_sha256": sha256(source)}
 
 
