@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_025_FULL_PERSISTENT_BATCHED_CLEANUP_COMPARISON_READY`
+Current checkpoint: `STRETCH_026_FULL_PERSISTENT_SHARED_BATCHED_CLEANUP_READY`
 
 ## Mission
 
@@ -127,44 +127,19 @@ Balanced `STREAMED -> PERSISTENT -> PERSISTENT -> STREAMED`:
 - break-even `0.439246432072825` target blocks
 - PERSISTENT min free `23%`; peak swap `2487.69 MB`.
 
-Decision: **M5 + H36 + full raw-weight persistence is the best demonstrated target-side architecture under MLX 0.31.2.** Raw-weight residency is closed.
+Decision: **M5 + H36 + full raw-weight persistence is the best demonstrated weight-residency architecture under MLX 0.31.2.** Raw-weight residency is closed.
 
 Canonical result:
 `research/stretch/m5-h36-shared-stage-persistence-023-result.md`
 
-## Stretch 024 — COMPLETE PASS / COMPUTE + FRAMEWORK ATTRIBUTION
+### Stretch 024 — COMPLETE PASS / COMPUTE + FRAMEWORK ATTRIBUTION
 
-Original Fix1 sequence `20260820-155313` is preserved as harness/telemetry defect / no scientific result because parent aggregation referenced child-local `args.num_hidden_layers`.
+Original Fix1 sequence `20260820-155313` is preserved as harness/telemetry defect / no scientific result.
 
-Valid Fix2 run:
-`20260820-160140`
-
-Classification:
+Valid Fix2 run `20260820-160140`:
 `FULL_PERSISTENT_COMPUTE_ATTRIBUTION_PASS`
 
-Frozen CONTROL:
-- `scripts/stretch_five_token_h36_full_weight_persistent_variant_023_fix1.py`
-- blob `120ad7be2f275559898bf636ca8e8fe039a56c60`.
-
-PROFILED Fix2:
-- `scripts/stretch_full_persistent_compute_attribution_024_profiled_fix2.py`
-- blob `83f9e12dfa30445810ca4d39150dbcd151ad3e66`.
-
-Balanced runner Fix2:
-- `scripts/stretch_full_persistent_compute_kernel_attribution_024_fix2.py`
-- blob `de464c4fe5dca90c2fe110337f12e3f6424ea937`.
-
-Balanced order:
-`CONTROL -> PROFILED -> PROFILED -> CONTROL`.
-
-Instrumentation perturbation telemetry:
-- CONTROL pooled `2.6093073645786875 token/s`
-- PROFILED pooled `2.644128118583858 token/s`
-- PROFILED/CONTROL `1.0133448264768887x`.
-
-Do not treat PROFILED throughput as an optimization result; explicit `mx.eval` boundaries perturb scheduling.
-
-Synchronized target attribution per block:
+Attribution per target block:
 - transformer compute `0.808182682027109 s`
 - attention path `0.22076561170009276 s`
 - MLP path `0.5874170703270162 s`
@@ -175,88 +150,114 @@ Synchronized target attribution per block:
 - accounted share `0.947368373509772` (~94.74%).
 
 Largest transformer components:
-- up_proj ~23.36% of profiled transformer compute
+- up_proj ~23.36%
 - gate_proj ~23.24%
 - attention ~22.75%
 - down_proj ~22.21%.
 
-Resource telemetry:
-- CONTROL min free `19%`, peak swap `2394.75 MB`
-- PROFILED min free `24%`, peak swap `2439.38 MB`.
-
-Canonical interpretation:
-- cleanup/framework overhead is the largest measured remaining category;
-- summed per-layer cleanup is ~`1.1469x` synchronized transformer compute;
-- within true compute, MLP is ~`2.66x` attention;
-- kernel/runtime tuning should follow cleanup-schedule testing.
+Decision: cleanup/framework overhead is the largest measured remaining category; test cleanup schedule before kernel/runtime changes.
 
 Canonical result:
 `research/stretch/full-persistent-compute-kernel-attribution-024-result.md`
 
-## Stretch 025 — FULL-PERSISTENT BATCHED CLEANUP — READY
+## Stretch 025 — COMPLETE PASS / BATCHED TRANSFORMER CLEANUP
 
 Plan:
 `research/stretch/full-persistent-batched-cleanup-comparison-025-plan.md`
 
-Question:
-> With all weights persistent, can the transformer-loop cleanup sequence be batched once per 36-layer body instead of repeated after every layer?
+Valid run:
+`20260820-161317`
 
-CONTROL:
-- canonical full-persistent helper
-- `scripts/stretch_five_token_h36_full_weight_persistent_variant_023_fix1.py`
-- blob `120ad7be2f275559898bf636ca8e8fe039a56c60`.
-
-BATCHED treatment:
-- `scripts/stretch_full_persistent_batched_cleanup_025.py`
-- blob `5ca3572f3269899e7c3fc23b9e136381ce864d99`.
-
-Treatment changes one factor only:
-- CONTROL: `gc.collect() -> mx.clear_cache() -> gc.collect()` after each of 36 persistent transformer layers;
-- BATCHED: remove those 36 per-layer calls and execute the same cleanup sequence once after the transformer body;
-- shared-stage cleanup remains unchanged.
-
-Balanced runner:
-- `scripts/stretch_full_persistent_batched_cleanup_comparison_025.py`
-- blob `5fa702d7236888a55b33031c832ce12c79c0e55a`.
+Classification:
+`FULL_PERSISTENT_BATCHED_CLEANUP_COMPARISON_PASS`
 
 Balanced order:
 `CONTROL -> BATCHED -> BATCHED -> CONTROL`.
 
-Primary metric:
-pooled target verification rate within the balanced experiment.
+Frozen sources:
+- CONTROL full-persistent Fix1 blob `120ad7be2f275559898bf636ca8e8fe039a56c60`;
+- BATCHED blob `5ca3572f3269899e7c3fc23b9e136381ce864d99`;
+- balanced runner blob `5fa702d7236888a55b33031c832ce12c79c0e55a`.
 
-Secondary:
-- median/mean target block wall
-- one-per-body BATCHED cleanup wall
-- min free memory
-- peak swap
-- all inherited exactness/KV/resource gates.
+Scientific factor only:
+- CONTROL cleanup after each of 36 persistent transformer layers;
+- BATCHED removes those 36 per-layer cleanup calls and executes the same `gc.collect() -> mx.clear_cache() -> gc.collect()` sequence once after the 36-layer transformer body;
+- shared-stage cleanup unchanged.
+
+Controlled result:
+- CONTROL pooled `2.761599662127487 token/s`;
+- BATCHED pooled `10.667447997968917 token/s`;
+- BATCHED/CONTROL `3.8627785715149265x` = **~+286.28%**;
+- CONTROL median block `1.5667445 s`;
+- BATCHED median block `0.464723 s`;
+- median block wall reduction **~70.34%**;
+- BATCHED mean one-per-body cleanup `0.060996 s`.
+
+Resource telemetry:
+- CONTROL min free `17%`, peak swap `2484.94 MB`;
+- BATCHED min free `23%`, peak swap `2535.12 MB`;
+- disk after `35.668 GiB`.
+
+Decision:
+**M5 + H36 + full raw-weight persistence + one transformer cleanup per body is the new preferred target execution schedule under MLX 0.31.2.**
+
+Causal evidence is the within-Stretch-025 `3.8627785715x` ratio. Absolute rates from separate experiments remain non-causal comparisons.
+
+Canonical result:
+`research/stretch/full-persistent-batched-cleanup-comparison-025-result.md`
+
+## Stretch 026 — SHARED-STAGE BATCHED CLEANUP — READY
+
+Plan:
+`research/stretch/full-persistent-shared-batched-cleanup-comparison-026-plan.md`
+
+Question:
+> With the successful one-per-transformer-body cleanup frozen, can cleanup around persistent embedding/final norm/LM head be consolidated from 3 sequences to 1 post-head sequence?
+
+BATCHED baseline:
+- `scripts/stretch_full_persistent_batched_cleanup_025.py`
+- blob `5ca3572f3269899e7c3fc23b9e136381ce864d99`.
+
+SHARED_BATCHED treatment:
+- `scripts/stretch_full_persistent_shared_batched_cleanup_026.py`
+- blob `6926e1b1b9a851f23d88ba6b1f1023e13336098a`.
+
+Balanced runner:
+- `scripts/stretch_full_persistent_shared_batched_cleanup_comparison_026.py`
+- blob `e958bde5d8a239ffa5fd192922e0693854d478e0`.
+
+Scientific factor only:
+- transformer-body cleanup remains once per body in both variants;
+- BATCHED retains inherited cleanup after embedding, final norm, and LM head;
+- SHARED_BATCHED removes those three cleanup sequences and executes the identical cleanup once after the complete shared-stage path.
+
+Balanced order:
+`BATCHED -> SHARED_BATCHED -> SHARED_BATCHED -> BATCHED`.
 
 Success:
-`FULL_PERSISTENT_BATCHED_CLEANUP_COMPARISON_PASS`
+`FULL_PERSISTENT_SHARED_BATCHED_CLEANUP_COMPARISON_PASS`.
 
 Failure/incomplete:
-`CLEANUP_COMPARISON_INCOMPLETE`
+`SHARED_CLEANUP_COMPARISON_INCOMPLETE`.
 
-No automatic retry, no cache purge, no post-hoc intermediate cleanup-frequency search.
+No automatic retry, no cache purge, no post-hoc partial shared-stage subset search.
 
 ## Exact next step
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_full_persistent_batched_cleanup_025.py
-python3 -m py_compile scripts/stretch_full_persistent_batched_cleanup_comparison_025.py
-python3 scripts/stretch_full_persistent_batched_cleanup_comparison_025.py
+python3 -m py_compile scripts/stretch_full_persistent_shared_batched_cleanup_026.py
+python3 -m py_compile scripts/stretch_full_persistent_shared_batched_cleanup_comparison_026.py
+python3 scripts/stretch_full_persistent_shared_batched_cleanup_comparison_026.py
 ```
 
 No download is expected.
 
-## Open questions after Stretch 025
+## Open questions after Stretch 026
 
-1. Does batching cleanup materially improve controlled target throughput while preserving correctness/resource gates?
-2. What is the actual one-per-body cleanup wall after removing 35 redundant cleanup points?
-3. Does BATCHED increase memory/swap enough to offset its speed benefit?
-4. If BATCHED wins, freeze it as the new canonical target schedule and decide whether to re-profile or move directly to quantized-linear/MLP optimization.
-5. If BATCHED is flat/slower, retain per-layer cleanup and move to MLP/quantized-linear work.
-6. Newer MLX and real drafter integration remain separate future factors.
+1. Does consolidating persistent shared-stage cleanup materially improve the new ~10.67 token/s class target schedule?
+2. What is the one-per-shared-path cleanup wall?
+3. If SHARED_BATCHED wins safely, should transformer-body and shared-path cleanup be merged into one final end-of-pass cleanup as a separate factor?
+4. If cleanup gains saturate, return to Stretch 024 compute evidence: MLP ~2.66x attention with gate/up/down as the largest measured projections.
+5. Newer MLX and real drafter integration remain separate future factors.
