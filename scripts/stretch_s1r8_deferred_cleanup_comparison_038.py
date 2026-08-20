@@ -308,11 +308,12 @@ def main() -> int:
         if child_final.is_file(): shutil.copy2(child_final, saved_final)
         attempt["child_summary"] = str(saved_child)
         attempt["child_final"] = str(saved_final) if saved_final.is_file() else None
-        result = child.get("stretch038")
+        child_final_payload = json.loads(saved_final.read_text()) if saved_final.is_file() else {}
+        result = child_final_payload.get("stretch038")
         if not result:
             summary["attempts"].append(attempt); summary.update({"classification": "STRETCH_038_CLEANUP_CADENCE_INCOMPLETE", "failure_reason": f"constituent {number} stretch038 payload missing"}); save(); return 3
         blocks, snapshots = result.get("blocks", []), result.get("snapshots", {})
-        custom = child.get("custom_qmv", {})
+        custom = child_final_payload.get("custom_qmv", {})
         before, after = snapshots.get("before_block1", {}), snapshots.get("after_final_cleanup", {})
         recovery = bool(before and after and after.get("mlx_active_bytes", -1) <= before.get("mlx_active_bytes", -1))
         attempt.update({"child_classification": child.get("classification"), "accepted_tokens": result.get("accepted_tokens"), "total_wall": result.get("total_constituent_target_wall_seconds"), "block1_compute_wall": blocks[0]["compute_wall_seconds"] if len(blocks) == 2 else None, "block2_compute_wall": blocks[1]["compute_wall_seconds"] if len(blocks) == 2 else None, "cleanup1_wall": blocks[0]["cleanup"]["wall_seconds"] if len(blocks) == 2 else None, "final_cleanup_wall": blocks[1]["cleanup"]["wall_seconds"] if len(blocks) == 2 else None, "transition_wall": result.get("block1_to_block2_transition_seconds"), "snapshots": snapshots, "min_free": min(x["free_memory_percent"] for x in snapshots.values()), "peak_swap": max(x["swap_used_mb"] for x in snapshots.values()), "full_weight_persistence_bytes": result.get("full_weight_persistence_bytes"), "correctness_pass": result.get("correctness_pass"), "generated_sequence_equal": result.get("generated_sequence_equal"), "cleanup_cadence": result.get("cleanup_cadence"), "custom_qmv": custom, "final_cleanup_recovery": recovery})
