@@ -202,10 +202,17 @@ Promotion target: ~20 token/s.
 - [x] `STRETCH_038_CLEANUP_CADENCE_PASS`: CONTROL `13.245044 tok/s`, TREATMENT `13.990655 tok/s`, ratio `1.056294` (+5.629362%); total-wall ratio `0.946706` (5.329353% reduction); min free `24%`, peak swap `2127.88 MB`, stable final-cleanup recovery/no cumulative problematic cache growth
 - [x] Promote frozen M1 S1_R8 + one explicit cleanup every two M5 blocks (cadence reduced from 2 to 1 cleanup / 10 accepted tokens; cleanup not eliminated); preserve result `research/stretch/s1r8-deferred-cleanup-038-result.md` and evidence `results-local/stretch/s1r8-deferred-cleanup-038-comparison/20260820-224921/summary.json`
 
-### Stretch 039+ — CONDITIONAL
+### Stretch 039 — GQA shared-KV SDPA feasibility — INVESTIGATION_ONLY
+- [x] Pin/audit local MLX v0.31.2 SDPA source and capture unchanged real Qwen3 M5 inputs at layers 0/18/35: Q `[1,32,5,128]`, K/V `[1,8,9,128]`, BF16, GQA4, causal/no array mask, scale `1/sqrt(128)`
+- [x] Establish exact M1 `g` single-pass `sdpa_vector_bfloat16_t_128_128_nomask_qt_c_nosinks` launch `[32,5,1]` x 1024 threads; 2-pass GQA threshold is 4096, so 9/256/1024/2048 remain single-pass
+- [x] Measure canonical SDPA (40 excluded warmups, 120 synchronized samples/side): layer 0/18/35 medians 371.979/447.187/363.979 µs; 36-layer estimate 14.198 ms/M5 block = 3.973% of promoted target wall, below the 5% upside gate even under total-elimination arithmetic
+- [x] Audit logical GQA duplicate K/V loads but distinguish them from unproven physical DRAM traffic/cache behavior; canonical four Q heads occupy separate 1024-thread groups and cannot share threadgroup memory
+- [x] Attempt required process-local canonical clone; it is non-bit-exact/non-representative on every real payload, so its timings are invalid and no treatment is admitted
+- [x] `STRETCH_039_GQA_SHARED_KV_SDPA_INVESTIGATION_ONLY`; no shared-KV treatment, MLX patch, preregistration, integration or ABBA. Preserve `research/stretch/gqa-shared-kv-sdpa-039-feasibility.md`
+
+### Stretch 040+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; S1_R8 beat fresh built-in MLX CONTROL in Stretch 037; retain both decisions for their frozen scopes
-- [ ] Do not rerun Stretch 037, Stretch 038 feasibility, or the completed Stretch 038 ABBA. Select a new independent factor only after separate authorization. Do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, or MLX 0.32 runtime comparison without a new authorization
-- [ ] Consider attention/SDPA separately after geometry decision
+- [ ] Do not rerun Stretch 037, Stretch 038 feasibility/the completed ABBA, or Stretch 039. Select a new independent factor only after separate authorization. Do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, MLX 0.32 runtime comparison, or this GQA shared-KV idea without a new authorization
 - [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
 - [ ] Real drafter only after target-side architecture is sufficiently optimized
 - [ ] Measure real acceptance and end-to-end tok/s including draft/rejection/rollback

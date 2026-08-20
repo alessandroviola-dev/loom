@@ -381,12 +381,43 @@ cleanup eliminated. Artifacts:
 `scripts/stretch_s1r8_deferred_cleanup_comparison_038.py`, and the evidence
 root above. Preserve feasibility and preregistration unchanged.
 
+## Stretch 039 — GQA shared-KV SDPA feasibility — INVESTIGATION_ONLY
+
+Exact local MLX v0.31.2 source (`68cf2fddd8de5edd8ab3d926391772b2e2cedad8`)
+and process-local observation of the unchanged Qwen3 SDPA helper captured real
+M5 inputs at layers 0/18/35: Q `[1,32,5,128]` BF16, K/V `[1,8,9,128]` BF16,
+GQA4, causal/no array mask and scale `1/sqrt(128)`. Q is the accepted Qwen3
+transposed layout; K/V are 256-token KVCache allocations sliced to nine.
+
+On M1 `applegpu_g13g`, `q_len=5` selects single-pass
+`sdpa_vector_bfloat16_t_128_128_nomask_qt_c_nosinks`, launched as `[32,5,1]`
+1024-thread groups (32 SIMD groups each). The M1 `g` suffix does not take the
+`d`/`s` 1024 two-pass threshold; GQA routes at `kv_len >=4096`, so 9/256/1024/
+2048 remain single-pass.
+
+Built-in SDPA medians were 371.979/447.187/363.979 µs (layers 0/18/35; 40
+warmups and 120 synchronized samples/side). Their mean gives 14.198 ms per
+36-layer M5 block, 3.973% of promoted Stretch-038 wall; even eliminating all
+of that is below the >=5% target-upside gate. Source shows four Q heads
+logically reload the same K/V head across separate threadgroups, but cannot
+prove physical DRAM traffic because hardware cache reuse is unspecified. A
+four-head explicit shared-memory group would require 4096 threads; TG memory
+cannot cross the canonical independent 1024-thread groups.
+
+The required process-local canonical clone did not pass: its results were
+non-bit-exact on all real payloads, so its apparent timing advantage is
+invalid/non-representative. No treatment, integration, MLX patch,
+preregistration or full-model ABBA was created. Classification:
+`STRETCH_039_GQA_SHARED_KV_SDPA_INVESTIGATION_ONLY`. Artifact:
+`research/stretch/gqa-shared-kv-sdpa-039-feasibility.md`; evidence:
+`results-local/stretch/gqa-shared-kv-sdpa-039-feasibility/20260820-210451/summary.json`.
+
 ## Exact next step
 
-Checkpoint: `STRETCH_038_CLEANUP_CADENCE_PASS_CHECKPOINT_REVIEW`.
-Review the committed/pushed Stretch 038 result and promoted frozen cadence. Do
-not rerun Stretch 037, Stretch 038 feasibility, or the Stretch 038 ABBA. A new
-independent factor requires separate authorization.
+Checkpoint: `STRETCH_039_GQA_SHARED_KV_SDPA_INVESTIGATION_ONLY_CHECKPOINT_REVIEW`.
+Do not rerun Stretch 037, Stretch 038, or Stretch 039. Preserve the frozen
+S1_R8 + one-cleanup-every-two-M5-block baseline. Any new independent factor
+requires separate authorization.
 
 ### Historical Stretch 031 rationale
 
