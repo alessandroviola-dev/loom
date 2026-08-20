@@ -148,7 +148,7 @@ def patched_source(repo: Path) -> str:
             raise RuntimeError(f"STRETCH038_CORRECTNESS_FAIL {record}")
         return record
 
-    __stretch038_results["warmup"].update({"correctness_pass": bool(prompt_parity["pass"] and prompt_parity["token_equal"] and all(p["pass"] and p["top1_equal"] for p in step_parities) and generated_sequence_equal), "accepted_tokens": sum(record["accepted_count"] for record in stream_token_records), "full_weight_persistence_bytes": hotset_record["materialized_delta_bytes"] + shared_persistence_record["materialized_delta_bytes"], "cleanup_walls": [record["pass"]["stages"]["shared_stage_cleanup"]["wall_seconds"] for record in stream_token_records]})
+    __stretch038_results["warmup"].update({"correctness_pass": bool(prompt_parity["pass"] and prompt_parity["token_equal"] and all(p["pass"] and p["top1_equal"] for p in step_parities) and resident_generated_tokens == stream_generated_tokens), "accepted_tokens": sum(record["accepted_count"] for record in stream_token_records), "full_weight_persistence_bytes": hotset_record["materialized_delta_bytes"] + shared_persistence_record["materialized_delta_bytes"], "cleanup_walls": [record["pass"]["stages"]["shared_stage_cleanup"]["wall_seconds"] for record in stream_token_records]})
     for __stretch038_cycle_number, __stretch038_kind in enumerate(%s, 1):
         __stretch038_results["cycles"].append(__stretch038_cycle(__stretch038_kind, __stretch038_cycle_number))
     __stretch038_cleanup_enabled = True
