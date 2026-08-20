@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_037_M1_QMV_FAST_TUNING_GO_PREREGISTRATION_READY`
+Current checkpoint: `STRETCH_037_M1_QMV_FAST_TUNING_PREFLIGHT_HARNESS_FAILURE`
 
 ## Mission
 
@@ -286,9 +286,15 @@ Four bounded execution-geometry variants were preregistered before timing. `s1_r
 
 Classification: `STRETCH_037_M1_QMV_FAST_TUNING_GO`. A separate review-ready preregistration exists, but no source integration or ABBA is authorized by feasibility alone. Artifacts: `research/stretch/m1-qmv-fast-tuning-037-feasibility.md`, `research/stretch/m1-qmv-fast-tuning-037-plan.md`; evidence: `results-local/stretch/m1-qmv-fast-tuning-037-feasibility/20260820-211047/summary.json`.
 
+## Stretch 037 full-model launch — PREFLIGHT HARNESS FAILURE / SCIENTIFIC RESULT NONE
+
+The feasibility/preregistration, methodological amendment, and exact prepared runtime/harness were separately committed and pushed before launch (`41397e9`, `5f3ff44`, `3a517ab`). The scientific harness `results-local/stretch/m1-qmv-fast-tuning-037/20260820-212659/` then failed before any constituent: it called its mandatory `render_preflight(..., root/"preflight")` without creating that child directory, so writing `preflight/control-final.py` raised `FileNotFoundError`. The outer result is `M1_QMV_FAST_TUNING_COMPARISON_INCOMPLETE`, scientific result NONE. No CONTROL/S1_R8 process, full-model logit/top-1/oracle gate, accepted token, timing, cleanup, resource metric, or scientific JIT observation exists.
+
+This is harness-only, not a numerical or performance result. Per frozen stop rule, no retry, source fix, rescue geometry, partial ABBA, or threshold change was performed. Preserve the failure and current canonical built-in qmv path. Result: `research/stretch/m1-qmv-fast-tuning-037-result.md`.
+
 ## Exact next step
 
-Review and explicitly approve the separate Stretch-037 preregistration before creating the isolated treatment integration/preflight and any full-model ABBA. Do not rerun persistent BF16 caching or alter the canonical runtime until that approval.
+Do not retry Stretch 037. A future explicit authorization must first permit a distinct dispatch/preflight harness revision that creates/verifies its evidence directory before rendering, then require a fresh complete preflight and a new ABBA; no constituent from this failure may be reused.
 
 ### Historical Stretch 031 rationale
 
@@ -358,7 +364,7 @@ If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common
 
 ## Exact next step
 
-Do not rerun Stretch 031 geometry, Stretch 032 row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm, Stretch 036 persistent dequantized BF16 projection caching, or a 0.32 full-runtime comparison. Stretch 037 has feasibility GO only: review and explicitly approve `research/stretch/m1-qmv-fast-tuning-037-plan.md` before any isolated treatment integration/preflight or full-model ABBA. Preserve M5 monolithic qmv_fast affine quantized matmul and canonical separate residual add + `mx.fast.rms_norm` until then, retaining the venv-launcher regression guard.
+Do not rerun Stretch 031 geometry, Stretch 032 row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm, Stretch 036 persistent dequantized BF16 projection caching, or a 0.32 full-runtime comparison. Stretch 037 full-model launch stopped at a harness preflight failure with scientific result NONE; do not retry it. Preserve M5 monolithic qmv_fast affine quantized matmul and canonical separate residual add + `mx.fast.rms_norm`. A new explicit authorization is required for a distinct preflight-harness revision and fresh ABBA, retaining the venv-launcher regression guard.
 
 ## Other track
 

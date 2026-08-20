@@ -169,13 +169,15 @@ Promotion target: ~20 token/s.
 - [x] `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`; no scientific plan/ABBA/cache integration; retain canonical monolithic M5 qmatmul
 - [x] Preserve `research/stretch/persistent-dequantized-projection-036-feasibility.md`
 
-### Stretch 037 — M1-specific qmv_fast execution geometry — FEASIBILITY GO
+### Stretch 037 — M1-specific qmv_fast custom implementation — FEASIBILITY GO / LAUNCH INCOMPLETE
 - [x] Audit exact MLX v0.31.2 M1 qmv_fast source and classify immutable packing/affine/reduction invariants versus neutral output-row execution geometry
 - [x] Implement process-local canonical `mx.fast.metal_kernel` clone for BF16 affine 3-bit/group64 non-batched M5; all q/k/v/o/gate/up/down real-payload probes bit-exact, worst clone/canonical median `1.006870`
 - [x] Predeclare and measure exactly four bounded variants; `s1_r8` is bit-exact and improves gate/up/down, with matched Stretch-028 MLP estimate `+5.2120%` of canonical Stretch-031 block wall
 - [x] No installed runtime change, persistent cache, model integration, preflight or full-model ABBA
-- [x] Prepare review-ready `research/stretch/m1-qmv-fast-tuning-037-plan.md`; explicit approval required before treatment integration/ABBA
-- [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-feasibility.md`
+- [x] Prepare review-ready `research/stretch/m1-qmv-fast-tuning-037-plan.md`; methodological amendment correctly freezes built-in MLX implementation → custom S1_R8 implementation as the factor
+- [x] Commit/push amendment and prepared runtime/harness before launch (`5f3ff44`, `3a517ab`)
+- [x] Preserve fresh mandatory preflight harness failure `20260820-212659`: missing `preflight/` evidence directory before render; no CONTROL/S1_R8 constituent began, scientific result NONE, no retry
+- [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-feasibility.md` and `research/stretch/m1-qmv-fast-tuning-037-result.md`
 
 ### Stretch 038+ — CONDITIONAL
 - [x] M5 beat M2 in Stretch 031; retain M5 geometry and move only to another independently preregistered compute factor
