@@ -5,7 +5,7 @@ Status: ACTIVE — Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_030_MLX_0312_0320_RUNTIME_COMPARISON_FIX2_READY`
+Current checkpoint: `STRETCH_030_MLX_0312_0320_RUNTIME_COMPARISON_FIX3_READY`
 
 ## Mission
 
@@ -19,21 +19,21 @@ Interactive promotion target: approximately **20 token/s**. This is a promotion 
 ## Research rules
 
 - One scientific factor at a time.
-- Preserve valid PASS, scientific FAIL and harness/setup defects.
+- Preserve PASS, scientific FAIL and harness/setup defects.
 - No post-hoc gate weakening, hidden rescue ladders or automatic retries.
 - Runtime abort where inherited: free memory <5% OR swap >5600 MB.
 - Launch gate where preregistered: free memory >=60%, swap <=5600 MB.
 - System-wide free memory/swap are decisive; process RSS is diagnostic.
 - No deliberate macOS cache purge to manufacture host state.
 - Balanced within-experiment ratios are causal evidence; absolute cross-experiment throughput is host/cache-state dependent.
-- Runtime/model upgrades are separate preregistered factors and never rewrite historical evidence.
+- Runtime/model upgrades are separately preregistered and never rewrite historical evidence.
 - Update HANDOFF and ROADMAP after meaningful checkpoints.
 
 ## Frozen model / historical runtime
 
 Model: `results-local/mlx/models/Qwen3-8B-3bit/model.safetensors`
 
-Qwen3:
+Qwen3 geometry:
 - hidden 4096
 - 36 layers
 - vocab 151936
@@ -49,7 +49,7 @@ Historical canonical runtime through Stretch 029:
 - transformers 5.12.1
 - Python 3.13.0.
 
-Canonical MLX interpreter:
+Canonical MLX venv/interpreter:
 `results-local/mlx/venv-mlx-lm-0.31.3/bin/python`
 
 Raw weights:
@@ -61,13 +61,6 @@ Raw weights:
 - LM head `272,269,312 B`.
 
 Ordinary BF16 KV remains frozen.
-
-## Other track
-
-Amplify remains queued behind Stretch. Frozen next work:
-- `research/amplify/capability-amplifier-004-compact-feedback-plan.md`
-- `scripts/capability_amplifier_004_compact_feedback.py`
-- blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`.
 
 ## Canonical Stretch evidence
 
@@ -85,7 +78,6 @@ Decision: M5 is maximum demonstrated exact oracle block under MLX 0.31.2.
 
 ### Stretch 018 — M4/M5 cost — COMPLETE PASS
 
-`M4_M5_BALANCED_TARGET_COST_COMPARISON_PASS`
 - M5/M4 `1.09795340695x` (~+9.80%).
 
 ### Stretch 019–022 — transformer residency — COMPLETE
@@ -96,12 +88,11 @@ Controlled gains:
 - H24 -> H32 ~+11.45%
 - H32 -> H36 ~+10.50%.
 
-Decision: H36 is physical transformer-residency ceiling.
+Decision: H36 is the physical transformer-residency ceiling.
 
 ### Stretch 023 — full raw-weight persistence — COMPLETE PASS
 
 Valid Fix1 `20260820-153308`:
-`M5_H36_SHARED_STAGE_BALANCED_COMPARISON_PASS`
 - PERSISTENT/STREAMED `1.5988607374x` (~+59.89%).
 
 Decision: freeze M5 + H36 + full persistence.
@@ -114,7 +105,7 @@ Valid Fix2 `20260820-160140`:
 - MLP `0.5874170703 s/block`
 - old per-layer cleanup `0.9268928333 s/block`.
 
-Decision: optimize cleanup schedule first.
+Decision: cleanup/framework first.
 
 ### Stretch 025–027 — cleanup schedule — COMPLETE
 
@@ -125,7 +116,6 @@ Decision: optimize cleanup schedule first.
 - SHARED_BATCHED/BATCHED `1.1410704391x` (~+14.11%).
 
 027 valid `20260820-163715`:
-`FULL_PERSISTENT_SINGLE_PASS_CLEANUP_COMPARISON_PASS`
 - SINGLE_PASS/SHARED_BATCHED `1.0867142144x` (~+8.67%)
 - pooled `12.7306853225 token/s`
 - median block `0.396305 s`.
@@ -139,42 +129,40 @@ blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`.
 ### Stretch 028 — compute re-attribution — COMPLETE PASS
 
 Valid `20260820-164802`:
-`SINGLE_PASS_COMPUTE_REATTRIBUTION_PASS`
 - transformer compute `0.4496960012 s/block`
 - attention path `0.1231006118 s/block`
 - MLP path `0.3265953895 s/block`
 - MLP/attention `2.6530769000x`
 - up/attention/gate/down each ~0.095–0.099 s/block.
 
-Decision: true transformer compute is now primary target.
+Decision: true transformer compute is primary target.
 
 ### Stretch 029 — gate+up fusion — COMPLETE PASS / NOT PROMOTED
 
-Initial `20260820-170503`: harness defect, no science.
+Initial `20260820-170503`: harness defect / no science.
 
-Valid fresh Fix1 ABBA `20260820-171714`:
-`GATE_UP_QUANTIZED_FUSION_BALANCED_COMPARISON_PASS`
+Valid Fix1 ABBA `20260820-171714`:
 - CONTROL `13.2286272786 token/s`
 - FUSED `12.3523991241 token/s`
 - FUSED/CONTROL `0.9337627302x` (~6.62% slower)
 - FUSED exact at M5
-- median wall ~8.62% higher.
+- FUSED median wall ~8.62% higher.
 
-Decision: do not promote fusion; Stretch 027 remains preferred 0.31.2 architecture.
+Decision: do not promote; fusion path closed under MLX 0.31.2. Stretch 027 remains preferred 0.31.2 architecture.
 
-Result:
+Canonical result:
 `research/stretch/gate-up-quantized-fusion-029-result.md`
 
-## Stretch 030 — coherent MLX 0.31.2 vs 0.32.0 — FIX2 READY
+## Stretch 030 — coherent MLX 0.31.2 vs 0.32.0 — FIX3 READY
 
 Scientific question:
-Does changing only the coherent macOS MLX runtime pair (`mlx` + `mlx-metal`) from 0.31.2 to 0.32.0 preserve M5 correctness and improve target-verification cost?
+Does changing only the coherent macOS MLX runtime pair (`mlx` + `mlx-metal`) from 0.31.2 to 0.32.0 preserve frozen M5 correctness and improve target-verification cost?
 
-Scientific factor only:
+Scientific factor:
 - CONTROL: mlx 0.31.2 + mlx-metal 0.31.2
 - TREATMENT: mlx 0.32.0 + mlx-metal 0.32.0.
 
-Frozen:
+Frozen besides runtime:
 - Qwen3-8B 3-bit/group64
 - M5
 - H36
@@ -190,13 +178,14 @@ Frozen:
 - resource/I-O policy
 - no cache purge.
 
-### Setup history
+### Environment Setup Fix1 — VALID / PRESERVED
 
-Original setup failed before science because shell `python3` was not the canonical LOOM interpreter. Preserved as setup defect / scientific result NONE.
+Original shell-Python setup failed before science because shell `python3` was not the canonical LOOM venv. Scientific result NONE.
 
-Setup Fix1 then completed successfully on 2026-08-20:
+Setup Fix1 then passed and must **not** be rerun.
 
-CONTROL validated:
+CONTROL venv:
+`results-local/mlx/venv-mlx-lm-0.31.3`
 - mlx 0.31.2
 - mlx-metal 0.31.2
 - mlx-lm 0.31.3
@@ -204,59 +193,64 @@ CONTROL validated:
 - numpy 2.5.2
 - safetensors 0.8.0.
 
-TREATMENT clone validated:
+TREATMENT clone:
 `.venvs/stretch030-mlx0320-fix1`
 - mlx 0.32.0
 - mlx-metal 0.32.0
-- all tracked non-runtime packages identical.
+- tracked non-runtime package versions identical.
 
-Setup Fix1:
+Setup utility:
 `scripts/stretch_mlx_0320_env_setup_030_fix1.py`
 blob `dfcc05aa6f730756056a75d5bf867bbd717ac31f`.
 
-**Do not rerun setup and do not modify either venv.**
-
 ### Runner Fix1 defect — NO SCIENCE
 
-Runner Fix1 aborted before attempt 1 with:
+Fix1 stopped before Attempt 1 because its invariant required nonexistent `MLX_0320_RUNTIME_NUMERICAL_PARITY_FAIL`; the frozen class is `MLX_0320_RUNTIME_EXACTNESS_FAIL`.
 
-`Stretch 030 Fix1 runner invariant failed; missing ['"MLX_0320_RUNTIME_NUMERICAL_PARITY_FAIL"']`
+Preserved:
+`research/stretch/mlx-0312-0320-runtime-comparison-030-runner-defect-20260820-1738.md`.
 
-The frozen valid classification is `MLX_0320_RUNTIME_EXACTNESS_FAIL`.
+### Runner Fix2 defect — NO SCIENCE
 
-No ABBA constituent launched; scientific result NONE.
+Fix2 also stopped before Attempt 1 at environment provenance.
 
-Defect record:
-`research/stretch/mlx-0312-0320-runtime-comparison-030-runner-defect-20260820-1738.md`
+Observed CONTROL executable became framework Python with MLX packages MISSING, despite the canonical venv path being selected.
 
-A second pre-run issue was identified before rerun: historical Stretch 027 ultimately hard-codes the inner MLX child to the canonical 0.31.2 venv. Merely launching Stretch 027 with treatment Python would therefore not guarantee a real runtime comparison.
+Root cause:
+- Fix2 used `(repo / CONTROL_VENV / "bin/python").resolve()`;
+- on macOS the venv `bin/python` is a symlink;
+- resolving it before execution dereferenced to `/Library/Frameworks/Python.framework/...` and lost venv identity.
 
-### Runtime-portable common workload
+The same issue existed in the portable inner-child path via `Path(sys.executable).resolve()` and was identified before any child launch.
 
-`scripts/stretch_runtime_portable_single_pass_030.py`
-blob `16243fd78a6eb5a831c426e0c1e432a4f45db988`.
+Preserved defect:
+`research/stretch/mlx-0312-0320-runtime-comparison-030-runner-defect-fix2-20260820-1745.md`.
 
-Harness-only changes applied identically to both variants:
-1. inner child interpreter becomes `Path(sys.executable).resolve()` instead of historical hard-coded canonical venv;
-2. inner version preflight accepts only preregistered mlx `{0.31.2, 0.32.0}`, while retaining exact mlx-lm 0.31.3 and Transformers 5.12.1 locks.
+### Portable workload Fix1
 
-The model workload itself is unchanged from Stretch 027.
+`scripts/stretch_runtime_portable_single_pass_030_fix1.py`
+blob `44251a524c77a379f43445444fa8a2643f1bfbdf`.
 
-### Balanced runner Fix2
+Harness-only behavior:
+- retains the previous two-version portable preflight (`mlx` only 0.31.2 or 0.32.0; mlx-lm/Transformers fixed);
+- changes inner child path from `Path(sys.executable).resolve()` to `Path(sys.executable)`;
+- preserves the selected venv through the child process boundary;
+- scientific Stretch 027 workload unchanged.
 
-`scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix2.py`
-blob `6dd993418bff0bf9ec65c6b9a80f4bb382eb4976`.
+### Balanced runner Fix3
 
-Fix2:
-- uses validated setup Fix1 venvs;
-- executes the same portable workload blob in both variants;
-- CONTROL outer/inner child must report mlx 0.31.2;
-- TREATMENT outer/inner child must report mlx 0.32.0;
-- child runtime provenance mismatch is harness INCOMPLETE, never scientific FAIL;
-- correct treatment exactness classification is `MLX_0320_RUNTIME_EXACTNESS_FAIL`.
+`scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix3.py`
+blob `108aed0e7e66fafe9b3213e33a57c34f9e0602d2`.
 
-Preregistration amendment:
-`research/stretch/mlx-0312-0320-runtime-comparison-030-harness-fix2.md`
+Harness-only changes over Fix2:
+- common workload -> portable Fix1 blob above;
+- CONTROL path uses `repo / CONTROL_VENV / "bin/python"` without `.resolve()`;
+- TREATMENT keeps `.venvs/stretch030-mlx0320-fix1/bin/python`;
+- child runtime provenance remains mandatory;
+- fresh result root `mlx-0312-0320-runtime-comparison-030-fix3`.
+
+Fix3 preregistration:
+`research/stretch/mlx-0312-0320-runtime-comparison-030-harness-fix3.md`.
 
 Balanced order remains:
 `MLX0312 -> MLX0320 -> MLX0320 -> MLX0312`.
@@ -264,23 +258,30 @@ Balanced order remains:
 Outcome policy:
 - first genuine MLX0320 numerical/top-1/oracle failure => `MLX_0320_RUNTIME_EXACTNESS_FAIL`, valid scientific FAIL, stop/no rescue;
 - complete exact ABBA => `MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`;
-- environment/harness/resource/provenance problem => `MLX_0312_0320_RUNTIME_COMPARISON_INCOMPLETE`.
+- environment/harness/resource/runtime-provenance issue => `MLX_0312_0320_RUNTIME_COMPARISON_INCOMPLETE`.
 
 ## Exact next step
+
+Do not rerun setup. Do not run runner Fix1 or Fix2.
 
 ```bash
 cd "<repository-root>"
 git pull --ff-only
-python3 -m py_compile scripts/stretch_runtime_portable_single_pass_030.py
-python3 -m py_compile scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix2.py
-python3 scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix2.py
+python3 -m py_compile scripts/stretch_runtime_portable_single_pass_030_fix1.py
+python3 -m py_compile scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix3.py
+python3 scripts/stretch_mlx_0312_0320_runtime_comparison_030_fix3.py
 ```
-
-Do not rerun Setup Fix1. Do not run runner Fix1. No package install should occur in this scientific run.
 
 ## After Stretch 030
 
-- If 0.32.0 exact + faster: freeze 030, then separately remap M exactness boundary under 0.32.0.
+- If 0.32.0 is exact + faster: freeze 030, then separately remap M exactness boundary under 0.32.0.
 - If exact + flat/slower: retain 0.31.2 and choose another compute factor.
 - If exactness FAIL: preserve it; no mixed-package rescue.
 - Real drafter integration remains separate; current rates are oracle-verification upper bounds.
+
+## Other track
+
+Amplify remains queued behind Stretch:
+- `research/amplify/capability-amplifier-004-compact-feedback-plan.md`
+- `scripts/capability_amplifier_004_compact_feedback.py`
+- blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`.
