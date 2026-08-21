@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000I_TARGETED_RECLAMATION_PASS`
+Current checkpoint: `CAPABILITY_000J_INFRASTRUCTURE_INCOMPLETE_WITH_ALLOCATOR_CACHE_PRESSURE`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -12,66 +12,47 @@ Pi is reserved for code/tests. ChatGPT owns research direction and repository/pr
 
 ## Canonical 8B baseline
 
-Qwen3-8B, affine 3-bit/group64, BF16 KV, MLX 0.31.2.
-
-REALGEN 001: 13.184615357 tok/s real generation, 12.046861457 tok/s E2E, raw weights 3,583,928,320 B.
-
-REALGEN 002 custom M1 qmv transfer: exact but -9.178832%; closed.
-
-Pure full-model layer streaming saves RAM and destroys throughput; it is not the endpoint.
+Qwen3-8B, affine 3-bit/group64, BF16 KV, MLX 0.31.2. REALGEN 001 = 13.184615357 tok/s real generation and 12.046861457 tok/s E2E.
 
 ## A — Capability baseline — ACTIVE
 
-### CAPABILITY 000C — prefill frontier
+### 000C — prefill frontier
 
-Step 512 dominates canonical 2048 on the exact Pi prefill:
-- 512: 23.74 s, 63.36 tok/s, 4089.8 MB peak, bit-exact
-- 2048: 27.91 s, 53.88 tok/s, 4180.1 MB peak, bit-exact
-- 256: 28.24 s, 3980.7 MB peak, top1 same but not bit-exact
+Step 512 dominates canonical 2048 on the exact Pi prefill and remains the active integrated-agent candidate.
 
-512 remains the active integrated-agent candidate.
+### 000H — sequential accumulation
 
-### 000D–000G — bridge + host lifecycle
+All captured R1-R6 requests pass fresh. Sequential R2 fails because R1 leaves +468.30 MiB active request-boundary MLX state.
 
-A genuine Pi tool turn works. Later failures are not caused by intrinsic ~1500-1800-token request size. Host/process teardown is healthy and macOS naturally recovers launch headroom within ~3-5 s.
+### 000I — targeted request-local reclamation PASS
 
-### CAPABILITY 000H — sequential accumulation
+The stale completed `GenerationBatch.Response.prompt_cache` retains finished-request KV. Targeted detach recovers 252.00 MiB active MLX and lowers R2 peak by 98.50 MiB without semantic/tool changes or global cleanup.
 
-All captured R1-R6 requests pass fresh. Sequential R2 fails only because R1 leaves +468.30 MB MLX active boundary state. This rules out later prompt size, KV-capacity jumps and host admission variability as the primary cause.
+### 000J — full-sequence validation incomplete
 
-### CAPABILITY 000I — TARGETED RECLAMATION PASS
+The same detach again recovers 252.00 MiB active after R1, but allocator cache rises from ~231 to ~483 MiB and reaches ~713 MiB during R2. R2 still crosses the 4% free-memory gate. Therefore the request-local fix is valid but not sufficient by itself.
 
-Report: `research/capability/capability-000i-targeted-reclamation-result.md`.
+Report: `research/capability/capability-000j-full-sequence-reclamation-result.md`.
 
-Precise cause:
-`ResponseGenerator._generate` retains the finished local `gen_responses`; its completed `GenerationBatch.Response.prompt_cache` keeps 36 request KVCache objects alive after HTTP completion.
+### 000K — NEXT
 
-Targeted post-response detach of only this stale `prompt_cache`:
-- recovers **252.00 MiB active MLX** (53.81% of the observed +468.30 MiB residual);
-- lowers R2 peak by **98.50 MiB** (4194.45 -> 4095.95 MiB);
-- preserves R1 response/tool behavior and R2 first tool call;
-- uses no `mx.clear_cache()`, `gc.collect()` or global cleanup.
+Frozen plan: `research/capability/capability-000k-allocator-cache-boundary-plan.md`.
 
-Caveat: allocator cache rises when active memory is released, and the two-turn system-free percentage did not improve. Full-sequence validation is required before integrated promotion.
+One new factor only: after the already-proven 000I targeted stale-response detach, explicitly clear MLX allocator cache at the completed-request boundary using the documented installed API.
 
-### CAPABILITY 000J — NEXT
+Compare detach-only control vs detach + allocator-cache clear on exact R1->R2. Measure:
+- active/cache/system-free change;
+- cache-clear boundary latency;
+- R2 peak/completion;
+- response/tool equivalence.
 
-Frozen plan: `research/capability/capability-000j-full-sequence-reclamation-plan.md`.
+No `gc.collect()`, restart/model reload, host manipulation, or model/context/KV/prompt/tool/prefill changes.
 
-Use exact captured R1-R6 bodies and compare:
-
-1. CONTROL sequential R1->R6 with natural server behavior.
-2. TREATMENT sequential R1->R6 with only the 000I stale-response `prompt_cache` detach after each completed response.
-
-Measure per-turn active/cache boundaries, peak MLX, system free/swap and semantic/tool-call equivalence.
-
-No global cleanup or model/context/KV/prompt/tool/prefill-step changes.
-
-Full PASS requires all six treatment requests to complete safely. Partial GO is allowed if the exact treatment materially extends the safe sequence but later still hits the resource floor.
+If 000K passes, validate the mechanism across R1-R6 before integrated Pi reproducibility. If it fails, choose the next memory factor from the measured residual rather than changing model size by default.
 
 ### CAPABILITY 001 — BLOCKED
 
-Frozen 12-task suite: coding + Git safety + experiment/result reasoning. Run only after the integrated bridge has reproducible multi-turn headroom.
+Frozen 12-task coding + Git safety + experimental-reasoning baseline. Run only after reproducible multi-turn headroom exists.
 
 ## B — RAM/speed frontier
 
@@ -79,43 +60,34 @@ After CAPABILITY 001, run MEMORY-FRONTIER 001 with controlled partial residency 
 
 ## C — Hide SSD cost
 
-Then isolate:
-1. asynchronous prefetch
-2. double/triple buffering
-3. transfer/super-layer chunk sizing
-4. direct safetensors range I/O / mmap / pread
-5. macOS page-cache behavior
-6. resident-hotset selection
+Then isolate async prefetch, double/triple buffering, transfer chunk sizing, direct safetensors range I/O, macOS page-cache behavior and resident-hotset selection.
 
 ## D — Amortize I/O across tokens
 
-OUTCORE-BLOCK 001 revisits M>1 specifically for out-of-core models, where one weight load may serve several token positions.
+OUTCORE-BLOCK 001 revisits M>1 for out-of-core execution where one weight load can serve multiple positions.
 
 ## E — Representation without shrinking parameter count
 
-Potential later factors: mixed/selective precision, compressed cold weights, quantized KV and out-of-core storage formats. Judge every representation by memory + speed + capability.
+Later candidates include mixed/selective precision, compressed cold weights, quantized KV and out-of-core storage formats. Judge each by memory + speed + capability.
 
 ## F — Scale beyond 8B
 
-1. solve architecture on well-characterized 8B
-2. apply it to a model whose weights exceed comfortable physical RAM
-3. first major checkpoint: 27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
-4. optimize toward interactive speed
+1. solve architecture on well-characterized 8B;
+2. transfer to models exceeding comfortable physical RAM;
+3. reach 27B/32B-class full-parameter generation on M1 8 GB without OOM;
+4. optimize toward interactive speed.
 
 ## Immediate order
 
-1. CAPABILITY 000J — full-sequence targeted reclamation
-2. integrated Pi-loop admission/reproducibility if 000J justifies promotion
-3. CAPABILITY 001
-4. MEMORY-FRONTIER 001
-5. prefetch/buffering/range-I/O work
-6. OUTCORE-BLOCK 001
-7. scale toward 27B/32B
+1. CAPABILITY 000K allocator-cache boundary test
+2. full-sequence validation if 000K passes
+3. real Pi-loop reproducibility
+4. CAPABILITY 001
+5. MEMORY-FRONTIER 001
+6. prefetch/buffering/range-I/O
+7. OUTCORE-BLOCK 001
+8. scale toward 27B/32B
 
 ## Local-only implementation warning
 
-Recent CAPABILITY scripts/evidence currently exist only in the local worktree and `results-local/`. HANDOFF.md lists known paths. Do not assume they have been committed until explicitly synchronized.
-
-## Final objective
-
-LOOM becomes an execution system that treats RAM + SSD + Apple unified memory + scheduling as one managed hierarchy, allowing models larger than physical RAM to remain genuinely useful.
+Recent CAPABILITY scripts/evidence currently exist only in the local worktree and `results-local/` unless explicitly synchronized.
