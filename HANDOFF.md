@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-21
-Status: ACTIVE — capability bridge admission
+Status: ACTIVE — capability bridge admission / instrumentation repair
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `CAPABILITY_000D_INFRASTRUCTURE_FAILURE_NO_SCIENCE`
-Next: `CAPABILITY_000D_FIX1`
+Current checkpoint: `CAPABILITY_000D_FIX1_PREFLIGHT_FAIL_NO_SCIENCE`
+Next: `CAPABILITY_000D_FIX2_MINIMAL_HARNESS_REPAIR`
 
 Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
@@ -71,11 +71,11 @@ Exact 1504-token prefill frontier:
 - `2048`: 27.91 s, 53.88 tok/s, peak 4180.1 MB, transient 545.9 MB, bit-exact
 - `256`: 28.24 s, peak 3980.7 MB, top1 exact but logits not bit-exact
 
-`512` dominates the canonical 2048 step on this workload: ~17.6% higher prefill throughput and ~90.3 MB lower peak, with bit-exact final logits. It is the admitted candidate for integrated Pi-loop testing, not yet a globally promoted runtime default.
+`512` dominates the canonical 2048 step on this workload: ~17.6% higher prefill throughput and ~90.3 MB lower peak, with bit-exact final logits. It remains the admitted candidate for integrated Pi-loop testing, not yet a globally promoted runtime default.
 
-### CAPABILITY 000D — HARNESS FAILURE / NO SCIENCE
+### CAPABILITY 000D — first integrated attempt — HARNESS FAILURE / NO SCIENCE
 
-First integrated Pi-loop attempt with step 512 failed inside server instrumentation before model prefill/tool execution.
+The first integrated Pi-loop attempt with step 512 failed inside server instrumentation before model prefill/tool execution.
 
 - request length 1518 tokens
 - generated tokens 0
@@ -84,23 +84,58 @@ First integrated Pi-loop attempt with step 512 failed inside server instrumentat
 - peak swap 2288.25 MB
 - peak MLX 3417.901 MB (weights only)
 - no provider fallback
-- Pi automatic retries also failed before model execution
+
+Root cause later recovered in Fix1:
+
+`AttributeError: 'list' object has no attribute 'shape'`
+
+at `scripts/capability_000d_pi_loop.py`, function `watched_prompt`, line 114.
 
 Report: `research/capability/capability-000d-infrastructure-failure.md`.
 
-Interpretation: `prefill_step_size=512` was never exercised. This run consumes no scientific attempt.
+### CAPABILITY 000D Fix1 — PREFLIGHT FAILURE / NO SCIENCE
+
+Fix1 created a list-safe observer using `len(sequence)`, exception-contained observation callbacks and disabled Pi retry settings.
+
+The repaired bridge reached actual model inference in preflight and the canonical local model returned `OK.` to the tiny `Reply exactly OK` request. This proves the original `.shape` server-thread crash was repaired far enough for inference to execute.
+
+However no completed turn-metrics record was produced. Therefore the instrumentation lifecycle remained incomplete and the frozen scientific Pi loop was not started.
+
+The `OK.` vs `OK` punctuation mismatch is **not** treated as a science failure; preflight exists to prove harness health. The real remaining blocker is incomplete/non-closing telemetry.
+
+Preflight only:
+- initial free 57%
+- initial swap 977.44 MB
+- peak MLX 3502.438 MB
+- provider/model identity PASS
+- no fallback observed
+
+Report: `research/capability/capability-000d-fix1-preflight-failure.md`.
+
+Local-only files currently known from Pi and not yet published to GitHub:
+
+- `scripts/loom_pi_mlx_bridge.py`
+- `scripts/capability_000a_memory_attribution.py`
+- `scripts/capability_000b_pi_prefill_attribution.py`
+- `scripts/capability_000c_prefill_frontier.py`
+- `scripts/capability_000d_pi_loop.py`
+- `scripts/capability_000d_fix1_pi_loop.py`
+- raw evidence under corresponding `results-local/capability/...` directories
+
+Do not assume these local files exist on GitHub until explicitly synchronized.
 
 ## Exact next step
 
-Run **CAPABILITY 000D Fix1**:
+Run **CAPABILITY 000D Fix2 — minimal harness repair** only:
 
-1. diagnose the exact server-thread instrumentation exception;
-2. fix only instrumentation/harness code;
-3. preflight the instrumentation without model science where possible;
-4. rerun the identical frozen numbers.txt Pi loop with step 512;
-5. no prompt/model/context/KV/tool/runtime changes.
+1. retain the now-correct list-safe prompt handling;
+2. make all telemetry observational/non-fatal;
+3. ensure request/turn records close successfully in preflight;
+4. preflight PASS criterion is a valid local-model response + complete non-crashing instrumentation, not exact response punctuation;
+5. then rerun the identical frozen numbers.txt Pi loop with `prefill_step_size=512`;
+6. no prompt/model/context/KV/tool/runtime changes.
 
-If functional Pi-loop admission passes, proceed to frozen CAPABILITY 001. If resource failure occurs after actual model execution, treat that as scientific evidence.
+If functional Pi-loop admission passes, proceed to frozen CAPABILITY 001. If resource failure occurs only after actual model execution, that becomes valid scientific evidence.
 
 ## Later
 
