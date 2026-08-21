@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000M_REAL_PI_REPRODUCIBLE_PASS`
+Current checkpoint: `CAPABILITY_001_FROZEN_SUITE_CORRECTED_TO_11`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -14,37 +14,53 @@ Pi is reserved for code/tests. ChatGPT owns research direction and repository/pr
 
 Qwen3-8B, affine 3-bit/group64, BF16 KV, MLX 0.31.2. REALGEN 001 = 13.184615357 tok/s real generation and 12.046861457 tok/s E2E.
 
+The admitted bridge uses `prefill_step_size=512` and, after every fully completed model response, ownership-checks the finished response, detaches only its stale `prompt_cache`, then calls `mx.clear_cache()` exactly once.
+
+Stable bridge source is published at code-sync commit `4d204471aedb9262ccaa3b86f29b0e344d0c2884`.
+
 ## A — Capability baseline — ACTIVE
 
-### Bridge admission — COMPLETE
+### CAPABILITY 000M — REAL PI REPRODUCIBLE PASS
 
-CAPABILITY 000H-000M established the multi-turn memory mechanism and admitted the real Pi bridge.
+Three independent real-Pi attempts passed functionally and strictly 3/3 with no resource aborts or telemetry errors. Minimum system free was 9–11%, minimum post-clear free 16–19%, and post-clear allocator cache remained 0.00 MiB.
 
-Promoted request-boundary policy:
-- detach only the completed response's stale `prompt_cache` after ownership verification;
-- call `mx.clear_cache()` exactly once.
+The bridge is admitted for the capability baseline.
 
-CAPABILITY 000M:
-- real Pi functional 3/3;
-- strict 3/3;
-- zero resource aborts;
-- zero telemetry errors;
-- minimum free 9-11%;
-- minimum post-clear free 16-19%.
+### CAPABILITY 001 — PRE-RUN AUDIT CORRECTION
 
-Stable bridge source is published at commit `4d204471aedb9262ccaa3b86f29b0e344d0c2884`.
+The first CAPABILITY 001 invocation ran no model tasks. Its mandatory frozen-suite audit found a clerical inconsistency:
 
-### CAPABILITY 001 — RUN READY / NEXT
+- frozen spec declared 12 tasks;
+- actually defined identities are C01–C06, G01–G03, E01–E02;
+- total = **11 tasks**.
 
-Frozen 12-task baseline:
-- C01-C06 existing Coding Benchmark 01 v1.0.1;
-- G01 safe fast-forward sync;
-- G02 dirty-tree protection;
-- G03 divergence diagnosis;
-- E01 balanced-ratio interpretation;
-- E02 upper-bound reasoning.
+No twelfth task exists in the inspected canonical benchmark assets.
 
-Frozen runtime:
+Audit classification: `CAPABILITY_001_INFRASTRUCTURE_INCOMPLETE`
+Issue: `FROZEN_TASK_COUNT_MISMATCH`
+
+This is protocol/infrastructure evidence only; it contains no model-quality result.
+
+Report:
+`research/capability/capability-001-pre-run-suite-audit-result.md`
+
+### CAPABILITY 001 — CORRECTED FROZEN BASELINE READY
+
+Task-count amendment:
+`research/capability/capability-001-task-count-amendment.md`
+
+The amendment changes only the clerical count/denominator:
+
+- canonical suite = **11 tasks**;
+- C01–C06 = 6 coding;
+- G01–G03 = 3 Git safety;
+- E01–E02 = 2 experimental reasoning;
+- primary metric = passes / 11.
+
+No task prompt, fixture, expected result, scorer, runtime condition, tool surface or resource rule changes. Do not invent a twelfth task.
+
+Run conditions remain:
+
 - Qwen3-8B full parameter count, 3-bit/group64;
 - BF16 KV;
 - context 4096;
@@ -52,15 +68,12 @@ Frozen runtime:
 - step 512;
 - localhost-only provider;
 - tools read/write/edit/bash;
-- admitted request-boundary reclamation policy.
+- request-boundary detach + one `mx.clear_cache()`;
+- fresh isolated process/session/workspace per task;
+- host free >=60% on two passive samples and swap <=5600 MB before task load;
+- no retry/rescue.
 
-Authority:
-- `research/capability/capability-001-frozen-spec.md`
-- `research/capability/capability-001-context-amendment.md`
-- `research/capability/capability-001-runtime-admission.md`
-- `research/capability/capability-001-run-manifest.md`
-
-Primary metric: task passes / 12. Secondary: existing C01-C06 score /100, critical failures, constraint violations, tool/protocol errors, wall/resource diagnostics. No quality threshold is applied to this baseline; a complete scorable run becomes `CAPABILITY_001_BASELINE_COMPLETE`.
+Classification after all 11 tasks execute/scorable: `CAPABILITY_001_BASELINE_COMPLETE`. There is no quality promotion threshold; the measured score is the baseline.
 
 ## B — RAM/speed frontier
 
@@ -87,7 +100,7 @@ Later candidates include mixed/selective precision, compressed cold weights, qua
 
 ## Immediate order
 
-1. CAPABILITY 001 frozen 12-task baseline
+1. CAPABILITY 001 — corrected 11-task baseline
 2. MEMORY-FRONTIER 001
 3. prefetch/buffering/range-I/O
 4. OUTCORE-BLOCK 001
@@ -95,4 +108,4 @@ Later candidates include mixed/selective precision, compressed cold weights, qua
 
 ## Local-only implementation warning
 
-CAPABILITY 000 experimental harnesses and raw evidence remain local unless explicitly synchronized. The stable bridge source is now published; CAPABILITY 001 may add only its own harness/evidence locally.
+Recent experiment harness scripts/evidence remain local unless explicitly synchronized. The stable bridge source is already published.
