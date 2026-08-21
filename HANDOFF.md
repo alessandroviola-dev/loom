@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-21
-Status: ACTIVE — capability bridge / request-boundary active+allocator reclamation
+Status: ACTIVE — capability bridge / real Pi boundary-reclamation reproducibility
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `CAPABILITY_000K_ALLOCATOR_CACHE_RECLAMATION_PASS`
-Next: `CAPABILITY_000L_FULL_SEQUENCE_BOUNDARY_RECLAMATION`
+Current checkpoint: `CAPABILITY_000L_FULL_SEQUENCE_BOUNDARY_RECLAMATION_PASS`
+Next: `CAPABILITY_000M_REAL_PI_BOUNDARY_RECLAMATION_REPRODUCIBILITY`
 
 Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
@@ -39,95 +39,97 @@ REALGEN 001: 13.184615357 tok/s real generation; 12.046861457 tok/s E2E. REALGEN
 
 Step 512 dominates canonical 2048 on the exact Pi prefill in both memory and speed while remaining bit-exact. Step 256 saves more peak memory but is slower and not bit-exact.
 
-### 000D–000G — bridge / host lifecycle
+### 000D–000G — bridge and host lifecycle
 
 A genuine Pi tool turn works. Later failures are not caused by intrinsic ~1500–1800-token request size. Scientific-process teardown is healthy and macOS naturally recovers >=60% free within ~3–5 s.
 
 ### 000H — sequential accumulation limit
 
-All exact captured R1-R6 requests pass fresh. Sequential R2 fails because R1 leaves +468.30 MiB MLX active request-boundary state. Later prompt size, KV-capacity jumps and host variability are not primary causes.
+All exact captured R1-R6 requests pass fresh. Sequential R2 fails in the critical run because R1 leaves +468.30 MiB MLX active request-boundary state. Later prompt size, KV-capacity jumps and host variability are not primary causes.
 
 ### 000I — targeted request-local reclamation PASS
 
 `ResponseGenerator._generate` retains a completed `GenerationBatch.Response`; its `prompt_cache` keeps finished-request KVCache objects alive after HTTP completion.
 
-Targeted detach of only the stale completed response's `prompt_cache`:
+Ownership-checked detach of only the stale completed response's `prompt_cache`:
 - recovers 252.00 MiB MLX active;
-- lowers R2 peak by 98.50 MiB;
-- preserves response/tool behavior;
-- uses no `gc.collect()` or global allocator cleanup.
+- lowers R2 peak by ~98.5 MiB;
+- preserves response/tool behavior.
 
 Released storage largely moves into MLX allocator cache.
 
-### 000J — full-sequence detach-only validation incomplete
+### 000J — detach-only insufficient
 
-The same targeted detach again recovers 252 MiB active after R1, but allocator cache rises ~231 -> 483 MiB and reaches ~713 MiB during R2. R2 still crosses 4% system free. This proved detach-only is insufficient for system headroom.
+Full-sequence detach-only validation did not extend the safe sequence in that run because allocator cache remained charged against system memory. After R1 detach, active fell 3886.20 -> 3634.20 MiB while allocator cache rose ~231 -> 483 MiB and later ~713 MiB during R2.
 
-Report: `research/capability/capability-000j-full-sequence-reclamation-result.md`.
-
-### 000K — ALLOCATOR CACHE RECLAMATION PASS
+### 000K — allocator-cache reclamation PASS
 
 Report: `research/capability/capability-000k-allocator-cache-reclamation-result.md`.
 
-One new factor was tested after the proven 000I detach: `mlx.core.clear_cache()` (`mx.clear_cache()`) exactly once at the completed-request boundary.
+After the proven stale-response detach, one `mx.clear_cache()`:
+- reclaims 486.23 MiB allocator cache;
+- raises R2 minimum free from 5% to 11% (+6 pp);
+- costs 3.900 ms in the measured boundary;
+- preserves R1/R2 semantics and tool calls;
+- leaves intrinsic R2 MLX peak essentially unchanged.
 
-Measured boundary cost: **3.900 ms**.
+The reported ~0.01 s prefill timings in 000K are non-canonical and are not promoted as performance evidence.
 
-After R1 targeted detach:
-- active 3634.20 MiB
-- allocator cache 486.23 MiB
-- active+cache 4120.43 MiB
+### 000L — FULL-SEQUENCE BOUNDARY RECLAMATION PASS
 
-After one `mx.clear_cache()`:
-- active unchanged 3634.20 MiB
-- allocator cache **0.00 MiB**
-- active+cache 3634.20 MiB
-- recorded system free rises from 12% to 17%, then 19% before R2
+Report: `research/capability/capability-000l-full-sequence-boundary-reclamation-result.md`.
 
-R2:
-- CONTROL detach-only minimum free **5%**
-- TREATMENT detach + clear-cache minimum free **11%**
-- gain **+6 percentage points**
-- R2 completes in both arms
-- semantic/tool equivalence PASS
-- R2 intrinsic MLX peak remains ~4095.95 MiB; treatment improves system headroom rather than intrinsic request peak
-- generation speed effectively unchanged in available measurement
+Exact R1-R6: 1518, 1573, 1634, 1682, 1765, 1820 tokens.
 
-Important telemetry caveat: 000K reported ~0.01 s prefill timing and a derived -24.45% delta. Those numbers are not comparable with the established ~20+ second canonical prefill measurements and are **not accepted as performance evidence**. Only the 3.900 ms cache-clear latency, memory/headroom result and semantic equivalence are promoted.
+Both control and treatment happened to complete R1-R6 in this run, so 000L is not itself a reliability study. The treatment nonetheless shows a clear full-sequence memory advantage.
 
-Interpretation: 000I releases stale completed-request live ownership; 000K returns the resulting allocator cache to system headroom. The combined boundary mechanism is now evidence-backed for R1->R2, but not yet promoted to real Pi until a full R1->R6 sequence validates bounded behavior.
+Overall:
+- CONTROL peak MLX **4230.45 MiB**, minimum free **5%**;
+- TREATMENT peak MLX **4132.64 MiB**, minimum free **10%**;
+- peak reduction **97.81 MiB**;
+- worst-case free-memory gain **+5 pp**;
+- semantic/tool equivalence PASS on R1-R6;
+- no `gc.collect()`.
+
+Treatment after every completed response:
+1. verify ownership of the finished `GenerationBatch.Response`;
+2. detach only its stale `prompt_cache`;
+3. call `mx.clear_cache()` exactly once.
+
+Boundary allocator cache is 0.00 MiB before R2-R6 and after every clear. Clear latency over R1-R6: mean **2.651 ms**, median **2.291 ms**, max **4.237 ms**.
+
+Post-clear active residual over 3417.90 MiB loaded-idle:
+- R1 +216.30 MiB
+- R2-R5 +252.30 MiB
+- R6 +288.30 MiB
+
+Residual is mostly bounded over the six-request sequence, with a modest increase at R6. No long-horizon leak claim is justified yet.
 
 ## Exact next step
 
-Run **CAPABILITY 000L — full-sequence request-boundary reclamation** from:
-`research/capability/capability-000l-full-sequence-boundary-reclamation-plan.md`.
+Run **CAPABILITY 000M — real Pi boundary-reclamation reproducibility** from:
+`research/capability/capability-000m-real-pi-boundary-reclamation-reproducibility-plan.md`.
 
-Compare two fresh processes using exact R1-R6:
-1. CONTROL: natural sequential execution with no treatment;
-2. TREATMENT: after every fully completed response, detach only its proven stale `prompt_cache`, then call `mx.clear_cache()` exactly once.
+Promote the combined boundary mechanism into the actual Pi-integrated localhost bridge for the test only:
+- after every fully completed model response, ownership-check and detach only that completed response's stale `prompt_cache`;
+- call `mx.clear_cache()` exactly once;
+- no other runtime/model/context/KV/prompt/tool/prefill changes.
 
-Primary questions:
-- can treatment complete all R1-R6 without crossing <5% free;
-- does active+cache remain bounded at request boundaries;
-- does each cache clear remain low-cost;
-- are response/tool semantics unchanged.
+Run exactly three independently admitted fresh-process/fresh-Pi attempts of the frozen numbers.txt task. Host gate before each attempt: free >=60% for two consecutive passive samples, swap <=5600 MB. Wait passively for natural recovery between attempts; no purge or host manipulation.
 
-Actual M/prefill/generation instrumentation is optional and must not gate 000L unless measured correctly; the 000K ~0.01 s prefill values are not canonical.
+Only **3/3 functional PASS** admits the boundary-reclamation bridge into CAPABILITY 001. Strict final text `DONE` is tracked separately.
 
-Still forbidden: `gc.collect()`, model reload/restart between requests, model/context/KV/prompt/tool/prefill changes or host-memory manipulation.
-
-If 000L passes, next is real Pi-loop reproducibility with the combined boundary mechanism, then CAPABILITY 001.
+Do not automatically run CAPABILITY 001 after 000M; ChatGPT reviews first.
 
 ## Local-only implementation warning
 
-Recent scripts/evidence remain local unless explicitly synchronized, including CAPABILITY 000A–000K scripts and raw `results-local/capability/...` evidence. Do not assume these files exist on GitHub until explicitly published.
+Recent CAPABILITY scripts/evidence remain local unless explicitly synchronized, including CAPABILITY 000A–000L scripts and raw `results-local/capability/...` evidence. Do not assume those local files exist on GitHub until explicitly published.
 
 ## Later
 
-1. CAPABILITY 000L full-sequence boundary reclamation
-2. real Pi-loop reproducibility with promoted boundary mechanism if justified
-3. CAPABILITY 001 frozen 12-task capability baseline
-4. MEMORY-FRONTIER 001 real M1 RAM/tok/s partial-residency curve
-5. async prefetch/buffering/direct range I/O
-6. OUTCORE-BLOCK 001
-7. scale toward 27B/32B
+1. CAPABILITY 000M real Pi reproducibility with boundary reclamation
+2. CAPABILITY 001 frozen 12-task capability baseline if 000M is 3/3 functional PASS
+3. MEMORY-FRONTIER 001 real M1 RAM/tok/s partial-residency curve
+4. async prefetch/buffering/direct range I/O
+5. OUTCORE-BLOCK 001
+6. scale toward 27B/32B
