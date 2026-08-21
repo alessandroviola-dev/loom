@@ -16,55 +16,33 @@ Qwen3-8B, affine 3-bit/group64, BF16 KV, MLX 0.31.2. REALGEN 001 = 13.184615357 
 
 ## A — Capability baseline — ACTIVE
 
-### 000C — prefill frontier
+### Bridge admission — COMPLETE
 
-`prefill_step_size=512` dominates canonical 2048 on the exact Pi prefill and remains the admitted agent-runtime setting.
+CAPABILITY 000H-000M established the multi-turn memory mechanism and admitted the real Pi bridge.
 
-### 000H — sequential accumulation
+Promoted request-boundary policy:
+- detach only the completed response's stale `prompt_cache` after ownership verification;
+- call `mx.clear_cache()` exactly once.
 
-All captured R1-R6 requests pass fresh. A critical sequential run showed R2 failure because R1 left +468.30 MiB active request-boundary MLX state.
+CAPABILITY 000M:
+- real Pi functional 3/3;
+- strict 3/3;
+- zero resource aborts;
+- zero telemetry errors;
+- minimum free 9-11%;
+- minimum post-clear free 16-19%.
 
-### 000I — targeted request-local reclamation PASS
+Stable bridge source is published at commit `4d204471aedb9262ccaa3b86f29b0e344d0c2884`.
 
-The stale completed `GenerationBatch.Response.prompt_cache` retains finished-request KV. Ownership-checked detach recovers 252.00 MiB active MLX and preserves model/tool behavior.
+### CAPABILITY 001 — RUN READY / NEXT
 
-### 000K — allocator-cache reclamation PASS
-
-After the stale-response detach, one `mx.clear_cache()` reclaims 486.23 MiB allocator cache, raises R2 minimum free from 5% to 11%, costs 3.900 ms at the measured boundary and preserves semantics.
-
-### 000L — full-sequence boundary reclamation PASS
-
-Exact R1-R6 all complete with detach + one `mx.clear_cache()` after every completed response.
-
-Treatment vs control:
-- peak MLX 4132.64 vs 4230.45 MiB;
-- minimum free 10% vs 5%;
-- semantic/tool equivalence PASS;
-- mean clear latency 2.651 ms;
-- boundary allocator cache 0.00 MiB after every clear.
-
-### 000M — REAL PI REPRODUCIBLE PASS
-
-Report: `research/capability/capability-000m-real-pi-reproducibility-result.md`.
-
-Three independent real-Pi attempts with the promoted boundary policy all pass:
-
-- functional 3/3 = 100%;
-- strict 3/3 = 100%;
-- 6 model turns each;
-- no resource aborts;
-- no telemetry errors;
-- minimum free 9–11%;
-- minimum post-clear free 16–19%;
-- post-clear allocator cache 0.00 MiB;
-- mean boundary clear 2.003–2.596 ms;
-- correct `answer.txt=31`, preserved `numbers.txt`, final `DONE` every time.
-
-The bridge admission gate is therefore closed successfully.
-
-### CAPABILITY 001 — READY
-
-Frozen suite: 12 practical agent tasks covering coding, Git safety and experimental reasoning.
+Frozen 12-task baseline:
+- C01-C06 existing Coding Benchmark 01 v1.0.1;
+- G01 safe fast-forward sync;
+- G02 dirty-tree protection;
+- G03 divergence diagnosis;
+- E01 balanced-ratio interpretation;
+- E02 upper-bound reasoning.
 
 Frozen runtime:
 - Qwen3-8B full parameter count, 3-bit/group64;
@@ -74,16 +52,15 @@ Frozen runtime:
 - step 512;
 - localhost-only provider;
 - tools read/write/edit/bash;
-- promoted boundary policy: ownership-checked stale `prompt_cache` detach + one `mx.clear_cache()` after every completed response.
+- admitted request-boundary reclamation policy.
 
-Documents:
+Authority:
 - `research/capability/capability-001-frozen-spec.md`
 - `research/capability/capability-001-context-amendment.md`
 - `research/capability/capability-001-runtime-admission.md`
+- `research/capability/capability-001-run-manifest.md`
 
-Primary result is task passes / 12; secondary coding score /100 and critical/constraint/tool-protocol errors. No quality threshold is applied to this baseline.
-
-Before the run, mechanically publish the promoted local `scripts/loom_pi_mlx_bridge.py` because that stable implementation currently exists only in the user's local worktree.
+Primary metric: task passes / 12. Secondary: existing C01-C06 score /100, critical failures, constraint violations, tool/protocol errors, wall/resource diagnostics. No quality threshold is applied to this baseline; a complete scorable run becomes `CAPABILITY_001_BASELINE_COMPLETE`.
 
 ## B — RAM/speed frontier
 
@@ -110,13 +87,12 @@ Later candidates include mixed/selective precision, compressed cold weights, qua
 
 ## Immediate order
 
-1. mechanically publish promoted `scripts/loom_pi_mlx_bridge.py`
-2. CAPABILITY 001 frozen 12-task baseline
-3. MEMORY-FRONTIER 001
-4. prefetch/buffering/range-I/O
-5. OUTCORE-BLOCK 001
-6. scale toward 27B/32B
+1. CAPABILITY 001 frozen 12-task baseline
+2. MEMORY-FRONTIER 001
+3. prefetch/buffering/range-I/O
+4. OUTCORE-BLOCK 001
+5. scale toward 27B/32B
 
 ## Local-only implementation warning
 
-Recent CAPABILITY scripts/evidence remain local unless explicitly synchronized. The stable bridge source is the only immediate code file that must be published before CAPABILITY 001.
+CAPABILITY 000 experimental harnesses and raw evidence remain local unless explicitly synchronized. The stable bridge source is now published; CAPABILITY 001 may add only its own harness/evidence locally.
