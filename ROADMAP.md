@@ -243,14 +243,24 @@ Promotion target: ~20 token/s.
 
 **REALGEN PHASE ACTIVE.** This operational baseline is not a new optimization factor.
 
-### REALGEN 001 — Qwen3-8B real greedy M1 baseline — COMPLETE / CHECKPOINT_REVIEW
+### REALGEN 001 — Qwen3-8B real greedy M1 baseline — APPROVED / preserved serving baseline
 - [x] Freeze the preceding validated configuration as **TARGET VERIFICATION M5** evidence only; do not claim it produces five unknown future tokens
 - [x] Audit exact S1_R8 source identity: its literal M5 input-shape guard makes it ineligible at M1; retain ordinary built-in MLX M1 qmv_fast
 - [x] Run the frozen six-prompt, 128-token-or-EOS, exact-reference M1/BF16-KV baseline at `results-local/realgen/real-generation-baseline-001/20260821-081022/summary.json`
 - [x] All reference/driver generated-ID sequences exactly match; pooled real M1 generation `13.184615357 tok/s`, pooled end-to-end output `12.046861457 tok/s`
 - [x] Record prefill, TTFT, cleanup, host/MLX/RSS telemetry, M5-verifier distinction, and speculative arithmetic in `research/realgen/real-generation-baseline-001.md`
 - [x] Derive bounded speculative break-even arithmetic: the five-token M5 proposal cannot reach 20 tok/s even at zero draft cost; do not infer a drafter result
-- [ ] Hold at REALGEN 001 checkpoint review; do not start/download/test DRAFT 001 without separate authorization
+- [x] REALGEN 001 approved; preserve it as the canonical measured serving baseline
+- [ ] Do not start/download/test DRAFT 001 without separate authorization
+
+### REALGEN 002 — M1 qmv_fast tuning feasibility — COMPLETE NO-GO
+- [x] Audit exact MLX 0.31.2 M1 `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0`: M1 affine BF16/3-bit/group64/transposed grid `(1,N/8,1)`, canonical s2_r4 `[32,2,1]`, packed/group64/reduction invariants retained
+- [x] Capture 66 actual M1 payloads: q/k/v/o/gate/up/down at layers 0/18/35 and LM head, each at early/middle/late frozen REALGEN-001 replay positions
+- [x] Admit distinct process-local canonical M1 s2_r4 clone: all exact, worst clone/control median 1.097680 <= 1.50
+- [x] Test only new M1_S1_R8 process-local implementation (1 SIMD group, 8 rows/SIMD; five specializations): all 66 direct built-in comparisons exact and zero-diff; zero target-time recompilations
+- [x] Run one fixed-prompt ten-token C/T/T/C M1 replay with independent BF16 KV, full persistence and identical cleanup: exact logits/top1/fixed IDs/cache offsets
+- [x] NO-GO: treatment median target wall 0.857916 s vs CONTROL 0.779169 s; balanced throughput -9.178832%, below required >=5% gain
+- [x] Preserve report `research/realgen/m1-qmv-tuning-002-feasibility.md` and evidence `results-local/realgen/m1-qmv-tuning-002-feasibility/20260821-083048/summary.json`; do not create REALGEN 003 or rerun the six-prompt benchmark
 
 ## Phase 9 — Synthesis
 - [ ] Capability vs memory vs time frontier

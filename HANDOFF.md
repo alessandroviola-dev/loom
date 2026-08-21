@@ -1,11 +1,11 @@
 # LOOM — Project Handoff
 
 Last updated: 2026-08-21
-Status: REALGEN PHASE ACTIVE — host-gated baseline pending on Apple M1 / 8 GB reference system
+Status: REALGEN PHASE ACTIVE — REALGEN 002 M1 qmv feasibility complete / NO-GO on Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `REALGEN_001_NOT_STARTED_HOST_NOT_READY`
+Current checkpoint: `REALGEN_002_M1_QMV_FAST_NO_GO`
 
 ## Mission
 
@@ -468,9 +468,21 @@ The separate Stretch-038 M5 result remains oracle-verifier evidence only (0.3573
 
 Classification: `REALGEN_001_BASELINE_COMPLETE`. Report: `research/realgen/real-generation-baseline-001.md`; run status: `results-local/realgen/real-generation-baseline-001/20260821-081022/run-status.json`.
 
+## REALGEN 002 — M1 qmv_fast tuning feasibility — NO-GO / CHECKPOINT_REVIEW
+
+REALGEN 001 was approved as the measured serving baseline; DRAFT 001 remains blocked. REALGEN 002 separately tested whether the source-supported S1_R8 execution geometry could be reimplemented as a **new M1-specific** process-local qmv kernel. It did not reopen Stretch 037–041 or run MLX 0.32.
+
+The launch gate passed at 73% free memory / 1804.88 MB swap. Exact MLX v0.31.2 source `68cf2fddd8de5edd8ab3d926391772b2e2cedad8` on Apple M1 `applegpu_g13g` resolves the real affine BF16/3-bit/group64/transposed M1 shapes to built-in `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0`: grid `(1,N/8,1)`, `[32,2,1]` canonical TG, two SIMD groups and four rows/SIMD. Actual early/middle/late M1 payloads at layers 0/18/35 covered q/k/v/o/gate/up/down plus LM head (66 total), with K→N classes 4096→4096/1024/12288/151936 and 12288→4096.
+
+The separate canonical M1 `s2_r4` clone was bit-exact (all shape/BF16/exact comparisons zero diff); worst clone/control median was 1.097680, so admission passed. The sole treatment was distinct M1_S1_R8 (one SIMD group, eight rows/SIMD), five non-target-time specializations. It too was bit-exact on all 66 actual payloads. MLP isolated medians improved, while q/k/v/o and LM head did not.
+
+The required full replay used the frozen REALGEN-001 `chat_02` prompt and fixed ten actual IDs, independent BF16 KV states, full persistence and identical final triple cleanup. Every position had exact logits/top-1/fixed IDs/cache offsets. However, balanced `CONTROL -> TREATMENT -> TREATMENT -> CONTROL` median target walls were 0.779169 s built-in vs 0.857916 s M1_S1_R8: treatment/control wall 1.101065, equivalent throughput -9.178832%. Final resources were 25% free / 2111.75 MB swap, MLX active/peak/cache 3,594,430,472 / 3,775,277,456 / 40,861,884 B, and zero target-time recompilations.
+
+Classification: `REALGEN_002_M1_QMV_FAST_NO_GO`. Retain ordinary built-in MLX M1 qmv_fast; do not create REALGEN 003 or run the full six-prompt comparison. Report: `research/realgen/m1-qmv-tuning-002-feasibility.md`; evidence: `results-local/realgen/m1-qmv-tuning-002-feasibility/20260821-083048/summary.json`.
+
 ## Exact next step
 
-Stop at **`CHECKPOINT_REVIEW`** for REALGEN 001. Do not start DRAFT 001, rerun Stretch 037–041, or download/test a drafter without separate authorization.
+Stop at **`CHECKPOINT_REVIEW`** for REALGEN 002. Do not start DRAFT 001, rerun Stretch 037–041, test/download a drafter, or start REALGEN 003 without separate authorization.
 
 ### Historical Stretch 031 rationale
 
