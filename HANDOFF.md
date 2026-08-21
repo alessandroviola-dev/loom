@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-21
-Status: ACTIVE — capability bridge / targeted request-boundary reclamation
+Status: ACTIVE — capability bridge / allocator-cache boundary pressure
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `CAPABILITY_000I_TARGETED_RECLAMATION_PASS`
-Next: `CAPABILITY_000J_FULL_SEQUENCE_RECLAMATION`
+Current checkpoint: `CAPABILITY_000J_INFRASTRUCTURE_INCOMPLETE_WITH_ALLOCATOR_CACHE_PRESSURE`
+Next: `CAPABILITY_000K_ALLOCATOR_CACHE_BOUNDARY_RECLAMATION`
 
 Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual reports.
 
@@ -27,6 +27,7 @@ ChatGPT: experiment design/review, GitHub synchronization, HANDOFF/ROADMAP and r
 - BF16 KV
 - MLX/mlx-metal 0.31.2; mlx-lm 0.31.3
 - capability context 4096
+- `prefill_step_size=512`
 - built-in M1 `qmv_fast`
 - raw weights `3,583,928,320 B`
 
@@ -36,109 +37,75 @@ REALGEN 001 practical baseline: 13.184615357 tok/s real generation, 12.046861457
 
 ### 000C — prefill frontier
 
-Exact Pi prefill:
-- step 512: 23.74 s, 63.36 tok/s, 4089.8 MB peak, bit-exact
-- step 2048: 27.91 s, 53.88 tok/s, 4180.1 MB peak, bit-exact
-- step 256: 28.24 s, 3980.7 MB peak, top1 same but not bit-exact
+On the exact Pi prefill, step 512 beats canonical 2048 in both speed and memory and remains bit-exact. Step 256 saves more peak memory but is slower and not bit-exact.
 
-Step 512 remains the active integrated-agent candidate.
+### 000D–000G — bridge and host lifecycle
 
-### 000D–000G — bridge/host lifecycle
+A genuine Pi tool turn works. Later request failures are not explained by intrinsic ~1500-1800-token request size. Host/process teardown is healthy and macOS naturally recovers launch headroom within ~3-5 s.
 
-A real Pi tool turn succeeds. Later request failures are not explained by intrinsic ~1500-1800 token request size. Host teardown is healthy: all scientific processes die and macOS naturally returns >=60% free within ~3-5 s.
+### 000H — sequential accumulation limit
 
-### CAPABILITY 000H — SEQUENTIAL ACCUMULATION LIMIT
+Exact captured R1-R6 span 1518 -> 1820 tokens. All pass fresh. Sequential R2 fails because R1 leaves +468.30 MiB active MLX request-boundary state. Later request size, KV-capacity jumps and host variability are not the primary cause.
 
-Report: `research/capability/capability-000h-sequential-accumulation-result.md`.
+### 000I — targeted request-local reclamation PASS
 
-Captured R1-R6 span 1518 -> 1820 input tokens. All six pass fresh.
+`mlx_lm.server.ResponseGenerator._generate` retains the completed local `GenerationBatch.Response`, whose `prompt_cache` keeps the finished request's 36 KVCache objects alive after HTTP completion.
 
-Sequentially:
-- R1 passes;
-- loaded-idle active 3417.90 MB;
-- post-R1 active 3886.20 MB = **+468.30 MB** request-boundary state;
-- post-R1 allocator cache ~226-234 MB;
-- R2 fresh peak 4095.65 MB / min free 9%;
-- R2 sequential peak 4182.45 MB / min free 4%;
-- R2 aborts.
+Targeted detach of only this stale completed-response `prompt_cache` after R1:
+- recovers 252.00 MiB active MLX;
+- reduces R2 peak by 98.50 MiB;
+- preserves R1 response/tool behavior and R2 first tool call;
+- uses no global cleanup.
 
-Therefore the current bottleneck is request-boundary MLX state, not later request size, KV-capacity jumps or host admission variability.
+However released active storage largely moves into MLX allocator cache, so system-free headroom did not improve in the two-turn test.
 
-### CAPABILITY 000I — TARGETED RECLAMATION PASS
+### 000J — full-sequence validation incomplete
 
-Report: `research/capability/capability-000i-targeted-reclamation-result.md`.
+Report: `research/capability/capability-000j-full-sequence-reclamation-result.md`.
 
-Precise retained owner recovered:
+CONTROL:
+- R1 completed;
+- R2 resource-aborted at 4% free;
+- peak MLX 4194.45 MiB.
 
-`mlx_lm.server.ResponseGenerator._generate` leaves the finished local `gen_responses` reachable while the thread returns to its idle loop. The completed `GenerationBatch.Response` retains `prompt_cache`, which retains the finished request's 36 KVCache objects.
+TREATMENT (000I detach after R1):
+- R1 completed;
+- active 3886.20 -> 3634.20 MiB: 252.00 MiB recovered;
+- allocator cache 231.07 -> 483.07 MiB;
+- R2 still resource-aborted at 4% free;
+- allocator cache reached ~712.95 MiB during the aborted R2;
+- no global cleanup;
+- R1 semantic/tool equivalence passed.
 
-Observed after R1 HTTP completion:
-- retained `GenerationBatch.Response`: ~218.39 MiB KV + ~0.29 MiB logits metadata;
-- 36 retained `KVCache`: ~218.39 MiB;
-- metadata-accounted request-local state ~218.68 MiB;
-- observed post-R1 active delta over loaded idle: +468.30 MiB.
+Classification: `CAPABILITY_000J_INFRASTRUCTURE_INCOMPLETE` because R2 did not complete and required actual-M/prefill/generation timing instrumentation was unavailable.
 
-Single targeted treatment: after the response is fully complete, detach only the stale completed `GenerationBatch.Response.prompt_cache`.
-
-No `mx.clear_cache()`, `gc.collect()`, allocator/global reset, model reload or model/context/KV/prompt/tool/prefill changes.
-
-Control:
-- post-R1 active/cache 3886.20 / 234.07 MiB;
-- active residual +468.30 MiB;
-- R2 peak 4194.45 MiB;
-- R2 min free 5%; PASS.
-
-Treatment:
-- before detach 3886.20 / 234.07 MiB;
-- after detach 3634.20 / 486.07 MiB;
-- **252.00 MiB active recovered** = 53.81% of observed residual;
-- R2 peak 4095.95 MiB = **98.50 MiB reduction**;
-- R2 min free 5%; PASS.
-
-R1 response/tool call is identical control vs treatment; R2 first tool call is also identical. Global cleanup used: NO.
-
-Important nuance: recovered active memory moved largely into allocator cache, so system free headroom did not improve in this two-turn run. The treatment is therefore scientifically valid but not yet promoted to the integrated bridge until full-sequence behavior is measured.
+Scientific interpretation: the 000I lifecycle fix is real and lowers live/peak pressure, but by itself does not extend the safe sequence because allocator cache remains charged against system memory. This is now the first justified next factor.
 
 ## Exact next step
 
-Run **CAPABILITY 000J — full-sequence targeted reclamation validation** from:
-`research/capability/capability-000j-full-sequence-reclamation-plan.md`.
+Run **CAPABILITY 000K — allocator-cache boundary reclamation** from:
+`research/capability/capability-000k-allocator-cache-boundary-plan.md`.
 
-Use exact captured R1-R6 bodies.
+Use exact captured R1/R2. Compare:
+1. CONTROL = proven 000I stale-response `prompt_cache` detach only;
+2. TREATMENT = same detach + one explicit documented MLX allocator-cache clear at the completed-request boundary.
 
-Compare two fresh processes:
-1. CONTROL R1->R6 with natural server behavior;
-2. TREATMENT R1->R6, applying only the 000I stale-response `prompt_cache` detach after every completed response.
+Measure active/cache/system-free before and after the cache clear, boundary latency, R2 peak/completion and semantic/tool equivalence.
 
-Measure per-turn active/cache boundaries, peak MLX, system free/swap and response/tool equivalence. No global cleanup or other model/runtime changes.
+This is now an allowed isolated factor because 000J directly demonstrated allocator-cache growth as the remaining pressure source.
 
-Only after 000J should the treatment be considered for a real Pi-loop reproducibility run.
+Still forbidden: `gc.collect()`, model reload/restart between R1/R2, model/context/KV/prompt/tool/prefill changes or host-memory manipulation.
+
+Only if 000K passes should a full R1-R6 cache-boundary validation or real Pi-loop reproducibility run be considered.
 
 ## Local-only implementation warning
 
-Recent scripts/evidence remain local unless explicitly synchronized, including:
-- `scripts/loom_pi_mlx_bridge.py`
-- `scripts/capability_000a_memory_attribution.py`
-- `scripts/capability_000b_pi_prefill_attribution.py`
-- `scripts/capability_000c_prefill_frontier.py`
-- `scripts/capability_000d_pi_loop.py`
-- `scripts/capability_000d_fix1_pi_loop.py`
-- `scripts/capability_000d_fix2_pi_loop.py`
-- `scripts/capability_000e_turn_memory_attribution.py`
-- `scripts/capability_000f_integrated_pi_reproducibility.py`
-- `scripts/capability_000f_server.py`
-- `scripts/capability_000g_host_recovery.py`
-- `scripts/capability_000h_request_envelope_attribution.py`
-- `scripts/capability_000i_request_local_reclamation.py`
-- `scripts/capability_000i_targeted_reclamation_phase_b.py`
-- raw `results-local/capability/...` evidence
-
-Do not assume these exist on GitHub until explicitly synchronized.
+Recent scripts/evidence remain local unless explicitly synchronized, including all CAPABILITY 000A–000J scripts and raw `results-local/capability/...` evidence. Do not assume local scripts exist on GitHub until explicitly published.
 
 ## Later
 
-1. CAPABILITY 000J full-sequence targeted reclamation
-2. integrated Pi-loop admission/reproducibility with promoted treatment if justified
+1. CAPABILITY 000K allocator-cache boundary test
+2. full-sequence / integrated Pi validation if justified
 3. CAPABILITY 001 frozen 12-task capability baseline
 4. MEMORY-FRONTIER 001 real M1 RAM/tok/s partial-residency curve
 5. async prefetch/buffering/direct range I/O
