@@ -1,135 +1,114 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-21
-Status: ACTIVE — capability bridge / sustained multi-turn memory frontier
+Status: ACTIVE — capability bridge / request-boundary memory reclamation
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `CAPABILITY_000G_NATURAL_HOST_RECOVERY_PASS`
-Next: `CAPABILITY_000H_MULTI_TURN_REQUEST_ENVELOPE`
+Current checkpoint: `CAPABILITY_000H_SEQUENTIAL_ACCUMULATION_LIMIT`
+Next: `CAPABILITY_000I_REQUEST_LOCAL_RECLAMATION`
 
-Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
+Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual reports.
 
 ## Mission
 
-**Big models. Small machines.**
-
-LOOM aims to run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models. Success requires memory fit, useful speed and retained capability.
+**Big models. Small machines.** Run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models, balancing memory, speed and capability.
 
 ## Operating split
 
-Pi: local code, runtime inspection, tests, concise raw evidence.
+Pi: local code/runtime inspection/tests/concise evidence.
 
-ChatGPT: research direction, experiment design/review, GitHub synchronization, HANDOFF/ROADMAP and checkpoint continuity.
+ChatGPT: experiment design/review, GitHub synchronization, HANDOFF/ROADMAP and research continuity.
 
-## Canonical model/runtime
+## Canonical baseline
 
 - Qwen3-8B full parameter count
 - affine 3-bit/group64
 - BF16 KV
-- Apple M1 / 8 GB
-- MLX/mlx-metal 0.31.2
-- mlx-lm 0.31.3
-- transformers 5.12.1
+- MLX/mlx-metal 0.31.2; mlx-lm 0.31.3
+- context 4096 for capability bridge
 - built-in M1 `qmv_fast`
-- raw persistent weights `3,583,928,320 B`
+- raw weights `3,583,928,320 B`
 
-REALGEN 001:
-- real generation **13.184615357 tok/s**
-- end-to-end output **12.046861457 tok/s**
-- exact greedy-reference agreement on all six frozen prompts
-- MLX peak `3,826,575,836 B`
+REALGEN 001 practical baseline: 13.184615357 tok/s real generation, 12.046861457 tok/s E2E. REALGEN 002 custom M1 qmv transfer was exact but -9.178832%; closed.
 
-REALGEN 002 M1_S1_R8 transfer: exact but **-9.178832%** throughput; closed.
+## Capability findings
 
-## Capability bridge findings
+### 000 / 000A / 000B
 
-### CAPABILITY 000 / 000A
+Canonical Qwen3-8B generated a real Pi `read(numbers.txt)` tool call. Exactly one model instance; no duplication. Pi RSS ~45.55 MB. First Pi request is ~1500 tokens. Dynamic pressure is from prefill temporaries + BF16 KV, not full-sequence logits or Pi RSS.
 
-Canonical Qwen3-8B successfully emitted a genuine Pi `read(numbers.txt)` tool call. Exactly one model instance; no duplication. Pi RSS ~45.55 MB.
+### 000C — prefill frontier
 
-### CAPABILITY 000B
+Exact Pi prefill:
+- step 512: 23.74 s, 63.36 tok/s, 4089.8 MB peak, bit-exact
+- step 2048: 27.91 s, 53.88 tok/s, 4180.1 MB peak, bit-exact
+- step 256: 28.24 s, 3980.7 MB peak, top1 same but not bit-exact
 
-Exact first Pi request: 1504 tokens. Large prefill qmm/transient allocation plus BF16 KV are the supported dynamic pressure sources; Pi RSS and full-sequence logits are not.
+Step 512 remains the active integrated-agent candidate.
 
-### CAPABILITY 000C — COMPLETE
+### 000D Fix2 / 000E
 
-Exact 1504-token prefill frontier:
-- step 512: 23.74 s, 63.36 tok/s, peak 4089.8 MB, bit-exact
-- step 2048: 27.91 s, 53.88 tok/s, peak 4180.1 MB, bit-exact
-- step 256: 28.24 s, peak 3980.7 MB, top1 same but logits not bit-exact
+A real Pi turn succeeded, then a later resource abort occurred. Exact fresh and R1->R2 replay showed 1576 tokens are not intrinsically outside the step-512 envelope. Request KV was not shown to leak.
 
-Step 512 dominates 2048 on this workload and remains the active integrated-agent candidate.
+### 000F / 000G — host lifecycle resolved
 
-### CAPABILITY 000D Fix2 — VALID RESOURCE ABORT
+000F reliability study was incomplete after one admitted resource abort because attempt 2 sampled host memory too early after process exit.
 
-First real Pi turn completed (`read numbers.txt`). Second request at 1576 tokens crossed the <5% system-free gate.
+000G proved normal teardown is healthy:
+- all scientific PIDs/listeners die immediately;
+- free memory 6% at exit, 5% at 1 s, 70% at 3 s, 71% at 5 s;
+- no lifecycle leak.
 
-### CAPABILITY 000E — COMPLETE / NO REPRODUCTION
+### CAPABILITY 000H — SEQUENTIAL ACCUMULATION LIMIT
 
-Exact R2 at 1576 tokens succeeds fresh. Exact R1->R2 also succeeds sequentially without cleanup.
+Report: `research/capability/capability-000h-sequential-accumulation-result.md`.
 
-- fresh R2 peak MLX 4095.65 MB
-- sequential R2 peak 4194.45 MB
-- post-R1 residual active +468.30 MB
-- allocator cache 229.07 MB
-- request KV objects not retained
-- no evidence of a leak
+Exact integrated capture contained six HTTP model POSTs:
+- R1 1518 tokens
+- R2 1573
+- R3 1634
+- R4 1682
+- R5 1765
+- R6 1820
 
-Therefore 1576 tokens are not intrinsically outside the step-512 envelope.
+Every R1-R6 request passes when run fresh as the first request in a fresh model process. Fresh peak MLX stays ~4069.62-4132.34 MB; fresh minimum free 7-10%.
 
-### CAPABILITY 000F — REPRODUCIBILITY STUDY INCOMPLETE
+Sequentially:
+- R1 completes, peak 4069.62 MB;
+- after R1, MLX active = 3886.20 MB versus 3417.90 MB loaded-idle: **+468.30 MB active boundary state**;
+- post-R1 allocator cache ~226.57 MB;
+- R2 fresh peak 4095.65 MB, min free 9%;
+- R2 sequential observed peak 4182.45 MB, **+86.80 MB** over fresh, min free 4%;
+- R2 aborts at the hard system-free gate;
+- R3-R6 are not reached sequentially but all pass fresh.
 
-Only attempt 1 was scientifically admitted. It resource-aborted at 4% free after two Pi/model turns (`read -> bash`). Attempt 2 sampled the host too soon after teardown and was not admitted; attempt 3 did not run. Do not interpret 000F as 0/3 model reliability.
+Classification: `CAPABILITY_000H_SEQUENTIAL_ACCUMULATION_LIMIT`.
 
-### CAPABILITY 000G — NATURAL HOST RECOVERY PASS
+Supported attribution:
+- retained sequential MLX active/cache state: PROVEN;
+- intrinsic later request size/history: NOT SUPPORTED as primary cause;
+- KV-capacity jumps: NOT SUPPORTED as primary cause;
+- host variability: NOT SUPPORTED.
 
-Report: `research/capability/capability-000g-natural-host-recovery-result.md`.
-
-Initial host: 70% free, swap 1594.44 MB.
-
-Bounded integrated workload:
-- 5 model requests
-- peak MLX 4212.45 MB
-- minimum free 4%
-- peak swap 2020 MB
-- resource abort
-
-Normal teardown:
-- Pi, bridge and server all exited
-- no captured scientific child survived
-- both localhost listeners disappeared immediately
-
-Passive recovery:
-- t=0 s: 6% free
-- t=1 s: 5% free
-- t=3 s: 70% free
-- t=5 s: 71% free
-- >=60% for two consecutive scheduled samples by 5 s
-
-Interpretation: the low 000F post-run launch sample was transient natural macOS recovery, not surviving scientific processes or a memory leak.
-
-The more important remaining issue is sustained multi-turn memory pressure: even from 70% pre-load free, the 000G integrated workload reached five model requests and eventually crossed the 5% gate.
+Do not call this a memory leak yet. The proven fact is request-boundary live/allocator state sufficient to make the next request unsafe.
 
 ## Exact next step
 
-Run **CAPABILITY 000H — multi-turn request envelope attribution**.
+Run **CAPABILITY 000I — request-local state reclamation** from:
+`research/capability/capability-000i-request-local-reclamation-plan.md`.
 
-Use the exact captured request bodies from CAPABILITY 000G (R1 through the final request/abort request). Do not reconstruct prompts manually when captured bodies exist.
+Phase A must identify the exact server object/tensor lifecycle owning the retained request-boundary active memory after R1. Trace API handler, streaming response/generator, BatchGenerator, PromptProcessingBatch, pending/finished request state, request KV and output arrays.
 
-Required science:
-1. recover canonical token counts and message/tool growth per captured request;
-2. replay each captured request individually as the first request in a fresh model process to measure its intrinsic memory envelope;
-3. separately replay the same request series sequentially in one fresh process with no cleanup treatment;
-4. compare fresh-vs-sequential peak MLX, min free, active/cache state, KV length/capacity and prefill M segments per turn;
-5. identify the first turn that fails fresh, if any, and the first turn whose sequential overhead becomes material;
-6. do not yet change step 512, model, BF16 KV, context, prompts or tools.
+Only if a precise stale owner/intended lifecycle transition is identified may Phase B test one targeted request-local release after R1 response completion.
 
-This extends 000E from R1/R2 to the full integrated multi-turn trajectory and determines the first justified treatment.
+Forbidden as treatment: `mx.clear_cache()`, `gc.collect()`, model reload, process restart between R1/R2, prefill step change, KV/context/prompt/tool/model changes, or global cleanup.
 
-## Local-only files known from Pi
+Control and treatment use exact captured R1/R2 bodies. Primary success is recovery of boundary active memory plus sequential R2 completion while preserving output/tool behavior.
 
-Recent implementation/evidence remain local unless explicitly synchronized, including:
+## Local-only implementation warning
+
+Recent scripts/evidence remain local unless explicitly synchronized, including:
 - `scripts/loom_pi_mlx_bridge.py`
 - `scripts/capability_000a_memory_attribution.py`
 - `scripts/capability_000b_pi_prefill_attribution.py`
@@ -141,17 +120,17 @@ Recent implementation/evidence remain local unless explicitly synchronized, incl
 - `scripts/capability_000f_integrated_pi_reproducibility.py`
 - `scripts/capability_000f_server.py`
 - `scripts/capability_000g_host_recovery.py`
+- `scripts/capability_000h_request_envelope_attribution.py`
 - raw `results-local/capability/...` evidence
 
 Do not assume these exist on GitHub until explicitly synchronized.
 
 ## Later
 
-1. CAPABILITY 000H full multi-turn envelope attribution
-2. choose one justified memory treatment
-3. integrated Pi-loop admission/reproducibility
-4. CAPABILITY 001 frozen 12-task baseline
-5. MEMORY-FRONTIER 001 real M1 partial-residency RAM/tok/s curve
-6. async prefetch / buffering / direct range I/O
-7. M>1 out-of-core weight-I/O amortization
-8. scale toward 27B/32B
+1. CAPABILITY 000I targeted request-local reclamation
+2. integrated Pi-loop admission/reproducibility
+3. CAPABILITY 001 frozen 12-task capability baseline
+4. MEMORY-FRONTIER 001 real M1 RAM/tok/s partial-residency curve
+5. async prefetch/buffering/direct range I/O
+6. OUTCORE-BLOCK 001
+7. scale toward 27B/32B
