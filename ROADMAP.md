@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000J_INFRASTRUCTURE_INCOMPLETE_WITH_ALLOCATOR_CACHE_PRESSURE`
+Current checkpoint: `CAPABILITY_000K_ALLOCATOR_CACHE_RECLAMATION_PASS`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -18,7 +18,7 @@ Qwen3-8B, affine 3-bit/group64, BF16 KV, MLX 0.31.2. REALGEN 001 = 13.184615357 
 
 ### 000C — prefill frontier
 
-Step 512 dominates canonical 2048 on the exact Pi prefill and remains the active integrated-agent candidate.
+`prefill_step_size=512` dominates canonical 2048 on the exact Pi prefill and remains the active integrated-agent candidate.
 
 ### 000H — sequential accumulation
 
@@ -26,33 +26,43 @@ All captured R1-R6 requests pass fresh. Sequential R2 fails because R1 leaves +4
 
 ### 000I — targeted request-local reclamation PASS
 
-The stale completed `GenerationBatch.Response.prompt_cache` retains finished-request KV. Targeted detach recovers 252.00 MiB active MLX and lowers R2 peak by 98.50 MiB without semantic/tool changes or global cleanup.
+The stale completed `GenerationBatch.Response.prompt_cache` retains finished-request KV. Targeted detach recovers 252.00 MiB active MLX and preserves model/tool behavior.
 
-### 000J — full-sequence validation incomplete
+### 000J — detach-only insufficient
 
-The same detach again recovers 252.00 MiB active after R1, but allocator cache rises from ~231 to ~483 MiB and reaches ~713 MiB during R2. R2 still crosses the 4% free-memory gate. Therefore the request-local fix is valid but not sufficient by itself.
+Full-sequence attempt shows active memory recovery largely moves into MLX allocator cache. R2 still hits the system-free floor. This directly justifies allocator-cache treatment as the next isolated factor.
 
-Report: `research/capability/capability-000j-full-sequence-reclamation-result.md`.
+### 000K — ALLOCATOR CACHE RECLAMATION PASS
 
-### 000K — NEXT
+Report: `research/capability/capability-000k-allocator-cache-reclamation-result.md`.
 
-Frozen plan: `research/capability/capability-000k-allocator-cache-boundary-plan.md`.
+After the proven stale-response detach, one `mx.clear_cache()` call:
+- reclaims **486.23 MiB** allocator cache;
+- leaves active MLX unchanged;
+- raises R2 minimum system free from **5% to 11%** (+6 pp);
+- costs **3.900 ms** at the measured boundary;
+- preserves R1/R2 response/tool semantics;
+- does not alter the intrinsic R2 MLX peak (~4095.95 MiB).
 
-One new factor only: after the already-proven 000I targeted stale-response detach, explicitly clear MLX allocator cache at the completed-request boundary using the documented installed API.
+The reported ~0.01 s prefill timings in 000K are not comparable to canonical ~20+ s prefill measurements and are not promoted as performance evidence. The valid promoted results are memory/headroom, semantic equivalence and cache-clear boundary latency.
 
-Compare detach-only control vs detach + allocator-cache clear on exact R1->R2. Measure:
-- active/cache/system-free change;
-- cache-clear boundary latency;
-- R2 peak/completion;
-- response/tool equivalence.
+### 000L — NEXT
 
-No `gc.collect()`, restart/model reload, host manipulation, or model/context/KV/prompt/tool/prefill changes.
+Frozen plan: `research/capability/capability-000l-full-sequence-boundary-reclamation-plan.md`.
 
-If 000K passes, validate the mechanism across R1-R6 before integrated Pi reproducibility. If it fails, choose the next memory factor from the measured residual rather than changing model size by default.
+Validate exact R1->R6 with two fresh processes:
+1. control = natural sequential execution;
+2. treatment = after each completed response, detach only the proven stale `prompt_cache` and call `mx.clear_cache()` exactly once.
+
+Measure per-turn active/cache/active+cache boundaries, system-free floor, swap, cache-clear latency and semantic/tool equivalence.
+
+Full PASS requires all R1-R6 treatment requests to complete without crossing the resource gate and without semantic/lifecycle regression.
+
+No `gc.collect()`, model reload/restart between requests, host manipulation, or model/context/KV/prompt/tool/prefill changes.
 
 ### CAPABILITY 001 — BLOCKED
 
-Frozen 12-task coding + Git safety + experimental-reasoning baseline. Run only after reproducible multi-turn headroom exists.
+Frozen 12-task coding + Git safety + experimental-reasoning baseline. Run only after real Pi multi-turn execution has reproducible headroom.
 
 ## B — RAM/speed frontier
 
@@ -79,14 +89,13 @@ Later candidates include mixed/selective precision, compressed cold weights, qua
 
 ## Immediate order
 
-1. CAPABILITY 000K allocator-cache boundary test
-2. full-sequence validation if 000K passes
-3. real Pi-loop reproducibility
-4. CAPABILITY 001
-5. MEMORY-FRONTIER 001
-6. prefetch/buffering/range-I/O
-7. OUTCORE-BLOCK 001
-8. scale toward 27B/32B
+1. CAPABILITY 000L full-sequence boundary reclamation
+2. real Pi-loop reproducibility with combined detach + allocator-cache clear if 000L passes
+3. CAPABILITY 001
+4. MEMORY-FRONTIER 001
+5. prefetch/buffering/range-I/O
+6. OUTCORE-BLOCK 001
+7. scale toward 27B/32B
 
 ## Local-only implementation warning
 
