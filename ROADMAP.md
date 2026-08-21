@@ -1,265 +1,200 @@
 # LOOM Roadmap
 
 Last reset: 2026-08-21
-Active checkpoint before this roadmap reset: `REALGEN_002_M1_QMV_FAST_NO_GO`
+Current active checkpoint: `CAPABILITY_000A_MEMORY_ATTRIBUTION_COMPLETE`
 Detailed historical roadmap through REALGEN 002 is preserved in Git history at commit `844325f63b1880107040b219524ad5391276769c`.
 
 ## Mission
 
 LOOM exists to make **excellent, large, full-parameter-count LLMs practical on very small Apple Silicon systems**, with Apple M1 / 8 GB as the reference machine.
 
-The long-term target is not to retreat to smaller parameter-count models. The research direction is to move from the current Qwen3-8B frontier toward roughly **27B / 32B-class models on 8 GB**, while preserving useful interactive speed and real capability.
+The long-term direction is roughly **27B / 32B-class models on 8 GB**, without using smaller parameter-count models as the primary escape hatch.
 
-A model merely fitting in RAM is not success. A model that is fast but no longer capable is not success either.
+Every major direction is judged on:
 
-Every major result must therefore be judged on three axes:
+1. **Memory**;
+2. **Speed**;
+3. **Capability**.
 
-1. **Memory** — resident/peak RAM, swap, model bytes, headroom.
-2. **Speed** — real autoregressive tok/s, TTFT, latency.
-3. **Capability** — ability to complete real useful tasks.
+A model that merely fits is not enough. A model that is fast but materially less capable is not enough.
 
-## Operating method — ACTIVE
+## Operating method
 
 Canonical protocol: `research/governance/chatgpt-pi-operating-protocol.md`.
 
-### Pi
+Pi is reserved for code, local runtime/source inspection, benchmarks/tests and concise raw evidence.
 
-Pi is reserved for high-value local work:
-
-- serious code implementation;
-- local source/runtime inspection required by an experiment;
-- running tests and benchmarks;
-- producing concise raw result summaries and changed-file paths.
-
-Pi does **not** routinely spend context on Git synchronization, commits/pushes, HANDOFF, ROADMAP or historical recap.
-
-### ChatGPT
-
-ChatGPT owns:
-
-- research direction and experimental design;
-- review and GO/NO-GO decisions;
-- GitHub synchronization;
-- commits/pushes when supported by connected tooling;
-- HANDOFF and ROADMAP maintenance;
-- checkpoint/provenance continuity.
+ChatGPT owns experiment design/review, GitHub synchronization, ROADMAP/HANDOFF and research continuity.
 
 Default loop:
+`ChatGPT designs -> Pi codes/tests -> Pi returns evidence -> ChatGPT reviews/syncs -> next experiment`.
 
-`ChatGPT designs -> Pi codes/tests -> Pi returns evidence -> ChatGPT reviews + syncs repo -> next experiment`
-
-## Canonical performance state
-
-### Qwen3-8B 3-bit — current real-generation baseline
+## Canonical Qwen3-8B baseline
 
 REALGEN 001:
 
-- full Qwen3-8B parameter count;
-- affine 3-bit/group64 weights;
+- Qwen3-8B full parameter count;
+- 3-bit affine/group64;
 - BF16 KV;
-- Apple M1 8 GB;
+- Apple M1 / 8 GB;
 - MLX 0.31.2 / mlx-lm 0.31.3;
-- ordinary built-in M1 `qmv_fast`;
-- pooled real autoregressive generation: **13.184615357 tok/s**;
-- pooled end-to-end output: **12.046861457 tok/s**;
-- exact reference sequence agreement on all six frozen prompts;
-- raw persistent weights: **3,583,928,320 B**;
-- REALGEN peak MLX memory: **3,826,575,836 B**.
+- built-in M1 `qmv_fast`;
+- real autoregressive generation **13.184615357 tok/s**;
+- pooled end-to-end **12.046861457 tok/s**;
+- raw persistent weights **3,583,928,320 B**;
+- MLX peak **3,826,575,836 B**.
 
-This is the canonical practical baseline.
+REALGEN 002 tested M1_S1_R8 transfer: exact but **-9.178832%** representative throughput. Closed; retain built-in qmv_fast.
 
-### M5 verifier evidence
+The separate M5 verifier remains ~13.990655 tok/s oracle-verification evidence only.
 
-The optimized M5 target-verification path remains useful research evidence but is **not** ordinary generation:
+## Known memory frontier
 
-- approximately **13.990655 tok/s** verifier throughput under its frozen scope;
-- current five-token verifier cannot reach 20 tok/s even with zero draft cost on the resident 8B baseline.
+Pure layer streaming has already been demonstrated: RAM falls, throughput collapses.
 
-Do not present M5 verifier throughput as chat-generation throughput.
+Do not rediscover pure streaming as the endpoint. The architectural problem is to find the best point between full residency and full streaming, then hide unavoidable I/O through overlap and amortization.
 
-### REALGEN 002
+## Direction A — CAPABILITY / useful-agent baseline — ACTIVE
 
-M1-specific transfer of the S1_R8 geometry is closed:
+CAPABILITY 001 will measure whether the current 8B 3-bit system can complete useful real tasks through Pi: coding, safe Git operations and result/experiment reasoning.
 
-- exact on all tested payloads;
-- representative ten-token replay throughput **-9.178832%** vs built-in M1 `qmv_fast`;
-- classification `REALGEN_002_M1_QMV_FAST_NO_GO`;
-- built-in M1 `qmv_fast` remains canonical.
+### CAPABILITY 000 — local model -> Pi bridge
 
-## What is already known
+The localhost MLX bridge successfully connected Pi to the canonical Qwen3-8B 3-bit model. A real Qwen-generated `read(numbers.txt)` tool call was observed.
 
-### Pure layer streaming
+The smoke then hit the hard <5% free-memory floor.
 
-LOOM has already demonstrated that aggressive layer streaming can reduce resident RAM dramatically.
+### CAPABILITY 000A — memory attribution — COMPLETE
 
-It also destroys throughput because a dense transformer needs every layer for every generated token.
+Report: `research/capability/capability-000a-memory-attribution-result.md`.
 
-Therefore **pure full-model layer streaming is not the destination and should not be rediscovered as if it were new**.
+Findings:
 
-The new problem is to find the best point between:
+- model instance count: **1**;
+- duplicate model: **no**;
+- model-load transition free memory **67% -> 30%**;
+- direct 18-token request completes at 20% free;
+- direct 366-token tool-schema request completes at 17% free;
+- Pi process is only ~45.55 MB RSS and leaves 18% free before inference;
+- the first real Pi prefill crosses the hard memory floor before completion.
 
-- everything resident: fast but memory-hungry;
-- everything streamed: memory-efficient but slow.
+BF16 KV theoretical size is 147,456 bytes/token: 288 MiB @2048, 432 MiB @3072, 576 MiB @4096.
 
-## Research direction A — CAPABILITY baseline — NEXT
+The dynamic prefill high-water is therefore the immediate unresolved bottleneck; KV alone is not yet proven as the cause.
 
-Plan: `research/capability/capability-001-agentic-baseline-plan.md`.
+### CAPABILITY 000B — Pi prefill envelope — NEXT
 
-### CAPABILITY 001 — current 8B 3-bit usefulness
+Frozen plan: `research/capability/capability-000b-pi-prefill-envelope-plan.md`.
 
-Goal: establish how intelligent/useful the current LOOM baseline actually is on real agentic work.
+Keep Qwen3-8B 3-bit, BF16 KV, context 4096, max output 2048 and full Pi tool surface unchanged.
 
-Examples include:
+Required outputs:
 
-- repository understanding;
-- safe Git synchronization reasoning through Pi;
-- code modification and tests;
-- experiment implementation under frozen constraints;
-- reading result artifacts and making correct GO/NO-GO decisions.
+1. exact first Pi request capture with no model execution;
+2. exact token decomposition;
+3. direct replay of the same payload without Pi;
+4. prefill high-water memory telemetry;
+5. source-based attribution of KV/temporary allocation behavior;
+6. identification of the first justified memory factor.
 
-Metrics include task success, correction turns, human interventions, constraint violations, destructive/invalid actions and code/test correctness.
+Do not choose a remedy until 000B is complete.
 
-This becomes the capability reference for future quantization or representation changes.
+### CAPABILITY 001 — blocked pending sustainable bridge
 
-**Rule:** future memory/speed improvements must report capability delta against this baseline when the model representation changes.
+Once 000B identifies/resolves the agentic prefill problem, run the frozen 12-task CAPABILITY 001 suite unchanged and establish the capability baseline.
 
-## Research direction B — RAM / speed frontier — HIGH PRIORITY
+Future representation changes must be reported as:
+`memory delta + speed delta + capability delta`.
 
-The objective is not minimum RAM. It is **minimum RAM loss per unit of useful throughput preserved**.
+## Direction B — RAM / speed frontier — HIGH PRIORITY AFTER CAPABILITY BASELINE
 
-### MEMORY-FRONTIER 001 — partial residency curve
+### MEMORY-FRONTIER 001
 
-Using the known 8B as the laboratory, measure real autoregressive generation with controlled resident fractions/windows rather than all-or-nothing streaming.
-
-Candidate points should span approximately:
-
-- fully resident control;
-- large resident hotset / small streamed tail;
-- medium resident window;
-- aggressive streaming reference.
+Use the known 8B as a laboratory and measure real M1 generation across controlled resident fractions/windows rather than all-or-nothing streaming.
 
 For every point record together:
 
-- persistent/resident bytes;
+- resident/persistent bytes;
 - MLX peak;
-- system free memory/swap;
-- SSD bytes read per generated token;
+- system free/swap;
+- SSD bytes read per token;
 - real generation tok/s;
 - TTFT;
-- exactness/correctness where representation is unchanged.
+- correctness/exactness where representation is unchanged.
 
-Primary output: a **RAM <-> tok/s frontier**, not a single winner.
+Primary artifact: a **RAM <-> tok/s Pareto curve**.
 
-Do not repeat old M5-only residency results as if they were real-generation evidence.
+## Direction C — hide unavoidable SSD cost
 
-## Research direction C — hide SSD cost instead of merely accepting it
+After the frontier is measured, isolate one factor at a time:
 
-Once the real frontier is measured, explore one factor at a time:
+1. asynchronous prefetch;
+2. double/triple buffering;
+3. transfer/super-layer chunk sizing;
+4. direct safetensors range I/O / mmap / pread;
+5. macOS page-cache measurement/control;
+6. resident-hotset selection.
 
-1. **Asynchronous prefetch** — read the next weight block while the current block computes.
-2. **Double/triple buffering** — separate compute, ready and loading buffers.
-3. **Chunk/super-layer sizing** — find the transfer size that maximizes overlap without consuming excessive RAM.
-4. **Direct safetensors range reads / mmap / pread** — avoid unnecessary copies and full checkpoint materialization.
-5. **macOS filesystem-cache control and measurement** — distinguish true model residency from page-cache duplication.
-6. **Resident hotset selection** — keep the highest-value bytes resident and stream only the unavoidable remainder.
+## Direction D — amortize weight I/O across multiple tokens
 
-Every technique must report both RAM saved and tok/s preserved.
+For an out-of-core dense model, reloading streamed weights per M1 token may dominate compute.
 
-## Research direction D — amortize weight I/O across multiple tokens
+Future `OUTCORE-BLOCK 001` should compare M1 versus larger exact-valid token blocks under partial residency to measure:
 
-This is a key unexplored direction for models larger than RAM.
-
-For an out-of-core dense model, the expensive event may become **loading weights**, not matrix multiplication. Ordinary M1 generation reloads streamed weights for every token.
-
-A block-verification or multi-token scheme can potentially use one weight load for several candidate positions.
-
-The current resident-8B M5 result does not reach 20 tok/s, but that does **not** close M>1 verification as an out-of-core technique: its value may be much larger when SSD I/O dominates.
-
-Future experiment family:
-
-### OUTCORE-BLOCK 001
-
-With the 8B streamed/partially resident laboratory and fixed known candidate tokens, measure the theoretical I/O amortization frontier for M=1 vs larger exact-valid blocks.
-
-Questions:
-
-- SSD bytes read per accepted/candidate token;
-- wall time per block;
-- degree of prefetch overlap;
+- SSD bytes per candidate/accepted token;
+- block wall time;
+- prefetch overlap;
 - resident-memory requirement;
-- whether larger M materially changes the RAM-speed frontier.
+- whether M>1 materially moves the RAM/speed frontier.
 
-This is target-side feasibility only. A real drafter comes later, after the out-of-core target economics justify it.
+This is why the current resident-8B M5 speculative ceiling does not close multi-token execution as an out-of-core technique.
 
-## Research direction E — model representation without shrinking parameter count
+## Direction E — representation without shrinking parameter count
 
-LOOM does not use a smaller parameter-count model as the primary escape hatch.
+Allowed research factors include:
 
-Representation changes remain valid research tools if all model parameters remain represented, for example:
+- mixed precision by tensor/layer;
+- compressed cold weights;
+- selective bit widths;
+- quantized KV;
+- storage formats designed for out-of-core execution.
 
-- mixed precision by layer/tensor;
-- selective higher/lower bit widths;
-- compressed cold weights with fast decode;
-- quantized KV cache;
-- other storage formats designed for out-of-core execution.
+But a representation is promoted only if its combined memory/speed/capability result is useful.
 
-But any representation change must be judged jointly on:
+## Direction F — scale beyond 8B
 
-`memory + real tok/s + CAPABILITY score`
+Progression:
 
-A lower-bit model is not automatically an improvement.
-
-## Research direction F — scale beyond 8B
-
-Progressive objective:
-
-1. Use 8B as the controlled laboratory because its full-resident baseline is well characterized.
-2. Demonstrate a partial-residency/out-of-core method that preserves a useful fraction of the 13.18 tok/s baseline.
-3. Apply the same engine to a model whose weights no longer fit comfortably in 8 GB.
-4. First major scaling checkpoint: a **27B/32B-class full-parameter-count model produces correct tokens without OOM on M1 8 GB**.
-5. Then optimize the larger model from merely-running toward interactive speed.
-
-For the large-model checkpoint, initial throughput may be low. After correctness/fit is established, speed becomes the primary optimization objective.
-
-## Promotion philosophy
-
-A technique is interesting only if it moves the Pareto frontier.
-
-Examples:
-
-- save 40% RAM and lose 70% speed -> not a useful final point;
-- save 25% RAM and lose 5% speed -> potentially valuable;
-- same RAM with substantially better speed -> valuable;
-- same speed with substantially more capability -> valuable;
-- smaller/faster representation with severe capability loss -> not promoted.
-
-Do not require every exploratory feasibility test to clear 5%; the old >=5% gate applied to the mature micro-optimization phase. In the new architectural phase, small experiments may be used to map a frontier or validate mechanisms, but promotions still require material system-level value.
+1. solve the architectural memory/speed tradeoff on the well-characterized 8B;
+2. apply the engine to a model that does not comfortably fit physical RAM;
+3. reach a **27B/32B-class full-parameter-count model producing correct tokens without OOM on M1 8 GB**;
+4. then optimize that larger model from merely-running toward interactive speed.
 
 ## Closed / paused work
 
 Do not routinely reopen without genuinely new evidence:
 
 - Stretch 037–041;
-- REALGEN 002 M1 S1_R8 geometry;
+- REALGEN 002 M1 S1_R8;
 - gate/up fusion;
 - row-chunk qmatmul;
 - outer MLP compile;
 - fused residual/RMSNorm;
 - persistent BF16 dequantized projection caches;
-- MLX 0.32 M5 runtime comparison;
-- GQA shared-KV clone attempt;
+- MLX 0.32 M5 comparison;
+- GQA shared-KV clone;
 - GC-only cleanup removal.
 
-Detailed evidence remains in repository history and the corresponding research reports.
+## Immediate order
 
-## Immediate order of work
-
-1. **Freeze and run CAPABILITY 001** on the current canonical Qwen3-8B 3-bit system.
-2. **MEMORY-FRONTIER 001:** measure real M1 RAM/tok/s curve for partial residency versus streaming.
-3. Select the first overlap mechanism from actual frontier evidence: prefetch / buffering / chunk sizing.
-4. **OUTCORE-BLOCK 001:** test whether multi-token block execution can amortize SSD traffic enough to change the frontier.
-5. Only then choose the next representation or larger-model scaling experiment.
+1. **CAPABILITY 000B — exact Pi prefill envelope and peak-memory attribution.**
+2. Select and test the first justified prefill-memory remedy without changing model capability unnecessarily.
+3. Run **CAPABILITY 001** on the canonical 8B 3-bit system.
+4. Run **MEMORY-FRONTIER 001**.
+5. Add prefetch/buffering based on measured frontier evidence.
+6. Run **OUTCORE-BLOCK 001**.
+7. Scale the resulting engine toward 27B/32B.
 
 ## Final objective
 
-LOOM should become an execution system that treats **RAM + SSD + Apple unified memory + scheduling** as one managed memory hierarchy and can run an LLM whose total weights exceed physical RAM, while preserving enough speed and capability to be genuinely useful.
+LOOM should become an execution system that treats **RAM + SSD + Apple unified memory + scheduling** as one managed memory hierarchy and can run an LLM whose total weights exceed physical RAM while retaining useful speed and capability.
