@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000D_INFRASTRUCTURE_FAILURE_NO_SCIENCE`
+Current checkpoint: `CAPABILITY_000D_FIX1_PREFLIGHT_FAIL_NO_SCIENCE`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -35,36 +35,56 @@ Goal: benchmark the practical intelligence of the current Qwen3-8B through Pi be
 
 ### CAPABILITY 000–000B
 
-The local MLX bridge works and a genuine Qwen-generated Pi tool call was observed. There is one model instance, no duplication. The real first Pi request is 1504 tokens and the main dynamic pressure comes from large prefill qmm/transient allocation plus BF16 KV, not Pi RSS or full-sequence logits.
+The local MLX bridge works and a genuine Qwen-generated Pi tool call was observed. There is one model instance, no duplication. The first real Pi request is ~1500 tokens and the main dynamic pressure comes from large prefill qmm/transient allocation plus BF16 KV, not Pi RSS or full-sequence logits.
 
 ### CAPABILITY 000C — COMPLETE
 
-`prefill_step_size=512` dominates the canonical 2048 setting on the exact Pi prefill:
+`prefill_step_size=512` dominates canonical 2048 on the exact 1504-token Pi prefill:
 
 - 512: **23.74 s**, **63.36 tok/s**, **4089.8 MB peak**, bit-exact
 - 2048: **27.91 s**, **53.88 tok/s**, **4180.1 MB peak**, bit-exact
 
-This is an integrated-agent candidate, not yet a universal runtime default.
+This makes 512 the admitted integrated-agent candidate, not yet a universal runtime default.
 
 ### CAPABILITY 000D — HARNESS FAILURE / NO SCIENCE
 
-The first integrated Pi-loop attempt failed in server instrumentation before prefill/tool execution:
+First integrated Pi-loop attempt failed before prefill/tool execution because instrumentation assumed `.shape` on a list.
 
-- 1518 input tokens
-- 0 generated tokens
-- no tool execution
-- min free 17%
-- peak MLX 3417.901 MB (weights only)
+Root cause:
+`AttributeError: 'list' object has no attribute 'shape'`
+at `scripts/capability_000d_pi_loop.py`, `watched_prompt`, line 114.
 
-Therefore no scientific result exists for step 512 in the multi-turn Pi loop.
+No evidence against 512 was produced.
 
-Next: **CAPABILITY 000D Fix1**. Repair instrumentation only, preflight it, then rerun the identical frozen task.
+### CAPABILITY 000D Fix1 — PREFLIGHT FAILURE / NO SCIENCE
+
+Fix1 repaired the original list-shape issue with list-safe prompt observation and exception-contained callbacks. The canonical model successfully executed a tiny local preflight request and returned `OK.`.
+
+However the harness failed to produce a completed turn-metrics record, so the scientific numbers.txt Pi-loop run was not started.
+
+The punctuation difference `OK.` vs `OK` is not itself a harness-science failure. Preflight should test infrastructure health, not exact instruction-following. The remaining blocker is reliable non-fatal telemetry lifecycle closure.
+
+Report:
+`research/capability/capability-000d-fix1-preflight-failure.md`.
+
+### CAPABILITY 000D Fix2 — NEXT
+
+Minimal harness repair only:
+
+1. preserve `prefill_step_size=512`;
+2. preserve model, 3-bit weights, BF16 KV, context 4096, Pi tools and prompts;
+3. keep list-safe prompt instrumentation;
+4. make telemetry observational and non-fatal;
+5. require preflight to produce a valid local-model response and complete request/turn records; exact punctuation is not a preflight gate;
+6. then rerun the original frozen numbers.txt Pi loop exactly once.
+
+If the real loop passes, proceed to CAPABILITY 001. If the model actually runs and hits the resource floor, that is valid scientific evidence.
 
 ### CAPABILITY 001 — BLOCKED pending successful 000D admission
 
 Frozen 12-task suite: coding + Git safety + experiment/result reasoning.
 
-This becomes the capability reference for future changes.
+This becomes the capability reference for future representation changes.
 
 ## B — RAM/speed frontier
 
@@ -114,12 +134,16 @@ Judge every representation by `memory + speed + capability`.
 
 ## Immediate order
 
-1. CAPABILITY 000D Fix1 — instrumentation repair + identical Pi-loop rerun
+1. CAPABILITY 000D Fix2 — minimal telemetry repair + identical Pi-loop rerun
 2. CAPABILITY 001
 3. MEMORY-FRONTIER 001
 4. prefetch/buffering/range-I/O work
 5. OUTCORE-BLOCK 001
 6. scale toward 27B/32B
+
+## Local-only implementation warning
+
+Several recent CAPABILITY scripts/evidence currently exist only in the local worktree under `<repository-root>` and `results-local/`. HANDOFF.md lists the known paths. A new chat should not assume those scripts have been committed to GitHub until they are explicitly synchronized.
 
 ## Final objective
 
