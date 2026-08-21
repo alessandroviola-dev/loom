@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-21
-Status: ACTIVE — agentic prefill memory optimization
+Status: ACTIVE — agentic bridge stabilization
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Last completed experiment: `CAPABILITY_000B_EXACT_REPLAY_COMPLETE`
-Next experiment: `CAPABILITY_000C_PREFILL_CHUNK_FRONTIER`
+Last completed experiment: `CAPABILITY_000C_PREFILL_FRONTIER_COMPLETE`
+Next experiment: `CAPABILITY_000D_PI_LOOP_ADMISSION`
 
 Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
@@ -58,62 +58,51 @@ CAPABILITY 000 proved the canonical Qwen3-8B can drive Pi: a genuine model-gener
 
 ### CAPABILITY 000B — complete
 
-Report: `research/capability/capability-000b-pi-prefill-envelope-result.md`.
-
 Exact first Pi request:
 
-- total input: **1504 tokens**
-- system: 608
-- user: 65
-- tools: 814
-- other: 17
-- context headroom: 2592 / 4096
-
-Prefill behavior:
-
-- segmented/chunked
-- observed M: `[1430, 70, 3]`
-- current `prefill_step_size=2048`
-- full-position logits are not materially retained; actual materialized logits are last-token `[1,1,151936]`
-- BF16 BatchKVCache actual length 1504, capacity 1536 in 256-token blocks
-
-Exact direct replay:
-
-- min free **6%**
-- peak swap **1675 MB**
-- peak MLX **4180.1 MB**
+- total input **1504 tokens**
+- system 608 / user 65 / tools 814 / other 17
+- context headroom 2592 / 4096
+- BF16 KV logical 1504 / capacity 1536
+- current prefill segmentation `[1430,70,3]` at `prefill_step_size=2048`
+- full-sequence logits not materially retained; final logits `[1,1,151936]`
+- exact replay peak MLX **4180.1 MB**
 - prefill wall **20.61 s**
 - ~216 MiB persistent KV capacity
-- ~546 MiB transient peak above post-prefill active during first M=1430 prefill
+- ~546 MiB transient first-prefill peak
 
-Attribution:
+Attribution: weights and KV PROVEN; qmm/prefill temporaries and long system/tool prompt STRONGLY SUPPORTED; full-sequence logits and Pi RSS NOT SUPPORTED as the cliff cause.
 
-- weights: PROVEN
-- KV: PROVEN
-- full-sequence logits: NOT SUPPORTED
-- qmm/prefill temporaries: STRONGLY SUPPORTED
-- Pi RSS as cliff cause: NOT SUPPORTED
-- long system/tool prompt as driver of large prefill M: STRONGLY SUPPORTED
+### CAPABILITY 000C — complete
+
+Report: `research/capability/capability-000c-prefill-frontier-result.md`.
+
+Exact 1504-token request, one-factor `prefill_step_size` frontier:
+
+- 2048 control: 27.91 s, 53.88 tok/s, 4180.1 MB peak
+- 512: **23.74 s, 63.36 tok/s, 4089.8 MB peak, bit-exact**
+- 256: 28.24 s, 53.26 tok/s, **3980.7 MB peak**, top1 same but not bit-exact
+- Pareto frontier: **512, 256**
+
+Relative to 2048, step 512 reduces prefill wall ~14.94%, raises effective prefill throughput ~17.59%, lowers peak MLX by 90.3 MB and lowers the measured transient by 90.3 MB, while preserving bit-exact final logits.
+
+Decision: `512` is the operational candidate. It is not yet promoted to the full capability benchmark until an actual multi-turn Pi tool loop completes safely.
 
 ## Exact next step
 
-Run `CAPABILITY 000C — bounded prefill-chunk frontier` from:
-`research/capability/capability-000c-prefill-chunk-frontier-plan.md`.
+Run `CAPABILITY 000D — Pi multi-turn loop admission with 512 prefill` from:
+`research/capability/capability-000d-pi-loop-admission-plan.md`.
 
-Sole factor: prefill chunk size `2048 / 1024 / 512 / 256`, using the exact same captured 1504-token Pi request.
+Use the same disposable numbers task and full Pi tool surface. Record every model turn's input length, prefill segmentation/wall, generation, KV state, MLX peak, system free/swap and tool result. Hard abort remains free <5% or swap >5600 MB.
 
-Do not change model, 3-bit representation, BF16 KV, context 4096, max output 2048, prompt semantics or tool surface.
+Do not change context 4096, max output 2048, BF16 KV, 3-bit representation, system/tool semantics or model.
 
-Goal: recover safe memory headroom by reducing transient prefill M while measuring the prefill-time penalty and preserving first-token/tool-call behavior.
-
-If one chunk size is clearly useful, run a separate integrated Pi smoke before CAPABILITY 001.
+If 000D functionally completes, review the resource trajectory and then authorize the frozen 12-task CAPABILITY 001 suite under the same 512 prefill setting.
 
 ## Later
 
-After a sustainable capability bridge:
-
 1. CAPABILITY 001 baseline
-2. MEMORY-FRONTIER 001 partial residency RAM/tok/s curve
+2. MEMORY-FRONTIER 001 partial-residency RAM/tok/s curve
 3. async prefetch / buffering / direct range I/O
 4. M>1 out-of-core weight-I/O amortization
 5. scale toward 27B/32B
