@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000L_FULL_SEQUENCE_BOUNDARY_RECLAMATION_PASS`
+Current checkpoint: `CAPABILITY_000M_REAL_PI_REPRODUCIBLE_PASS`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -18,7 +18,7 @@ Qwen3-8B, affine 3-bit/group64, BF16 KV, MLX 0.31.2. REALGEN 001 = 13.184615357 
 
 ### 000C — prefill frontier
 
-`prefill_step_size=512` dominates canonical 2048 on the exact Pi prefill and remains the active integrated-agent candidate.
+`prefill_step_size=512` dominates canonical 2048 on the exact Pi prefill and remains the admitted agent-runtime setting.
 
 ### 000H — sequential accumulation
 
@@ -30,55 +30,60 @@ The stale completed `GenerationBatch.Response.prompt_cache` retains finished-req
 
 ### 000K — allocator-cache reclamation PASS
 
-After the stale-response detach, one `mx.clear_cache()` reclaims 486.23 MiB allocator cache, raises R2 minimum free from 5% to 11%, costs 3.900 ms at the measured boundary and preserves semantics. Non-canonical ~0.01 s prefill measurements from 000K are not promoted.
+After the stale-response detach, one `mx.clear_cache()` reclaims 486.23 MiB allocator cache, raises R2 minimum free from 5% to 11%, costs 3.900 ms at the measured boundary and preserves semantics.
 
-### 000L — FULL-SEQUENCE BOUNDARY RECLAMATION PASS
+### 000L — full-sequence boundary reclamation PASS
 
-Report: `research/capability/capability-000l-full-sequence-boundary-reclamation-result.md`.
+Exact R1-R6 all complete with detach + one `mx.clear_cache()` after every completed response.
 
-Exact R1-R6 all complete with the combined treatment:
-- after every completed response, detach only that stale completed-response `prompt_cache`;
-- call `mx.clear_cache()` exactly once.
+Treatment vs control:
+- peak MLX 4132.64 vs 4230.45 MiB;
+- minimum free 10% vs 5%;
+- semantic/tool equivalence PASS;
+- mean clear latency 2.651 ms;
+- boundary allocator cache 0.00 MiB after every clear.
 
-Treatment vs control in the same full sequence:
-- peak MLX: **4132.64 vs 4230.45 MiB**;
-- minimum free: **10% vs 5%**;
-- peak reduction: **97.81 MiB**;
-- worst-case free-memory gain: **+5 pp**;
-- semantic/tool equivalence: PASS for R1-R6;
-- no `gc.collect()`.
+### 000M — REAL PI REPRODUCIBLE PASS
 
-Allocator cache returns to **0.00 MiB** after every treatment boundary and before R2-R6. Cache-clear latency: mean **2.651 ms**, median **2.291 ms**, max **4.237 ms**.
+Report: `research/capability/capability-000m-real-pi-reproducibility-result.md`.
 
-The control also completed R1-R6 in this particular run, confirming resource-gate variability. Therefore 000L validates the treatment mechanism and headroom benefit, but does not itself establish real-agent reliability.
+Three independent real-Pi attempts with the promoted boundary policy all pass:
 
-### 000M — NEXT
+- functional 3/3 = 100%;
+- strict 3/3 = 100%;
+- 6 model turns each;
+- no resource aborts;
+- no telemetry errors;
+- minimum free 9–11%;
+- minimum post-clear free 16–19%;
+- post-clear allocator cache 0.00 MiB;
+- mean boundary clear 2.003–2.596 ms;
+- correct `answer.txt=31`, preserved `numbers.txt`, final `DONE` every time.
 
-Frozen plan: `research/capability/capability-000m-real-pi-boundary-reclamation-reproducibility-plan.md`.
+The bridge admission gate is therefore closed successfully.
 
-Integrate the exact 000L boundary treatment into the real Pi-localhost bridge for the experiment only, then run the frozen numbers.txt task in **three independent fresh attempts**.
+### CAPABILITY 001 — READY
 
-Frozen:
-- Qwen3-8B 3-bit full parameter count;
+Frozen suite: 12 practical agent tasks covering coding, Git safety and experimental reasoning.
+
+Frozen runtime:
+- Qwen3-8B full parameter count, 3-bit/group64;
 - BF16 KV;
 - context 4096;
+- max output 2048;
 - step 512;
-- full Pi tools;
-- no model/prompt/tool/KV/context changes.
+- localhost-only provider;
+- tools read/write/edit/bash;
+- promoted boundary policy: ownership-checked stale `prompt_cache` detach + one `mx.clear_cache()` after every completed response.
 
-Each attempt:
-- fresh server/model process;
-- fresh Pi session/workspace;
-- host admission free >=60% on two consecutive passive samples, swap <=5600 MB;
-- no inference preflight in the scientific process;
-- no retry/rescue;
-- boundary detach + one `mx.clear_cache()` after every completed response.
+Documents:
+- `research/capability/capability-001-frozen-spec.md`
+- `research/capability/capability-001-context-amendment.md`
+- `research/capability/capability-001-runtime-admission.md`
 
-Promotion rule: **3/3 functional PASS** is required before CAPABILITY 001. Strict final text `DONE` is secondary.
+Primary result is task passes / 12; secondary coding score /100 and critical/constraint/tool-protocol errors. No quality threshold is applied to this baseline.
 
-### CAPABILITY 001 — BLOCKED pending 000M
-
-Frozen 12-task coding + Git safety + experimental-reasoning baseline. Run only after 000M demonstrates 3/3 real-Pi functional reliability.
+Before the run, mechanically publish the promoted local `scripts/loom_pi_mlx_bridge.py` because that stable implementation currently exists only in the user's local worktree.
 
 ## B — RAM/speed frontier
 
@@ -105,8 +110,8 @@ Later candidates include mixed/selective precision, compressed cold weights, qua
 
 ## Immediate order
 
-1. CAPABILITY 000M — real Pi boundary-reclamation reproducibility
-2. CAPABILITY 001 if and only if 000M = 3/3 functional PASS
+1. mechanically publish promoted `scripts/loom_pi_mlx_bridge.py`
+2. CAPABILITY 001 frozen 12-task baseline
 3. MEMORY-FRONTIER 001
 4. prefetch/buffering/range-I/O
 5. OUTCORE-BLOCK 001
@@ -114,4 +119,4 @@ Later candidates include mixed/selective precision, compressed cold weights, qua
 
 ## Local-only implementation warning
 
-Recent CAPABILITY scripts/evidence currently exist only in the local worktree and `results-local/` unless explicitly synchronized.
+Recent CAPABILITY scripts/evidence remain local unless explicitly synchronized. The stable bridge source is the only immediate code file that must be published before CAPABILITY 001.
