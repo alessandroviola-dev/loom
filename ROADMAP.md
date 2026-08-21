@@ -29,7 +29,9 @@
 - [x] Amplifier 004 compact-feedback plan/runner frozen
 - [ ] Run Amplifier 004 after current Stretch architectural sequence
 
-## Phase 7 — Stretch / Memory Hierarchy + Compute — ACTIVE
+## Phase 7 — Stretch / Memory Hierarchy + Compute — PAUSED
+
+**STRETCH MICRO-OPTIMIZATION PHASE PAUSED.** Stretch 041 is approved; do not rerun Stretch 037–041.
 
 Frozen subject: Qwen3-8B 3-bit/group64, 36 layers, Apple M1 / 8 GB.
 Preferred runtime after Stretch 030: mlx 0.31.2 + mlx-metal 0.31.2, mlx-lm 0.31.3, transformers 5.12.1.
@@ -237,7 +239,22 @@ Promotion target: ~20 token/s.
 - [ ] Test KV capacity/quantization separately
 - [ ] Promote interactive profile only when speed/quality evidence supports ~20 token/s target
 
-## Phase 8 — Synthesis
+## Phase 8 — REALGEN / Real Autoregressive Generation — ACTIVE
+
+**REALGEN PHASE ACTIVE.** This operational baseline is not a new optimization factor.
+
+### REALGEN 001 — Qwen3-8B real greedy M1 baseline — HOST-GATED / NOT STARTED
+- [x] Freeze the preceding validated configuration as **TARGET VERIFICATION M5** evidence only; do not claim it produces five unknown future tokens
+- [x] Audit exact S1_R8 source identity: its literal M5 input-shape guard makes it ineligible at M1; retain ordinary built-in MLX M1 qmv_fast
+- [x] Add deterministic six-prompt public harness, target tokenizer/chat-template use, ordinary MLX-LM greedy reference, exact-ID comparison, BF16 KV, M1 cleanup translation and resource telemetry in `scripts/loom_real_generation_baseline_001.py`
+- [x] Record tokenizer/template identity and the M1 dispatch/cleanup audit in `research/realgen/real-generation-baseline-001.md`
+- [x] Record natural pre-launch host gate failure: 54% free memory (<60%), 669.88 MB swap; no model load or benchmark attempt; `REALGEN_001_NOT_STARTED_HOST_NOT_READY`
+- [ ] Wait for a natural host-ready state, then run 128-token-or-EOS exact-reference baseline for all six prompts
+- [ ] Report real M1 generation/prefill/TTFT/end-to-end results separately from M5 verification evidence
+- [ ] Derive speculative break-even arithmetic only after measured REALGEN M1 wall/token; do not download/test a drafter
+- [ ] Future DRAFT 001 candidate note only: `mlx-community/Qwen3-0.6B-4bit`; independently verify tokenizer, vocab IDs, chat template, speed and RAM before any use
+
+## Phase 9 — Synthesis
 - [ ] Capability vs memory vs time frontier
 - [ ] Daily-use profile
 - [ ] Fast/efficient profile

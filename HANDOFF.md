@@ -1,11 +1,11 @@
 # LOOM — Project Handoff
 
-Last updated: 2026-08-20
-Status: ACTIVE — Apple M1 / 8 GB reference system
+Last updated: 2026-08-21
+Status: REALGEN PHASE ACTIVE — host-gated baseline pending on Apple M1 / 8 GB reference system
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE_CHECKPOINT_REVIEW`
+Current checkpoint: `REALGEN_001_NOT_STARTED_HOST_NOT_READY`
 
 ## Mission
 
@@ -456,10 +456,23 @@ Actual-payload isolated measurements establish that the LM head is a separate bu
 
 Classification: `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE`. Exact recommendation: **no next optimization factor is defensibly recommended**. Transition toward radical kernel/model techniques, speculative drafter/acceptance work, or serving/productization rather than sub-5% micro-optimizations.
 
+## REALGEN 001 — real autoregressive generation baseline — NOT STARTED / host-gated
+
+Stretch 041 was approved. **STRETCH MICRO-OPTIMIZATION PHASE PAUSED** and **REALGEN PHASE ACTIVE**. REALGEN 001 is an end-to-end greedy M1 baseline, not a new optimization factor and not a claim that the validated M5 verifier emits five unknown future tokens.
+
+The prepared runner is `scripts/loom_real_generation_baseline_001.py`; report: `research/realgen/real-generation-baseline-001.md`. It uses the target tokenizer/chat template, ordinary built-in MLX M1 qmv_fast and BF16 KV. The exact Stretch-037 S1_R8 identity is explicitly M5-only (`x.shape[-2] == 5`), so it is **ineligible and not injected at M1**. The M1 operational cleanup translation is one unchanged `gc.collect() -> mx.clear_cache() -> gc.collect()` event after each ten committed generated tokens; it is not a new promoted scientific cadence.
+
+At pre-launch `20260821-075158`, free memory was 54% (required >=60%) and swap was 669.88 MB (required <=5600 MB). No model load, warmup, prompt, reference generation, or benchmark occurred; no attempt was consumed. Classification: `REALGEN_001_NOT_STARTED_HOST_NOT_READY`. Evidence: `results-local/realgen/real-generation-baseline-001/20260821-075158/run-status.json`.
+
 ## Exact next step
 
-Checkpoint: `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE_CHECKPOINT_REVIEW`.
-Preserve Qwen3-8B affine 3-bit/group64 BF16 M5/H36/full persistence/BF16 KV/S1_R8 and `gc.collect() -> mx.clear_cache() -> gc.collect()` once per two M5 blocks. Do not rerun Stretch 037, 038, 039 or 040. Obtain separate authorization before any new radical direction; no micro-optimization factor is currently selected.
+Wait for a natural host state satisfying free memory >=60% and swap <=5600 MB, then run exactly:
+
+```bash
+results-local/mlx/venv-mlx-lm-0.31.3/bin/python scripts/loom_real_generation_baseline_001.py
+```
+
+Do not rerun Stretch 037–041. Preserve Qwen3-8B affine 3-bit/group64 BF16 M5/H36/full persistence/BF16 KV/S1_R8 and the verifier's once-per-two-M5-block cleanup evidence as **TARGET VERIFICATION M5** evidence only. Do not download or test a drafter until REALGEN 001 has been reviewed and a separate DRAFT 001 is authorized.
 
 ### Historical Stretch 031 rationale
 
