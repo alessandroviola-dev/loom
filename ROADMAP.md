@@ -1,33 +1,24 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000G_NATURAL_HOST_RECOVERY_PASS`
+Current checkpoint: `CAPABILITY_000H_SEQUENTIAL_ACCUMULATION_LIMIT`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
 
 Run excellent full-parameter-count LLMs on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models.
 
-Every major direction is judged on:
-1. memory
-2. speed
-3. capability
-
-Pi is reserved for code/tests. ChatGPT owns research direction and repository/project synchronization.
+Every major direction is judged on memory, speed and capability. Pi is reserved for code/tests; ChatGPT owns research direction and repository/project synchronization.
 
 ## Canonical 8B baseline
 
 Qwen3-8B, affine 3-bit/group64, BF16 KV, MLX 0.31.2.
 
-REALGEN 001:
-- real generation **13.184615357 tok/s**
-- end-to-end **12.046861457 tok/s**
-- raw weights **3,583,928,320 B**
-- MLX peak **3,826,575,836 B**
+REALGEN 001: 13.184615357 tok/s real generation, 12.046861457 tok/s E2E, raw weights 3,583,928,320 B.
 
-REALGEN 002 custom M1 qmv transfer: exact but **-9.178832%**; closed.
+REALGEN 002 custom M1 qmv transfer: exact but -9.178832%; closed.
 
-Pure full-model layer streaming is known to save RAM and destroy throughput. It is not the endpoint.
+Pure full-model layer streaming saves RAM and destroys throughput; it is not the endpoint.
 
 ## A — Capability baseline — ACTIVE
 
@@ -40,50 +31,45 @@ Step 512 dominates canonical 2048 on the exact Pi prefill:
 
 512 remains the active integrated-agent candidate.
 
-### CAPABILITY 000D / 000E
+### 000D–000G — bridge and host lifecycle
 
-A real Pi tool turn succeeds. A later resource abort occurred, but exact fresh and sequential replay established that 1576 tokens are not intrinsically outside the 512 envelope. Request KV is not retained and no leak is demonstrated.
+A real Pi tool turn succeeds. Later resource aborts are not explained by intrinsic 1576-token request size. Host teardown is healthy: all scientific processes die and macOS naturally recovers >=60% free within ~3-5 s.
 
-### CAPABILITY 000F — incomplete reproducibility
+### CAPABILITY 000H — COMPLETE
 
-Only one attempt was scientifically admitted; it resource-aborted. The next launch sample was taken too early after teardown, so the intended 3-run reliability result was not obtained.
+Report: `research/capability/capability-000h-sequential-accumulation-result.md`.
 
-### CAPABILITY 000G — COMPLETE
+Exact captured requests R1-R6 span 1518 -> 1820 input tokens. **All six pass fresh.**
 
-Report: `research/capability/capability-000g-natural-host-recovery-result.md`.
+Sequentially:
+- R1 passes;
+- after R1, active MLX remains 3886.20 MB versus 3417.90 MB loaded-idle: +468.30 MB request-boundary state;
+- allocator cache ~226.57 MB;
+- R2 fresh peak 4095.65 MB / min free 9%;
+- R2 sequential peak 4182.45 MB / min free 4%;
+- sequential R2 aborts.
 
-Natural host recovery after normal scientific-process teardown:
-- all scientific PIDs/listeners dead immediately
-- free memory 6% at exit, 5% at 1 s
-- free memory 70% at 3 s
-- 71% at 5 s
-- two consecutive >=60% samples by 5 s
+Classification: `CAPABILITY_000H_SEQUENTIAL_ACCUMULATION_LIMIT`.
 
-Therefore the post-run low-free state is transient macOS recovery, not a process-lifecycle leak.
+Therefore the primary current bottleneck is request-boundary active/cache retention, not later prompt size, KV-capacity jumps or host admission variability.
 
-Important additional evidence: from a 70% pre-load host, the integrated workload executed five model requests but still reached peak MLX 4212.45 MB and 4% free. Sustained multi-turn memory pressure remains unresolved.
+### CAPABILITY 000I — NEXT
 
-### CAPABILITY 000H — NEXT
+Request-local state reclamation.
 
-Full multi-turn request-envelope attribution.
+Frozen plan: `research/capability/capability-000i-request-local-reclamation-plan.md`.
 
-Use exact captured request bodies from the 000G workload.
+Phase A: identify the exact completed-request owner/lifecycle retaining MLX active memory after R1 using source inspection, weakrefs/object graph and metadata-only tensor accounting.
 
-For each captured turn:
-1. recover exact token count and conversation/tool growth;
-2. replay it fresh as the first request of a fresh model process;
-3. replay the whole series sequentially with no cleanup;
-4. compare fresh vs sequential peak MLX, min free, active/cache state, KV and prefill M geometry;
-5. identify first intrinsically unsafe request, if any;
-6. identify sequential overhead and its growth by turn.
+Phase B is allowed only if the stale owner/intended missing lifecycle transition is identified. Test one targeted request-local release versus natural control on exact R1->R2.
 
-No treatment yet: keep Qwen3-8B 3-bit, BF16 KV, context 4096, step 512 and full Pi tool surface frozen.
+Forbidden: `mx.clear_cache()`, `gc.collect()`, global cleanup, process restart between R1/R2, model/context/KV/prompt/tool/prefill-step changes.
+
+Promotion requires materially lower post-R1 active memory, sequential R2 completion above the resource gate, and preserved output/tool behavior.
 
 ### CAPABILITY 001 — BLOCKED
 
-Frozen 12-task suite: coding + Git safety + experiment/result reasoning.
-
-Run only after integrated multi-turn execution has enough reproducible memory headroom.
+Frozen 12-task suite: coding + Git safety + experiment/result reasoning. Run only after the integrated bridge has reproducible multi-turn headroom.
 
 ## B — RAM/speed frontier
 
@@ -91,7 +77,7 @@ After CAPABILITY 001, run MEMORY-FRONTIER 001 with controlled partial residency 
 
 ## C — Hide SSD cost
 
-Then test one factor at a time:
+Then isolate:
 1. asynchronous prefetch
 2. double/triple buffering
 3. transfer/super-layer chunk sizing
@@ -105,31 +91,24 @@ OUTCORE-BLOCK 001 revisits M>1 specifically for out-of-core models, where one we
 
 ## E — Representation without shrinking parameter count
 
-Potential later factors:
-- mixed/selective precision
-- compressed cold weights
-- quantized KV
-- storage formats designed for out-of-core execution
-
-Judge every representation by `memory + speed + capability`.
+Potential later factors: mixed/selective precision, compressed cold weights, quantized KV, and out-of-core storage formats. Judge every representation by memory + speed + capability.
 
 ## F — Scale beyond 8B
 
-1. solve architecture on the well-characterized 8B
+1. solve architecture on well-characterized 8B
 2. apply it to a model whose weights exceed comfortable physical RAM
 3. first major checkpoint: 27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
-4. then optimize speed toward interactivity
+4. optimize toward interactive speed
 
 ## Immediate order
 
-1. CAPABILITY 000H — full multi-turn request envelope
-2. select one evidence-backed memory treatment
-3. integrated Pi-loop admission/reproducibility
-4. CAPABILITY 001
-5. MEMORY-FRONTIER 001
-6. prefetch/buffering/range-I/O work
-7. OUTCORE-BLOCK 001
-8. scale toward 27B/32B
+1. CAPABILITY 000I — targeted request-local reclamation
+2. integrated Pi-loop admission/reproducibility
+3. CAPABILITY 001
+4. MEMORY-FRONTIER 001
+5. prefetch/buffering/range-I/O work
+6. OUTCORE-BLOCK 001
+7. scale toward 27B/32B
 
 ## Local-only implementation warning
 
