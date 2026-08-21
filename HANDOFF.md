@@ -1,568 +1,191 @@
-# LOOM — Project Handoff
+# LOOM — Active Handoff
 
 Last updated: 2026-08-21
-Status: REALGEN PHASE ACTIVE — REALGEN 002 M1 qmv feasibility complete / NO-GO on Apple M1 / 8 GB reference system
+Status: ACTIVE — architectural RAM / speed / capability frontier
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
-Current branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `REALGEN_002_M1_QMV_FAST_NO_GO`
+Branch: `research/stretch-015-divergence-attribution`
+Last completed experiment: `REALGEN_002_M1_QMV_FAST_NO_GO`
+
+Historical detailed HANDOFF/ROADMAP state through REALGEN 002 is preserved in Git history at commit `844325f63b1880107040b219524ad5391276769c` and in the individual research reports. Do not rebuild the full historical narrative into this active handoff.
 
 ## Mission
 
-Primary question:
-> **What is the greatest useful capability that can be produced by an 8 GB local system?**
+**Big models. Small machines.**
 
-Tagline: **Big models. Small machines.**
+LOOM aims to run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB, ultimately pushing toward approximately 27B / 32B-class models rather than solving the problem by retreating to a smaller parameter-count model.
 
-Interactive promotion target: approximately **20 token/s**. This is a promotion target, not an intermediate scientific PASS gate.
+Success requires all three:
 
-## Research rules
+1. memory fit/headroom;
+2. useful interactive speed;
+3. retained real capability.
 
-- One scientific factor at a time.
-- Preserve PASS, scientific FAIL and harness/setup defects.
-- No post-hoc gate weakening, hidden rescue ladders or automatic retries.
-- Runtime abort where inherited: free memory <5% OR swap >5600 MB.
-- Launch gate where preregistered: free memory >=60%, swap <=5600 MB.
-- System-wide free memory/swap are decisive; process RSS is diagnostic.
-- No deliberate macOS cache purge to manufacture host state.
-- Never dereference a virtualenv `bin/python` path before subprocess execution; preserve the venv launcher path and validate environment identity through `sys.prefix`/package metadata.
-- Balanced within-experiment ratios are causal evidence; absolute cross-experiment throughput is host/cache-state dependent.
-- Runtime/model upgrades are separately preregistered and never rewrite historical evidence.
-- Update HANDOFF and ROADMAP after meaningful checkpoints.
+A model that merely fits but is unusably slow is not a successful endpoint.
 
-## Frozen model / preferred runtime
+## Operating protocol
 
-Model:
-`results-local/mlx/models/Qwen3-8B-3bit/model.safetensors`
+Canonical policy:
+`research/governance/chatgpt-pi-operating-protocol.md`
 
-Qwen3:
-- hidden 4096
-- 36 layers
-- vocab 151936
-- 32 attention heads / 8 KV heads / head dim 128
-- RMSNorm eps 1e-6
-- untied embedding/head
-- 3-bit/group64 affine quantization.
+### Pi owns
 
-Preferred runtime after Stretch 030:
-- mlx 0.31.2
-- mlx-metal 0.31.2
-- mlx-lm 0.31.3
-- transformers 5.12.1
-- Python 3.13.0.
+- serious local code implementation;
+- experiment/runtime inspection required for code/test work;
+- execution of tests and benchmarks;
+- concise raw evidence and changed-file paths.
 
-Canonical MLX venv:
-`results-local/mlx/venv-mlx-lm-0.31.3`
+Pi does NOT routinely own:
 
-Raw weights:
-- total `3,583,928,320 B`
-- transformer body `3,039,381,504 B`
-- each layer `84,427,264 B` / 25 tensors
-- embedding `272,269,312 B`
-- final RMSNorm `8,192 B`
-- LM head `272,269,312 B`.
+- Git synchronization;
+- commits/pushes;
+- HANDOFF updates;
+- ROADMAP updates;
+- long historical recaps.
 
-Ordinary BF16 KV remains frozen.
+### ChatGPT owns
 
-## Canonical Stretch evidence
+- scientific direction;
+- experiment design;
+- evidence review and GO/NO-GO decisions;
+- GitHub synchronization and repository administration;
+- HANDOFF and ROADMAP maintenance;
+- checkpoint/provenance continuity.
 
-### Stretch 001–017 — exact block frontier
+Default loop:
+`ChatGPT designs -> Pi codes/tests -> Pi returns evidence -> ChatGPT reviews/syncs -> next experiment`.
 
-Established layer-addressable I/O, streamed/full parity, persistent BF16 KV, persistent hotsets and oracle verification.
+## Canonical current system
 
-MLX 0.31.2 exactness frontier:
-- M8 valid numerical-parity FAIL;
-- q/k/v/o exact through M9, first divergence M10;
-- gate/up/down exact through M5, first divergence M6;
-- M5 exact end-to-end over 15 oracle tokens.
+Model/runtime:
 
-Decision: M5 is the maximum demonstrated exact oracle block under MLX 0.31.2, but not necessarily the throughput-optimal block size after later framework optimizations.
+- Qwen3-8B full parameter count;
+- affine 3-bit/group64 weights;
+- BF16 KV;
+- 36 layers, hidden 4096, intermediate 12288;
+- Apple M1 / 8 GB;
+- MLX 0.31.2 / mlx-metal 0.31.2;
+- mlx-lm 0.31.3;
+- transformers 5.12.1;
+- ordinary built-in M1 `qmv_fast` for real autoregressive generation.
 
-### Stretch 018 — M4/M5 cost — COMPLETE PASS
+Raw persistent weights:
+`3,583,928,320 B`.
 
-- M5/M4 `1.09795340695x` (~+9.80%).
+## Canonical real-generation baseline
 
-This comparison predates full persistence and cleanup schedule optimization.
+REALGEN 001 is the user-facing baseline:
 
-### Stretch 019–022 — transformer residency — COMPLETE
+- pooled real autoregressive generation: **13.184615357 tok/s**;
+- pooled end-to-end output: **12.046861457 tok/s**;
+- six frozen public prompts;
+- all direct-driver generated token-ID sequences exactly matched the ordinary MLX-LM greedy reference;
+- minimum free memory during run: 20%;
+- peak swap: 1591.19 MB;
+- MLX peak: 3,826,575,836 B.
 
-Controlled gains:
-- H8 -> H16 ~+56.87%
-- H16 -> H24 ~+34.86%
-- H24 -> H32 ~+11.45%
-- H32 -> H36 ~+10.50%.
+Do not confuse this with M5 verifier performance.
 
-Decision: H36 is the physical transformer-residency ceiling.
+## M5 verifier evidence
 
-### Stretch 023 — full raw-weight persistence — COMPLETE PASS
+The promoted M5 oracle-verification path remains research infrastructure:
 
-Valid Fix1 `20260820-153308`:
-- PERSISTENT/STREAMED `1.5988607374x` (~+59.89%).
+- approximately 13.990655 tok/s under its frozen verifier scope;
+- S1_R8 is M5-only;
+- this is not ordinary unknown-next-token generation;
+- on the fully resident 8B, a five-token verifier cannot reach 20 tok/s even with zero draft cost.
 
-Decision: freeze H36 + full persistence.
+Important future nuance: M>1/block verification may still become valuable for **out-of-core models** because it can potentially amortize SSD weight reads across multiple token positions. The resident-8B speculative ceiling does not close that architectural question.
 
-### Stretch 024 — compute/framework attribution — COMPLETE PASS
+## Latest result — REALGEN 002
 
-Valid Fix2 `20260820-160140`:
-- transformer compute `0.8081826820 s/block`
-- attention `0.2207656117 s/block`
-- MLP `0.5874170703 s/block`
-- old per-layer cleanup `0.9268928333 s/block`.
-
-Decision: cleanup/framework first.
-
-### Stretch 025–027 — cleanup schedule — COMPLETE
-
-025:
-- BATCHED/CONTROL `3.8627785715x` (~+286.28%).
-
-026:
-- SHARED_BATCHED/BATCHED `1.1410704391x` (~+14.11%).
-
-027 valid `20260820-163715`:
-- SINGLE_PASS/SHARED_BATCHED `1.0867142144x` (~+8.67%)
-- pooled `12.7306853225 token/s`
-- median block `0.396305 s`.
-
-Decision: freeze **H36 + full persistence + one final cleanup/pass**.
-
-Canonical Stretch 027 workload:
-`scripts/stretch_full_persistent_single_pass_cleanup_027.py`
-blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`.
-
-### Stretch 028 — compute re-attribution — COMPLETE PASS
-
-Valid `20260820-164802`:
-- transformer compute `0.4496960012 s/block`
-- attention path `0.1231006118 s/block`
-- MLP path `0.3265953895 s/block`
-- MLP/attention `2.6530769000x`
-- up/attention/gate/down each ~0.095–0.099 s/block
-- accounted wall ~93.95%.
-
-Decision: true transformer compute is primary target.
-
-### Stretch 029 — gate+up quantized fusion — COMPLETE PASS / NOT PROMOTED
-
-Initial `20260820-170503`: wrapper harness defect / no science.
-
-Valid Fix1 ABBA `20260820-171714`:
-- CONTROL `13.2286272786 token/s`
-- FUSED `12.3523991241 token/s`
-- FUSED/CONTROL `0.9337627302x` (~6.62% slower)
-- FUSED exact at M5
-- median wall ~8.62% higher.
-
-Decision: fusion path closed under MLX 0.31.2; no rescue variants.
+Question: can the successful M5 S1_R8 execution geometry be transferred to a new M1-specific qmv kernel?
 
 Result:
-`research/stretch/gate-up-quantized-fusion-029-result.md`
 
-### Stretch 030 — coherent MLX 0.31.2 vs 0.32.0 — COMPLETE PASS / 0.32.0 NOT PROMOTED
+- canonical custom clone exact;
+- M1_S1_R8 treatment exact on all 66 real payloads;
+- q/k/v/o generally slower;
+- representative ten-token replay exact;
+- CONTROL 0.779169 s;
+- TREATMENT 0.857916 s;
+- equivalent throughput change **-9.178832%**.
 
-Preserved pre-science defects:
-1. original setup used shell Python instead of canonical LOOM venv;
-2. runner Fix1 required a nonexistent failure-class string;
-3. runner Fix2 dereferenced macOS venv `bin/python` symlinks with `.resolve()` and lost venv identity.
+Classification:
+`REALGEN_002_M1_QMV_FAST_NO_GO`.
 
-All three occurred before a valid scientific constituent and have scientific result NONE.
+Decision: retain built-in MLX M1 `qmv_fast`. Do not create REALGEN 003 from this treatment.
 
-Setup Fix1 successfully created and validated treatment clone:
-`.venvs/stretch030-mlx0320-fix1`
+## Known memory result
 
-Treatment clone:
-- mlx 0.32.0
-- mlx-metal 0.32.0
-- mlx-lm 0.31.3
-- transformers 5.12.1
-- numpy 2.5.2
-- safetensors 0.8.0
-- Python 3.13.0.
+Aggressive layer streaming has already been demonstrated to reduce resident RAM substantially, but it destroys throughput because every dense transformer layer is needed for every autoregressive token.
 
-Valid Fix3 ABBA `20260820-175251`:
-`MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`
+Do not repeat pure full-model layer streaming as if it were a new solution.
 
-Metrics:
-- MLX0312 pooled `13.074823729584752 token/s`
-- MLX0320 pooled `12.341753014370326 token/s`
-- MLX0320/MLX0312 `0.9439326502310171x` (~5.61% slower)
-- MLX0312 median block `0.3795345 s`
-- MLX0320 median block `0.405476 s`
-- median wall ratio `1.068350835036077x` (~6.84% higher)
-- final cleanup mean `0.0554298333 s` vs `0.0636248333 s`
-- minimum free memory `17%` vs `22%`
-- peak swap `2801.88 MB` vs `2809.25 MB`.
+The new architectural research question is:
 
-Interpretation:
-- MLX 0.32.0 is exact/admissible at frozen M5;
-- it is slower on the M1 reference system;
-- memory capacity is not the limiting difference.
+> How much of the model must remain resident, and how much can be streamed/prefetched, to minimize RAM while preserving useful real tok/s?
 
-Decision:
-- retain coherent mlx/mlx-metal 0.31.2;
-- do not remap M under 0.32.0 because the preregistered `exact + faster` condition was not met;
-- preserve treatment venv for audit only.
+## New measurement rule
 
-Result:
-`research/stretch/mlx-0312-0320-runtime-comparison-030-result.md`
+Major architectural changes are evaluated on:
 
-## Stretch 031 — M2 vs M5 on current SINGLE_PASS schedule — COMPLETE PASS
+- **Memory**;
+- **Speed**;
+- **Capability**.
 
-### Checkpoint 20260820-182206
+The old >=5% micro-optimization gate is not a universal exploratory gate anymore. Frontier-mapping experiments may be informative without individually producing >=5%, but promotion still requires meaningful system-level value.
 
-Objective remains a fresh, valid `M5 -> M2 -> M2 -> M5` comparison at common ten-token depth. Scientific result: **NONE**; no constituent reached numerical/top-1/oracle gates and no measurement is reusable.
+## Capability track
 
-The original failed run `20260820-180652` is preserved as a source-transform failure: its M5 geometry callback searched for a nonexistent final-source Stretch 027 summary literal. Fix1 preserved the originals, corrected that anchor, and added local final-source rendering/preflight. Fix1 preflight passed for both sides: M5 rendered SHA-256 `413af14cb19bc4b7c28110d78289080747ba46887c4b7a6bc885086cef0a4b69`; M2 `d09c6498c7bef6d8b7f80e501513cc0cf600ccd38d1dfb019d717acbf58b5b58`; normalized source equality proved geometry is the only scientific difference. It also confirmed the actual model-child interpreter path and versions: MLX `0.31.2`, mlx-lm `0.31.3`, transformers `5.12.1`.
+Plan:
+`research/capability/capability-001-agentic-baseline-plan.md`
 
-The fresh Fix1 ABBA `20260820-182206` then stopped at M5 before model work: the inherited parent derived its child executable script from `__file__`, but the new common-module shim supplied its own path. The canonical child executed that import-only module, exited `0`, and produced no child final/state payload. Parent classification is `SINGLE_PASS_M2_M5_GEOMETRY_COMPARISON_INCOMPLETE`; M5 child classification is `RUNTIME_FAIL`. Host gate metrics were free memory `71%` minimum and swap `1258.81 MB` peak. This is harness-only. No retry occurred.
+CAPABILITY 001 will baseline the current 8B 3-bit system on real, checkable agentic tasks through Pi, including:
 
-Decision: preserve both failures and stop. Modified/created Fix1 files and exact evidence are recorded in `research/stretch/single-pass-m2-m5-geometry-comparison-031-harness-defect-20260820-180652.md`. Open problem: preflight must validate concrete final parent/child dispatch, not only rendered source/interpreter availability.
+- repository understanding;
+- safe Git synchronization reasoning;
+- code modifications and tests;
+- frozen-experiment discipline;
+- result interpretation.
 
-### Fix2 preflight checkpoint 20260820-183232
+This becomes the reference against which future quantization/representation changes are judged.
 
-Fix2 created distinct shims, common harness and runner with explicit launcher-path propagation, rendered-source facts and a no-model parent/child marker contract. All Fix2 Python files passed `py_compile`; M5 and M2 source rendering/compilation and normalized geometry-only diff passed. The required M5 dispatch preflight then failed **before any model load**: `dispatch_preflight()` resolved the canonical venv `bin/python` symlink to framework Python (`/Library/Frameworks/.../python3.13`), so the child could not find `mlx` metadata and did not create its marker. Evidence: `results-local/stretch/single-pass-m2-m5-geometry-comparison-031-fix2/preflight/20260820-183232/` and `research/stretch/single-pass-m2-m5-geometry-comparison-031-fix2-amendment.md`.
+## Active architectural directions
 
-Scientific result remains **NONE**. No ABBA began, no measurement was created/reused, and no retry occurred. Next exact step: preserve this checkpoint; create a distinct dispatch revision preserving the literal venv `bin/python` path (no `.resolve()`), then require fresh M5 **and** M2 no-model marker PASS before a new ABBA.
+See compact `ROADMAP.md` for ordering. Primary directions are:
 
-### Fix3 and valid ABBA checkpoint 20260820-184128
+1. CAPABILITY 001 baseline;
+2. real M1 partial-residency RAM/tok/s frontier;
+3. asynchronous prefetch;
+4. double/triple buffering and transfer chunk sizing;
+5. direct safetensors range I/O / mmap / pread and macOS cache behavior;
+6. resident-hotset selection;
+7. block/multi-token execution to amortize SSD weight I/O;
+8. representation/KV compression only with capability measurement;
+9. scale the resulting engine toward 27B/32B-class full-parameter-count models.
 
-Fix3 preserved the literal canonical venv launcher, added a static venv-dereference regression guard, and added no-model M5/M2 parent-to-child markers. The preflight `20260820-184109` passed rendered M5/M2 source facts, normalized geometry-only diff, canonical `sys.prefix` and runtime metadata (mlx/mlx-metal `0.31.2`, mlx-lm `0.31.3`, transformers `5.12.1`), and both marker paths with `model_loaded=false` and `target_compute_executed=false`.
+## Closed / paused paths
 
-Fresh ABBA `M5 -> M2 -> M2 -> M5` completed at `results-local/stretch/single-pass-m2-m5-geometry-comparison-031-fix3/20260820-184128/summary.json`: all four constituents were exact, accepted ten tokens, retained H36/full persistence/single cleanup, and passed resources. Scientific result: `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`. M5 pooled `14.3307127237 tok/s`; M2 `11.8349427869 tok/s`; M2/M5 `0.8258446747`; wall/token `0.06978020` vs `0.08449555`; median block `0.3487060 s` vs `0.1672135 s`; cleanup/token `0.0091132 s` vs `0.0169262 s`; minimum free memory `18%` vs `24%`; peak swap `2068.12` vs `2083.69 MB`.
+Do not routinely reopen without new evidence:
 
-Decision: M5 wins and remains canonical geometry. M2 is not rescued and no optimum claim is made. Fix2 failure `20260820-183232` remains harness-only evidence; all prior failed attempts remain unused. Files/result: `research/stretch/single-pass-m2-m5-geometry-comparison-031-fix3-amendment.md` and `research/stretch/single-pass-m2-m5-geometry-comparison-031-result.md`. Next exact step: do not rerun geometry; prepare a separately preregistered independent compute-factor experiment.
+- Stretch 037–041;
+- REALGEN 002 M1 S1_R8 transfer;
+- row-chunk qmatmul;
+- gate/up fusion;
+- outer MLP compile;
+- fused residual/RMSNorm;
+- persistent BF16 dequantized projection caches;
+- MLX 0.32 M5 runtime comparison;
+- GQA shared-KV clone;
+- GC-only cleanup removal.
 
-## Stretch 032 candidate — M5 row-chunked quantized matmul feasibility — NO-GO
-
-Diagnostic only; no Stretch 032 plan, source transform, preflight, or ABBA was created. The real layer-0 Qwen3-8B 3-bit affine weights were measured under the canonical venv with M5 BF16 inputs. CONTROL was one M5 `mx.quantized_matmul`; TREATMENT was `2+2+1` qmatmuls plus concatenate. Each projection had 40 excluded warmups and 120 synchronized samples per side interleaved `CONTROL -> CHUNKED -> CHUNKED -> CONTROL`, with no deliberate cache purge.
-
-All q/k/v/o/gate/up/down outputs were bit-exact (`max_abs_diff=mean_abs_diff=0`) and shapes matched, but chunked/monolithic median ratios were all slower: q `1.062675`, k `1.178569`, v `1.186259`, o `1.091189`, gate `1.061970`, up `1.068221`, down `1.061597`. Applying only the matching Stretch 028 MLP component telemetry estimates a `-0.0185683 s/block` loss, `-5.3249%` of the valid Stretch 031 M5 median block wall. Even the explicitly optimistic attention-inclusive bound is negative (`-8.9908%`).
-
-Classification: `STRETCH_032_ROW_CHUNKED_FEASIBILITY_NO_GO`. M5 monolithic qmatmul remains canonical. Do not retry this measurement, do not try `1+1+...` or `3+2`, and do not launch an ABBA; each alternative is a separate factor. Artifact: `research/stretch/m5-row-chunked-quantized-matmul-032-feasibility.md`; evidence: `results-local/stretch/m5-row-chunked-quantized-matmul-032-feasibility/20260820-185103/summary.json`. Next exact step: select and separately preregister a new independent compute factor.
-
-## Stretch 033 candidate — outer `mx.compile` MLP feasibility — NO-GO
-
-Diagnostic only; no Stretch 033 plan, scientific source transform, preflight, or ABBA was created. Under the literal canonical venv and real 3-bit/group64 layer-0 payloads, the pure Qwen3 MLP expression was compared as eager outer graph versus `mx.compile(..., inputs=layer0)` with immutable weight trees captured. M5 BF16 input, monolithic qmatmuls and no cache purge were retained. The installed mlx-lm `swiglu` is itself `@partial(mx.compile, shapeless=True)`; the factor is only the proposed outer MLP compile.
-
-First compiled invocation plus eval was `0.2991603 s` (factory call `0.0000068 s`); excluded warmup median was `0.0056032 s`. The 120-side interleaved steady benchmark was exact (`max_abs=mean_abs=0`): eager `5.9251 ms`, compiled `5.9132 ms`, ratio `0.9979923`. A three-real-MLP sequence was also exact and flat: `16.7317` vs `16.7314 ms`, ratio `0.9999800`. Fixed callable/input/weight identity and no second compile-scale timed outlier are the available MLX 0.31.2 reuse evidence; no public compilation counter exists.
-
-Stretch-028-weighted diagnostic saving is only `0.0006557 s/block`, `0.1880%` of the valid Stretch-031 M5 median block wall, far below 5%. Classification: `STRETCH_033_COMPILED_MLP_FEASIBILITY_NO_GO`. Keep canonical outer eager MLP / monolithic M5 qmatmul; do not create an ABBA or rescue this factor. Artifact: `research/stretch/m5-compiled-mlp-033-feasibility.md`; evidence: `results-local/stretch/m5-compiled-mlp-033-feasibility/20260820-190058/summary.json`. Next exact step: select a different independently preregistered compute factor.
-
-## Stretch 034 candidate — fused residual add + RMSNorm feasibility — NO-GO
-
-Diagnostic only; no Stretch 034 scientific runner, preregistration, source transform, preflight, or ABBA was created. Under the literal canonical MLX 0.31.2 venv, actual Qwen3 BF16 layer-0 `input_layernorm` and `post_attention_layernorm` weights and final model norm all confirmed shape `[4096]`, dtype BF16. The control was the already canonical `h = x + r; n = mx.fast.rms_norm(h, weight, 1e-6)` with both outputs evaluated. The treatment was one custom `mx.fast.metal_kernel`, specialized to BF16 `[1,5,4096]`, producing both raw `h` and normalized `n`; it used FP32 accumulation, a 256-thread row reduction and `metal::rsqrt` with unchanged `1e-6`.
-
-Three controlled random BF16 seeds with both actual layer norm vectors produced bit-exact `h`; normalized output was reduction-order non-bit-exact but diagnostically compatible (worst max/mean absolute difference `0.00390625 / 0.0001372101`, within predeclared `0.03125 / 0.0009765625`). One custom kernel object/fixed BF16 template was reused; factory cost was `0.0430 ms`, first dispatch plus eval `101.4082 ms`, and excluded fused warmup median `270.854 µs`.
-
-The 120-sample-per-side synchronized mirrored benchmark found control pair `245.31 µs` and fused pair `276.10 µs`: fused/control `1.1255195`, a `30.7915 µs` loss per pair. Add alone was `212.52 µs`; canonical `mx.fast.rms_norm` alone was `231.69 µs`. Active/peak diagnostic memory was `516,112 / 663,568 B`. The conditional two-pair layer pattern was also slower: control `240.10 µs`, fused `265.79 µs`, ratio `1.1069828`.
-
-There are 36 simple intra-layer opportunities, 35 cross-layer scheduling opportunities and one potential final pair; layer-0 input norm remains standalone. Applying the measured loss to Stretch 031’s `0.3487060 s` M5 median block gives intra-only `-1.10849 ms/block` (`-0.31789%`), intra+cross `-2.18620 ms/block` (`-0.62695%`), and optimistic +final `-2.21699 ms/block` (`-0.63578%`). Cross-layer use would require exposing each final raw residual and restructuring `Qwen3Model` scheduling; it was not implemented and the measured loss does not justify it.
-
-Decision: `STRETCH_034_FUSED_RESIDUAL_RMSNORM_FEASIBILITY_NO_GO`. Keep separate residual add + canonical `mx.fast.rms_norm`; do not create an ABBA or rescue variant. Artifact: `research/stretch/fused-residual-rmsnorm-034-feasibility.md`; evidence: `results-local/stretch/fused-residual-rmsnorm-034-feasibility/20260820-201000/summary.json`.
-
-## Stretch 035 — M5 quantized kernel-path investigation — INVESTIGATION_ONLY
-
-No scientific ABBA, source transform, MLX patch, venv modification, or runtime comparison was created. Exact upstream MLX `v0.31.2` source (`68cf2fddd8de5edd8ab3d926391772b2e2cedad8`) plus `mx.device_info()` establishes the canonical M1 as `applegpu_g13g`: generation 13, size `g`. At affine BF16/group64/3-bit M5, all layer-0 q/k/v/o/gate/up/down projections follow `QuantizedMatmul::eval_gpu -> dispatch_qmv -> qmv`; all satisfy the fast predicate `N % 8 == 0 && K % 512 == 0` and dispatch concrete `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0`. The gen13/size-g vector limit is 10 for q/k/v/o and 6 for gate/up/down, so M5 remains qmv_fast; qmv_quad, qmm and split-K do not apply at M5.
-
-The 100-sample-per-shape real-payload BF16 M1–M8 map confirms source-predicted M6 discontinuities only for gate/up (qmm) and down (split-K). M5 medians were q `1533.38 µs`, k `675.31`, v `731.48`, o `1527.06`, gate `2197.58`, up `2195.92`, down `2145.69`. The installed 0.31.2 metallib contains the exact qmv_fast plus fallback qmm/split-K symbols; MLX exposes no public per-dispatch symbol log.
-
-MLX `v0.32.0` adds qmv_wide, but its literal affine gate is `architecture_gen >= 15`; M1 gen13 cannot select it and would continue to select old qmv/qmv_fast at M5. Thus source does not explain Stretch 030’s `0.94393` end-to-end 0.32/0.31 ratio: qmv_wide is unreachable, while other runtime changes exist. PR #3764 reports no M1/3-bit case; its affine M2-Pro row remains qmv. Issues #3553/#3839/#3852 supply M4/M3/M1-Pro mixed 4-bit/2-bit or group-size-different motivation only, not transfer proof.
-
-No isolated prototype was justified or benchmarked. Upstream explicitly says affine qmv_wide only beats qmv on gen15+, but that does not disprove every theoretical M1-specific future kernel. Therefore `STRETCH_035_KERNEL_PATH_INVESTIGATION_ONLY`: no numerical/timing treatment or defensible weighted >=5% estimate exists. Keep monolithic canonical M5 `mx.quantized_matmul`; any custom M1 kernel needs fresh explicit authorization and a separately preregistered correctness-first feasibility factor. Artifact: `research/stretch/m5-quantized-kernel-path-035-investigation.md`; evidence: `results-local/stretch/m5-quantized-kernel-path-035/20260820-202259/summary.json`.
-
-## Stretch 036 — persistent dequantized BF16 projection feasibility — NO-GO
-
-Diagnostic only; no scientific plan, source transform, 36-layer cache, or full-model ABBA was created. Under the literal canonical MLX 0.31.2 venv, real layer-0 Qwen3 3-bit/group64 affine packed tensors were dequantized only with `mx.dequantize(packed, scales, biases, group_size=64, bits=3)`, materialized/persisted BF16 one projection at a time, and compared to canonical M5 `mx.quantized_matmul`. No original floating-point weights, requantization, scale/bias change, cache purge, or full-model cache was used.
-
-All seven BF16 dense outputs had matching shapes but were non-bit-exact for all three deterministic BF16 probes; no compatibility threshold was invented. Median BF16/quantized ratios were q `0.979333`, k `1.034484`, v `1.035620`, o `0.933584`, gate `1.869357`, up `1.867642`, down `1.273514`. Direct x36 arithmetic gives Q `+0.2688%`, O `+1.0677%`, Q+O `+1.3365%`; K/V and all MLP classes are slower. Conservative BOTH-resident BF16 cache cost is Q/O `1,152 MiB` each, K/V `288 MiB` each, MLP `3,456 MiB` each. Linear diagnostic use of the observed Stretch-031 18% minimum free memory projects Q/O to `3.94%`, below the historical 5% abort; Q+O projects `-10.12%`. The largest positive arithmetic candidate is therefore both below the 5% upside gate and memory-risky.
-
-Classification: `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`. Retain canonical monolithic M5 affine quantized matmul. Do not create a Stretch-036 scientific preregistration or ABBA. Artifact: `research/stretch/persistent-dequantized-projection-036-feasibility.md`; evidence: `results-local/stretch/persistent-dequantized-projection-036-feasibility/20260820-205800/summary.json`.
-
-## Stretch 037 — M1-specific qmv_fast tuning feasibility — GO
-
-Diagnostic only; no installed MLX package, model source, 36-layer cache, or scientific ABBA was changed/run. From exact MLX v0.31.2 source `68cf2fddd8de5edd8ab3d926391772b2e2cedad8`, a process-local `mx.fast.metal_kernel` clone of M1 `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0` was specialized to non-batched M5. It retained the 3-bit packed decode, group64 affine correction, 16 values/lane, 512-K loop, float `simd_sum`, BF16 output and exact real layer-0 payloads. The canonical clone was bit-exact across all q/k/v/o/gate/up/down and three BF16 probes; worst clone/canonical median ratio was `1.006870`.
-
-Four bounded execution-geometry variants were preregistered before timing. `s1_r8` (one SIMD group/threadgroup, eight output rows/SIMD) was bit-exact in all 21 direct comparisons, saved gate/up/down medians `139.81/127.48/132.94 µs`, and gives a matched Stretch-028 MLP arithmetic estimate `0.01817795 s/block` (`5.2120%` of Stretch-031 M5 median block). The explicit attention-inclusive upper bound is `6.0239%`. Isolated active/peak allocations remained about `85.0/85.2 MB`; no persistent cache is introduced.
-
-Classification: `STRETCH_037_M1_QMV_FAST_TUNING_GO`. A separate review-ready preregistration exists, but no source integration or ABBA is authorized by feasibility alone. Artifacts: `research/stretch/m1-qmv-fast-tuning-037-feasibility.md`, `research/stretch/m1-qmv-fast-tuning-037-plan.md`; evidence: `results-local/stretch/m1-qmv-fast-tuning-037-feasibility/20260820-211047/summary.json`.
-
-## Stretch 037 full-model launch — PREFLIGHT HARNESS FAILURE / SCIENTIFIC RESULT NONE
-
-The feasibility/preregistration, methodological amendment, and exact prepared runtime/harness were separately committed and pushed before launch (`41397e9`, `5f3ff44`, `3a517ab`). The scientific harness `results-local/stretch/m1-qmv-fast-tuning-037/20260820-212659/` then failed before any constituent: it called its mandatory `render_preflight(..., root/"preflight")` without creating that child directory, so writing `preflight/control-final.py` raised `FileNotFoundError`. The outer result is `M1_QMV_FAST_TUNING_COMPARISON_INCOMPLETE`, scientific result NONE. No CONTROL/S1_R8 process, full-model logit/top-1/oracle gate, accepted token, timing, cleanup, resource metric, or scientific JIT observation exists.
-
-This is harness-only, not a numerical or performance result. Per frozen stop rule, no retry, source fix, rescue geometry, partial ABBA, or threshold change was performed. Preserve the failure and current canonical built-in qmv path. Result: `research/stretch/m1-qmv-fast-tuning-037-result.md`.
-
-## Stretch 037 — PREFLIGHT HARNESS FIX1 / RESOURCE INCOMPLETE / SCIENTIFIC RESULT NONE
-
-The original runner remains preserved at `scripts/stretch_m1_qmv_fast_comparison_037.py` (blob `5dd2e0bcc652d7197a06e4230d6519ced7ea73df`). Distinct Fix1 `scripts/stretch_m1_qmv_fast_comparison_037_fix1.py` (blob `3ae67ab6af37f420eaf5098f6c20448c0f0f8d96`) created `preflight/` with `exist_ok=False` before rendering; its only normalized harness diff is that directory setup. Fix1 commit `f9d8096` was remote-verified before science.
-
-Fresh in-harness preflight passed at `results-local/stretch/m1-qmv-fast-tuning-037/20260820-214110/preflight/preflight-summary.json`: render/compile, source diff, literal launcher/runtime, both no-model markers and four real-weight BF16 3-bit/group64 shape-class S1_R8/built-in bit-exact checks (`max_abs_diff=mean_abs_diff=0`). JIT startup was outside timing.
-
-The fresh first CONTROL child then stopped at its inherited host launch gate before target compute: free memory `59%` (< required `60%`), swap `634.44 MB`; child classification `HOST_STATE_NOT_READY`. The outer result is `M1_QMV_FAST_TUNING_COMPARISON_INCOMPLETE`, scientific result NONE. No target block, accepted token, cleanup/wall metric or S1_R8 constituent exists. This is a resource/preflight stop, not science; no retry or reuse is permitted. Detail: `research/stretch/m1-qmv-fast-tuning-037-harness-fix1-result.md`.
-
-## Stretch 037 — FIX2 RESOURCE-FRESH PASS / S1_R8 PROMOTED
-
-The separately authorized Fix2 source identity
-`STRETCH_037_FIX2_RESOURCE_FRESH_ATTEMPT` was committed and remote-verified as
-`7291df6` before science. Its normalized Fix1→Fix2 diff passed with only that
-identity/provenance metadata and fresh Fix2 output paths; the preserved
-original and Fix1 source files remain unchanged. The fresh standalone and
-in-harness preflights passed py_compile, source/render checks, literal canonical
-venv/runtime provenance, both no-model markers, and all four real-weight BF16
-3-bit/group64/M5 parity classes with exact equality and zero max/mean
-absolute difference.
-
-Fresh ABBA root `results-local/stretch/m1-qmv-fast-tuning-037-fix2/20260820-215547/`
-completed `CONTROL -> S1_R8 -> S1_R8 -> CONTROL`. Every constituent passed its
-three-sample >=60% free-memory / <=5600 MB swap launch gate, completed two M5
-blocks, accepted ten exact oracle tokens, and passed full-model logits/top-1/
-sequence/oracle correctness. CONTROL pooled `13.7253287216 tok/s`; S1_R8 pooled
-`15.0026817294 tok/s`; ratio `1.0930653854` (`+9.3065385%`). Median block wall
-was `0.3638520 s` CONTROL versus `0.3310265 s` S1_R8; wall/token `0.0728580 s`
-versus `0.06665475 s`; final cleanup/token `0.00949715 s` versus `0.00911480 s`.
-Minimum free memory was `20%`/`25%`, peak swap `1584.31`/`1571.75 MB`, and
-observable peak MLX memory `3,632,130,592`/`3,632,130,080 B`. Four treatment
-specializations were prepared outside timing; recompilation during target work
-was zero. No cache purge or host-state manipulation occurred.
-
-Classification: `M1_QMV_FAST_TUNING_PASS` (raw harness:
-`M1_QMV_FAST_TUNING_BALANCED_COMPARISON_PASS`, `VALID_ABBA`). Promote the
-M1-specific process-local S1_R8 custom qmv implementation as the canonical
-compute path for the frozen M1 Qwen3-8B 3-bit/group64 BF16 M5 H36 configuration;
-retain built-in MLX elsewhere. Artifact:
-`research/stretch/m1-qmv-fast-tuning-037-harness-fix2-result.md`.
-
-## Stretch 038 — S1_R8 cleanup cadence — PASS / promoted
-
-The exact audit of the promoted Stretch-037 rendered S1_R8 source established
-that its final `shared_stage_cleanup` is `gc.collect() -> mx.clear_cache() ->
-gc.collect()` after the persistent LM head, once per M5 target pass. Thus it
-runs once per M5 block and twice per ten-token/two-block constituent; the
-cadence factor was genuinely available.
-
-A distinct one-load feasibility harness preserved every frozen S1_R8 condition
-and ran four CONTROL plus eight TREATMENT cycles interleaved. CONTROL retained
-two final cleanups/ten tokens; TREATMENT deferred block-1 cleanup and executed
-one final cleanup after block 2. All cycles passed prompt/ten-token logits,
-top-1, oracle acceptance, sequence and `3,583,928,320 B` full-persistence
-gates. Across eight treatment cycles, free memory stayed 24–25%, swap stayed
-1849.06 MB, MLX active memory returned from 3,666,913,308 B before final
-cleanup to its stable 3,665,291,272 B, and cache returned to a stable
-2,867,748–2,868,260 B band without cumulative growth.
-
-Timed mean 10-token wall was 0.704799 s CONTROL vs 0.647084 s TREATMENT:
-wall ratio 0.91811037, improvement 8.188963%; cleanup wall fell 0.126737 to
-0.062129 s. This is feasibility only, not a scientific ABBA or a replacement
-for Stretch 037's validated 15.0026817294 tok/s.
-
-The separately committed/pushed scientific runner then completed a fresh
-balanced `CONTROL -> TREATMENT -> TREATMENT -> CONTROL` at
-`results-local/stretch/s1r8-deferred-cleanup-038-comparison/20260820-224921/`.
-Its fresh in-harness preflight passed compile/render, literal launcher,
-promoted-S1_R8 hash, four-specialization provenance, normalized cadence-only
-diff, metric semantics, and both parent/child no-model markers. Every
-constituent passed all logits/top-1/oracle/sequence gates, exactly ten tokens,
-full `3,583,928,320 B` persistence and zero target-time recompilation.
-
-Primary pooled throughput was 13.245043710 tok/s CONTROL versus
-13.990655117 tok/s TREATMENT: ratio 1.056293616, **+5.629361621%**. Pooled
-constituent wall was 1.509998792 versus 1.429525625 s: wall ratio 0.946706469,
-**5.329353065%** reduction. The target wall was directly bounded from target
-block-1 start through block-2 final cleanup, so it includes the factor. Final
-cleanup restored MLX active memory to 3,665,291,272 B in every constituent;
-minimum free memory was 24%, peak swap 2127.88 MB and no cumulative problematic
-active/cache growth occurred.
-
-Classification: `STRETCH_038_CLEANUP_CADENCE_PASS`. Promote the frozen M1
-canonical configuration as **S1_R8 + one explicit cleanup every two M5
-blocks**: cadence reduced from 2 to 1 cleanup per ten accepted tokens, not
-cleanup eliminated. Artifacts:
-`research/stretch/s1r8-deferred-cleanup-038-result.md`,
-`scripts/stretch_s1r8_deferred_cleanup_comparison_038.py`, and the evidence
-root above. Preserve feasibility and preregistration unchanged.
-
-## Stretch 039 — GQA shared-KV SDPA feasibility — INVESTIGATION_ONLY
-
-Exact local MLX v0.31.2 source (`68cf2fddd8de5edd8ab3d926391772b2e2cedad8`)
-and process-local observation of the unchanged Qwen3 SDPA helper captured real
-M5 inputs at layers 0/18/35: Q `[1,32,5,128]` BF16, K/V `[1,8,9,128]` BF16,
-GQA4, causal/no array mask and scale `1/sqrt(128)`. Q is the accepted Qwen3
-transposed layout; K/V are 256-token KVCache allocations sliced to nine.
-
-On M1 `applegpu_g13g`, `q_len=5` selects single-pass
-`sdpa_vector_bfloat16_t_128_128_nomask_qt_c_nosinks`, launched as `[32,5,1]`
-1024-thread groups (32 SIMD groups each). The M1 `g` suffix does not take the
-`d`/`s` 1024 two-pass threshold; GQA routes at `kv_len >=4096`, so 9/256/1024/
-2048 remain single-pass.
-
-Built-in SDPA medians were 371.979/447.187/363.979 µs (layers 0/18/35; 40
-warmups and 120 synchronized samples/side). Their mean gives 14.198 ms per
-36-layer M5 block, 3.973% of promoted Stretch-038 wall; even eliminating all
-of that is below the >=5% target-upside gate. Source shows four Q heads
-logically reload the same K/V head across separate threadgroups, but cannot
-prove physical DRAM traffic because hardware cache reuse is unspecified. A
-four-head explicit shared-memory group would require 4096 threads; TG memory
-cannot cross the canonical independent 1024-thread groups.
-
-The required process-local canonical clone did not pass: its results were
-non-bit-exact on all real payloads, so its apparent timing advantage is
-invalid/non-representative. No treatment, integration, MLX patch,
-preregistration or full-model ABBA was created. Classification:
-`STRETCH_039_GQA_SHARED_KV_SDPA_INVESTIGATION_ONLY`. Artifact:
-`research/stretch/gqa-shared-kv-sdpa-039-feasibility.md`; evidence:
-`results-local/stretch/gqa-shared-kv-sdpa-039-feasibility/20260820-210451/summary.json`.
-
-## Stretch 040 — explicit Python GC cleanup composition — NO-GO
-
-The frozen once-per-two-M5-block cleanup source was audited as exactly
-`gc.collect() -> mx.clear_cache() -> gc.collect()`: Stretch-038 runner blob
-`97339280aec0a9bb2fb4b196795f05cd23ef52a4`, promoted S1_R8 render SHA-256
-`82888b134a6c4e0ba56bb24896bce2fd37c9d78c899380af35e0e823ad5fcbe3`, cleanup
-snippet SHA-256 `6ce1b7154fbacbb3aa0b60c36e4ba26841e543382f74ea53e823d55c59568baf`.
-
-A one-load Fix1 feasibility run first completed eight canonical two-M5/ten-token
-component diagnostics, then (because the ideal upper bound was 5.0668118%)
-ran `C,T,T` x6 primary cycles plus 12 T-only stability cycles.  CONTROL retained
-the exact triple; TREATMENT retained only `mx.clear_cache()` at the identical
-one-event/ten-token location.  All 38 cycles passed prompt/all-target logits,
-top-1, exact oracle/sequence, 10/10 acceptance, full raw persistence
-`3,583,928,320 B`, promoted S1_R8 and zero target-time recompilation.
-
-First/clear/second component means were 19.805/0.333/16.385 ms (medians
-19.842/0.311/16.337 ms); both explicit GC calls collected zero in every 8/8
-diagnostic cycle.  Correct equal-cycle primary comparison was CONTROL 0.754609
-s versus TREATMENT 0.720190 s per ten tokens, T/C throughput-equivalent
-1.0477905 (+4.7790463%), below the 5% gate.  MLX active/cache recovery was
-stable (3,666,913,308 -> 3,665,291,272 B; post-clear cache
-2,867,744–2,868,260 B), minimum free 24%, peak swap 2021.44 MB.  However,
-treatment tracked objects rose strictly over all 24 treatment cycles
-84,797 -> 85,354 (+557), with later `gc.get_count()[0]` growth 495 -> 1,030.
-
-Classification: `STRETCH_040_GC_COMPOSITION_FEASIBILITY_NO_GO`.  Retain both
-explicit Python GC calls and `mx.clear_cache()` at the frozen cadence.  No
-Stretch-040 scientific preregistration or ABBA was created.  The initial
-`20260820-212047` generated-source run is preserved as an excluded
-post-cycle serialization harness defect; the complete Fix1 evidence is
-`results-local/stretch/s1r8-gc-cleanup-composition-040-feasibility/20260820-212227/summary.json`.
-Artifact: `research/stretch/s1r8-gc-cleanup-composition-040-feasibility.md`.
-
-## Stretch 041 — current bottleneck map complete
-
-Stretch 041 rendered the exact promoted runtime and ran investigation-only diagnostics; it did not rerun Stretch 037/038/039/040, create a treatment, or make a promotion decision. The successful evidence is `results-local/stretch/current-bottleneck-attribution-041/20260820-213903/summary.json`; the report is `research/stretch/current-bottleneck-attribution-041.md`.
-
-The six-cycle canonical ten-token/two-M5 diagnostic averaged 710.063 ms (median 707.791 ms, 14.0833 diagnostic tok/s), with 24% minimum free memory, 2076.19 MB peak swap and stable final MLX active/cache state. The exact promoted path has two per-layer `mx.eval` boundaries; per ten-token constituent it has 186 `mx.eval`, 48 `.item()` and zero `mx.synchronize()` calls. Four profiled cycles perturb wall by 1.75625x, so their absolute broad-stage times are attribution-only.
-
-Actual-payload isolated measurements establish that the LM head is a separate built-in affine 3-bit/group64 QuantizedLinear/qmv_fast path (effective K=4096/N=151936), not S1_R8; its 22.394 ms median is only 3.154% of the target wall and is `CLOSED_BY_UPPER_BOUND`. Reused unchanged Stretch-039 SDPA evidence is also below the independent gate. Stretch-040 cleanup composition remains frozen NO-GO. Evaluation/materialization cadence exists in source but its scheduling benefit and memory bound are not yet sufficient to claim >=5% plausibly. Generic qmv scale/bias metadata caching is not proposed: MLX issue #3251 reports no g64 penalty versus g128 and 20–30% regression for attempted register/`simd_shuffle` caching.
-
-Classification: `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE`. Exact recommendation: **no next optimization factor is defensibly recommended**. Transition toward radical kernel/model techniques, speculative drafter/acceptance work, or serving/productization rather than sub-5% micro-optimizations.
-
-## REALGEN 001 — real autoregressive generation baseline — COMPLETE / CHECKPOINT_REVIEW
-
-Stretch 041 remains approved and **STRETCH MICRO-OPTIMIZATION PHASE PAUSED**. REALGEN 001 completed its frozen end-to-end greedy M1 baseline at `results-local/realgen/real-generation-baseline-001/20260821-081022/summary.json`.
-
-The passive sample immediately before launch was 61% free memory / 637.88 MB swap; the runner's decisive pre-load sample was 62% / 637.88 MB. The unchanged gate passed. No purge, automatic/scripted kill, pre-run cache manipulation, artificial allocation, swap manipulation, threshold change, or runner change was used.
-
-All six public prompts exactly matched ordinary `mlx_lm.generate_step` greedy reference IDs against the direct M1 driver. Across 722 real generated tokens, pooled generation was **13.184615357 tok/s** and pooled end-to-end output was **12.046861457 tok/s**; total cleanup wall was 4.377148 s. Minimum free memory was 20%, peak swap 1591.19 MB, MLX peak 3,826,575,836 B, and final active/cache were 3,583,928,328 / 40,438,056 B. The result remains ordinary built-in MLX M1 qmv_fast with BF16 KV: S1_R8 is M5-only and was not injected.
-
-The separate Stretch-038 M5 result remains oracle-verifier evidence only (0.35738140625 s/M5 block; not real generation). Break-even arithmetic shows that a five-token M5 proposal cannot reach 20 tok/s even at zero draft cost, and can only beat measured M1 below 21.848 ms draft wall/block. No drafter was downloaded or tested.
-
-Classification: `REALGEN_001_BASELINE_COMPLETE`. Report: `research/realgen/real-generation-baseline-001.md`; run status: `results-local/realgen/real-generation-baseline-001/20260821-081022/run-status.json`.
-
-## REALGEN 002 — M1 qmv_fast tuning feasibility — NO-GO / CHECKPOINT_REVIEW
-
-REALGEN 001 was approved as the measured serving baseline; DRAFT 001 remains blocked. REALGEN 002 separately tested whether the source-supported S1_R8 execution geometry could be reimplemented as a **new M1-specific** process-local qmv kernel. It did not reopen Stretch 037–041 or run MLX 0.32.
-
-The launch gate passed at 73% free memory / 1804.88 MB swap. Exact MLX v0.31.2 source `68cf2fddd8de5edd8ab3d926391772b2e2cedad8` on Apple M1 `applegpu_g13g` resolves the real affine BF16/3-bit/group64/transposed M1 shapes to built-in `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0`: grid `(1,N/8,1)`, `[32,2,1]` canonical TG, two SIMD groups and four rows/SIMD. Actual early/middle/late M1 payloads at layers 0/18/35 covered q/k/v/o/gate/up/down plus LM head (66 total), with K→N classes 4096→4096/1024/12288/151936 and 12288→4096.
-
-The separate canonical M1 `s2_r4` clone was bit-exact (all shape/BF16/exact comparisons zero diff); worst clone/control median was 1.097680, so admission passed. The sole treatment was distinct M1_S1_R8 (one SIMD group, eight rows/SIMD), five non-target-time specializations. It too was bit-exact on all 66 actual payloads. MLP isolated medians improved, while q/k/v/o and LM head did not.
-
-The required full replay used the frozen REALGEN-001 `chat_02` prompt and fixed ten actual IDs, independent BF16 KV states, full persistence and identical final triple cleanup. Every position had exact logits/top-1/fixed IDs/cache offsets. However, balanced `CONTROL -> TREATMENT -> TREATMENT -> CONTROL` median target walls were 0.779169 s built-in vs 0.857916 s M1_S1_R8: treatment/control wall 1.101065, equivalent throughput -9.178832%. Final resources were 25% free / 2111.75 MB swap, MLX active/peak/cache 3,594,430,472 / 3,775,277,456 / 40,861,884 B, and zero target-time recompilations.
-
-Classification: `REALGEN_002_M1_QMV_FAST_NO_GO`. Retain ordinary built-in MLX M1 qmv_fast; do not create REALGEN 003 or run the full six-prompt comparison. Report: `research/realgen/m1-qmv-tuning-002-feasibility.md`; evidence: `results-local/realgen/m1-qmv-tuning-002-feasibility/20260821-083048/summary.json`.
+Historical details remain in the corresponding `research/` reports and Git history.
 
 ## Exact next step
 
-Stop at **`CHECKPOINT_REVIEW`** for REALGEN 002. Do not start DRAFT 001, rerun Stretch 037–041, test/download a drafter, or start REALGEN 003 without separate authorization.
+First freeze and run **CAPABILITY 001** on the canonical Qwen3-8B 3-bit baseline before changing model representation.
 
-### Historical Stretch 031 rationale
+Then run **MEMORY-FRONTIER 001** on the same 8B to build the real autoregressive RAM <-> tok/s curve for partial residency versus aggressive streaming.
 
-The old Stretch 018 M4/M5 result predates H36 full persistence and the large cleanup-frequency reductions. Therefore the throughput-optimal block geometry must be rechecked on the current schedule.
-
-Upstream MLX performance reports indicate nonlinear quantized-matmul cost in the small-M range, including a low-cost M2 region before a higher-cost M3+ region. This is motivation only; the M1 result must be measured locally.
-
-### Scientific question
-
-At identical 10-token oracle continuation depth, is M2 faster per accepted token than M5 on the preferred MLX 0.31.2 architecture?
-
-### Common frozen depth
-
-Oracle prefix in both variants:
-`[1,374,264,4647,1483,304,279,1809,315,5994]`
-
-CONTROL:
-- M5
-- 2 target blocks
-- 10 accepted oracle tokens.
-
-TREATMENT:
-- M2
-- 5 target blocks
-- 10 accepted oracle tokens.
-
-Frozen besides block size:
-- Qwen3-8B 3-bit/group64
-- MLX 0.31.2 + mlx-metal 0.31.2
-- mlx-lm 0.31.3
-- H36
-- full raw-weight persistence
-- one final cleanup/pass
-- BF16 KV
-- exactness/top-1/acceptance/resource/I-O gates
-- no cache purge.
-
-Geometry callback is applied only after inherited Stretch 017/H36 source-provenance checks pass.
-
-M5 helper:
-`scripts/stretch_single_pass_m5_ten_token_control_031.py`
-blob `5f047b9e5f42bed959ced59e9329a8c8d7e3fc25`.
-
-M2 helper:
-`scripts/stretch_single_pass_m2_ten_token_variant_031.py`
-blob `6005ff3a285760457d3255bc6505f2987c1fa4e8`.
-
-Balanced runner:
-`scripts/stretch_single_pass_m2_m5_geometry_comparison_031.py`
-blob `bc3b21ff504c65d0852aad68a566cba924888d90`.
-
-Plan:
-`research/stretch/single-pass-m2-m5-geometry-comparison-031-plan.md`
-
-Balanced order:
-`M5 -> M2 -> M2 -> M5`.
-
-Primary metric:
-pooled accepted oracle tokens / total target-block wall seconds.
-
-Outcome policy:
-- first genuine M2 numerical/top-1/oracle failure => `M2_SINGLE_PASS_GEOMETRY_EXACTNESS_FAIL`, valid scientific FAIL, stop/no rescue;
-- complete exact ABBA => `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`;
-- harness/resource/provenance failure => `SINGLE_PASS_M2_M5_GEOMETRY_COMPARISON_INCOMPLETE`.
-
-If M2 wins, do not declare global optimum; separately compare M2 vs M3 at common depth. If M5 wins, retain M5 and move to another compute factor.
-
-## Historical-note boundary
-
-The preceding Stretch 031-era next-step text is superseded by the current
-Stretch 038 checkpoint above. Do not rerun Stretch 031 geometry, Stretch 032
-row chunking, Stretch 033 outer MLP compile, Stretch 034 fused residual/RMSNorm,
-Stretch 036 persistent dequantized BF16 projection caching, Stretch 037, or a
-0.32 full-runtime comparison. Preserve M5 and promoted S1_R8; only the
-separately preregistered Stretch 038 cadence ABBA may be considered after fresh
-explicit authorization.
-
-## Other track
-
-Amplify remains queued behind Stretch:
-- `research/amplify/capability-amplifier-004-compact-feedback-plan.md`
-- `scripts/capability_amplifier_004_compact_feedback.py`
-- blob `3f1f596fc2d6d66c73e5d434cb6e738bb93657b2`.
+Pi should receive code/test-only prompts. After Pi returns evidence, ChatGPT performs result review and repository synchronization.
