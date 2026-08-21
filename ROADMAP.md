@@ -1,14 +1,14 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000H_SEQUENTIAL_ACCUMULATION_LIMIT`
+Current checkpoint: `CAPABILITY_000I_TARGETED_RECLAMATION_PASS`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
 
-Run excellent full-parameter-count LLMs on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models.
+Run excellent full-parameter-count LLMs on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models. Judge major directions on memory, speed and capability.
 
-Every major direction is judged on memory, speed and capability. Pi is reserved for code/tests; ChatGPT owns research direction and repository/project synchronization.
+Pi is reserved for code/tests. ChatGPT owns research direction and repository/project synchronization.
 
 ## Canonical 8B baseline
 
@@ -31,41 +31,43 @@ Step 512 dominates canonical 2048 on the exact Pi prefill:
 
 512 remains the active integrated-agent candidate.
 
-### 000D–000G — bridge and host lifecycle
+### 000D–000G — bridge + host lifecycle
 
-A real Pi tool turn succeeds. Later resource aborts are not explained by intrinsic 1576-token request size. Host teardown is healthy: all scientific processes die and macOS naturally recovers >=60% free within ~3-5 s.
+A genuine Pi tool turn works. Later failures are not caused by intrinsic ~1500-1800-token request size. Host/process teardown is healthy and macOS naturally recovers launch headroom within ~3-5 s.
 
-### CAPABILITY 000H — COMPLETE
+### CAPABILITY 000H — sequential accumulation
 
-Report: `research/capability/capability-000h-sequential-accumulation-result.md`.
+All captured R1-R6 requests pass fresh. Sequential R2 fails only because R1 leaves +468.30 MB MLX active boundary state. This rules out later prompt size, KV-capacity jumps and host admission variability as the primary cause.
 
-Exact captured requests R1-R6 span 1518 -> 1820 input tokens. **All six pass fresh.**
+### CAPABILITY 000I — TARGETED RECLAMATION PASS
 
-Sequentially:
-- R1 passes;
-- after R1, active MLX remains 3886.20 MB versus 3417.90 MB loaded-idle: +468.30 MB request-boundary state;
-- allocator cache ~226.57 MB;
-- R2 fresh peak 4095.65 MB / min free 9%;
-- R2 sequential peak 4182.45 MB / min free 4%;
-- sequential R2 aborts.
+Report: `research/capability/capability-000i-targeted-reclamation-result.md`.
 
-Classification: `CAPABILITY_000H_SEQUENTIAL_ACCUMULATION_LIMIT`.
+Precise cause:
+`ResponseGenerator._generate` retains the finished local `gen_responses`; its completed `GenerationBatch.Response.prompt_cache` keeps 36 request KVCache objects alive after HTTP completion.
 
-Therefore the primary current bottleneck is request-boundary active/cache retention, not later prompt size, KV-capacity jumps or host admission variability.
+Targeted post-response detach of only this stale `prompt_cache`:
+- recovers **252.00 MiB active MLX** (53.81% of the observed +468.30 MiB residual);
+- lowers R2 peak by **98.50 MiB** (4194.45 -> 4095.95 MiB);
+- preserves R1 response/tool behavior and R2 first tool call;
+- uses no `mx.clear_cache()`, `gc.collect()` or global cleanup.
 
-### CAPABILITY 000I — NEXT
+Caveat: allocator cache rises when active memory is released, and the two-turn system-free percentage did not improve. Full-sequence validation is required before integrated promotion.
 
-Request-local state reclamation.
+### CAPABILITY 000J — NEXT
 
-Frozen plan: `research/capability/capability-000i-request-local-reclamation-plan.md`.
+Frozen plan: `research/capability/capability-000j-full-sequence-reclamation-plan.md`.
 
-Phase A: identify the exact completed-request owner/lifecycle retaining MLX active memory after R1 using source inspection, weakrefs/object graph and metadata-only tensor accounting.
+Use exact captured R1-R6 bodies and compare:
 
-Phase B is allowed only if the stale owner/intended missing lifecycle transition is identified. Test one targeted request-local release versus natural control on exact R1->R2.
+1. CONTROL sequential R1->R6 with natural server behavior.
+2. TREATMENT sequential R1->R6 with only the 000I stale-response `prompt_cache` detach after each completed response.
 
-Forbidden: `mx.clear_cache()`, `gc.collect()`, global cleanup, process restart between R1/R2, model/context/KV/prompt/tool/prefill-step changes.
+Measure per-turn active/cache boundaries, peak MLX, system free/swap and semantic/tool-call equivalence.
 
-Promotion requires materially lower post-R1 active memory, sequential R2 completion above the resource gate, and preserved output/tool behavior.
+No global cleanup or model/context/KV/prompt/tool/prefill-step changes.
+
+Full PASS requires all six treatment requests to complete safely. Partial GO is allowed if the exact treatment materially extends the safe sequence but later still hits the resource floor.
 
 ### CAPABILITY 001 — BLOCKED
 
@@ -91,7 +93,7 @@ OUTCORE-BLOCK 001 revisits M>1 specifically for out-of-core models, where one we
 
 ## E — Representation without shrinking parameter count
 
-Potential later factors: mixed/selective precision, compressed cold weights, quantized KV, and out-of-core storage formats. Judge every representation by memory + speed + capability.
+Potential later factors: mixed/selective precision, compressed cold weights, quantized KV and out-of-core storage formats. Judge every representation by memory + speed + capability.
 
 ## F — Scale beyond 8B
 
@@ -102,8 +104,8 @@ Potential later factors: mixed/selective precision, compressed cold weights, qua
 
 ## Immediate order
 
-1. CAPABILITY 000I — targeted request-local reclamation
-2. integrated Pi-loop admission/reproducibility
+1. CAPABILITY 000J — full-sequence targeted reclamation
+2. integrated Pi-loop admission/reproducibility if 000J justifies promotion
 3. CAPABILITY 001
 4. MEMORY-FRONTIER 001
 5. prefetch/buffering/range-I/O work
