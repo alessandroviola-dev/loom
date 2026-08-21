@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000D_FIX2_RESOURCE_ABORT`
+Current checkpoint: `CAPABILITY_000E_NO_REPRODUCTION`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -45,61 +45,62 @@ On the exact 1504-token Pi prefill:
 - step 2048: **27.91 s**, **53.88 tok/s**, **4180.1 MB peak**, bit-exact
 - step 256: **28.24 s**, **3980.7 MB peak**, top1 same but not bit-exact
 
-512 is the admitted integrated-agent candidate, not a universal default.
+512 remains the admitted integrated-agent candidate, not a universal runtime default.
 
-### CAPABILITY 000D / Fix1 — infrastructure only
+### CAPABILITY 000D Fix2 — VALID SCIENTIFIC RESOURCE ABORT
 
-Two harness/instrumentation failures occurred before a valid scientific loop. They are preserved as no-science infrastructure results.
+First real Pi turn completed and issued `read numbers.txt`; second request at 1576 tokens crossed the <5% free-memory gate. This was real science but did not prove an intrinsic request-size limit.
 
-### CAPABILITY 000D Fix2 — SCIENTIFIC RESOURCE ABORT
+### CAPABILITY 000E — COMPLETE / NO REPRODUCTION
 
-Report: `research/capability/capability-000d-fix2-resource-abort-result.md`.
+Report: `research/capability/capability-000e-fresh-vs-sequential-result.md`.
 
-The repaired harness passed preflight and produced the first valid multi-turn evidence.
+Exact R2 (1576 tokens) succeeds as a fresh first request.
 
-Turn 1:
-- 1521 input tokens
-- step 512 segments `512,512,425,68,3`
-- prefill 23.091 s
-- 35 generated tokens at 11.690 tok/s
-- KV 1555 / 1792
-- peak MLX 4075.12 MB
-- minimum free 6%
-- action: `read numbers.txt`
+Exact R1 (1521) then R2 (1576) also both succeed sequentially without cleanup in a fresh direct-replay process.
 
-Turn 2:
-- 1576 input tokens
-- first 512 segment began
-- peak MLX 4146.45 MB
-- free memory fell to 4%
-- hard resource abort
+Evidence:
+- fresh R2 peak MLX **4095.65 MB**
+- sequential R2 peak **4194.45 MB**
+- sequential delta **+98.80 MB**
+- post-R1 residual active **+468.30 MB** over loaded idle
+- post-R1 allocator cache **229.07 MB**
+- request KV objects are not retained
+- no evidence supports calling this a leak
 
-Therefore 512 enables one genuine Pi tool turn but does not yet sustain the next turn.
+Therefore the Fix2 abort is not reproduced as an intrinsic 1576-token/step-512 limit. Host/system state materially influences the system-free gate.
 
-### CAPABILITY 000E — NEXT
+### CAPABILITY 000F — NEXT
 
-Fresh-vs-sequential turn attribution.
+Integrated Pi-loop reproducibility under controlled passive host launch state.
 
-Use the exact request bodies captured by Fix2 and distinguish:
+Keep frozen:
+- Qwen3-8B 3-bit
+- BF16 KV
+- context 4096
+- step 512
+- full Pi tools
+- same numbers.txt task
 
-A. **Intrinsic request-size limit**: request 2 (~1576 tokens) fails even as the first request after fresh model load.
+Protocol:
+1. use real Pi, not direct replay;
+2. fresh scientific model/server process for every attempt;
+3. no preflight inference in the same process;
+4. host launch gate before model load: free >=60%, swap <=5600 MB;
+5. no purge, scripted process kills or artificial memory manipulation;
+6. three independent fresh-process attempts;
+7. each task attempt is one Pi session with no prompt rescue/retry;
+8. report success rate and full resource trajectory.
 
-B. **Inter-request accumulation**: request 2 survives fresh but fails after request 1 because allocator cache, references, request lifecycle or other state persists.
+If host launch gate is not met, classify host-not-ready and consume no scientific attempt. Normal manual closure of unrelated user apps is allowed as passive host preparation before a later launch sample.
 
-Frozen comparison:
+If the integrated loop is reproducibly successful, admit step 512 bridge and run CAPABILITY 001. If repeated admitted runs still resource-abort, select a new isolated memory treatment from evidence.
 
-1. fresh model/server -> request 2 alone;
-2. fresh model/server -> request 1 then request 2 sequentially;
-3. no cleanup treatment in either scientific path;
-4. record MLX active/cache/peak, RSS, system free/swap and object/KV lifetime around request boundaries.
-
-Do not yet change chunk size, model, BF16 KV, context, prompt, tool schema or introduce cleanup as a treatment.
-
-### CAPABILITY 001 — BLOCKED
+### CAPABILITY 001 — BLOCKED pending 000F admission
 
 Frozen 12-task suite: coding + Git safety + experiment/result reasoning.
 
-Run only after the multi-turn bridge has safe memory headroom.
+This becomes the capability reference for future representation changes.
 
 ## B — RAM/speed frontier
 
@@ -149,14 +150,12 @@ Judge every representation by `memory + speed + capability`.
 
 ## Immediate order
 
-1. CAPABILITY 000E — fresh vs sequential request attribution
-2. choose one justified memory treatment from that result
-3. integrated Pi-loop admission
-4. CAPABILITY 001
-5. MEMORY-FRONTIER 001
-6. prefetch/buffering/range-I/O work
-7. OUTCORE-BLOCK 001
-8. scale toward 27B/32B
+1. CAPABILITY 000F — integrated Pi reproducibility
+2. CAPABILITY 001
+3. MEMORY-FRONTIER 001
+4. prefetch/buffering/range-I/O work
+5. OUTCORE-BLOCK 001
+6. scale toward 27B/32B
 
 ## Local-only implementation warning
 
