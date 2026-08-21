@@ -456,23 +456,21 @@ Actual-payload isolated measurements establish that the LM head is a separate bu
 
 Classification: `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE`. Exact recommendation: **no next optimization factor is defensibly recommended**. Transition toward radical kernel/model techniques, speculative drafter/acceptance work, or serving/productization rather than sub-5% micro-optimizations.
 
-## REALGEN 001 — real autoregressive generation baseline — NOT STARTED / host-gated
+## REALGEN 001 — real autoregressive generation baseline — COMPLETE / CHECKPOINT_REVIEW
 
-Stretch 041 was approved. **STRETCH MICRO-OPTIMIZATION PHASE PAUSED** and **REALGEN PHASE ACTIVE**. REALGEN 001 is an end-to-end greedy M1 baseline, not a new optimization factor and not a claim that the validated M5 verifier emits five unknown future tokens.
+Stretch 041 remains approved and **STRETCH MICRO-OPTIMIZATION PHASE PAUSED**. REALGEN 001 completed its frozen end-to-end greedy M1 baseline at `results-local/realgen/real-generation-baseline-001/20260821-081022/summary.json`.
 
-The prepared runner is `scripts/loom_real_generation_baseline_001.py`; report: `research/realgen/real-generation-baseline-001.md`. It uses the target tokenizer/chat template, ordinary built-in MLX M1 qmv_fast and BF16 KV. The exact Stretch-037 S1_R8 identity is explicitly M5-only (`x.shape[-2] == 5`), so it is **ineligible and not injected at M1**. The M1 operational cleanup translation is one unchanged `gc.collect() -> mx.clear_cache() -> gc.collect()` event after each ten committed generated tokens; it is not a new promoted scientific cadence.
+The passive sample immediately before launch was 61% free memory / 637.88 MB swap; the runner's decisive pre-load sample was 62% / 637.88 MB. The unchanged gate passed. No purge, automatic/scripted kill, pre-run cache manipulation, artificial allocation, swap manipulation, threshold change, or runner change was used.
 
-At pre-launch `20260821-075158`, free memory was 54% (required >=60%) and swap was 669.88 MB (required <=5600 MB). No model load, warmup, prompt, reference generation, or benchmark occurred; no attempt was consumed. Classification: `REALGEN_001_NOT_STARTED_HOST_NOT_READY`. Evidence: `results-local/realgen/real-generation-baseline-001/20260821-075158/run-status.json`.
+All six public prompts exactly matched ordinary `mlx_lm.generate_step` greedy reference IDs against the direct M1 driver. Across 722 real generated tokens, pooled generation was **13.184615357 tok/s** and pooled end-to-end output was **12.046861457 tok/s**; total cleanup wall was 4.377148 s. Minimum free memory was 20%, peak swap 1591.19 MB, MLX peak 3,826,575,836 B, and final active/cache were 3,583,928,328 / 40,438,056 B. The result remains ordinary built-in MLX M1 qmv_fast with BF16 KV: S1_R8 is M5-only and was not injected.
+
+The separate Stretch-038 M5 result remains oracle-verifier evidence only (0.35738140625 s/M5 block; not real generation). Break-even arithmetic shows that a five-token M5 proposal cannot reach 20 tok/s even at zero draft cost, and can only beat measured M1 below 21.848 ms draft wall/block. No drafter was downloaded or tested.
+
+Classification: `REALGEN_001_BASELINE_COMPLETE`. Report: `research/realgen/real-generation-baseline-001.md`; run status: `results-local/realgen/real-generation-baseline-001/20260821-081022/run-status.json`.
 
 ## Exact next step
 
-Wait for a natural host state satisfying free memory >=60% and swap <=5600 MB, then run exactly:
-
-```bash
-results-local/mlx/venv-mlx-lm-0.31.3/bin/python scripts/loom_real_generation_baseline_001.py
-```
-
-Do not rerun Stretch 037–041. Preserve Qwen3-8B affine 3-bit/group64 BF16 M5/H36/full persistence/BF16 KV/S1_R8 and the verifier's once-per-two-M5-block cleanup evidence as **TARGET VERIFICATION M5** evidence only. Do not download or test a drafter until REALGEN 001 has been reviewed and a separate DRAFT 001 is authorized.
+Stop at **`CHECKPOINT_REVIEW`** for REALGEN 001. Do not start DRAFT 001, rerun Stretch 037–041, or download/test a drafter without separate authorization.
 
 ### Historical Stretch 031 rationale
 

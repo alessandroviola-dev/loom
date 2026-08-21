@@ -1,153 +1,128 @@
 # REALGEN 001 — real autoregressive generation baseline
 
 Date: 2026-08-21
-Status: **`REALGEN_001_NOT_STARTED_HOST_NOT_READY`**
+Status: **`REALGEN_001_BASELINE_COMPLETE`**
 
 ## Scope and hard boundary
 
 REALGEN 001 is an operational, end-to-end baseline for real greedy generation,
-not a new optimization factor.  It uses the exact local Qwen3-8B target, with
-unknown future tokens generated and committed one at a time.  It contains no
-oracle continuation, speculative decoding, drafter, prompt lookup, Medusa,
-lookahead, or sampling.
+not a new optimization factor. It uses the local Qwen3-8B target and commits
+unknown future tokens one at a time. It contains no oracle continuation,
+speculative decoding, drafter, prompt lookup, Medusa, lookahead, or sampling.
 
 This report deliberately distinguishes:
 
-- **TARGET VERIFICATION M5:** the previously validated oracle/known-future
-  target-verification configuration; and
-- **REAL AUTOREGRESSIVE GENERATION M1:** the required ordinary built-in MLX
-  path which predicts one unknown next token, commits it, updates BF16 KV for
-  subsequent predictions, and repeats.
+- **TARGET VERIFICATION M5:** prior oracle/known-future verifier evidence; and
+- **REAL AUTOREGRESSIVE GENERATION M1:** the ordinary built-in MLX path that
+  predicts, commits, and feeds each unknown next token through the BF16 KV
+  cache.
 
 M5 oracle-verification throughput is **not** real-chat generation throughput.
-No M5 figure is presented as a serving rate, and no historical ratio is
-multiplied to invent a REALGEN result.
 
-## Host gate result
+## Git and host gate
 
-The pre-launch sample recorded in
-`results-local/realgen/real-generation-baseline-001/20260821-075158/run-status.json`
-was:
+Git before the run was clean and coherent:
 
-| gate | observed | required | result |
-|---|---:|---:|---|
-| free system memory | 54% | >=60% | fail |
-| swap used | 669.88 MB | <=5600 MB | pass |
+- branch: `research/stretch-015-divergence-attribution`;
+- `HEAD` = `origin/research/stretch-015-divergence-attribution` =
+  `871b2eac7dc997a0fc96e798af7bd66113401f87`;
+- `origin...HEAD`: `0 0`;
+- merge-base with `main`: `f345bcf0c98e8747531a56a7df14c95cc4f40efb`.
 
-No model was loaded by the runner, no prompt was benchmarked, and no generation
-or reference-correctness attempt was consumed.  No cache purge, memory
-manipulation, automatic process kill, or retry was performed.  The result is
-therefore exactly **`REALGEN_001_NOT_STARTED_HOST_NOT_READY`**, not a
-correctness or performance result.
+The passive sample immediately before launch was free memory **61%** and swap
+**637.88 MB**, passing the unchanged `>=60%` / `<=5600 MB` gate. The runner's
+own decisive pre-load sample was **62%** free memory and **637.88 MB** swap.
+No purge, automatic/scripted process termination, pre-run `mx.clear_cache()`,
+artificial allocation, swap manipulation, threshold change, or runner change
+was used.
 
-## Frozen research baseline retained
+## Frozen runtime, M1 dispatch, tokenizer, and cleanup
 
-The prior validated verifier configuration remains preserved without claiming
-that it directly emits five unknown future tokens:
+- Apple M1 / 8 GB, `applegpu_g13g`; Qwen3-8B affine 3-bit/group64 BF16.
+- Canonical launcher/prefix: `results-local/mlx/venv-mlx-lm-0.31.3`.
+- Runtime: MLX/mlx-metal 0.31.2, mlx-lm 0.31.3, transformers 5.12.1.
+- Real generation geometry: M1, ordinary BF16 KV, greedy `argmax`, 128 tokens
+  or natural EOS.
+- Dynamic dispatch audit observed only the original built-in
+  `QuantizedLinear.__call__`: M1 shapes K→N `4096→1024`, `4096→4096`,
+  `4096→12288`, `12288→4096`, and LM head `4096→151936`. This confirms the
+  ordinary built-in MLX M1 `qmv_fast` path.
+- Stretch-037 S1_R8 was not injected: its exact identity guards
+  `x.shape[-2] == 5`, so it is M5-only and ineligible at M1.
+- `Qwen2Tokenizer` through mlx-lm `TokenizerWrapper`; base vocabulary 151643,
+  effective model vocabulary 151936, config BOS 151643, EOS 151645
+  (`<|im_end|>`). Normal Qwen3 chat template used with
+  `add_generation_prompt=true`, `enable_thinking=false`; template SHA-256
+  `87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5`.
+- Cleanup was unchanged: `gc.collect() -> mx.clear_cache() -> gc.collect()`
+  after each ten committed generated tokens. It is an operational stability
+  translation, not a new promotion claim.
 
-- Qwen3-8B, affine 3-bit/group64, BF16;
-- Apple M1 / 8 GB, `applegpu_g13g`;
-- MLX/mlx-metal 0.31.2, mlx-lm 0.31.3, transformers 5.12.1;
-- H36, full raw-weight persistence, ordinary BF16 KV;
-- M5 target verification;
-- M1-specific S1_R8 only at its validated source identity;
-- one exact cleanup event per two M5 verifier blocks:
-  `gc.collect() -> mx.clear_cache() -> gc.collect()`.
+## Correctness, token counts, and per-prompt timing
 
-The valid Stretch-038 S1_R8/two-M5 verifier treatment recorded a 10-token
-constituent wall of 1.429525625 s (13.990655117 oracle-verification tok/s).
-That evidence is retained only as **M5 verification** evidence.
+The ordinary supported `mlx_lm.generate_step` greedy reference matched the
+minimal direct M1 driver **exactly by complete generated-token-ID sequence for
+all six prompts**. Exact prompt IDs, reference IDs, driver IDs, and each
+per-token latency are preserved in the evidence summary.
 
-## M1 dispatch and legality audit
+| prompt | template tokens | output / EOS | prefill s (tok/s) | TTFT s | generation s (tok/s) | end-to-end s (tok/s) | cleanup s |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| chat_01 | 44 | 108 / yes | 0.862805 (50.996) | 0.941177 | 8.123436 (13.294866) | 8.986241 (12.018373) | 0.629524 |
+| chat_02 | 45 | 128 / no | 0.864547 (52.050) | 0.947422 | 9.706445 (13.187114) | 10.570992 (12.108608) | 0.746909 |
+| code_01 | 57 | 128 / no | 0.853308 (66.799) | 0.931550 | 9.748159 (13.130684) | 10.601467 (12.073800) | 0.807203 |
+| code_02 | 51 | 128 / no | 0.867829 (58.767) | 0.948506 | 9.675292 (13.229575) | 10.543120 (12.140619) | 0.801309 |
+| reasoning_01 | 64 | 102 / yes | 0.866051 (73.899) | 0.943509 | 7.841881 (13.007083) | 8.707932 (11.713459) | 0.583857 |
+| reasoning_02 | 51 | 128 / no | 0.857290 (59.490) | 0.936092 | 9.665580 (13.242868) | 10.522870 (12.163982) | 0.808345 |
 
-The audit is source-identity based and required no model execution:
+Aggregate: **722** committed real generated tokens in **54.760794 s** gives
+**13.184615 REAL generation tok/s**; end-to-end output is **12.046861 tok/s**
+(59.932622 s). Total cleanup was **4.377148 s** across **68** cleanup events.
+Flattened per-token forward latency (cleanup excluded) was min/p50/p95/max
+**62.883 / 69.603 / 73.926 / 101.421 ms**.
 
-1. The exact Stretch-037 injection (`scripts/stretch_m1_qmv_fast_runtime_037.py`,
-   blob `a65776177b8e988939d1a95a821469e0a9c41f83`) has the literal eligibility
-   guard `x_value.shape[-2] == 5`.  Therefore **S1_R8 is ineligible at M1**.
-   It is not installed, modified, tuned, or promoted in REALGEN 001.
-2. For affine BF16/group64/3-bit Qwen3 M1 projection inputs, existing
-   Stretch-035 source evidence maps the transformer q/k/v/o/gate/up/down
-   `QuantizedLinear` operations to built-in MLX qmv_fast on M1/gen13.  The
-   built-in M1 path is the only path the new driver uses.
-3. Qwen3 attention retains its ordinary source path: q/k/v projections,
-   q/k RMSNorm and layout, RoPE at the cache offset, `KVCache.update_and_fetch`,
-   built-in causal GQA SDPA, output projection, residual and MLP.  The M1
-   cache is the ordinary MLX-LM BF16 prompt cache.
-4. The untied quantized LM head remains ordinary built-in `QuantizedLinear`
-   / `mx.quantized_matmul`; it is not an S1_R8 shape and remains built-in.
-5. The operational cleanup schedule in the driver is conservative and explicit:
-   one identical `gc.collect() -> mx.clear_cache() -> gc.collect()` event after
-   each ten committed generated tokens.  This translates the promoted
-   one-event/two-M5 verifier operation for baseline stability; it is **not** a
-   new scientific cadence or optimization claim.
+## Resources and diagnostics
 
-## Tokenizer and chat-template identity
+- Minimum free memory: **20%**; peak swap: **1591.19 MB**.
+- MLX active memory was stable at **3,583,928,328 B**; observed peak was
+  **3,826,575,836 B**. Final cache was **40,438,056 B**.
+- Diagnostic process maximum RSS was **736,706,560 B**. RSS is diagnostic;
+  system-wide free memory and swap are decisive.
+- The initial model load/materialization (2.570621 s) and M1/BF16-KV warmup
+  (9.686182 s; 108 tokens) were recorded but excluded from benchmark timing.
 
-The prepared driver uses the local target tokenizer and normal chat template,
-not arbitrary token IDs.  Static identity:
+## M5 verifier versus M1 REALGEN
 
-- tokenizer class: `Qwen2Tokenizer` through mlx-lm `TokenizerWrapper`;
-- base vocabulary: 151643; model-config effective vocabulary: 151936;
-- config BOS ID: 151643 (`<|endoftext|>`); tokenizer `bos_token` is null;
-- EOS ID: 151645 (`<|im_end|>`);
-- chat template: `tokenizer_config.json` normal Qwen3 chat template,
-  SHA-256 `87a2728cb8dc9fe424d624542f6060ec05a1d285ebbec578bb078900e33396b5`,
-  `add_generation_prompt=true`, `enable_thinking=false`;
-- SHA-256: `tokenizer.json` `aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4`;
-  `tokenizer_config.json` `253153d0738ceb4c668d2eff957714dd2bea0b56de772a9fdccd96cbf517e6a0`;
-  `special_tokens_map.json` `76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd`.
+The retained Stretch-038 treatment is M5 oracle verification: 10 known tokens
+in 0.7147628125 s, or **0.35738140625 s per M5 block** (13.990655117
+oracle-verification tok/s). It does not predict five unknown future tokens and
+is not a serving-rate substitute. The measured REALGEN result above is the
+separate M1, unknown-future, BF16-KV rate.
 
-The harness freezes six public, non-sensitive prompts: two ordinary assistant,
-two coding/software, and two reasoning/technical prompts. Their exact text,
-post-template token IDs/counts, reference IDs, and benchmark IDs are emitted
-only after a host-ready execution. None has been timed yet.
+## Speculative-decoding break-even arithmetic
 
-## Prepared reference/correctness and metrics protocol
+No drafter was downloaded or tested. This is arithmetic only, using measured
+`t_m1 = 54.7607935817 / 722 = 75.845974 ms/token` and retained verifier
+`t_m5 = 357.381406 ms/block`. For a hypothetical M5 verification cycle with
+mean accepted tokens `a` and draft wall `d`, rate is `a / (t_m5 + d)`.
 
-For every frozen prompt the driver will first run ordinary supported
-`mlx_lm.generate_step` with greedy `argmax`, then compare its complete generated
-ID sequence to the minimal direct M1 loop exactly. A mismatch is
-`REALGEN_BASELINE_CORRECTNESS_FAIL` and stops the phase. The planned length is
-128 generated tokens unless EOS occurs naturally; EOS is recorded and actual
-committed output tokens are used in all aggregates.
+| draft wall / M5 block | accepted needed to beat REALGEN M1 | rate at 5 accepted | accepted needed for 20 tok/s |
+|---:|---:|---:|---:|
+| 0 ms | 4.712 | 13.990655 tok/s | 7.148 |
+| 5 ms | 4.778 | 13.797617 tok/s | 7.248 |
+| 10 ms | 4.844 | 13.609834 tok/s | 7.348 |
+| 20 ms | 4.976 | 13.249195 tok/s | 7.548 |
 
-Model loading, materialization, and separate M1/BF16-KV warmup are excluded
-from benchmark timing but recorded. Per prompt the future host-ready run will
-record prefill wall/rate, TTFT, generation-only and end-to-end walls, tok/s,
-per-token latency distribution, EOS, cleanup wall, free memory, swap, MLX
-active/peak/cache, and diagnostic RSS. No deliberate purge will occur between
-prompts.
+The existing M5 proposal is bounded at five accepted tokens. Even at zero draft
+cost, reaching 20 tok/s would require 7.148 accepted tokens; the maximum
+permitted draft wall at 20 tok/s for `a=5` is **-107.381 ms**, hence infeasible.
+To merely exceed the measured REALGEN M1 rate at `a=5`, draft wall must be
+strictly below **21.848 ms/block**. This does not authorize DRAFT 001.
 
-## Speculative-decoding readiness
+## Evidence and checkpoint
 
-REALGEN M1 wall/token and its real baseline rate do not exist yet, so the
-requested complete break-even table is intentionally **deferred** rather than
-fabricated. The retained M5 verifier datum is 0.7147628125 s per two-block
-constituent / 0.35738140625 s per M5 block under Stretch-038 treatment. It is
-not substituted for the missing M1 number.
-
-After a successful baseline, the table will use, explicitly:
-
-- `t_m1`: measured REALGEN M1 generation wall/token;
-- `t_m5`: valid M5 verifier wall/block with its cleanup semantics stated;
-- maximum draft wall at 20 tok/s: `accepted/20 - t_m5`;
-- required mean accepted tokens: `20 * (t_m5 + draft_wall)`;
-- several zero-to-positive draft-cost scenarios, bounded by the M5 proposal
-  geometry rather than assumed feasible.
-
-No draft model was downloaded or tested. The next separately authorized DRAFT
-001 may consider `mlx-community/Qwen3-0.6B-4bit`, but must independently verify
-tokenizer identity, vocab IDs, chat-template compatibility, speed, and RAM
-footprint before use.
-
-## Resume condition
-
-Wait for a natural host state satisfying free memory >=60% and swap <=5600 MB.
-Then rerun exactly:
-
-```bash
-results-local/mlx/venv-mlx-lm-0.31.3/bin/python scripts/loom_real_generation_baseline_001.py
-```
-
-Do not rerun Stretch 037–041.
+- Complete machine evidence:
+  `results-local/realgen/real-generation-baseline-001/20260821-081022/summary.json`.
+- Run status:
+  `results-local/realgen/real-generation-baseline-001/20260821-081022/run-status.json`.
+- Classification: **`REALGEN_001_BASELINE_COMPLETE`**.
+- Checkpoint: **`CHECKPOINT_REVIEW`**. Do not start DRAFT 001 automatically.

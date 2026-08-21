@@ -243,16 +243,14 @@ Promotion target: ~20 token/s.
 
 **REALGEN PHASE ACTIVE.** This operational baseline is not a new optimization factor.
 
-### REALGEN 001 — Qwen3-8B real greedy M1 baseline — HOST-GATED / NOT STARTED
+### REALGEN 001 — Qwen3-8B real greedy M1 baseline — COMPLETE / CHECKPOINT_REVIEW
 - [x] Freeze the preceding validated configuration as **TARGET VERIFICATION M5** evidence only; do not claim it produces five unknown future tokens
 - [x] Audit exact S1_R8 source identity: its literal M5 input-shape guard makes it ineligible at M1; retain ordinary built-in MLX M1 qmv_fast
-- [x] Add deterministic six-prompt public harness, target tokenizer/chat-template use, ordinary MLX-LM greedy reference, exact-ID comparison, BF16 KV, M1 cleanup translation and resource telemetry in `scripts/loom_real_generation_baseline_001.py`
-- [x] Record tokenizer/template identity and the M1 dispatch/cleanup audit in `research/realgen/real-generation-baseline-001.md`
-- [x] Record natural pre-launch host gate failure: 54% free memory (<60%), 669.88 MB swap; no model load or benchmark attempt; `REALGEN_001_NOT_STARTED_HOST_NOT_READY`
-- [ ] Wait for a natural host-ready state, then run 128-token-or-EOS exact-reference baseline for all six prompts
-- [ ] Report real M1 generation/prefill/TTFT/end-to-end results separately from M5 verification evidence
-- [ ] Derive speculative break-even arithmetic only after measured REALGEN M1 wall/token; do not download/test a drafter
-- [ ] Future DRAFT 001 candidate note only: `mlx-community/Qwen3-0.6B-4bit`; independently verify tokenizer, vocab IDs, chat template, speed and RAM before any use
+- [x] Run the frozen six-prompt, 128-token-or-EOS, exact-reference M1/BF16-KV baseline at `results-local/realgen/real-generation-baseline-001/20260821-081022/summary.json`
+- [x] All reference/driver generated-ID sequences exactly match; pooled real M1 generation `13.184615357 tok/s`, pooled end-to-end output `12.046861457 tok/s`
+- [x] Record prefill, TTFT, cleanup, host/MLX/RSS telemetry, M5-verifier distinction, and speculative arithmetic in `research/realgen/real-generation-baseline-001.md`
+- [x] Derive bounded speculative break-even arithmetic: the five-token M5 proposal cannot reach 20 tok/s even at zero draft cost; do not infer a drafter result
+- [ ] Hold at REALGEN 001 checkpoint review; do not start/download/test DRAFT 001 without separate authorization
 
 ## Phase 9 — Synthesis
 - [ ] Capability vs memory vs time frontier
