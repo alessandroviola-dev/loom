@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000K_ALLOCATOR_CACHE_RECLAMATION_PASS`
+Current checkpoint: `CAPABILITY_000L_FULL_SEQUENCE_BOUNDARY_RECLAMATION_PASS`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -22,47 +22,63 @@ Qwen3-8B, affine 3-bit/group64, BF16 KV, MLX 0.31.2. REALGEN 001 = 13.184615357 
 
 ### 000H — sequential accumulation
 
-All captured R1-R6 requests pass fresh. Sequential R2 fails because R1 leaves +468.30 MiB active request-boundary MLX state.
+All captured R1-R6 requests pass fresh. A critical sequential run showed R2 failure because R1 left +468.30 MiB active request-boundary MLX state.
 
 ### 000I — targeted request-local reclamation PASS
 
-The stale completed `GenerationBatch.Response.prompt_cache` retains finished-request KV. Targeted detach recovers 252.00 MiB active MLX and preserves model/tool behavior.
+The stale completed `GenerationBatch.Response.prompt_cache` retains finished-request KV. Ownership-checked detach recovers 252.00 MiB active MLX and preserves model/tool behavior.
 
-### 000J — detach-only insufficient
+### 000K — allocator-cache reclamation PASS
 
-Full-sequence attempt shows active memory recovery largely moves into MLX allocator cache. R2 still hits the system-free floor. This directly justifies allocator-cache treatment as the next isolated factor.
+After the stale-response detach, one `mx.clear_cache()` reclaims 486.23 MiB allocator cache, raises R2 minimum free from 5% to 11%, costs 3.900 ms at the measured boundary and preserves semantics. Non-canonical ~0.01 s prefill measurements from 000K are not promoted.
 
-### 000K — ALLOCATOR CACHE RECLAMATION PASS
+### 000L — FULL-SEQUENCE BOUNDARY RECLAMATION PASS
 
-Report: `research/capability/capability-000k-allocator-cache-reclamation-result.md`.
+Report: `research/capability/capability-000l-full-sequence-boundary-reclamation-result.md`.
 
-After the proven stale-response detach, one `mx.clear_cache()` call:
-- reclaims **486.23 MiB** allocator cache;
-- leaves active MLX unchanged;
-- raises R2 minimum system free from **5% to 11%** (+6 pp);
-- costs **3.900 ms** at the measured boundary;
-- preserves R1/R2 response/tool semantics;
-- does not alter the intrinsic R2 MLX peak (~4095.95 MiB).
+Exact R1-R6 all complete with the combined treatment:
+- after every completed response, detach only that stale completed-response `prompt_cache`;
+- call `mx.clear_cache()` exactly once.
 
-The reported ~0.01 s prefill timings in 000K are not comparable to canonical ~20+ s prefill measurements and are not promoted as performance evidence. The valid promoted results are memory/headroom, semantic equivalence and cache-clear boundary latency.
+Treatment vs control in the same full sequence:
+- peak MLX: **4132.64 vs 4230.45 MiB**;
+- minimum free: **10% vs 5%**;
+- peak reduction: **97.81 MiB**;
+- worst-case free-memory gain: **+5 pp**;
+- semantic/tool equivalence: PASS for R1-R6;
+- no `gc.collect()`.
 
-### 000L — NEXT
+Allocator cache returns to **0.00 MiB** after every treatment boundary and before R2-R6. Cache-clear latency: mean **2.651 ms**, median **2.291 ms**, max **4.237 ms**.
 
-Frozen plan: `research/capability/capability-000l-full-sequence-boundary-reclamation-plan.md`.
+The control also completed R1-R6 in this particular run, confirming resource-gate variability. Therefore 000L validates the treatment mechanism and headroom benefit, but does not itself establish real-agent reliability.
 
-Validate exact R1->R6 with two fresh processes:
-1. control = natural sequential execution;
-2. treatment = after each completed response, detach only the proven stale `prompt_cache` and call `mx.clear_cache()` exactly once.
+### 000M — NEXT
 
-Measure per-turn active/cache/active+cache boundaries, system-free floor, swap, cache-clear latency and semantic/tool equivalence.
+Frozen plan: `research/capability/capability-000m-real-pi-boundary-reclamation-reproducibility-plan.md`.
 
-Full PASS requires all R1-R6 treatment requests to complete without crossing the resource gate and without semantic/lifecycle regression.
+Integrate the exact 000L boundary treatment into the real Pi-localhost bridge for the experiment only, then run the frozen numbers.txt task in **three independent fresh attempts**.
 
-No `gc.collect()`, model reload/restart between requests, host manipulation, or model/context/KV/prompt/tool/prefill changes.
+Frozen:
+- Qwen3-8B 3-bit full parameter count;
+- BF16 KV;
+- context 4096;
+- step 512;
+- full Pi tools;
+- no model/prompt/tool/KV/context changes.
 
-### CAPABILITY 001 — BLOCKED
+Each attempt:
+- fresh server/model process;
+- fresh Pi session/workspace;
+- host admission free >=60% on two consecutive passive samples, swap <=5600 MB;
+- no inference preflight in the scientific process;
+- no retry/rescue;
+- boundary detach + one `mx.clear_cache()` after every completed response.
 
-Frozen 12-task coding + Git safety + experimental-reasoning baseline. Run only after real Pi multi-turn execution has reproducible headroom.
+Promotion rule: **3/3 functional PASS** is required before CAPABILITY 001. Strict final text `DONE` is secondary.
+
+### CAPABILITY 001 — BLOCKED pending 000M
+
+Frozen 12-task coding + Git safety + experimental-reasoning baseline. Run only after 000M demonstrates 3/3 real-Pi functional reliability.
 
 ## B — RAM/speed frontier
 
@@ -89,13 +105,12 @@ Later candidates include mixed/selective precision, compressed cold weights, qua
 
 ## Immediate order
 
-1. CAPABILITY 000L full-sequence boundary reclamation
-2. real Pi-loop reproducibility with combined detach + allocator-cache clear if 000L passes
-3. CAPABILITY 001
-4. MEMORY-FRONTIER 001
-5. prefetch/buffering/range-I/O
-6. OUTCORE-BLOCK 001
-7. scale toward 27B/32B
+1. CAPABILITY 000M — real Pi boundary-reclamation reproducibility
+2. CAPABILITY 001 if and only if 000M = 3/3 functional PASS
+3. MEMORY-FRONTIER 001
+4. prefetch/buffering/range-I/O
+5. OUTCORE-BLOCK 001
+6. scale toward 27B/32B
 
 ## Local-only implementation warning
 
