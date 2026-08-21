@@ -1,161 +1,119 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-21
-Status: ACTIVE — capability bridge blocked by agentic prefill memory
+Status: ACTIVE — agentic prefill memory optimization
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Last completed experiment: `CAPABILITY_000A_MEMORY_ATTRIBUTION_COMPLETE`
-Next experiment: `CAPABILITY_000B_PI_PREFILL_ENVELOPE`
+Last completed experiment: `CAPABILITY_000B_EXACT_REPLAY_COMPLETE`
+Next experiment: `CAPABILITY_000C_PREFILL_CHUNK_FRONTIER`
 
-Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual `research/` reports. Do not rebuild the full historical narrative here.
+Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
 
 **Big models. Small machines.**
 
-LOOM aims to run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB, ultimately pushing toward approximately 27B / 32B-class models rather than retreating to smaller parameter-count models.
+LOOM aims to run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models. Success requires memory fit, useful speed and retained capability.
 
-Success requires all three:
+## Operating split
 
-1. memory fit/headroom;
-2. useful interactive speed;
-3. retained real capability.
+Pi: local code, runtime inspection, tests, concise raw evidence.
 
-A model that merely fits but is unusably slow is not success.
+ChatGPT: research direction, experiment design/review, GitHub synchronization, HANDOFF/ROADMAP and checkpoint continuity.
 
-## Operating protocol
+## Canonical model/runtime
 
-Canonical policy: `research/governance/chatgpt-pi-operating-protocol.md`.
+- Qwen3-8B full parameter count
+- affine 3-bit/group64
+- BF16 KV
+- Apple M1 / 8 GB
+- MLX/mlx-metal 0.31.2
+- mlx-lm 0.31.3
+- transformers 5.12.1
+- ordinary built-in M1 `qmv_fast`
+- raw persistent weights `3,583,928,320 B`
 
-Pi owns serious local implementation, runtime/source inspection needed for experiments, test execution and concise raw evidence.
+REALGEN 001 remains the user-facing baseline:
 
-ChatGPT owns scientific direction, experiment design/review, GitHub synchronization, HANDOFF, ROADMAP and checkpoint continuity.
+- real generation **13.184615357 tok/s**
+- end-to-end output **12.046861457 tok/s**
+- exact greedy reference agreement on all six frozen prompts
+- MLX peak `3,826,575,836 B`
 
-Default loop:
-`ChatGPT designs -> Pi codes/tests -> Pi returns evidence -> ChatGPT reviews/syncs -> next experiment`.
+REALGEN 002 M1_S1_R8 transfer was exact but **-9.178832%** throughput; closed.
 
-## Canonical current model/runtime
+## Capability bridge
 
-- Qwen3-8B full parameter count;
-- affine 3-bit/group64 weights;
-- BF16 KV;
-- 36 layers, hidden 4096, intermediate 12288;
-- Apple M1 / 8 GB;
-- MLX 0.31.2 / mlx-metal 0.31.2;
-- mlx-lm 0.31.3;
-- transformers 5.12.1;
-- ordinary built-in M1 `qmv_fast` for real autoregressive generation;
-- raw persistent weights `3,583,928,320 B`.
+CAPABILITY 000 proved the canonical Qwen3-8B can drive Pi: a genuine model-generated `read(numbers.txt)` tool call was observed. The integrated smoke then crossed the <5% free-memory floor.
 
-## Canonical performance baseline
+### CAPABILITY 000A — complete
 
-REALGEN 001:
+- exactly one model instance
+- no model duplication
+- Pi RSS ~45.55 MB
+- model materialization was the largest static jump
+- direct small requests survived
+- real Pi prefill caused the dynamic cliff
 
-- pooled real autoregressive generation: **13.184615357 tok/s**;
-- pooled end-to-end output: **12.046861457 tok/s**;
-- six frozen public prompts;
-- exact generated-token agreement with ordinary MLX-LM greedy reference;
-- minimum free memory: 20%;
-- peak swap: 1591.19 MB;
-- MLX peak: 3,826,575,836 B.
+### CAPABILITY 000B — complete
 
-The M5 verifier remains separate oracle-verification evidence at ~13.990655 tok/s. It is not ordinary chat generation.
+Report: `research/capability/capability-000b-pi-prefill-envelope-result.md`.
 
-REALGEN 002 tested transfer of S1_R8 to real M1 generation. The treatment stayed exact but reduced representative throughput by **9.178832%**, so built-in M1 `qmv_fast` remains canonical.
+Exact first Pi request:
 
-## Known memory-hierarchy result
+- total input: **1504 tokens**
+- system: 608
+- user: 65
+- tools: 814
+- other: 17
+- context headroom: 2592 / 4096
 
-Aggressive layer streaming already reduces resident RAM substantially but destroys throughput because every dense layer is needed for every autoregressive token.
+Prefill behavior:
 
-Do not repeat pure full-model streaming as the final solution. Future work must search the RAM/speed frontier using partial residency, prefetch and I/O amortization.
+- segmented/chunked
+- observed M: `[1430, 70, 3]`
+- current `prefill_step_size=2048`
+- full-position logits are not materially retained; actual materialized logits are last-token `[1,1,151936]`
+- BF16 BatchKVCache actual length 1504, capacity 1536 in 256-token blocks
 
-## Capability track
+Exact direct replay:
 
-CAPABILITY 001 is intended to baseline practical intelligence/usefulness of the current 8B 3-bit system on real agentic tasks through Pi. Its frozen suite includes coding, safe Git operations and experiment/result reasoning.
+- min free **6%**
+- peak swap **1675 MB**
+- peak MLX **4180.1 MB**
+- prefill wall **20.61 s**
+- ~216 MiB persistent KV capacity
+- ~546 MiB transient peak above post-prefill active during first M=1430 prefill
 
-Before CAPABILITY 001 can run, the canonical model must be usable behind Pi without crossing the hard resource floor.
+Attribution:
 
-### CAPABILITY 000 — bridge result
-
-The localhost MLX bridge successfully connected Pi to the canonical local Qwen3-8B 3-bit model. Qwen produced a real Pi tool call `read(numbers.txt)`, proving the reasoning model was participating in the agent loop.
-
-The smoke then aborted at 4% free memory before completion.
-
-### CAPABILITY 000A — memory attribution — COMPLETE
-
-Report: `research/capability/capability-000a-memory-attribution-result.md`.
-
-Key result:
-
-- exactly **1** model instance;
-- no model duplication;
-- Pi RSS only **45.55 MB** at S5;
-- largest static jump is model materialization S1 -> S2: free memory **67% -> 30%**, swap **+828.18 MB**;
-- direct simple request works: 18 tokens, 20% free;
-- direct tool-schema request works: 366 tokens, 17% free;
-- starting Pi alone leaves 18% free;
-- first real Pi prefill crosses the <5% hard floor before S6 completes.
-
-BF16 KV arithmetic:
-
-- 147,456 bytes/token;
-- 288 MiB @2048;
-- 432 MiB @3072;
-- 576 MiB @4096.
-
-Interpretation: the failure is not Pi process RSS and not duplicate model weights. The unresolved dynamic cost is the first real Pi prefill. Do not blame KV alone without measuring the exact Pi request and temporary prefill allocations.
+- weights: PROVEN
+- KV: PROVEN
+- full-sequence logits: NOT SUPPORTED
+- qmm/prefill temporaries: STRONGLY SUPPORTED
+- Pi RSS as cliff cause: NOT SUPPORTED
+- long system/tool prompt as driver of large prefill M: STRONGLY SUPPORTED
 
 ## Exact next step
 
-Run `CAPABILITY 000B — Pi prefill envelope` using the frozen plan:
-`research/capability/capability-000b-pi-prefill-envelope-plan.md`.
+Run `CAPABILITY 000C — bounded prefill-chunk frontier` from:
+`research/capability/capability-000c-prefill-chunk-frontier-plan.md`.
 
-Keep unchanged during 000B:
+Sole factor: prefill chunk size `2048 / 1024 / 512 / 256`, using the exact same captured 1504-token Pi request.
 
-- Qwen3-8B 3-bit;
-- BF16 KV;
-- context 4096;
-- max output 2048;
-- Pi read/write/edit/bash surface;
-- current runtime.
+Do not change model, 3-bit representation, BF16 KV, context 4096, max output 2048, prompt semantics or tool surface.
 
-000B must:
+Goal: recover safe memory headroom by reducing transient prefill M while measuring the prefill-time penalty and preserving first-token/tool-call behavior.
 
-1. capture the exact first Pi request without executing the model;
-2. tokenize the exact request with the canonical chat template;
-3. direct-replay that exact payload without Pi;
-4. measure high-water prefill allocations;
-5. inspect whether KV or other temporaries are allocated to actual length or capacity;
-6. identify the first justified memory-reduction factor.
+If one chunk size is clearly useful, run a separate integrated Pi smoke before CAPABILITY 001.
 
-CAPABILITY 001 remains blocked until this is understood or resolved.
+## Later
 
-## Later architectural directions
+After a sustainable capability bridge:
 
-After the capability bridge is sustainable:
-
-1. run CAPABILITY 001 baseline;
-2. map real M1 partial-residency RAM/tok/s frontier;
-3. asynchronous prefetch;
-4. double/triple buffering and transfer chunk sizing;
-5. direct safetensors range I/O and macOS cache behavior;
-6. resident-hotset selection;
-7. M>1/block execution to amortize SSD I/O;
-8. representation/KV compression only with capability measurement;
-9. scale toward 27B/32B-class full-parameter-count models.
-
-## Closed / paused paths
-
-Do not routinely reopen without new evidence:
-
-- Stretch 037–041;
-- REALGEN 002 M1 S1_R8 transfer;
-- row-chunk qmatmul;
-- gate/up fusion;
-- outer MLP compile;
-- fused residual/RMSNorm;
-- persistent BF16 dequantized projection caches;
-- MLX 0.32 M5 comparison;
-- GQA shared-KV clone;
-- GC-only cleanup removal.
+1. CAPABILITY 001 baseline
+2. MEMORY-FRONTIER 001 partial residency RAM/tok/s curve
+3. async prefetch / buffering / direct range I/O
+4. M>1 out-of-core weight-I/O amortization
+5. scale toward 27B/32B
