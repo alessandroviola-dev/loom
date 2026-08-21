@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000B_EXACT_REPLAY_COMPLETE`
+Current checkpoint: `CAPABILITY_000C_PREFILL_FRONTIER_COMPLETE`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -48,51 +48,54 @@ Canonical Qwen3-8B successfully emitted a real Pi tool call, but integrated exec
 
 ### CAPABILITY 000B — COMPLETE
 
-Report: `research/capability/capability-000b-pi-prefill-envelope-result.md`.
+Exact Pi request = **1504 tokens**: system 608 / user 65 / tools 814 / other 17.
 
-Exact Pi request = **1504 tokens**:
+At step 2048, prefill segmentation is `[1430,70,3]`; exact direct replay reached 4180.1 MB MLX peak with ~546 MiB transient above post-prefill active.
 
-- system 608
-- user 65
-- tools 814
-- other 17
+Full-sequence logits are not the cause. Weights/KV are proven contributors; qmm/prefill transient allocation plus large agent/tool context are the first justified target.
 
-Current prefill uses M `[1430,70,3]` with `prefill_step_size=2048`.
+### CAPABILITY 000C — COMPLETE
 
-Exact direct replay:
+Report: `research/capability/capability-000c-prefill-frontier-result.md`.
 
-- minimum free **6%**
-- peak MLX **4180.1 MB**
-- prefill wall **20.61 s**
-- persistent KV capacity ~216 MiB
-- transient first-prefill peak ~546 MiB
+Exact same 1504-token request; sole factor = `prefill_step_size`.
 
-Full-sequence logits are not the cause. qmm/prefill transient allocation plus the large system/tool prompt are the first justified target.
+Key points:
 
-### CAPABILITY 000C — NEXT
+| step | wall s | effective tok/s | peak MLX MB | bit exact |
+|---:|---:|---:|---:|---|
+| 2048 | 27.91 | 53.88 | 4180.1 | yes |
+| 512 | **23.74** | **63.36** | 4089.8 | **yes** |
+| 256 | 28.24 | 53.26 | **3980.7** | no |
 
-Frozen plan: `research/capability/capability-000c-prefill-chunk-frontier-plan.md`.
+Pareto frontier: **512 and 256**.
 
-Sole factor:
+`512` is the operational candidate because it simultaneously improves prefill speed and peak MLX memory versus the 2048 control while preserving bit-exact final logits. Relative to 2048: ~14.94% lower prefill wall, ~17.59% higher effective prefill throughput, and 90.3 MB lower peak MLX.
 
-- control 2048
-- 1024
-- 512
-- 256
+### CAPABILITY 000D — NEXT
 
-Everything else frozen, including the exact 1504-token request, tool surface, context 4096, BF16 KV and model.
+Frozen plan: `research/capability/capability-000d-pi-loop-admission-plan.md`.
 
-Primary output:
+Run the real multi-turn Pi smoke with `prefill_step_size=512` and everything else unchanged:
 
-`chunk size -> peak memory/headroom -> prefill wall penalty -> first-token/tool-call agreement`
+- context 4096
+- max output 2048
+- BF16 KV
+- full read/write/edit/bash tool surface
+- same system/tool semantics
+- same Qwen3-8B 3-bit model
 
-If a useful chunk size is found, run one separate integrated Pi smoke. Only then run CAPABILITY 001.
+The purpose is to verify that 512 remains safe as context grows through actual tool turns (`read -> write -> bash -> final answer`).
 
-### CAPABILITY 001 — BLOCKED pending sustainable bridge
+Track input tokens, prefill segments/wall, generation, KV length/capacity, MLX peak, min free/swap and tool result size for every turn.
+
+### CAPABILITY 001 — BLOCKED pending 000D admission
 
 Frozen 12-task suite: coding + Git safety + experiment/result reasoning.
 
-This becomes the capability reference for future changes.
+If 000D functionally passes with safe resource trajectory, run CAPABILITY 001 using the same 512 prefill setting.
+
+This becomes the capability reference for future representation changes.
 
 ## B — RAM/speed frontier
 
@@ -148,13 +151,12 @@ Judge every representation by:
 
 ## Immediate order
 
-1. CAPABILITY 000C — prefill chunk frontier
-2. integrated Pi smoke with selected chunk size
-3. CAPABILITY 001
-4. MEMORY-FRONTIER 001
-5. prefetch/buffering/range-I/O work
-6. OUTCORE-BLOCK 001
-7. scale toward 27B/32B
+1. CAPABILITY 000D — integrated Pi multi-turn smoke at step 512
+2. CAPABILITY 001
+3. MEMORY-FRONTIER 001
+4. prefetch/buffering/range-I/O work
+5. OUTCORE-BLOCK 001
+6. scale toward 27B/32B
 
 ## Final objective
 
