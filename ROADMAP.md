@@ -1,271 +1,265 @@
 # LOOM Roadmap
 
-## Phase 0 — Foundation — COMPLETE
-- [x] Mission / handoff discipline
-- [x] Private repository `Ilcoach/loom`
+Last reset: 2026-08-21
+Active checkpoint before this roadmap reset: `REALGEN_002_M1_QMV_FAST_NO_GO`
+Detailed historical roadmap through REALGEN 002 is preserved in Git history at commit `844325f63b1880107040b219524ad5391276769c`.
 
-## Phase 1 — Baseline — COMPLETE
-- [x] Canonical Ollama/MLX 4B baseline
-- [x] Coding Baseline 001
+## Mission
 
-## Phase 2 — Benchmark Framework — ACTIVE
-- [x] Coding Benchmark 01 v1.0.1
-- [ ] Reasoning benchmark later
+LOOM exists to make **excellent, large, full-parameter-count LLMs practical on very small Apple Silicon systems**, with Apple M1 / 8 GB as the reference machine.
 
-## Phase 3 — Local Agent Investigation — CHARACTERIZED
-- [x] Pi Agentic Coding Benchmark 001
+The long-term target is not to retreat to smaller parameter-count models. The research direction is to move from the current Qwen3-8B frontier toward roughly **27B / 32B-class models on 8 GB**, while preserving useful interactive speed and real capability.
 
-## Phase 4 — llama.cpp Frontier — CHARACTERIZED
-- [x] 4B Q4 efficiency control
-- [x] 8B Q4/Q3/Q2 memory/quality boundaries
+A model merely fitting in RAM is not success. A model that is fast but no longer capable is not success either.
 
-## Phase 5 — Direct MLX 8B Frontier — CHARACTERIZED
-- [x] 8B 3-bit full session stable; quality not promoted
-- [x] 8B 4-bit memory boundary characterized
-- [x] Preserve verified artifacts
+Every major result must therefore be judged on three axes:
 
-## Phase 6 — Amplify — QUEUED BEHIND STRETCH
-- [x] Amplifier 001–003 resource boundary characterized
-- [x] Amplifier 004 compact-feedback plan/runner frozen
-- [ ] Run Amplifier 004 after current Stretch architectural sequence
+1. **Memory** — resident/peak RAM, swap, model bytes, headroom.
+2. **Speed** — real autoregressive tok/s, TTFT, latency.
+3. **Capability** — ability to complete real useful tasks.
 
-## Phase 7 — Stretch / Memory Hierarchy + Compute — PAUSED
+## Operating method — ACTIVE
 
-**STRETCH MICRO-OPTIMIZATION PHASE PAUSED.** Stretch 041 is approved; do not rerun Stretch 037–041.
+Canonical protocol: `research/governance/chatgpt-pi-operating-protocol.md`.
 
-Frozen subject: Qwen3-8B 3-bit/group64, 36 layers, Apple M1 / 8 GB.
-Preferred runtime after Stretch 030: mlx 0.31.2 + mlx-metal 0.31.2, mlx-lm 0.31.3, transformers 5.12.1.
-Promotion target: ~20 token/s.
+### Pi
 
-### Stretch 001–017 — COMPLETE / EXACT BLOCK FRONTIER
-- [x] Layer-addressable I/O and bounded materialization
-- [x] Exact streamed/full-logit parity
-- [x] Persistent BF16 KV
-- [x] Persistent transformer hotsets
-- [x] M8 valid numerical-parity FAIL
-- [x] q/k/v/o exact through M9
-- [x] gate/up/down exact through M5; first divergence M6
-- [x] M5 exact end-to-end over 15 oracle tokens
-- [x] Freeze M5 as maximum demonstrated exact block under MLX 0.31.2
+Pi is reserved for high-value local work:
 
-### Stretch 018 — COMPLETE PASS
-- [x] M5 ~+9.80% vs M4 on the pre-persistence/pre-cleanup schedule
+- serious code implementation;
+- local source/runtime inspection required by an experiment;
+- running tests and benchmarks;
+- producing concise raw result summaries and changed-file paths.
 
-### Stretch 019–022 — TRANSFORMER RESIDENCY — COMPLETE
-- [x] H8 -> H16 ~+56.87%
-- [x] H16 -> H24 ~+34.86%
-- [x] H24 -> H32 ~+11.45%
-- [x] H32 -> H36 ~+10.50%
-- [x] Freeze H36 physical transformer-residency ceiling
+Pi does **not** routinely spend context on Git synchronization, commits/pushes, HANDOFF, ROADMAP or historical recap.
 
-### Stretch 023 — FULL RAW-WEIGHT PERSISTENCE — COMPLETE PASS
-- [x] Preserve initial harness defect
-- [x] Valid Fix1 PERSISTENT/STREAMED ~+59.89%
-- [x] Freeze full model persistence
+### ChatGPT
 
-### Stretch 024 — COMPUTE/FRAMEWORK ATTRIBUTION — COMPLETE PASS
-- [x] Preserve telemetry defect
-- [x] MLP/attention `2.6608x`
-- [x] Identify old 36x cleanup as largest old-schedule cost
+ChatGPT owns:
 
-### Stretch 025–027 — CLEANUP SCHEDULE — COMPLETE
-- [x] 025 BATCHED/CONTROL `3.8628x`
-- [x] 026 SHARED_BATCHED/BATCHED `1.1411x`
-- [x] 027 SINGLE_PASS/SHARED_BATCHED `1.0867x`
-- [x] Freeze one final cleanup/pass
-- [x] Stretch 027 pooled `12.7307 token/s`
-- [x] Canonical 027 blob `6636456df5a773ac6062fdad66b7dc96abe8bd81`
+- research direction and experimental design;
+- review and GO/NO-GO decisions;
+- GitHub synchronization;
+- commits/pushes when supported by connected tooling;
+- HANDOFF and ROADMAP maintenance;
+- checkpoint/provenance continuity.
 
-### Stretch 028 — COMPUTE RE-ATTRIBUTION — COMPLETE PASS
-- [x] Transformer compute `0.449696 s/block`
-- [x] Attention `0.123101 s/block`
-- [x] MLP `0.326595 s/block`
-- [x] MLP/attention `2.6531x`
-- [x] up/attention/gate/down each ~0.095–0.099 s/block
+Default loop:
 
-### Stretch 029 — GATE+UP QUANTIZED FUSION — COMPLETE PASS / PATH CLOSED
-- [x] Preserve initial harness defect / no science
-- [x] Fresh valid Fix1 ABBA `20260820-171714`
-- [x] CONTROL `13.2286 token/s`
-- [x] FUSED `12.3524 token/s`
-- [x] FUSED exact but ~6.62% slower
-- [x] Do not promote fusion; no rescue variants
+`ChatGPT designs -> Pi codes/tests -> Pi returns evidence -> ChatGPT reviews + syncs repo -> next experiment`
 
-### Stretch 030 — COHERENT MLX 0.31.2 vs 0.32.0 — COMPLETE PASS / 0.32.0 NOT PROMOTED
-- [x] Preregister runtime as independent factor
-- [x] Preserve original setup failure / no science
-- [x] Setup Fix1 creates isolated coherent mlx/mlx-metal 0.32.0 treatment clone
-- [x] Preserve runner Fix1 invariant failure / no science
-- [x] Preserve runner Fix2 venv-symlink provenance failure / no science
-- [x] Fix3 preserves selected venv `bin/python` paths and gates real child runtime
-- [x] Valid Fix3 ABBA `20260820-175251`
-- [x] `MLX_0312_0320_RUNTIME_BALANCED_COMPARISON_PASS`
-- [x] MLX0312 `13.0748237296 token/s`
-- [x] MLX0320 `12.3417530144 token/s`
-- [x] MLX0320/0312 `0.9439326502x` (~5.61% slower)
-- [x] Median block wall treatment ~6.84% higher
-- [x] MLX 0.32.0 exact at M5 but not promoted
-- [x] Retain coherent MLX 0.31.2 runtime
-- [x] Do not remap M under 0.32.0 because `exact + faster` condition failed
-- [x] Freeze `research/stretch/mlx-0312-0320-runtime-comparison-030-result.md`
+## Canonical performance state
 
-### Stretch 031 — COMPLETE PASS — M5 GEOMETRY RETAINED
-- [x] Re-open throughput-optimal block geometry on the current optimized schedule
-- [x] Keep MLX 0.31.2, H36, full persistence, one cleanup/pass, BF16 KV frozen
-- [x] Normalize both variants to the same first 10 frozen oracle tokens
-- [x] M5 CONTROL = 2 x 5-token blocks
-- [x] M2 TREATMENT = 5 x 2-token blocks
-- [x] Apply geometry only after inherited Stretch 017/H36 source-provenance preflight
-- [x] M5 helper `scripts/stretch_single_pass_m5_ten_token_control_031.py`
-- [x] M5 blob `5f047b9e5f42bed959ced59e9329a8c8d7e3fc25`
-- [x] M2 helper `scripts/stretch_single_pass_m2_ten_token_variant_031.py`
-- [x] M2 blob `6005ff3a285760457d3255bc6505f2987c1fa4e8`
-- [x] Balanced runner `scripts/stretch_single_pass_m2_m5_geometry_comparison_031.py`
-- [x] Runner blob `bc3b21ff504c65d0852aad68a566cba924888d90`
-- [x] Balanced order `M5 -> M2 -> M2 -> M5`
-- [x] Primary metric = pooled accepted oracle tokens / target-block wall seconds
-- [x] First genuine M2 frozen-gate failure = valid `M2_SINGLE_PASS_GEOMETRY_EXACTNESS_FAIL`; stop/no rescue
-- [x] Complete exact ABBA = `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`
-- [x] Preregister `research/stretch/single-pass-m2-m5-geometry-comparison-031-plan.md`
-- [x] Preserve original M5 source-transform harness defect `20260820-180652`; scientific result NONE
-- [x] Add Fix1 generated-runtime-source preflight; M5/M2 render, compile, frozen facts and normalized single-factor diff PASS
-- [x] Preserve Fix1 fresh M5 parent/child-dispatch harness failure `20260820-182206`; scientific result NONE, no retry
-- [x] Preserve Fix2 source/render PASS but M5 no-model dispatch-preflight failure `20260820-183232`; `.resolve()` dereferenced canonical venv Python, scientific result NONE
-- [x] Fix3 preserves literal canonical venv `bin/python`; static regression guard and M5+M2 no-model dispatch markers PASS
-- [x] Fresh valid Fix3 ABBA `20260820-184128`: `SINGLE_PASS_M2_M5_BALANCED_GEOMETRY_COMPARISON_PASS`
-- [x] M5 `14.3307 tok/s`, M2 `11.8349 tok/s`, M2/M5 `0.82584`; retain M5 geometry
-- [x] Freeze result `research/stretch/single-pass-m2-m5-geometry-comparison-031-result.md`
+### Qwen3-8B 3-bit — current real-generation baseline
 
-### Stretch 032 candidate — M5 row-chunked quantized matmul — NO-GO
-- [x] Diagnostic real-weight M5 `2+2+1` feasibility, layer 0, 3-bit/group64 affine, canonical venv
-- [x] All q/k/v/o/gate/up/down outputs bit-exact; chunked slower for every projection
-- [x] MLP-only diagnostic weighting estimates `-5.3249%` of Stretch 031 M5 median block wall; no Stretch 032 plan/ABBA
-- [x] Preserve `research/stretch/m5-row-chunked-quantized-matmul-032-feasibility.md`; monolithic M5 qmatmul remains canonical
+REALGEN 001:
 
-### Stretch 033 candidate — outer `mx.compile` MLP — NO-GO
-- [x] Real M5 BF16 layer-0 MLP feasibility under canonical MLX 0.31.2 with captured immutable 3-bit/group64 weights
-- [x] First outer-compile invocation measured separately; fixed callable/input/weights and excluded warmups support steady-state reuse
-- [x] Exact output, but compiled/eager `0.9979923` for one MLP and `0.9999800` for three real MLPs; weighted upside `0.1880%`
-- [x] No Stretch 033 plan/ABBA; preserve `research/stretch/m5-compiled-mlp-033-feasibility.md` and canonical eager outer MLP
+- full Qwen3-8B parameter count;
+- affine 3-bit/group64 weights;
+- BF16 KV;
+- Apple M1 8 GB;
+- MLX 0.31.2 / mlx-lm 0.31.3;
+- ordinary built-in M1 `qmv_fast`;
+- pooled real autoregressive generation: **13.184615357 tok/s**;
+- pooled end-to-end output: **12.046861457 tok/s**;
+- exact reference sequence agreement on all six frozen prompts;
+- raw persistent weights: **3,583,928,320 B**;
+- REALGEN peak MLX memory: **3,826,575,836 B**.
 
-### Stretch 034 candidate — fused residual add + RMSNorm — NO-GO
-- [x] Diagnostic BF16 `[1,5,4096]` custom `mx.fast.metal_kernel` with two outputs (`h`, normalized `n`), real Qwen3 norm vectors and unchanged FP32 accumulation / eps `1e-6`
-- [x] Raw residual exact across three controlled seeds and input/post-attention weights; normalized reduction-order differences diagnostically compatible
-- [x] 120-side synchronized control `245.31 µs`, fused `276.10 µs`, fused/control `1.12552`: no practical upside
-- [x] Two-pair layer pattern also slower (`1.10698`); 36 intra, 35 cross-layer and final-pair arithmetic is negative
-- [x] No preregistration, source transform, preflight or scientific ABBA; retain separate residual add + canonical `mx.fast.rms_norm`
-- [x] Preserve `research/stretch/fused-residual-rmsnorm-034-feasibility.md`
+This is the canonical practical baseline.
 
-### Stretch 035 — M5 quantized kernel path — INVESTIGATION_ONLY
-- [x] Trace exact MLX 0.31.2 M1 `applegpu_g13g` dispatch: all real M5 affine BF16 3-bit/group64 projections take `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0`
-- [x] Map real layer-0 payloads M1–M8 with >=100 synchronized samples per shape; source-predicted M6 qmm/split-K transitions recorded without changing canonical M5
-- [x] Establish MLX 0.32 qmv_wide is affine-gated to gen15+, hence unreachable on M1 gen13; do not infer the Stretch 030 regression cause from this source fact
-- [x] Review PR #3764 and issues #3553/#3839/#3852 with M1/M2/M3/M4/M5 and quant-mode transfer limits separated
-- [x] No prototype, source transform, MLX patch, runtime upgrade comparison, preregistration or scientific ABBA; preserve `research/stretch/m5-quantized-kernel-path-035-investigation.md`
+### M5 verifier evidence
 
-### Stretch 036 — persistent dequantized BF16 projection cache — NO-GO
-- [x] Layer-0 real packed 3-bit/group64 affine tensors only; materialize each treatment exclusively through `mx.dequantize(..., group_size=64, bits=3)` to persistent BF16, with no original floating weights/requantization/scale-bias change
-- [x] Measure exact bytes, separate one-time dequantization/materialization, three BF16 numerical probes, and 120-side M5 interleaved Q/BF16 samples for q/k/v/o/gate/up/down
-- [x] All outputs shape-match but are non-bit-exact; Q/O isolated positive medians remain <5% projected block upside and their 1,152 MiB x36 caches project below the 5% minimum-free-memory abort boundary
-- [x] K/V and every MLP class are slower; MLP individual cache is 3,456 MiB x36
-- [x] `STRETCH_036_PERSISTENT_DEQUANTIZED_PROJECTION_FEASIBILITY_NO_GO`; no scientific plan/ABBA/cache integration; retain canonical monolithic M5 qmatmul
-- [x] Preserve `research/stretch/persistent-dequantized-projection-036-feasibility.md`
+The optimized M5 target-verification path remains useful research evidence but is **not** ordinary generation:
 
-### Stretch 037 — M1-specific qmv_fast custom implementation — FIX1 RESOURCE INCOMPLETE / FIX2 PASS
-- [x] Audit exact MLX v0.31.2 M1 qmv_fast source and classify immutable packing/affine/reduction invariants versus neutral output-row execution geometry
-- [x] Implement process-local canonical `mx.fast.metal_kernel` clone for BF16 affine 3-bit/group64 non-batched M5; all q/k/v/o/gate/up/down real-payload probes bit-exact, worst clone/canonical median `1.006870`
-- [x] Predeclare and measure exactly four bounded variants; `s1_r8` is bit-exact and improves gate/up/down, with matched Stretch-028 MLP estimate `+5.2120%` of canonical Stretch-031 block wall
-- [x] No installed runtime change, persistent cache, model integration, preflight or full-model ABBA
-- [x] Prepare review-ready `research/stretch/m1-qmv-fast-tuning-037-plan.md`; methodological amendment correctly freezes built-in MLX implementation → custom S1_R8 implementation as the factor
-- [x] Commit/push amendment and prepared runtime/harness before launch (`5f3ff44`, `3a517ab`)
-- [x] Preserve fresh mandatory preflight harness failure `20260820-212659`: missing `preflight/` evidence directory before render; no CONTROL/S1_R8 constituent began, scientific result NONE, no retry
-- [x] Authorized distinct Fix1 runner preserves the defect source and creates fresh `preflight/` evidence with `exist_ok=False`; normalized harness diff contains only that setup
-- [x] Fresh Fix1 preflight `20260820-213948`: render/source/launcher/no-model/runtime and four real-weight shape-class bit-exact checks PASS; no scientific constituent yet run
-- [x] `STRETCH_037_PREFLIGHT_HARNESS_FIX1_READY`; Fix1 commit `f9d8096` remote-verified before science
-- [x] Fresh in-harness preflight `20260820-214110` passed source/no-model/launcher/runtime/four-shape bit-exact gates
-- [x] Fresh first CONTROL stopped before target compute: inherited launch gate free memory `59%` (<60%), swap `634.44 MB`; `HOST_STATE_NOT_READY`, outer `M1_QMV_FAST_TUNING_COMPARISON_INCOMPLETE`, scientific result NONE
-- [x] No target block, accepted token, cleanup/timing metric or S1_R8 constituent; no retry or reuse permitted
-- [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-feasibility.md`, `research/stretch/m1-qmv-fast-tuning-037-result.md`, `research/stretch/m1-qmv-fast-tuning-037-harness-fix1.md`, and `research/stretch/m1-qmv-fast-tuning-037-harness-fix1-result.md`
-- [x] Separately authorized Fix2 source identity `STRETCH_037_FIX2_RESOURCE_FRESH_ATTEMPT`; normalized Fix1→Fix2 diff allows only revision/provenance identity and fresh output paths; Fix2 commit `7291df6` remote-verified before science
-- [x] Standalone and fresh in-harness Fix2 preflight `20260820-215510` / `20260820-215547`: compile/render/diff/literal launcher/runtime/no-model gates PASS; all four real-weight BF16 3-bit/group64 M5 shape classes bit-exact
-- [x] Fresh ABBA `CONTROL -> S1_R8 -> S1_R8 -> CONTROL` completed under unchanged per-constituent 60%/5600 MB launch gate: all four exact, 10 accepted oracle tokens each, no cache purge or artifact reuse
-- [x] `M1_QMV_FAST_TUNING_PASS`: fresh CONTROL `13.725329 tok/s`, S1_R8 `15.002682 tok/s`, ratio `1.093065` (+9.306539%); median block `0.363852` vs `0.331027 s`; promote M1-specific process-local S1_R8 for the frozen M1 Qwen3-8B 3-bit/group64 BF16 M5 H36 path
-- [x] Preserve `research/stretch/m1-qmv-fast-tuning-037-harness-fix2-result.md` and evidence `results-local/stretch/m1-qmv-fast-tuning-037-fix2/20260820-215547/summary.json`
+- approximately **13.990655 tok/s** verifier throughput under its frozen scope;
+- current five-token verifier cannot reach 20 tok/s even with zero draft cost on the resident 8B baseline.
 
-### Stretch 038 — S1_R8 cleanup cadence — COMPLETE PASS / promoted
-- [x] Audit promoted S1_R8 rendered source: final `gc.collect() -> mx.clear_cache() -> gc.collect()` is after the persistent LM head, once per M5 target pass; baseline is 2 cleanup calls / ten-token constituent
-- [x] Freeze sole factor: CONTROL = 2 cleanup / 10 tokens; TREATMENT = defer after block 1, 1 cleanup / 10 tokens; no qmv or other runtime change
-- [x] One-load feasibility run with inherited CONTROL warmup, four interleaved CONTROL and eight TREATMENT cycles
-- [x] All timed cycles exact (logits/top-1/oracle/sequence), 10 accepted tokens and full raw persistence `3,583,928,320 B`; final treatment cleanup recovered stable active/cache state without cumulative trajectory
-- [x] Timed mean wall CONTROL `0.704799 s` vs TREATMENT `0.647084 s`; ratio `0.91811037`, improvement `8.188963%`; minimum free memory `24%`, peak swap `1849.06 MB`
-- [x] `STRETCH_038_CLEANUP_CADENCE_FEASIBILITY_GO`; preserve feasibility report/evidence and separate preregistration unchanged
-- [x] Distinct remote-verified scientific runner `scripts/stretch_s1r8_deferred_cleanup_comparison_038.py`; fresh in-harness compile/render/normalized cadence-only diff/literal-launcher/S1_R8-hash/runtime/no-model/metric-semantics preflight PASS
-- [x] Fresh balanced ABBA `CONTROL -> TREATMENT -> TREATMENT -> CONTROL`: all four constituents exact, ten accepted oracle tokens each, full raw persistence `3,583,928,320 B`, four S1_R8 specializations and zero target-time recompilation
-- [x] `STRETCH_038_CLEANUP_CADENCE_PASS`: CONTROL `13.245044 tok/s`, TREATMENT `13.990655 tok/s`, ratio `1.056294` (+5.629362%); total-wall ratio `0.946706` (5.329353% reduction); min free `24%`, peak swap `2127.88 MB`, stable final-cleanup recovery/no cumulative problematic cache growth
-- [x] Promote frozen M1 S1_R8 + one explicit cleanup every two M5 blocks (cadence reduced from 2 to 1 cleanup / 10 accepted tokens; cleanup not eliminated); preserve result `research/stretch/s1r8-deferred-cleanup-038-result.md` and evidence `results-local/stretch/s1r8-deferred-cleanup-038-comparison/20260820-224921/summary.json`
+Do not present M5 verifier throughput as chat-generation throughput.
 
-### Stretch 039 — GQA shared-KV SDPA feasibility — INVESTIGATION_ONLY
-- [x] Pin/audit local MLX v0.31.2 SDPA source and capture unchanged real Qwen3 M5 inputs at layers 0/18/35: Q `[1,32,5,128]`, K/V `[1,8,9,128]`, BF16, GQA4, causal/no array mask, scale `1/sqrt(128)`
-- [x] Establish exact M1 `g` single-pass `sdpa_vector_bfloat16_t_128_128_nomask_qt_c_nosinks` launch `[32,5,1]` x 1024 threads; 2-pass GQA threshold is 4096, so 9/256/1024/2048 remain single-pass
-- [x] Measure canonical SDPA (40 excluded warmups, 120 synchronized samples/side): layer 0/18/35 medians 371.979/447.187/363.979 µs; 36-layer estimate 14.198 ms/M5 block = 3.973% of promoted target wall, below the 5% upside gate even under total-elimination arithmetic
-- [x] Audit logical GQA duplicate K/V loads but distinguish them from unproven physical DRAM traffic/cache behavior; canonical four Q heads occupy separate 1024-thread groups and cannot share threadgroup memory
-- [x] Attempt required process-local canonical clone; it is non-bit-exact/non-representative on every real payload, so its timings are invalid and no treatment is admitted
-- [x] `STRETCH_039_GQA_SHARED_KV_SDPA_INVESTIGATION_ONLY`; no shared-KV treatment, MLX patch, preregistration, integration or ABBA. Preserve `research/stretch/gqa-shared-kv-sdpa-039-feasibility.md`
+### REALGEN 002
 
-### Stretch 040 — explicit Python GC cleanup composition — COMPLETE NO-GO
-- [x] Audit promoted once-per-two-M5 cleanup as exact `gc.collect() -> mx.clear_cache() -> gc.collect()`; runner blob `97339280aec0a9bb2fb4b196795f05cd23ef52a4`, promoted S1_R8 render `82888b...5fcbe3`, literal cleanup snippet SHA-256 `6ce1b715...59568baf`
-- [x] One-load Fix1 feasibility: 8 canonical component diagnostics, then eligible `C,T,T` x6 primary and 12 T-only stability cycles; every cycle retained exactly one cleanup event / two M5 blocks / ten accepted tokens
-- [x] All 38 cycles exact under inherited prompt/all-logit/top-1/oracle/sequence/10-token/full-persistence `3,583,928,320 B` gates; S1_R8 unchanged, 4 specializations, zero target-time recompilation
-- [x] Component means first GC / clear / second GC `19.805 / 0.333 / 16.385 ms`; both GC calls returned zero objects in all 8 diagnostic cycles; perfect-elimination upper bound `1.0506681` (+5.0668118%) made one retained-clear-only treatment admissible for feasibility
-- [x] Primary equal-cycle means: CONTROL `0.754609 s`, TREATMENT `0.720190 s` / ten tokens; T/C `1.0477905` (+4.7790463%), below the 5% gate
-- [x] MLX active/cache recovered stably after retained clear (`3,666,913,308 -> 3,665,291,272 B`; cache `2,867,744–2,868,260 B`), min free `24%`, peak swap `2021.44 MB`; but treatment tracked Python objects rose strictly `84,797 -> 85,354` across 24 cycles, so MLX-only recovery is insufficient
-- [x] `STRETCH_040_GC_COMPOSITION_FEASIBILITY_NO_GO`; retain the full promoted cleanup composition/cadence, create no preregistration and run no scientific ABBA; preserve report `research/stretch/s1r8-gc-cleanup-composition-040-feasibility.md`
+M1-specific transfer of the S1_R8 geometry is closed:
 
-### Stretch 041 — post-promotion bottleneck re-attribution — COMPLETE
-- [x] Render/audit the exact promoted S1_R8 + once-per-two-M5 cleanup runtime; record 2 per-layer `mx.eval` boundaries, 186 `mx.eval`, 48 `.item()`, and zero `mx.synchronize()` calls per two-M5/ten-token constituent
-- [x] Fresh six-cycle canonical diagnostic: 710.063 ms mean / 707.791 ms median ten-token wall, 14.0833 diagnostic tok/s; min free 24%, peak swap 2076.19 MB, stable MLX active/cache recovery
-- [x] Four-cycle broad profile used only for attribution: 1.75625x canonical wall perturbation; never treat its absolute stage wall as canonical
-- [x] Capture actual M5 layer-0/18/35 payloads and measure q/k/v/o, gate/up/down, RMSNorm, residual, SwiGLU, final norm and LM head with 40 excluded warmups and 120 synchronized samples
-- [x] Audit LM head as affine 3-bit/group64 `QuantizedLinear`, effective K=4096/N=151936, built-in `mx.quantized_matmul`/qmv_fast path and S1_R8-ineligible; 22.394 ms / 3.154% target wall, `CLOSED_BY_UPPER_BOUND`
-- [x] Reuse valid Stretch-039 SDPA and Stretch-040 cleanup evidence; no closed experiment was rerun
-- [x] `STRETCH_041_CURRENT_BOTTLENECK_MAP_COMPLETE`; no low-risk independent factor has defensible >=5% plausible upside, so recommend no next factor; preserve `research/stretch/current-bottleneck-attribution-041.md` and evidence `results-local/stretch/current-bottleneck-attribution-041/20260820-213903/summary.json`
+- exact on all tested payloads;
+- representative ten-token replay throughput **-9.178832%** vs built-in M1 `qmv_fast`;
+- classification `REALGEN_002_M1_QMV_FAST_NO_GO`;
+- built-in M1 `qmv_fast` remains canonical.
 
-### Stretch 041+ — CONDITIONAL
-- [x] M5 beat M2 in Stretch 031; S1_R8 beat fresh built-in MLX CONTROL in Stretch 037; retain both decisions for their frozen scopes
-- [ ] Do not rerun Stretch 037, Stretch 038 feasibility/the completed ABBA, Stretch 039, or Stretch 040. Select a new independent factor only after separate authorization. Do not revisit M geometry, row splits, gate/up fusion, outer MLP compile, fused residual/RMSNorm, persistent dequantized BF16 caches, MLX 0.32 runtime comparison, this GQA shared-KV idea, or GC-composition removal without a new authorization
-- [ ] Consider later MLX small-M kernel developments only as separately pinned runtime/kernel experiments
-- [ ] Real drafter only after target-side architecture is sufficiently optimized
-- [ ] Measure real acceptance and end-to-end tok/s including draft/rejection/rollback
-- [ ] Test KV capacity/quantization separately
-- [ ] Promote interactive profile only when speed/quality evidence supports ~20 token/s target
+## What is already known
 
-## Phase 8 — REALGEN / Real Autoregressive Generation — ACTIVE
+### Pure layer streaming
 
-**REALGEN PHASE ACTIVE.** This operational baseline is not a new optimization factor.
+LOOM has already demonstrated that aggressive layer streaming can reduce resident RAM dramatically.
 
-### REALGEN 001 — Qwen3-8B real greedy M1 baseline — APPROVED / preserved serving baseline
-- [x] Freeze the preceding validated configuration as **TARGET VERIFICATION M5** evidence only; do not claim it produces five unknown future tokens
-- [x] Audit exact S1_R8 source identity: its literal M5 input-shape guard makes it ineligible at M1; retain ordinary built-in MLX M1 qmv_fast
-- [x] Run the frozen six-prompt, 128-token-or-EOS, exact-reference M1/BF16-KV baseline at `results-local/realgen/real-generation-baseline-001/20260821-081022/summary.json`
-- [x] All reference/driver generated-ID sequences exactly match; pooled real M1 generation `13.184615357 tok/s`, pooled end-to-end output `12.046861457 tok/s`
-- [x] Record prefill, TTFT, cleanup, host/MLX/RSS telemetry, M5-verifier distinction, and speculative arithmetic in `research/realgen/real-generation-baseline-001.md`
-- [x] Derive bounded speculative break-even arithmetic: the five-token M5 proposal cannot reach 20 tok/s even at zero draft cost; do not infer a drafter result
-- [x] REALGEN 001 approved; preserve it as the canonical measured serving baseline
-- [ ] Do not start/download/test DRAFT 001 without separate authorization
+It also destroys throughput because a dense transformer needs every layer for every generated token.
 
-### REALGEN 002 — M1 qmv_fast tuning feasibility — COMPLETE NO-GO
-- [x] Audit exact MLX 0.31.2 M1 `affine_qmv_fast_bfloat16_t_gs_64_b_3_batch_0`: M1 affine BF16/3-bit/group64/transposed grid `(1,N/8,1)`, canonical s2_r4 `[32,2,1]`, packed/group64/reduction invariants retained
-- [x] Capture 66 actual M1 payloads: q/k/v/o/gate/up/down at layers 0/18/35 and LM head, each at early/middle/late frozen REALGEN-001 replay positions
-- [x] Admit distinct process-local canonical M1 s2_r4 clone: all exact, worst clone/control median 1.097680 <= 1.50
-- [x] Test only new M1_S1_R8 process-local implementation (1 SIMD group, 8 rows/SIMD; five specializations): all 66 direct built-in comparisons exact and zero-diff; zero target-time recompilations
-- [x] Run one fixed-prompt ten-token C/T/T/C M1 replay with independent BF16 KV, full persistence and identical cleanup: exact logits/top1/fixed IDs/cache offsets
-- [x] NO-GO: treatment median target wall 0.857916 s vs CONTROL 0.779169 s; balanced throughput -9.178832%, below required >=5% gain
-- [x] Preserve report `research/realgen/m1-qmv-tuning-002-feasibility.md` and evidence `results-local/realgen/m1-qmv-tuning-002-feasibility/20260821-083048/summary.json`; do not create REALGEN 003 or rerun the six-prompt benchmark
+Therefore **pure full-model layer streaming is not the destination and should not be rediscovered as if it were new**.
 
-## Phase 9 — Synthesis
-- [ ] Capability vs memory vs time frontier
-- [ ] Daily-use profile
-- [ ] Fast/efficient profile
-- [ ] Maximum-capability profile
-- [ ] Experimental streamed/profiled evidence
-- [ ] Publish findings when ready
+The new problem is to find the best point between:
+
+- everything resident: fast but memory-hungry;
+- everything streamed: memory-efficient but slow.
+
+## Research direction A — CAPABILITY baseline — NEXT
+
+Plan: `research/capability/capability-001-agentic-baseline-plan.md`.
+
+### CAPABILITY 001 — current 8B 3-bit usefulness
+
+Goal: establish how intelligent/useful the current LOOM baseline actually is on real agentic work.
+
+Examples include:
+
+- repository understanding;
+- safe Git synchronization reasoning through Pi;
+- code modification and tests;
+- experiment implementation under frozen constraints;
+- reading result artifacts and making correct GO/NO-GO decisions.
+
+Metrics include task success, correction turns, human interventions, constraint violations, destructive/invalid actions and code/test correctness.
+
+This becomes the capability reference for future quantization or representation changes.
+
+**Rule:** future memory/speed improvements must report capability delta against this baseline when the model representation changes.
+
+## Research direction B — RAM / speed frontier — HIGH PRIORITY
+
+The objective is not minimum RAM. It is **minimum RAM loss per unit of useful throughput preserved**.
+
+### MEMORY-FRONTIER 001 — partial residency curve
+
+Using the known 8B as the laboratory, measure real autoregressive generation with controlled resident fractions/windows rather than all-or-nothing streaming.
+
+Candidate points should span approximately:
+
+- fully resident control;
+- large resident hotset / small streamed tail;
+- medium resident window;
+- aggressive streaming reference.
+
+For every point record together:
+
+- persistent/resident bytes;
+- MLX peak;
+- system free memory/swap;
+- SSD bytes read per generated token;
+- real generation tok/s;
+- TTFT;
+- exactness/correctness where representation is unchanged.
+
+Primary output: a **RAM <-> tok/s frontier**, not a single winner.
+
+Do not repeat old M5-only residency results as if they were real-generation evidence.
+
+## Research direction C — hide SSD cost instead of merely accepting it
+
+Once the real frontier is measured, explore one factor at a time:
+
+1. **Asynchronous prefetch** — read the next weight block while the current block computes.
+2. **Double/triple buffering** — separate compute, ready and loading buffers.
+3. **Chunk/super-layer sizing** — find the transfer size that maximizes overlap without consuming excessive RAM.
+4. **Direct safetensors range reads / mmap / pread** — avoid unnecessary copies and full checkpoint materialization.
+5. **macOS filesystem-cache control and measurement** — distinguish true model residency from page-cache duplication.
+6. **Resident hotset selection** — keep the highest-value bytes resident and stream only the unavoidable remainder.
+
+Every technique must report both RAM saved and tok/s preserved.
+
+## Research direction D — amortize weight I/O across multiple tokens
+
+This is a key unexplored direction for models larger than RAM.
+
+For an out-of-core dense model, the expensive event may become **loading weights**, not matrix multiplication. Ordinary M1 generation reloads streamed weights for every token.
+
+A block-verification or multi-token scheme can potentially use one weight load for several candidate positions.
+
+The current resident-8B M5 result does not reach 20 tok/s, but that does **not** close M>1 verification as an out-of-core technique: its value may be much larger when SSD I/O dominates.
+
+Future experiment family:
+
+### OUTCORE-BLOCK 001
+
+With the 8B streamed/partially resident laboratory and fixed known candidate tokens, measure the theoretical I/O amortization frontier for M=1 vs larger exact-valid blocks.
+
+Questions:
+
+- SSD bytes read per accepted/candidate token;
+- wall time per block;
+- degree of prefetch overlap;
+- resident-memory requirement;
+- whether larger M materially changes the RAM-speed frontier.
+
+This is target-side feasibility only. A real drafter comes later, after the out-of-core target economics justify it.
+
+## Research direction E — model representation without shrinking parameter count
+
+LOOM does not use a smaller parameter-count model as the primary escape hatch.
+
+Representation changes remain valid research tools if all model parameters remain represented, for example:
+
+- mixed precision by layer/tensor;
+- selective higher/lower bit widths;
+- compressed cold weights with fast decode;
+- quantized KV cache;
+- other storage formats designed for out-of-core execution.
+
+But any representation change must be judged jointly on:
+
+`memory + real tok/s + CAPABILITY score`
+
+A lower-bit model is not automatically an improvement.
+
+## Research direction F — scale beyond 8B
+
+Progressive objective:
+
+1. Use 8B as the controlled laboratory because its full-resident baseline is well characterized.
+2. Demonstrate a partial-residency/out-of-core method that preserves a useful fraction of the 13.18 tok/s baseline.
+3. Apply the same engine to a model whose weights no longer fit comfortably in 8 GB.
+4. First major scaling checkpoint: a **27B/32B-class full-parameter-count model produces correct tokens without OOM on M1 8 GB**.
+5. Then optimize the larger model from merely-running toward interactive speed.
+
+For the large-model checkpoint, initial throughput may be low. After correctness/fit is established, speed becomes the primary optimization objective.
+
+## Promotion philosophy
+
+A technique is interesting only if it moves the Pareto frontier.
+
+Examples:
+
+- save 40% RAM and lose 70% speed -> not a useful final point;
+- save 25% RAM and lose 5% speed -> potentially valuable;
+- same RAM with substantially better speed -> valuable;
+- same speed with substantially more capability -> valuable;
+- smaller/faster representation with severe capability loss -> not promoted.
+
+Do not require every exploratory feasibility test to clear 5%; the old >=5% gate applied to the mature micro-optimization phase. In the new architectural phase, small experiments may be used to map a frontier or validate mechanisms, but promotions still require material system-level value.
+
+## Closed / paused work
+
+Do not routinely reopen without genuinely new evidence:
+
+- Stretch 037–041;
+- REALGEN 002 M1 S1_R8 geometry;
+- gate/up fusion;
+- row-chunk qmatmul;
+- outer MLP compile;
+- fused residual/RMSNorm;
+- persistent BF16 dequantized projection caches;
+- MLX 0.32 M5 runtime comparison;
+- GQA shared-KV clone attempt;
+- GC-only cleanup removal.
+
+Detailed evidence remains in repository history and the corresponding research reports.
+
+## Immediate order of work
+
+1. **Freeze and run CAPABILITY 001** on the current canonical Qwen3-8B 3-bit system.
+2. **MEMORY-FRONTIER 001:** measure real M1 RAM/tok/s curve for partial residency versus streaming.
+3. Select the first overlap mechanism from actual frontier evidence: prefetch / buffering / chunk sizing.
+4. **OUTCORE-BLOCK 001:** test whether multi-token block execution can amortize SSD traffic enough to change the frontier.
+5. Only then choose the next representation or larger-model scaling experiment.
+
+## Final objective
+
+LOOM should become an execution system that treats **RAM + SSD + Apple unified memory + scheduling** as one managed memory hierarchy and can run an LLM whose total weights exceed physical RAM, while preserving enough speed and capability to be genuinely useful.
