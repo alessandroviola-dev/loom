@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000F_REPRODUCIBILITY_INCOMPLETE_AFTER_ONE_RESOURCE_ABORT`
+Current checkpoint: `CAPABILITY_000G_NATURAL_HOST_RECOVERY_PASS`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -27,101 +27,67 @@ REALGEN 001:
 
 REALGEN 002 custom M1 qmv transfer: exact but **-9.178832%**; closed.
 
-Pure full-model layer streaming is already known to save RAM and destroy throughput. It is not the endpoint.
+Pure full-model layer streaming is known to save RAM and destroy throughput. It is not the endpoint.
 
 ## A — Capability baseline — ACTIVE
 
-Goal: benchmark the practical intelligence of the current Qwen3-8B through Pi before future representation changes.
+### CAPABILITY 000C — prefill frontier
 
-### CAPABILITY 000–000C
+Step 512 dominates canonical 2048 on the exact Pi prefill:
+- 512: 23.74 s, 63.36 tok/s, 4089.8 MB peak, bit-exact
+- 2048: 27.91 s, 53.88 tok/s, 4180.1 MB peak, bit-exact
+- 256: 28.24 s, 3980.7 MB peak, top1 same but not bit-exact
 
-The local MLX bridge works and a genuine Qwen-generated Pi tool call was observed. There is one model instance, no duplication. Dynamic pressure is dominated by prefill temporaries plus BF16 KV, not Pi RSS or full-sequence logits.
+512 remains the active integrated-agent candidate.
 
-`prefill_step_size=512` dominates canonical 2048 on the exact 1504-token Pi prefill:
-- 512: **23.74 s**, **63.36 tok/s**, **4089.8 MB peak**, bit-exact
-- 2048: **27.91 s**, **53.88 tok/s**, **4180.1 MB peak**, bit-exact
-- 256: **28.24 s**, **3980.7 MB peak**, top1 same but not bit-exact
+### CAPABILITY 000D / 000E
 
-512 remains the admitted integrated-agent candidate, not a universal runtime default.
+A real Pi tool turn succeeds. A later resource abort occurred, but exact fresh and sequential replay established that 1576 tokens are not intrinsically outside the 512 envelope. Request KV is not retained and no leak is demonstrated.
 
-### CAPABILITY 000D Fix2 — VALID RESOURCE ABORT
+### CAPABILITY 000F — incomplete reproducibility
 
-First real Pi turn completed. Second request at 1576 tokens crossed the <5% free-memory gate.
+Only one attempt was scientifically admitted; it resource-aborted. The next launch sample was taken too early after teardown, so the intended 3-run reliability result was not obtained.
 
-### CAPABILITY 000E — COMPLETE / NO REPRODUCTION
+### CAPABILITY 000G — COMPLETE
 
-Fresh R2 at 1576 tokens completes. Fresh-process sequential R1->R2 also completes without cleanup.
+Report: `research/capability/capability-000g-natural-host-recovery-result.md`.
 
-Evidence:
-- fresh R2 peak MLX 4095.65 MB
-- sequential R2 peak 4194.45 MB
-- sequential delta +98.80 MB
-- post-R1 residual active +468.30 MB
-- allocator cache 229.07 MB
-- request KV not retained
-- no evidence of a leak
+Natural host recovery after normal scientific-process teardown:
+- all scientific PIDs/listeners dead immediately
+- free memory 6% at exit, 5% at 1 s
+- free memory 70% at 3 s
+- 71% at 5 s
+- two consecutive >=60% samples by 5 s
 
-Therefore R2 is not intrinsically outside the step-512 envelope. Host/system state materially affects the resource gate.
+Therefore the post-run low-free state is transient macOS recovery, not a process-lifecycle leak.
 
-### CAPABILITY 000F — REPRODUCIBILITY STUDY INCOMPLETE
+Important additional evidence: from a 70% pre-load host, the integrated workload executed five model requests but still reached peak MLX 4212.45 MB and 4% free. Sustained multi-turn memory pressure remains unresolved.
 
-Report: `research/capability/capability-000f-host-recovery-incomplete-result.md`.
+### CAPABILITY 000H — NEXT
 
-Frozen target was three independently admitted real-Pi attempts.
+Full multi-turn request-envelope attribution.
 
-Observed:
-- attempt 1 pre-load: free 65%, swap 1174.38 MB -> admitted
-- attempt 1: 2 turns, `read -> bash`, peak MLX 4194.45 MB, min free 4%, resource abort
-- attempt 2 launch sample: free 6%, swap 1848.25 MB -> not admitted
-- attempt 3 not run
+Use exact captured request bodies from the 000G workload.
 
-Do **not** interpret this as 0/3 model reliability. Only one scientific attempt was admitted.
+For each captured turn:
+1. recover exact token count and conversation/tool growth;
+2. replay it fresh as the first request of a fresh model process;
+3. replay the whole series sequentially with no cleanup;
+4. compare fresh vs sequential peak MLX, min free, active/cache state, KV and prefill M geometry;
+5. identify first intrinsically unsafe request, if any;
+6. identify sequential overhead and its growth by turn.
 
-The new unresolved problem is why the host did not recover from 65% pre-load free to another >=60% launch-ready state after the fresh scientific server/model process was terminated.
-
-### CAPABILITY 000G — NEXT
-
-Scientific-process teardown and natural host-recovery attribution.
-
-Frozen principle:
-- do not change model, step 512, BF16 KV, context or tools;
-- use one fresh model/server process;
-- execute one bounded workload;
-- terminate normally;
-- prove server/child PIDs and listening socket are gone;
-- passively sample host free memory, swap, compressor and process state after exit;
-- no purge, forced kills, `mx.clear_cache`, artificial allocations or swap manipulation.
-
-Primary question:
-
-Does the host naturally recover to the >=60% launch gate after process death within a bounded interval?
-
-If yes, rerun CAPABILITY 000F with a passive recovery wait/gate between attempts.
-
-If no and processes/resources remain alive, repair lifecycle first.
-
-If all processes are dead but host memory remains depressed for a long interval, characterize OS recovery before changing model/runtime factors.
+No treatment yet: keep Qwen3-8B 3-bit, BF16 KV, context 4096, step 512 and full Pi tool surface frozen.
 
 ### CAPABILITY 001 — BLOCKED
 
 Frozen 12-task suite: coding + Git safety + experiment/result reasoning.
 
-Run only after integrated Pi execution can be repeated under a reproducible host lifecycle.
+Run only after integrated multi-turn execution has enough reproducible memory headroom.
 
 ## B — RAM/speed frontier
 
-After CAPABILITY 001, run MEMORY-FRONTIER 001 on real M1 generation with controlled partial residency.
-
-Measure together:
-- resident bytes
-- MLX peak
-- system free/swap
-- SSD bytes/token
-- real tok/s
-- TTFT
-- correctness
-
-Output: RAM <-> tok/s Pareto curve.
+After CAPABILITY 001, run MEMORY-FRONTIER 001 with controlled partial residency and measure resident bytes, MLX peak, system free/swap, SSD bytes/token, real tok/s, TTFT and correctness.
 
 ## C — Hide SSD cost
 
@@ -135,7 +101,7 @@ Then test one factor at a time:
 
 ## D — Amortize I/O across tokens
 
-OUTCORE-BLOCK 001 will revisit M>1 execution specifically for out-of-core models, where one weight load may serve several token positions.
+OUTCORE-BLOCK 001 revisits M>1 specifically for out-of-core models, where one weight load may serve several token positions.
 
 ## E — Representation without shrinking parameter count
 
@@ -151,18 +117,19 @@ Judge every representation by `memory + speed + capability`.
 
 1. solve architecture on the well-characterized 8B
 2. apply it to a model whose weights exceed comfortable physical RAM
-3. first major checkpoint: **27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM**
+3. first major checkpoint: 27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
 4. then optimize speed toward interactivity
 
 ## Immediate order
 
-1. CAPABILITY 000G — process teardown / natural host recovery
-2. corrected CAPABILITY 000F — three admitted independent attempts
-3. CAPABILITY 001
-4. MEMORY-FRONTIER 001
-5. prefetch/buffering/range-I/O work
-6. OUTCORE-BLOCK 001
-7. scale toward 27B/32B
+1. CAPABILITY 000H — full multi-turn request envelope
+2. select one evidence-backed memory treatment
+3. integrated Pi-loop admission/reproducibility
+4. CAPABILITY 001
+5. MEMORY-FRONTIER 001
+6. prefetch/buffering/range-I/O work
+7. OUTCORE-BLOCK 001
+8. scale toward 27B/32B
 
 ## Local-only implementation warning
 
