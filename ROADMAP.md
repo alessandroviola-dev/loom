@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000D_FIX1_PREFLIGHT_FAIL_NO_SCIENCE`
+Current checkpoint: `CAPABILITY_000D_FIX2_RESOURCE_ABORT`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -35,56 +35,71 @@ Goal: benchmark the practical intelligence of the current Qwen3-8B through Pi be
 
 ### CAPABILITY 000–000B
 
-The local MLX bridge works and a genuine Qwen-generated Pi tool call was observed. There is one model instance, no duplication. The first real Pi request is ~1500 tokens and the main dynamic pressure comes from large prefill qmm/transient allocation plus BF16 KV, not Pi RSS or full-sequence logits.
+The local MLX bridge works and a genuine Qwen-generated Pi tool call was observed. There is one model instance, no duplication. The first real Pi request is ~1500 tokens; dynamic pressure is dominated by prefill temporaries plus BF16 KV, not Pi RSS or full-sequence logits.
 
 ### CAPABILITY 000C — COMPLETE
 
-`prefill_step_size=512` dominates canonical 2048 on the exact 1504-token Pi prefill:
+On the exact 1504-token Pi prefill:
 
-- 512: **23.74 s**, **63.36 tok/s**, **4089.8 MB peak**, bit-exact
-- 2048: **27.91 s**, **53.88 tok/s**, **4180.1 MB peak**, bit-exact
+- step 512: **23.74 s**, **63.36 tok/s**, **4089.8 MB peak**, bit-exact
+- step 2048: **27.91 s**, **53.88 tok/s**, **4180.1 MB peak**, bit-exact
+- step 256: **28.24 s**, **3980.7 MB peak**, top1 same but not bit-exact
 
-This makes 512 the admitted integrated-agent candidate, not yet a universal runtime default.
+512 is the admitted integrated-agent candidate, not a universal default.
 
-### CAPABILITY 000D — HARNESS FAILURE / NO SCIENCE
+### CAPABILITY 000D / Fix1 — infrastructure only
 
-First integrated Pi-loop attempt failed before prefill/tool execution because instrumentation assumed `.shape` on a list.
+Two harness/instrumentation failures occurred before a valid scientific loop. They are preserved as no-science infrastructure results.
 
-Root cause:
-`AttributeError: 'list' object has no attribute 'shape'`
-at `scripts/capability_000d_pi_loop.py`, `watched_prompt`, line 114.
+### CAPABILITY 000D Fix2 — SCIENTIFIC RESOURCE ABORT
 
-No evidence against 512 was produced.
+Report: `research/capability/capability-000d-fix2-resource-abort-result.md`.
 
-### CAPABILITY 000D Fix1 — PREFLIGHT FAILURE / NO SCIENCE
+The repaired harness passed preflight and produced the first valid multi-turn evidence.
 
-Fix1 repaired the original list-shape issue with list-safe prompt observation and exception-contained callbacks. The canonical model successfully executed a tiny local preflight request and returned `OK.`.
+Turn 1:
+- 1521 input tokens
+- step 512 segments `512,512,425,68,3`
+- prefill 23.091 s
+- 35 generated tokens at 11.690 tok/s
+- KV 1555 / 1792
+- peak MLX 4075.12 MB
+- minimum free 6%
+- action: `read numbers.txt`
 
-However the harness failed to produce a completed turn-metrics record, so the scientific numbers.txt Pi-loop run was not started.
+Turn 2:
+- 1576 input tokens
+- first 512 segment began
+- peak MLX 4146.45 MB
+- free memory fell to 4%
+- hard resource abort
 
-The punctuation difference `OK.` vs `OK` is not itself a harness-science failure. Preflight should test infrastructure health, not exact instruction-following. The remaining blocker is reliable non-fatal telemetry lifecycle closure.
+Therefore 512 enables one genuine Pi tool turn but does not yet sustain the next turn.
 
-Report:
-`research/capability/capability-000d-fix1-preflight-failure.md`.
+### CAPABILITY 000E — NEXT
 
-### CAPABILITY 000D Fix2 — NEXT
+Fresh-vs-sequential turn attribution.
 
-Minimal harness repair only:
+Use the exact request bodies captured by Fix2 and distinguish:
 
-1. preserve `prefill_step_size=512`;
-2. preserve model, 3-bit weights, BF16 KV, context 4096, Pi tools and prompts;
-3. keep list-safe prompt instrumentation;
-4. make telemetry observational and non-fatal;
-5. require preflight to produce a valid local-model response and complete request/turn records; exact punctuation is not a preflight gate;
-6. then rerun the original frozen numbers.txt Pi loop exactly once.
+A. **Intrinsic request-size limit**: request 2 (~1576 tokens) fails even as the first request after fresh model load.
 
-If the real loop passes, proceed to CAPABILITY 001. If the model actually runs and hits the resource floor, that is valid scientific evidence.
+B. **Inter-request accumulation**: request 2 survives fresh but fails after request 1 because allocator cache, references, request lifecycle or other state persists.
 
-### CAPABILITY 001 — BLOCKED pending successful 000D admission
+Frozen comparison:
+
+1. fresh model/server -> request 2 alone;
+2. fresh model/server -> request 1 then request 2 sequentially;
+3. no cleanup treatment in either scientific path;
+4. record MLX active/cache/peak, RSS, system free/swap and object/KV lifetime around request boundaries.
+
+Do not yet change chunk size, model, BF16 KV, context, prompt, tool schema or introduce cleanup as a treatment.
+
+### CAPABILITY 001 — BLOCKED
 
 Frozen 12-task suite: coding + Git safety + experiment/result reasoning.
 
-This becomes the capability reference for future representation changes.
+Run only after the multi-turn bridge has safe memory headroom.
 
 ## B — RAM/speed frontier
 
@@ -134,16 +149,18 @@ Judge every representation by `memory + speed + capability`.
 
 ## Immediate order
 
-1. CAPABILITY 000D Fix2 — minimal telemetry repair + identical Pi-loop rerun
-2. CAPABILITY 001
-3. MEMORY-FRONTIER 001
-4. prefetch/buffering/range-I/O work
-5. OUTCORE-BLOCK 001
-6. scale toward 27B/32B
+1. CAPABILITY 000E — fresh vs sequential request attribution
+2. choose one justified memory treatment from that result
+3. integrated Pi-loop admission
+4. CAPABILITY 001
+5. MEMORY-FRONTIER 001
+6. prefetch/buffering/range-I/O work
+7. OUTCORE-BLOCK 001
+8. scale toward 27B/32B
 
 ## Local-only implementation warning
 
-Several recent CAPABILITY scripts/evidence currently exist only in the local worktree under `<repository-root>` and `results-local/`. HANDOFF.md lists the known paths. A new chat should not assume those scripts have been committed to GitHub until they are explicitly synchronized.
+Recent CAPABILITY scripts/evidence currently exist only in the local worktree and `results-local/`. HANDOFF.md lists known paths. Do not assume they have been committed until explicitly synchronized.
 
 ## Final objective
 
