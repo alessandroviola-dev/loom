@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-21
-Status: ACTIVE — capability bridge / multi-turn memory frontier
+Status: ACTIVE — capability bridge / integrated reproducibility
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `CAPABILITY_000D_FIX2_RESOURCE_ABORT`
-Next: `CAPABILITY_000E_FRESH_VS_SEQUENTIAL_TURN_ATTRIBUTION`
+Current checkpoint: `CAPABILITY_000E_NO_REPRODUCTION`
+Next: `CAPABILITY_000F_INTEGRATED_PI_REPRODUCIBILITY`
 
 Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
@@ -73,15 +73,11 @@ Exact 1504-token prefill frontier:
 
 `512` dominates 2048 on this workload (~17.6% faster prefill and ~90.3 MB lower peak) and remains the admitted multi-turn candidate, not a global runtime default.
 
-### CAPABILITY 000D / Fix1 — HARNESS FAILURES / NO SCIENCE
+### CAPABILITY 000D / Fix1 — infrastructure only
 
-Original 000D failed before prefill because instrumentation used `.shape` on a list. Fix1 repaired that issue but finalized telemetry on the wrong `mlx_lm.server` lifecycle hook, so the scientific task still did not start. These runs consumed no scientific attempt.
+Original 000D and Fix1 were harness/instrumentation failures before valid science. They do not count against the 512 treatment.
 
-### CAPABILITY 000D Fix2 — VALID SCIENTIFIC RESOURCE RESULT
-
-Report: `research/capability/capability-000d-fix2-resource-abort-result.md`.
-
-Fix2 repaired telemetry lifecycle and passed preflight. Telemetry errors: 0.
+### CAPABILITY 000D Fix2 — VALID SCIENTIFIC RESOURCE ABORT
 
 First scientific Pi turn completed:
 
@@ -97,38 +93,70 @@ First scientific Pi turn completed:
 
 Second request:
 
-- input 1576 tokens, only +55 vs first
+- input 1576 tokens
 - first 512 prefill segment began
-- peak MLX observed 4146.45 MB
+- peak MLX 4146.45 MB
 - free memory crossed hard gate at 4%
 - resource abort before second tool action
 
-`answer.txt` absent; `numbers.txt` byte-identical. No provider fallback.
-
 Classification: `CAPABILITY_000D_FIX2_RESOURCE_ABORT`.
 
-This proves step 512 can execute one real Pi tool turn but is not yet sustainable across the next turn under the observed state.
+This proved step 512 can execute a real Pi tool turn but left ambiguity about whether request 2 itself or prior-turn state caused the abort.
 
-## Exact unresolved question
+### CAPABILITY 000E — COMPLETE / NO REPRODUCTION
 
-The second request had only 55 more input tokens but peak MLX increased by ~71.33 MB. We do not yet know whether:
+Report: `research/capability/capability-000e-fresh-vs-sequential-result.md`.
 
-1. a fresh 1576-token request intrinsically exceeds the safe envelope; or
-2. request 1 leaves allocator cache / Python references / MLX state / other residual memory that makes request 2 fail.
+Exact captured requests:
+- R1 = **1521 tokens**
+- R2 = **1576 tokens**
 
-Do not jump directly to step 256, KV quantization, prompt compression or context reduction before resolving this distinction.
+Fresh R2:
+- completes
+- M `512,512,512,39`
+- peak MLX **4095.65 MB**
+- post active **3922.20 MB**
+- post cache **4.79 MB**
+- min free **6%**
+- peak swap **2108.94 MB**
+
+Sequential fresh-process R1 -> R2 with NO cleanup:
+- both complete
+- loaded-idle active **3417.90 MB**
+- post-R1 active **3886.20 MB** = **+468.30 MB** residual
+- post-R1 allocator cache **229.07 MB**
+- sequential R2 peak **4194.45 MB**
+- fresh R2 peak **4095.65 MB**
+- sequential R2 peak delta **+98.80 MB**
+- final observed free at B8 **12%**
+
+Lifetime audit:
+- request object not retained
+- 180 BatchKVCache weakrefs dead; request KV not retained
+- one PromptProcessingBatch remained live through BatchGenerator, without retained KV
+- telemetry scalar-only
+- no evidence justifying the label `memory leak`
+
+Classification: `CAPABILITY_000E_NO_REPRODUCTION`.
+
+Interpretation: R2 is **not intrinsically too large**, and R1->R2 also succeeds under controlled direct replay. Inter-request active/cache state exists, but it did not reproduce the Fix2 abort. Host/system memory state therefore materially affects the <5% system-free gate.
 
 ## Exact next step
 
-Run **CAPABILITY 000E — fresh-vs-sequential turn attribution** using the exact captured 1521-token and 1576-token request bodies from Fix2.
+Run **CAPABILITY 000F — integrated Pi-loop reproducibility** before changing chunk size, KV, prompt or model.
 
-Required comparison:
+Purpose:
 
-- fresh server/model -> exact request 2 alone;
-- fresh server/model -> exact request 1 then exact request 2 sequentially, with no cleanup treatment;
-- measure model-idle, post-request active/cache, Python/RSS/system memory, KV lifetime, allocator/cache retention and second-request peak.
+1. use the real Pi process, not direct replay;
+2. keep `prefill_step_size=512` and all model/tool/context settings unchanged;
+3. use a fresh scientific server process with no preflight inference in that same process;
+4. apply the established passive host launch gate before model load: free memory >=60%, swap <=5600 MB; no scripted process kills, purge or memory manipulation;
+5. run three independent fresh-process attempts of the same frozen numbers.txt task;
+6. measure task success and resource trajectory, not just one favorable run.
 
-Sole purpose: determine whether the failure is intrinsic prompt-length pressure or inter-request accumulation. No production cleanup treatment yet.
+If the launch gate is not met, classify host-not-ready and do not consume a scientific attempt. The user may normally close unrelated applications before a later launch sample.
+
+If repeated integrated runs pass, admit the 512 bridge for CAPABILITY 001. If they repeatedly resource-abort despite admitted host state, then choose the next memory treatment from evidence (likely chunk 256 or another isolated factor).
 
 ## Local-only files known from Pi
 
@@ -141,13 +169,14 @@ Recent implementation/evidence remain local unless explicitly synchronized:
 - `scripts/capability_000d_pi_loop.py`
 - `scripts/capability_000d_fix1_pi_loop.py`
 - `scripts/capability_000d_fix2_pi_loop.py`
+- `scripts/capability_000e_turn_memory_attribution.py`
 - raw `results-local/capability/...` evidence
 
 Do not assume these exist on GitHub until synchronized.
 
 ## Later
 
-1. resolve multi-turn bridge memory
+1. CAPABILITY 000F integrated reproducibility
 2. CAPABILITY 001 frozen 12-task baseline
 3. MEMORY-FRONTIER 001 real M1 partial-residency RAM/tok/s curve
 4. async prefetch / buffering / direct range I/O
