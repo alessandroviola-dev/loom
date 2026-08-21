@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-21
-Status: ACTIVE — capability bridge admission / instrumentation repair
+Status: ACTIVE — capability bridge / multi-turn memory frontier
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `CAPABILITY_000D_FIX1_PREFLIGHT_FAIL_NO_SCIENCE`
-Next: `CAPABILITY_000D_FIX2_MINIMAL_HARNESS_REPAIR`
+Current checkpoint: `CAPABILITY_000D_FIX2_RESOURCE_ABORT`
+Next: `CAPABILITY_000E_FRESH_VS_SEQUENTIAL_TURN_ATTRIBUTION`
 
 Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
@@ -46,13 +46,13 @@ REALGEN 002 M1_S1_R8 transfer: exact but **-9.178832%** throughput; closed.
 
 ### CAPABILITY 000 / 000A
 
-Canonical Qwen3-8B successfully emitted a genuine Pi `read(numbers.txt)` tool call. There is exactly one model instance; no duplication. Pi RSS is only ~45.55 MB. The original integrated smoke crossed the <5% free-memory floor during real Pi prefill.
+Canonical Qwen3-8B successfully emitted a genuine Pi `read(numbers.txt)` tool call. Exactly one model instance; no duplication. Pi RSS ~45.55 MB. The first integrated smoke crossed the <5% free-memory floor during real Pi prefill.
 
 ### CAPABILITY 000B
 
 Exact first Pi request: **1504 tokens** = system 608 + user 65 + tools 814 + other 17.
 
-- prefill M `[1430,70,3]` with step 2048
+- prefill M `[1430,70,3]` at step 2048
 - full-sequence logits not materially retained
 - BF16 KV logical 1504, capacity 1536
 - exact replay min free 6%
@@ -61,7 +61,7 @@ Exact first Pi request: **1504 tokens** = system 608 + user 65 + tools 814 + oth
 - ~216 MiB persistent KV
 - ~546 MiB transient prefill peak
 
-qmm/prefill temporaries and long agent/tool prompt are supported causes; Pi process and full-sequence logits are not.
+qmm/prefill temporaries and the long agent/tool prompt are supported pressure sources; Pi RSS and full-sequence logits are not.
 
 ### CAPABILITY 000C — COMPLETE
 
@@ -69,50 +69,70 @@ Exact 1504-token prefill frontier:
 
 - `512`: 23.74 s, 63.36 tok/s, peak 4089.8 MB, transient 455.6 MB, bit-exact
 - `2048`: 27.91 s, 53.88 tok/s, peak 4180.1 MB, transient 545.9 MB, bit-exact
-- `256`: 28.24 s, peak 3980.7 MB, top1 exact but logits not bit-exact
+- `256`: 28.24 s, peak 3980.7 MB, top1 same but logits not bit-exact
 
-`512` dominates the canonical 2048 step on this workload: ~17.6% higher prefill throughput and ~90.3 MB lower peak, with bit-exact final logits. It remains the admitted candidate for integrated Pi-loop testing, not yet a globally promoted runtime default.
+`512` dominates 2048 on this workload (~17.6% faster prefill and ~90.3 MB lower peak) and remains the admitted multi-turn candidate, not a global runtime default.
 
-### CAPABILITY 000D — first integrated attempt — HARNESS FAILURE / NO SCIENCE
+### CAPABILITY 000D / Fix1 — HARNESS FAILURES / NO SCIENCE
 
-The first integrated Pi-loop attempt with step 512 failed inside server instrumentation before model prefill/tool execution.
+Original 000D failed before prefill because instrumentation used `.shape` on a list. Fix1 repaired that issue but finalized telemetry on the wrong `mlx_lm.server` lifecycle hook, so the scientific task still did not start. These runs consumed no scientific attempt.
 
-- request length 1518 tokens
-- generated tokens 0
-- tools none
-- min free 17%
-- peak swap 2288.25 MB
-- peak MLX 3417.901 MB (weights only)
-- no provider fallback
+### CAPABILITY 000D Fix2 — VALID SCIENTIFIC RESOURCE RESULT
 
-Root cause later recovered in Fix1:
+Report: `research/capability/capability-000d-fix2-resource-abort-result.md`.
 
-`AttributeError: 'list' object has no attribute 'shape'`
+Fix2 repaired telemetry lifecycle and passed preflight. Telemetry errors: 0.
 
-at `scripts/capability_000d_pi_loop.py`, function `watched_prompt`, line 114.
+First scientific Pi turn completed:
 
-Report: `research/capability/capability-000d-infrastructure-failure.md`.
+- input 1521 tokens
+- M `512,512,425,68,3`
+- prefill 23.091 s
+- generated 35 tokens at 11.690 tok/s
+- KV 1555 / 1792
+- peak MLX 4075.12 MB
+- min free 6%
+- peak swap 2284.25 MB
+- genuine action: `read numbers.txt`
 
-### CAPABILITY 000D Fix1 — PREFLIGHT FAILURE / NO SCIENCE
+Second request:
 
-Fix1 created a list-safe observer using `len(sequence)`, exception-contained observation callbacks and disabled Pi retry settings.
+- input 1576 tokens, only +55 vs first
+- first 512 prefill segment began
+- peak MLX observed 4146.45 MB
+- free memory crossed hard gate at 4%
+- resource abort before second tool action
 
-The repaired bridge reached actual model inference in preflight and the canonical local model returned `OK.` to the tiny `Reply exactly OK` request. This proves the original `.shape` server-thread crash was repaired far enough for inference to execute.
+`answer.txt` absent; `numbers.txt` byte-identical. No provider fallback.
 
-However no completed turn-metrics record was produced. Therefore the instrumentation lifecycle remained incomplete and the frozen scientific Pi loop was not started.
+Classification: `CAPABILITY_000D_FIX2_RESOURCE_ABORT`.
 
-The `OK.` vs `OK` punctuation mismatch is **not** treated as a science failure; preflight exists to prove harness health. The real remaining blocker is incomplete/non-closing telemetry.
+This proves step 512 can execute one real Pi tool turn but is not yet sustainable across the next turn under the observed state.
 
-Preflight only:
-- initial free 57%
-- initial swap 977.44 MB
-- peak MLX 3502.438 MB
-- provider/model identity PASS
-- no fallback observed
+## Exact unresolved question
 
-Report: `research/capability/capability-000d-fix1-preflight-failure.md`.
+The second request had only 55 more input tokens but peak MLX increased by ~71.33 MB. We do not yet know whether:
 
-Local-only files currently known from Pi and not yet published to GitHub:
+1. a fresh 1576-token request intrinsically exceeds the safe envelope; or
+2. request 1 leaves allocator cache / Python references / MLX state / other residual memory that makes request 2 fail.
+
+Do not jump directly to step 256, KV quantization, prompt compression or context reduction before resolving this distinction.
+
+## Exact next step
+
+Run **CAPABILITY 000E — fresh-vs-sequential turn attribution** using the exact captured 1521-token and 1576-token request bodies from Fix2.
+
+Required comparison:
+
+- fresh server/model -> exact request 2 alone;
+- fresh server/model -> exact request 1 then exact request 2 sequentially, with no cleanup treatment;
+- measure model-idle, post-request active/cache, Python/RSS/system memory, KV lifetime, allocator/cache retention and second-request peak.
+
+Sole purpose: determine whether the failure is intrinsic prompt-length pressure or inter-request accumulation. No production cleanup treatment yet.
+
+## Local-only files known from Pi
+
+Recent implementation/evidence remain local unless explicitly synchronized:
 
 - `scripts/loom_pi_mlx_bridge.py`
 - `scripts/capability_000a_memory_attribution.py`
@@ -120,27 +140,16 @@ Local-only files currently known from Pi and not yet published to GitHub:
 - `scripts/capability_000c_prefill_frontier.py`
 - `scripts/capability_000d_pi_loop.py`
 - `scripts/capability_000d_fix1_pi_loop.py`
-- raw evidence under corresponding `results-local/capability/...` directories
+- `scripts/capability_000d_fix2_pi_loop.py`
+- raw `results-local/capability/...` evidence
 
-Do not assume these local files exist on GitHub until explicitly synchronized.
-
-## Exact next step
-
-Run **CAPABILITY 000D Fix2 — minimal harness repair** only:
-
-1. retain the now-correct list-safe prompt handling;
-2. make all telemetry observational/non-fatal;
-3. ensure request/turn records close successfully in preflight;
-4. preflight PASS criterion is a valid local-model response + complete non-crashing instrumentation, not exact response punctuation;
-5. then rerun the identical frozen numbers.txt Pi loop with `prefill_step_size=512`;
-6. no prompt/model/context/KV/tool/runtime changes.
-
-If functional Pi-loop admission passes, proceed to frozen CAPABILITY 001. If resource failure occurs only after actual model execution, that becomes valid scientific evidence.
+Do not assume these exist on GitHub until synchronized.
 
 ## Later
 
-1. CAPABILITY 001
-2. MEMORY-FRONTIER 001 real M1 partial-residency RAM/tok/s curve
-3. async prefetch / buffering / direct range I/O
-4. M>1 out-of-core weight-I/O amortization
-5. scale toward 27B/32B
+1. resolve multi-turn bridge memory
+2. CAPABILITY 001 frozen 12-task baseline
+3. MEMORY-FRONTIER 001 real M1 partial-residency RAM/tok/s curve
+4. async prefetch / buffering / direct range I/O
+5. M>1 out-of-core weight-I/O amortization
+6. scale toward 27B/32B
