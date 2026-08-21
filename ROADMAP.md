@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-21
-Current checkpoint: `CAPABILITY_000E_NO_REPRODUCTION`
+Current checkpoint: `CAPABILITY_000F_REPRODUCIBILITY_INCOMPLETE_AFTER_ONE_RESOURCE_ABORT`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -33,74 +33,80 @@ Pure full-model layer streaming is already known to save RAM and destroy through
 
 Goal: benchmark the practical intelligence of the current Qwen3-8B through Pi before future representation changes.
 
-### CAPABILITY 000–000B
+### CAPABILITY 000–000C
 
-The local MLX bridge works and a genuine Qwen-generated Pi tool call was observed. There is one model instance, no duplication. The first real Pi request is ~1500 tokens; dynamic pressure is dominated by prefill temporaries plus BF16 KV, not Pi RSS or full-sequence logits.
+The local MLX bridge works and a genuine Qwen-generated Pi tool call was observed. There is one model instance, no duplication. Dynamic pressure is dominated by prefill temporaries plus BF16 KV, not Pi RSS or full-sequence logits.
 
-### CAPABILITY 000C — COMPLETE
-
-On the exact 1504-token Pi prefill:
-
-- step 512: **23.74 s**, **63.36 tok/s**, **4089.8 MB peak**, bit-exact
-- step 2048: **27.91 s**, **53.88 tok/s**, **4180.1 MB peak**, bit-exact
-- step 256: **28.24 s**, **3980.7 MB peak**, top1 same but not bit-exact
+`prefill_step_size=512` dominates canonical 2048 on the exact 1504-token Pi prefill:
+- 512: **23.74 s**, **63.36 tok/s**, **4089.8 MB peak**, bit-exact
+- 2048: **27.91 s**, **53.88 tok/s**, **4180.1 MB peak**, bit-exact
+- 256: **28.24 s**, **3980.7 MB peak**, top1 same but not bit-exact
 
 512 remains the admitted integrated-agent candidate, not a universal runtime default.
 
-### CAPABILITY 000D Fix2 — VALID SCIENTIFIC RESOURCE ABORT
+### CAPABILITY 000D Fix2 — VALID RESOURCE ABORT
 
-First real Pi turn completed and issued `read numbers.txt`; second request at 1576 tokens crossed the <5% free-memory gate. This was real science but did not prove an intrinsic request-size limit.
+First real Pi turn completed. Second request at 1576 tokens crossed the <5% free-memory gate.
 
 ### CAPABILITY 000E — COMPLETE / NO REPRODUCTION
 
-Report: `research/capability/capability-000e-fresh-vs-sequential-result.md`.
-
-Exact R2 (1576 tokens) succeeds as a fresh first request.
-
-Exact R1 (1521) then R2 (1576) also both succeed sequentially without cleanup in a fresh direct-replay process.
+Fresh R2 at 1576 tokens completes. Fresh-process sequential R1->R2 also completes without cleanup.
 
 Evidence:
-- fresh R2 peak MLX **4095.65 MB**
-- sequential R2 peak **4194.45 MB**
-- sequential delta **+98.80 MB**
-- post-R1 residual active **+468.30 MB** over loaded idle
-- post-R1 allocator cache **229.07 MB**
-- request KV objects are not retained
-- no evidence supports calling this a leak
+- fresh R2 peak MLX 4095.65 MB
+- sequential R2 peak 4194.45 MB
+- sequential delta +98.80 MB
+- post-R1 residual active +468.30 MB
+- allocator cache 229.07 MB
+- request KV not retained
+- no evidence of a leak
 
-Therefore the Fix2 abort is not reproduced as an intrinsic 1576-token/step-512 limit. Host/system state materially influences the system-free gate.
+Therefore R2 is not intrinsically outside the step-512 envelope. Host/system state materially affects the resource gate.
 
-### CAPABILITY 000F — NEXT
+### CAPABILITY 000F — REPRODUCIBILITY STUDY INCOMPLETE
 
-Integrated Pi-loop reproducibility under controlled passive host launch state.
+Report: `research/capability/capability-000f-host-recovery-incomplete-result.md`.
 
-Keep frozen:
-- Qwen3-8B 3-bit
-- BF16 KV
-- context 4096
-- step 512
-- full Pi tools
-- same numbers.txt task
+Frozen target was three independently admitted real-Pi attempts.
 
-Protocol:
-1. use real Pi, not direct replay;
-2. fresh scientific model/server process for every attempt;
-3. no preflight inference in the same process;
-4. host launch gate before model load: free >=60%, swap <=5600 MB;
-5. no purge, scripted process kills or artificial memory manipulation;
-6. three independent fresh-process attempts;
-7. each task attempt is one Pi session with no prompt rescue/retry;
-8. report success rate and full resource trajectory.
+Observed:
+- attempt 1 pre-load: free 65%, swap 1174.38 MB -> admitted
+- attempt 1: 2 turns, `read -> bash`, peak MLX 4194.45 MB, min free 4%, resource abort
+- attempt 2 launch sample: free 6%, swap 1848.25 MB -> not admitted
+- attempt 3 not run
 
-If host launch gate is not met, classify host-not-ready and consume no scientific attempt. Normal manual closure of unrelated user apps is allowed as passive host preparation before a later launch sample.
+Do **not** interpret this as 0/3 model reliability. Only one scientific attempt was admitted.
 
-If the integrated loop is reproducibly successful, admit step 512 bridge and run CAPABILITY 001. If repeated admitted runs still resource-abort, select a new isolated memory treatment from evidence.
+The new unresolved problem is why the host did not recover from 65% pre-load free to another >=60% launch-ready state after the fresh scientific server/model process was terminated.
 
-### CAPABILITY 001 — BLOCKED pending 000F admission
+### CAPABILITY 000G — NEXT
+
+Scientific-process teardown and natural host-recovery attribution.
+
+Frozen principle:
+- do not change model, step 512, BF16 KV, context or tools;
+- use one fresh model/server process;
+- execute one bounded workload;
+- terminate normally;
+- prove server/child PIDs and listening socket are gone;
+- passively sample host free memory, swap, compressor and process state after exit;
+- no purge, forced kills, `mx.clear_cache`, artificial allocations or swap manipulation.
+
+Primary question:
+
+Does the host naturally recover to the >=60% launch gate after process death within a bounded interval?
+
+If yes, rerun CAPABILITY 000F with a passive recovery wait/gate between attempts.
+
+If no and processes/resources remain alive, repair lifecycle first.
+
+If all processes are dead but host memory remains depressed for a long interval, characterize OS recovery before changing model/runtime factors.
+
+### CAPABILITY 001 — BLOCKED
 
 Frozen 12-task suite: coding + Git safety + experiment/result reasoning.
 
-This becomes the capability reference for future representation changes.
+Run only after integrated Pi execution can be repeated under a reproducible host lifecycle.
 
 ## B — RAM/speed frontier
 
@@ -150,12 +156,13 @@ Judge every representation by `memory + speed + capability`.
 
 ## Immediate order
 
-1. CAPABILITY 000F — integrated Pi reproducibility
-2. CAPABILITY 001
-3. MEMORY-FRONTIER 001
-4. prefetch/buffering/range-I/O work
-5. OUTCORE-BLOCK 001
-6. scale toward 27B/32B
+1. CAPABILITY 000G — process teardown / natural host recovery
+2. corrected CAPABILITY 000F — three admitted independent attempts
+3. CAPABILITY 001
+4. MEMORY-FRONTIER 001
+5. prefetch/buffering/range-I/O work
+6. OUTCORE-BLOCK 001
+7. scale toward 27B/32B
 
 ## Local-only implementation warning
 
