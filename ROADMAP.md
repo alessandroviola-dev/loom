@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-22
-Current checkpoint: `SHARED_STAGE_RESIDENCY_001_COMPLETE`
+Current checkpoint: `STREAMED_LAYER_GRADIENT_001_COMPLETE`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -19,96 +19,92 @@ Canonical behavior reference:
 
 ## B — MEMORY-FRONTIER 001 — COMPLETE
 
-Exact real-M1 parity passed across FULL/H32/H24/H16/H8.
+Exact real-M1 parity passed across FULL/H32/H24/H16/H8. Naive synchronous streaming saves large amounts of memory but destroys throughput.
 
-| Config | Resident fraction | Gen tok/s | Peak MLX |
-|---|---:|---:|---:|
-| F0 | 100.00% | 13.433 | 3,621,677,296 B |
-| F1 H32 | 75.38% | 2.527 | 2,756,903,152 B |
-| F2 H24 | 56.54% | 1.168 | 2,081,485,040 B |
-| F3 H16 | 37.69% | 0.526 | 1,406,066,928 B |
-| F4 H8 | 18.85% | 0.435 | 730,648,816 B |
-
-Naive synchronous streaming is memory-effective but far too slow.
+Key endpoints:
+- FULL: 13.433 tok/s, peak MLX 3,621,677,296 B
+- H32: 2.527 tok/s, peak 2,756,903,152 B
+- H8: 0.435 tok/s, peak 730,648,816 B
 
 ## C — STREAMING-ATTRIBUTION 001 — PARTIAL
 
-Exact parity passed, but invasive timing reduced F1 throughput by ~32.6%, so the internal bottleneck remains unresolved. Materialization/sync and shared stages appeared large, but no internal causal claim was promoted. Physical SSD traffic remains unproven.
+Invasive tracing preserved correctness but imposed ~32.6% slowdown, so no internal dominant mechanism was promoted. Physical SSD traffic remains unproven.
 
 ## D — SHARED-STAGE-RESIDENCY 001 — COMPLETE
 
-Report: `research/memory/shared-stage-residency-001-result.md`.
+Keeping embedding/final norm/LM head resident while leaving four transformer layers streamed recovered **+36.66% generation throughput** and preserved exact token parity.
 
-Direct low-overhead ABBA test:
+This establishes the first hierarchy rule: large shared stages are hot/persistent in the current architecture rather than repeatedly streamed.
 
-CONTROL F1/H32:
-- layers 32..35 + shared stages streamed
-- 2.532 gen tok/s
-- 882,255,872 logical B/token
-- peak MLX 2,739,421,424 B
+## E — STREAMED-LAYER-GRADIENT 001 — COMPLETE
 
-TREATMENT:
-- same transformer residency
-- only layers 32..35 streamed
-- embedding/final norm/LM head persistent
-- 3.459 gen tok/s
-- 337,709,056 logical B/token
-- peak MLX 3,283,968,240 B
+Report: `research/memory/streamed-layer-gradient-001-result.md`.
 
-Treatment effect:
-- generation **+36.66%**
-- E2E **+34.80%**
-- TTFT **-13.34%**
-- exact token parity PASS
-- no resource aborts
+With all shared stages persistent:
 
-The treatment still saves 337,709,056 B versus FULL, but retains only 25.75% of F0 generation throughput. Shared-stage streaming is therefore material but not the primary explanation for all remaining slowdown.
+| Streamed layers | Gen tok/s | Wall/token |
+|---:|---:|---:|
+| 0 | 14.022271 | 71.315 ms |
+| 1 | 5.819925 | 171.824 ms |
+| 2 | 4.755397 | 210.287 ms |
+| 4 | 3.463355 | 288.737 ms |
 
-## E — STREAMED-LAYER-GRADIENT 001 — NEXT
+Exact parity passed everywhere; no resource aborts.
 
-Frozen plan: `research/memory/streamed-layer-gradient-001-plan.md`.
+Observed marginal penalties:
+- first layer: +100.508 ms/token
+- second: +38.464 ms/token
+- later measured layers: +39.225 ms/token/layer
 
-Keep embedding/final norm/LM head persistent in every arm and vary only the number of streamed transformer layers:
-- S0: 0 streamed
-- S1: 1 streamed
-- S2: 2 streamed
-- S4: 4 streamed
+Interpretation: `STREAM_LAYER_COST_FIXED_OR_NONLINEAR`.
 
-Use low-overhead symmetric fresh runs, exact token parity and identical streaming lifecycle for every streamed layer.
+A descriptive two-component model fits the points nearly exactly:
 
-Primary question: is incremental real-M1 wall cost approximately additive per streamed transformer layer, or is there a large fixed/nonlinear cost?
+`wall/token ≈ 71.315 + 61.284*I(streaming active) + 39.007*N_streamed_layers` ms
 
-If approximately additive, the next optimization must reduce/amortize the per-layer stream lifecycle itself. If fixed/nonlinear, scheduling/chunking/orchestration becomes a stronger first target.
+with `R² ≈ 0.999993`.
 
-## F — First transformer-stream optimization
+This suggests two separate engineering targets: a once-per-token streaming activation cost and a repeated marginal per-layer cost.
 
-Select only after STREAMED-LAYER-GRADIENT 001. Candidate one-factor treatments include:
-- asynchronous scheduling/prefetch
-- buffering
+## F — STREAMING-ACTIVATION-AUDIT 001 — NEXT
+
+Frozen plan: `research/memory/streaming-activation-audit-001-plan.md`.
+
+Before changing runtime behavior, inspect the exact S0 vs S1 control-flow difference and enumerate operations that execute once per token whenever any streamed transformer layer exists.
+
+Rank isolatable candidates such as stream-region setup/teardown, source-handle lifecycle, parameter rebinding, materialization/synchronization boundaries, allocator/cache cleanup and explicit release/GC. Verify invocation topology statically or with low-overhead counters only.
+
+The next performance experiment must target one confirmed once-per-token candidate, not guess at SSD/prefetch.
+
+## G — Marginal transformer stream cost
+
+After fixed activation work, address the measured ~39 ms/token/layer marginal cost using one-factor evidence-selected treatments. Candidate classes include:
+- scheduling / asynchronous prefetch
+- buffering or stream-region grouping
 - reconstruction/materialization reuse
-- direct range-I/O / mmap / pread
-- stream-group/chunk lifecycle changes
+- direct range-I/O / mmap / pread where source access is proven relevant
+- page-cache-aware source handling
 
-Do not assume physical SSD is dominant without evidence.
+Do not assume physical SSD dominance without evidence.
 
-## G — OUTCORE-BLOCK / representation
+## H — OUTCORE-BLOCK / representation
 
-OUTCORE-BLOCK 001 remains a later candidate for amortizing streamed weights across exact-valid multi-position verification. Representation candidates include mixed/selective precision, compressed cold weights, quantized KV and out-of-core formats. Full parameter count remains a major condition.
+OUTCORE-BLOCK 001 remains a later candidate for amortizing streamed weights over multiple exact-valid positions. Representation candidates include mixed/selective precision, compressed cold weights, quantized KV and out-of-core formats. Full parameter count remains a major condition.
 
-## H — Scale beyond 8B
+## I — Scale beyond 8B
 
-1. quantify transformer stream lifecycle cost
-2. materially reduce/amortize it on the exact 8B
-3. establish a substantially better RAM/speed point
-4. transfer architecture to models beyond comfortable physical RAM
+1. identify and remove/reduce the fixed stream-activation penalty
+2. reduce/hide the ~39 ms/layer marginal stream lifecycle
+3. establish a substantially better exact 8B RAM/speed point
+4. transfer the architecture to models beyond comfortable physical RAM
 5. first major scale checkpoint: ~27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
 6. optimize toward usable speed and measure capability
 
 ## Immediate order
 
-1. STREAMED-LAYER-GRADIENT 001
-2. first evidence-selected transformer-stream treatment
-3. further overlap/range-I/O/materialization work as justified
+1. STREAMING-ACTIVATION-AUDIT 001
+2. one-factor fixed-cost treatment
+3. marginal per-layer stream treatment(s)
 4. OUTCORE-BLOCK 001 where justified
 5. representation work where justified
 6. scale toward 27B/32B
