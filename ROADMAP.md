@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-22
-Current checkpoint: `STREAMED_LAYER_GRADIENT_001_COMPLETE`
+Current checkpoint: `STREAMING_ACTIVATION_AUDIT_001_COMPLETE`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -17,30 +17,20 @@ Canonical behavior reference:
 - Coding Benchmark: **45/100**
 - critical failures: 0
 
-## B — MEMORY-FRONTIER 001 — COMPLETE
+## B — Memory frontier — COMPLETE
 
-Exact real-M1 parity passed across FULL/H32/H24/H16/H8. Naive synchronous streaming saves large amounts of memory but destroys throughput.
+Exact real-M1 partial residency works, but naive synchronous streaming is too slow:
+- FULL 13.433 tok/s
+- H32 2.527
+- H24 1.168
+- H16 0.526
+- H8 0.435
 
-Key endpoints:
-- FULL: 13.433 tok/s, peak MLX 3,621,677,296 B
-- H32: 2.527 tok/s, peak 2,756,903,152 B
-- H8: 0.435 tok/s, peak 730,648,816 B
+Shared-stage residency then established the first hierarchy rule: embedding/final norm/LM head are hot/persistent. Keeping them resident while streaming four transformer layers improved generation by **+36.66%** with exact parity.
 
-## C — STREAMING-ATTRIBUTION 001 — PARTIAL
+## C — Streamed-layer gradient — COMPLETE
 
-Invasive tracing preserved correctness but imposed ~32.6% slowdown, so no internal dominant mechanism was promoted. Physical SSD traffic remains unproven.
-
-## D — SHARED-STAGE-RESIDENCY 001 — COMPLETE
-
-Keeping embedding/final norm/LM head resident while leaving four transformer layers streamed recovered **+36.66% generation throughput** and preserved exact token parity.
-
-This establishes the first hierarchy rule: large shared stages are hot/persistent in the current architecture rather than repeatedly streamed.
-
-## E — STREAMED-LAYER-GRADIENT 001 — COMPLETE
-
-Report: `research/memory/streamed-layer-gradient-001-result.md`.
-
-With all shared stages persistent:
+All shared stages persistent; streamed transformer count varied 0/1/2/4.
 
 | Streamed layers | Gen tok/s | Wall/token |
 |---:|---:|---:|
@@ -49,43 +39,58 @@ With all shared stages persistent:
 | 2 | 4.755397 | 210.287 ms |
 | 4 | 3.463355 | 288.737 ms |
 
-Exact parity passed everywhere; no resource aborts.
+The first streamed layer adds ~100.5 ms/token; later layers add ~38–39 ms/layer.
 
-Observed marginal penalties:
-- first layer: +100.508 ms/token
-- second: +38.464 ms/token
-- later measured layers: +39.225 ms/token/layer
+Descriptive system model:
+`71.315 + 61.284*I(streaming active) + 39.007*N_streamed_layers` ms/token, R²≈0.999993.
 
-Interpretation: `STREAM_LAYER_COST_FIXED_OR_NONLINEAR`.
+This creates two engineering targets: fixed stream activation and repeated per-layer lifecycle.
 
-A descriptive two-component model fits the points nearly exactly:
+## D — STREAMING-ACTIVATION-AUDIT 001 — COMPLETE
 
-`wall/token ≈ 71.315 + 61.284*I(streaming active) + 39.007*N_streamed_layers` ms
+Report: `research/memory/streaming-activation-audit-001-result.md`.
 
-with `R² ≈ 0.999993`.
+Source-level audit confirmed once-per-token non-scaling streaming-only work:
+- three shared-stage explicit `mx.eval` boundaries;
+- post-embedding, post-norm and post-head cleanup sequences;
+- stream-region bookkeeping.
 
-This suggests two separate engineering targets: a once-per-token streaming activation cost and a repeated marginal per-layer cost.
+Per-layer source/load/reconstruction/materialization/forward/release work scales exactly with streamed-layer count.
 
-## F — STREAMING-ACTIVATION-AUDIT 001 — NEXT
+The strongest isolatable fixed-cost candidate is shared-stage cleanup cadence. This is reinforced only as plausibility context by prior Stretch cleanup work: transformer cleanup batching gave a large gain, shared-stage cleanup consolidation gave +14.11%, and single-final cleanup gave +8.67% on their own frozen geometries.
 
-Frozen plan: `research/memory/streaming-activation-audit-001-plan.md`.
+## E — SHARED-CLEANUP-CONSOLIDATION 001 — NEXT
 
-Before changing runtime behavior, inspect the exact S0 vs S1 control-flow difference and enumerate operations that execute once per token whenever any streamed transformer layer exists.
+Frozen plan: `research/memory/shared-cleanup-consolidation-001-plan.md`.
 
-Rank isolatable candidates such as stream-region setup/teardown, source-handle lifecycle, parameter rebinding, materialization/synchronization boundaries, allocator/cache cleanup and explicit release/GC. Verify invocation topology statically or with low-overhead counters only.
+Use S1 with one streamed transformer layer and all shared stages persistent.
 
-The next performance experiment must target one confirmed once-per-token candidate, not guess at SSD/prefetch.
+CONTROL retains current post-embedding, post-norm and final post-head shared cleanup.
 
-## G — Marginal transformer stream cost
+TREATMENT omits/defers only post-embedding and post-norm cleanup, keeping one final post-head shared cleanup. Layer-35 cleanup and every explicit `mx.eval` remain unchanged.
 
-After fixed activation work, address the measured ~39 ms/token/layer marginal cost using one-factor evidence-selected treatments. Candidate classes include:
-- scheduling / asynchronous prefetch
-- buffering or stream-region grouping
-- reconstruction/materialization reuse
-- direct range-I/O / mmap / pread where source access is proven relevant
-- page-cache-aware source handling
+Balanced ABBA, exact parity, first three REALGEN prompts, low-overhead measurement.
 
-Do not assume physical SSD dominance without evidence.
+Primary routing:
+- >=5% reproducible generation gain with gates preserved -> shared cleanup is materially part of fixed activation cost;
+- smaller/no gain -> move next to shared-stage eval-boundary isolation.
+
+## F — Remaining fixed activation work
+
+If cleanup alone does not remove most of the fixed activation penalty, isolate stage-local `mx.eval` boundaries one factor at a time without changing model math or layer residency.
+
+Do not use invasive profiling as causal evidence.
+
+## G — Marginal streamed-layer cost
+
+After fixed activation work, reduce/hide the ~39 ms/token/layer marginal lifecycle. Candidate classes, selected by evidence one factor at a time:
+- scheduling / async prefetch;
+- buffering / grouped stream lifecycle;
+- reconstruction/materialization reuse;
+- direct range-I/O / mmap / pread only if source access is shown relevant;
+- page-cache-aware source handling.
+
+Physical SSD dominance remains unproven.
 
 ## H — OUTCORE-BLOCK / representation
 
@@ -93,22 +98,22 @@ OUTCORE-BLOCK 001 remains a later candidate for amortizing streamed weights over
 
 ## I — Scale beyond 8B
 
-1. identify and remove/reduce the fixed stream-activation penalty
-2. reduce/hide the ~39 ms/layer marginal stream lifecycle
+1. reduce/remove fixed stream-activation cost
+2. reduce/hide ~39 ms/layer marginal lifecycle
 3. establish a substantially better exact 8B RAM/speed point
-4. transfer the architecture to models beyond comfortable physical RAM
-5. first major scale checkpoint: ~27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
+4. transfer architecture to models beyond comfortable physical RAM
+5. first scale checkpoint: ~27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
 6. optimize toward usable speed and measure capability
 
 ## Immediate order
 
-1. STREAMING-ACTIVATION-AUDIT 001
-2. one-factor fixed-cost treatment
-3. marginal per-layer stream treatment(s)
+1. SHARED-CLEANUP-CONSOLIDATION 001
+2. shared-stage eval-boundary isolation if still justified
+3. marginal streamed-layer treatments
 4. OUTCORE-BLOCK 001 where justified
 5. representation work where justified
 6. scale toward 27B/32B
-7. capability comparison for promoted behavior-affecting candidates
+7. capability comparison for promoted behavior-affecting systems
 
 ## Local-only implementation warning
 
