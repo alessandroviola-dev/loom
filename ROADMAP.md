@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-22
-Current checkpoint: `NORM_EVAL_BOUNDARY_001_COMPLETE`
+Current checkpoint: `STREAMED_LAYER_CLEANUP_DEFER_001_COMPLETE`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -37,9 +37,9 @@ Exact partial residency works, but naive synchronous streaming is too slow:
 
 Shared-stage residency established that embedding/final norm/LM head should remain hot/persistent.
 
-## C — Streamed-layer gradient — COMPLETE
+## C — Streamed-layer gradient 001 — COMPLETE
 
-With shared stages persistent:
+With shared stages persistent and the older streamed-layer cleanup lifecycle:
 
 | Streamed layers | Gen tok/s | Wall/token |
 |---:|---:|---:|
@@ -48,77 +48,84 @@ With shared stages persistent:
 | 2 | 4.755397 | 210.287 ms |
 | 4 | 3.463355 | 288.737 ms |
 
-Descriptive system model:
+Descriptive model:
 `71.315 + 61.284*I(streaming active) + 39.007*N_streamed_layers` ms/token, R²≈0.999993.
 
-This separates fixed stream activation from repeated marginal per-layer lifecycle.
+This separated fixed stream activation from repeated marginal per-layer lifecycle.
 
 ## D — Fixed activation — CLOSED
 
 ### Shared cleanup consolidation — material PASS
 
-On S1, removing only post-embedding/post-norm shared cleanup:
+Removing only post-embedding/post-norm shared cleanup on S1:
 - 5.643 -> 7.065 tok/s
 - +25.206% generation
 - -35.678 ms/token
 - exact parity PASS
 - peak MLX unchanged.
 
-This is the promoted S1 fixed-activation baseline.
+### Embed eval — NO-GO
 
-### Embed eval boundary — NO-GO
+Removing post-embedding `mx.eval(h)` regressed generation by 3.346%. Retain it.
 
-Removing post-embedding `mx.eval(h)`:
-- -3.346% generation
-- +4.897 ms/token.
+### Norm eval — SMALL / NOT PROMOTED
 
-Retain it.
+Removing final-norm `mx.eval(h2)` improved generation only 0.762%. Retain it. Do not test LM-head eval without new evidence.
 
-### NORM-EVAL-BOUNDARY 001 — COMPLETE / SMALL
-
-Report: `research/memory/norm-eval-boundary-001-result.md`.
-
-Removing only final-norm `mx.eval(h2)`:
-- CONTROL 7.003 tok/s, 142.799 ms/token
-- TREATMENT 7.056 tok/s, 141.719 ms/token
-- generation +0.762%
-- wall/token -1.080 ms
-- exact parity PASS
-- peak MLX unchanged
-- no resource aborts.
-
-Decision: effect below 5% material threshold; do not promote. Retain norm eval. Do not test LM-head eval without new evidence.
-
-The fixed activation axis is considered closed. The material win was cleanup cadence; obvious shared eval removal is not a productive direction.
+The fixed-activation axis is closed.
 
 ## E — Marginal streamed-layer lifecycle — ACTIVE
 
-Measured marginal cost after activation is ~38–39 ms/token per additional streamed transformer layer.
+### STREAMED-LAYER-CLEANUP-DEFER 001 — COMPLETE / MATERIAL PASS
 
-### STREAMED-LAYER-CLEANUP-DEFER 001 — NEXT
+Report: `research/memory/streamed-layer-cleanup-defer-001-result.md`.
 
-Frozen plan: `research/memory/streamed-layer-cleanup-defer-001-plan.md`.
+Exact S1 ABBA. TREATMENT changed only the streamed layer's post-forward cleanup cadence: all load/select/reconstruction/materialization/forward/eval and deletion/release semantics remained identical, select-time cleanup remained identical, and one layer-local post-forward `gc.collect()/mx.clear_cache()` per generated token was omitted/deferred to the existing final cleanup.
 
-Use promoted cleanup-consolidated S1:
-- layers 0..34 persistent;
-- layer 35 streamed;
-- shared stages persistent;
-- all explicit shared evals retained;
-- only final shared cleanup retained.
+Pooled:
+- CONTROL 6.997 tok/s, 142.918 ms/token
+- TREATMENT 8.223 tok/s, 121.610 ms/token
 
-CONTROL keeps layer-35 local cleanup.
+Causal effect:
+- generation **+17.522%**
+- E2E **+15.750%**
+- wall/token **-21.308 ms**
+- peak active delta 0 B
+- observed peak active+cache delta 0 B
+- exact parity PASS
+- no resource aborts.
 
-TREATMENT changes only layer-35 cleanup cadence: keep load/select/reconstruction/materialization/forward/eval and deletion/release identical, but omit/defer the layer-local `gc.collect()/mx.clear_cache()` sequence until the already-existing final post-head cleanup.
+This removes ~54.64% of the historical ~39 ms/layer reference on S1, contextual only. Deferred post-forward streamed-layer cleanup is promoted for further testing.
 
-Balanced ABBA, exact token parity, low-overhead measurement.
+### STREAMED-LAYER-GRADIENT 002 — NEXT
 
-If material, remeasure the S0/S1/S2/S4 slope under the improved cleanup schedule before moving to a different mechanism.
+Frozen plan: `research/memory/streamed-layer-gradient-002-plan.md`.
+
+Remeasure S0/S1/S2/S4 under the promoted lifecycle:
+- all shared stages persistent;
+- shared intermediate cleanup consolidated;
+- embedding/norm/head evals retained;
+- per-streamed-layer select-time cleanup unchanged;
+- transient deletion/release unchanged;
+- per-streamed-layer post-forward GC/cache cleanup omitted/deferred;
+- exactly one final cleanup/token.
+
+Balanced fresh order:
+`S0 -> S4 -> S2 -> S1 -> S1 -> S2 -> S4 -> S0`.
+
+Primary questions:
+1. what is the new real-M1 marginal ms/layer slope?
+2. does deferring 2 or 4 layer-local cleanups remain memory-safe?
+3. is the new gradient additive, nonlinear, resource-limited or unresolved?
+
+Do not select a different per-layer mechanism until this updated gradient is measured.
 
 ## F — Later marginal treatments
 
-Only after the cleanup result, select one factor at a time from evidence:
+Select from evidence after Gradient 002, one factor at a time:
+- select-time cleanup cadence;
 - scheduling / asynchronous prefetch;
-- buffering / grouped stream lifecycle;
+- buffering / grouped lifecycle;
 - reconstruction/materialization reuse;
 - direct source-range I/O / mmap / pread only if source-access evidence supports it;
 - page-cache-aware source handling.
@@ -131,11 +138,12 @@ OUTCORE-BLOCK 001 remains a later candidate for amortizing streamed weights acro
 
 ## H — Scale beyond 8B
 
-1. materially reduce marginal streamed-layer lifecycle
-2. establish a substantially better exact 8B RAM/speed point
-3. transfer architecture beyond comfortable physical RAM
-4. first major scale checkpoint: ~27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
-5. optimize toward usable speed and measure capability
+1. establish the improved marginal streamed-layer slope/resource envelope
+2. materially reduce/hide remaining per-layer lifecycle
+3. establish a substantially better exact 8B RAM/speed point
+4. transfer architecture beyond comfortable physical RAM
+5. first major scale checkpoint: ~27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
+6. optimize toward usable speed and measure capability
 
 ## I — Behavioral freedom / decensoring — REQUIRED BEFORE FINAL PROMOTION
 
@@ -156,14 +164,13 @@ Initial future sequence:
 
 ## Immediate order
 
-1. STREAMED-LAYER-CLEANUP-DEFER 001
-2. remeasure marginal slope if cleanup treatment is material
-3. next evidence-selected marginal stream treatment
-4. OUTCORE-BLOCK 001 where justified
-5. representation work where justified
-6. scale toward 27B/32B
-7. capability comparison for promoted behavior-affecting candidates
-8. Heretic-derived / LOOM-native decensoring stage before final model promotion
+1. STREAMED-LAYER-GRADIENT 002
+2. next evidence-selected marginal stream treatment
+3. OUTCORE-BLOCK 001 where justified
+4. representation work where justified
+5. scale toward 27B/32B
+6. capability comparison for promoted behavior-affecting candidates
+7. Heretic-derived / LOOM-native decensoring stage before final model promotion
 
 ## Local-only implementation warning
 
