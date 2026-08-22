@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-22
-Current checkpoint: `EMBED_EVAL_BOUNDARY_001_COMPLETE`
+Current checkpoint: `NORM_EVAL_BOUNDARY_001_COMPLETE`
 Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
@@ -13,10 +13,9 @@ Run excellent full-parameter-count LLMs on Apple M1 / 8 GB, ultimately toward ~2
 3. practical capability;
 4. behavioral freedom / decensoring.
 
-A final promoted LOOM-produced model must include a validated decensored behavioral profile using Heretic or a LOOM-native independently implemented equivalent. This is a later promotion requirement and does not change the current memory/runtime research order.
+A final promoted LOOM-produced model must include a validated decensored behavioral profile using Heretic or a LOOM-native independently implemented equivalent. This is a later promotion requirement and does not change the current memory/runtime order.
 
-Frozen project requirement:
-`research/behavior/decensoring-requirement-v1.md`
+Frozen project requirement: `research/behavior/decensoring-requirement-v1.md`.
 
 Pi is reserved for code/tests. ChatGPT owns research direction and repository/project synchronization.
 
@@ -49,127 +48,122 @@ With shared stages persistent:
 | 2 | 4.755397 | 210.287 ms |
 | 4 | 3.463355 | 288.737 ms |
 
-Descriptive model:
+Descriptive system model:
 `71.315 + 61.284*I(streaming active) + 39.007*N_streamed_layers` ms/token, R²≈0.999993.
 
-This separates two engineering targets: fixed stream activation and repeated marginal per-layer lifecycle.
+This separates fixed stream activation from repeated marginal per-layer lifecycle.
 
-## D — Fixed activation source audit — COMPLETE
+## D — Fixed activation — CLOSED
 
-Streaming-only once-per-token non-scaling work includes:
-- embedding/norm/head eval boundaries;
-- shared-stage cleanup points;
-- stream-region bookkeeping.
+### Shared cleanup consolidation — material PASS
 
-Per-layer load/select/reconstruction/materialization/forward/release scales with streamed-layer count.
-
-## E — Shared cleanup consolidation — COMPLETE / PROMISING
-
-On exact S1, removing only post-embedding and post-norm shared cleanup produced:
-- 5.643 -> 7.065 gen tok/s
+On S1, removing only post-embedding/post-norm shared cleanup:
+- 5.643 -> 7.065 tok/s
 - +25.206% generation
 - -35.678 ms/token
 - exact parity PASS
-- peak MLX unchanged
-- no resource aborts.
+- peak MLX unchanged.
 
-This is the current experimental S1 baseline. Cleanup cadence causally explains a material part of the fixed activation penalty.
+This is the promoted S1 fixed-activation baseline.
 
-## F — EMBED-EVAL-BOUNDARY 001 — COMPLETE / NO-GO
+### Embed eval boundary — NO-GO
 
-Report: `research/memory/embed-eval-boundary-001-result.md`.
+Removing post-embedding `mx.eval(h)`:
+- -3.346% generation
+- +4.897 ms/token.
 
-CONTROL retained explicit post-embedding `mx.eval(h)`; TREATMENT removed/deferred only that boundary.
+Retain it.
 
-Pooled:
-- CONTROL 7.069 tok/s, 141.462 ms/token
-- TREATMENT 6.833 tok/s, 146.359 ms/token
+### NORM-EVAL-BOUNDARY 001 — COMPLETE / SMALL
 
-Effect:
-- generation **-3.346%**
-- E2E **-3.178%**
-- wall/token **+4.897 ms**
-- TTFT **+5.475%**
-- peak MLX unchanged
+Report: `research/memory/norm-eval-boundary-001-result.md`.
+
+Removing only final-norm `mx.eval(h2)`:
+- CONTROL 7.003 tok/s, 142.799 ms/token
+- TREATMENT 7.056 tok/s, 141.719 ms/token
+- generation +0.762%
+- wall/token -1.080 ms
 - exact parity PASS
+- peak MLX unchanged
 - no resource aborts.
 
-Decision: retain the post-embedding eval. It is not a useful fixed-cost removal target on the current path.
+Decision: effect below 5% material threshold; do not promote. Retain norm eval. Do not test LM-head eval without new evidence.
 
-## G — NORM-EVAL-BOUNDARY 001 — NEXT
+The fixed activation axis is considered closed. The material win was cleanup cadence; obvious shared eval removal is not a productive direction.
 
-Frozen plan: `research/memory/norm-eval-boundary-001-plan.md`.
+## E — Marginal streamed-layer lifecycle — ACTIVE
 
-CONTROL: cleanup-consolidated S1 with explicit final-norm `mx.eval(h2)`.
+Measured marginal cost after activation is ~38–39 ms/token per additional streamed transformer layer.
 
-TREATMENT: remove/defer only the final-norm eval. Keep the downstream LM-head `mx.eval(logits)`, post-embedding eval, cleanup cadence, layer-35 lifecycle, residency and I/O unchanged.
+### STREAMED-LAYER-CLEANUP-DEFER 001 — NEXT
 
-Balanced ABBA, exact token parity, first three canonical REALGEN prompts, low-overhead measurement.
+Frozen plan: `research/memory/streamed-layer-cleanup-defer-001-plan.md`.
 
-Routing:
-- >=5% gain with gates preserved -> final-norm eval is materially part of residual fixed activation;
-- small/no gain -> close or nearly close the shared eval-boundary axis rather than repeatedly removing barriers.
+Use promoted cleanup-consolidated S1:
+- layers 0..34 persistent;
+- layer 35 streamed;
+- shared stages persistent;
+- all explicit shared evals retained;
+- only final shared cleanup retained.
 
-## H — Marginal streamed-layer cost
+CONTROL keeps layer-35 local cleanup.
 
-After fixed activation is closed, the primary scalable problem is the measured ~39 ms/token/layer lifecycle.
+TREATMENT changes only layer-35 cleanup cadence: keep load/select/reconstruction/materialization/forward/eval and deletion/release identical, but omit/defer the layer-local `gc.collect()/mx.clear_cache()` sequence until the already-existing final post-head cleanup.
 
-Candidate one-factor treatments should target that repeated cost, not the already-tested fixed boundaries. Candidate classes:
-- async scheduling/prefetch;
-- buffering/grouped lifecycle;
+Balanced ABBA, exact token parity, low-overhead measurement.
+
+If material, remeasure the S0/S1/S2/S4 slope under the improved cleanup schedule before moving to a different mechanism.
+
+## F — Later marginal treatments
+
+Only after the cleanup result, select one factor at a time from evidence:
+- scheduling / asynchronous prefetch;
+- buffering / grouped stream lifecycle;
 - reconstruction/materialization reuse;
-- source-range I/O only if evidence supports it;
+- direct source-range I/O / mmap / pread only if source-access evidence supports it;
 - page-cache-aware source handling.
 
 Physical SSD dominance remains unproven.
 
-## I — OUTCORE-BLOCK / representation
+## G — OUTCORE-BLOCK / representation
 
 OUTCORE-BLOCK 001 remains a later candidate for amortizing streamed weights across multiple exact-valid positions. Representation candidates include mixed/selective precision, compressed cold weights, quantized KV and out-of-core formats. Full parameter count remains a major condition.
 
-## J — Scale beyond 8B
+## H — Scale beyond 8B
 
-1. close remaining fixed activation work
-2. materially reduce/hide ~39 ms/layer marginal lifecycle
-3. establish a substantially better exact 8B RAM/speed point
-4. transfer architecture beyond comfortable physical RAM
-5. first major scale checkpoint: ~27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
-6. optimize toward usable speed and measure capability
+1. materially reduce marginal streamed-layer lifecycle
+2. establish a substantially better exact 8B RAM/speed point
+3. transfer architecture beyond comfortable physical RAM
+4. first major scale checkpoint: ~27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
+5. optimize toward usable speed and measure capability
 
-## K — Behavioral freedom / decensoring — REQUIRED BEFORE FINAL PROMOTION
+## I — Behavioral freedom / decensoring — REQUIRED BEFORE FINAL PROMOTION
 
-Source engineering reference:
+Reference:
 - audited Heretic snapshot `p-e-w/heretic@bedb94ef117a271532ac2058447fbc165d5051bd`
-- project research note `LOOM_HERETIC_TECHNICAL_PAPER.md`
-- frozen requirement `research/behavior/decensoring-requirement-v1.md`
+- `research/behavior/decensoring-requirement-v1.md`
 
-LOOM treats the transferable Heretic primitive as contrastive residual-direction model editing with reversible low-rank intervention and multi-objective preservation evaluation.
+LOOM treats Heretic's transferable primitive as contrastive residual-direction model editing with reversible low-rank intervention and multi-objective preservation evaluation.
 
-Accepted implementation:
-- Heretic directly when licensing/backend constraints are acceptable; or
-- a clean LOOM-native equivalent, preferred when AGPL compatibility matters.
-
-Initial future research sequence:
+Initial future sequence:
 1. `STREAMING_RESIDUAL_MEAN_PARITY`
 2. direction reproducibility/stability
-3. global vs per-layer / architecture mapping where justified
+3. architecture mapping and global/per-layer direction tests where justified
 4. reversible low-rank transform validation
-5. behavior-change vs sequence/task/capability preservation
-6. resource cost of the edit on constrained hardware
+5. behavior change vs sequence/task/capability preservation
+6. resource cost on constrained hardware
 7. freeze a decensored profile only after preservation/resource gates pass.
-
-A final LOOM artifact is not promoted solely because it fits, is fast or has higher capability: its decensored profile must also be validated without unacceptable collateral capability loss.
 
 ## Immediate order
 
-1. NORM-EVAL-BOUNDARY 001
-2. close fixed activation unless new evidence strongly justifies another boundary test
-3. marginal streamed-layer treatment
+1. STREAMED-LAYER-CLEANUP-DEFER 001
+2. remeasure marginal slope if cleanup treatment is material
+3. next evidence-selected marginal stream treatment
 4. OUTCORE-BLOCK 001 where justified
 5. representation work where justified
 6. scale toward 27B/32B
-7. capability comparison for promoted behavior-affecting systems
-8. Heretic-derived / LOOM-native decensoring stage and validation before final model promotion
+7. capability comparison for promoted behavior-affecting candidates
+8. Heretic-derived / LOOM-native decensoring stage before final model promotion
 
 ## Local-only implementation warning
 
