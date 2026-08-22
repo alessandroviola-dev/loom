@@ -1,32 +1,28 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-22
-Status: ACTIVE — deferred-cleanup streamed-layer gradient
+Status: ACTIVE — marginal streamed-layer lifecycle optimization
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STREAMED_LAYER_CLEANUP_DEFER_001_COMPLETE`
-Next: `STREAMED_LAYER_GRADIENT_002`
+Current checkpoint: `STREAMED_LAYER_GRADIENT_002_COMPLETE`
+Next: `SELECT_TIME_GC_DEFER_001`
 
 Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual reports.
 
 ## Mission
 
 **Big models. Small machines.** Run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models, jointly balancing:
-
 1. memory / residency;
 2. speed / usability;
 3. practical capability;
 4. behavioral freedom / decensoring.
 
-A final promoted LOOM-produced model must also have a validated decensored behavioral profile produced through Heretic or a LOOM-native independently implemented equivalent. This later requirement does not alter the current memory/runtime sequence.
-
-Frozen requirement: `research/behavior/decensoring-requirement-v1.md`.
+Every final promoted LOOM-produced model must also have a validated decensored behavioral profile using Heretic or a LOOM-native independently implemented equivalent. Frozen requirement: `research/behavior/decensoring-requirement-v1.md`. This later requirement does not alter the current runtime sequence.
 
 ## Operating split
 
 Pi: local code/runtime inspection/tests/concise evidence.
-
 ChatGPT: experiment design/review, GitHub synchronization, HANDOFF/ROADMAP and research continuity.
 
 ## Canonical references
@@ -36,130 +32,95 @@ ChatGPT: experiment design/review, GitHub synchronization, HANDOFF/ROADMAP and r
 - BF16 KV
 - MLX/mlx-metal 0.31.2; mlx-lm 0.31.3
 - thinking disabled
-- REALGEN 001 real M1 generation 13.184615357 tok/s; E2E 12.046861457 tok/s
-- CAPABILITY 001 practical-agent baseline 1/11 = 9.09%; Coding Benchmark 45/100
+- REALGEN001 historical real M1 generation 13.184615357 tok/s; E2E 12.046861457 tok/s
+- CAPABILITY001 practical-agent 1/11 = 9.09%; Coding Benchmark 45/100
 
-## Memory/residency sequence
+## Memory / residency
 
-MEMORY-FRONTIER 001 proved exact real-M1 partial residency but naive synchronous streaming is too slow: FULL 13.433 tok/s; H32 2.527; H24 1.168; H16 0.526; H8 0.435.
+MEMORY-FRONTIER001 proved exact partial residency but naive synchronous streaming was too slow: FULL 13.433 tok/s; H32 2.527; H24 1.168; H16 0.526; H8 0.435.
 
-SHARED-STAGE-RESIDENCY 001 established the first hierarchy rule: embedding/final norm/LM head remain hot. Persisting them while streaming layers 32..35 recovered +36.66% generation throughput with exact parity.
+SHARED-STAGE-RESIDENCY001 established that embedding/final norm/LM head should remain hot/persistent.
 
-## Streamed-layer gradient 001 — COMPLETE
+## Fixed stream activation — CLOSED
 
-With all shared stages persistent and the original streamed-layer cleanup lifecycle:
+STREAMED-LAYER-GRADIENT001 under the old lifecycle measured S0/S1/S2/S4 wall/token 71.315/171.824/210.287/288.737 ms and a descriptive model `71.315 + 61.284*I(streaming) + 39.007*N` ms/token.
 
-| Arm | Streamed layers | Gen tok/s | Wall/token |
-|---|---:|---:|---:|
-| S0 | 0 | 14.022271 | 71.315 ms |
-| S1 | 1 | 5.819925 | 171.824 ms |
-| S2 | 2 | 4.755397 | 210.287 ms |
-| S4 | 4 | 3.463355 | 288.737 ms |
+SHARED-CLEANUP-CONSOLIDATION001 materially improved exact S1 by +25.206% generation / -35.678 ms/token with no peak-MLX increase. This cleanup consolidation is promoted.
 
-Exact parity PASS everywhere; no resource aborts.
+EMBED-EVAL-BOUNDARY001 was NO-GO (-3.346%). Retain embedding eval.
 
-Descriptive model:
-`wall/token ≈ 71.315 + 61.284*I(streaming active) + 39.007*N_streamed_layers` ms, R²≈0.999993.
+NORM-EVAL-BOUNDARY001 was SMALL (+0.762%). Not promoted; retain norm eval. Do not test LM-head eval without new evidence.
 
-This separated fixed stream activation from repeated marginal per-layer lifecycle.
+## STREAMED-LAYER-CLEANUP-DEFER001 — MATERIAL PASS
 
-## Fixed activation work — CLOSED
-
-### SHARED-CLEANUP-CONSOLIDATION 001 — material PASS
-
-On exact S1, removing only post-embedding/post-norm shared cleanup:
-- 5.643 -> 7.065 tok/s
-- +25.206% generation
-- -35.678 ms/token
+On promoted S1, removing only one per-token layer-35 post-forward `gc.collect()/mx.clear_cache()` while retaining select-time cleanup and all load/reconstruction/materialization/forward/eval/deletion semantics produced:
+- 6.997 -> 8.223 tok/s
+- +17.522% generation
+- -21.308 ms/token
 - exact parity PASS
-- peak MLX unchanged.
-
-This cleanup-consolidated S1 became the promoted fixed-activation baseline.
-
-### EMBED-EVAL-BOUNDARY 001 — NO-GO
-
-Removing post-embedding `mx.eval(h)` regressed generation by 3.346%. Retain it.
-
-### NORM-EVAL-BOUNDARY 001 — SMALL / NOT PROMOTED
-
-Removing final-norm `mx.eval(h2)` gave only +0.762% generation / -1.080 ms/token. Below the 5% material threshold. Retain it. Do not test LM-head eval without new evidence.
-
-## STREAMED-LAYER-CLEANUP-DEFER 001 — COMPLETE / MATERIAL PASS
-
-Report: `research/memory/streamed-layer-cleanup-defer-001-result.md`.
-Raw evidence: `results-local/memory/streamed-layer-cleanup-defer-001/20260822-180629/`.
-
-Both arms used promoted cleanup-consolidated S1:
-- layers 0..34 persistent;
-- layer 35 streamed;
-- shared stages persistent;
-- persistent raw `3,499,501,056 B`;
-- logical streaming `84,427,264 B/token`;
-- embedding/norm/head evals retained;
-- only final shared cleanup retained.
-
-CONTROL retained layer-35 post-forward cleanup.
-
-TREATMENT kept select-time cleanup, load/select/reconstruction/materialization/forward/eval and transient deletion/release identical, but omitted exactly one layer-local post-forward `gc.collect()` and one `mx.clear_cache()` per generated token, deferring reclamation to the existing final post-head cleanup.
-
-Pooled ABBA:
-- CONTROL: 6.997 tok/s; 142.918 ms/token; E2E 6.135; median TTFT 1.274 s
-- TREATMENT: 8.223 tok/s; 121.610 ms/token; E2E 7.101; median TTFT 1.203 s
-
-Causal effect:
-- generation **+17.522%**
-- E2E **+15.750%**
-- wall/token **-21.308 ms (-14.910%)**
-- TTFT **-5.566%**
-- peak active delta `0 B`
-- observed peak active+cache delta `0 B`
-- free-floor delta `-1 pp`
-- peak swap delta `-25.81 MB`
-- exact parity PASS
+- peak active delta 0 B
+- observed peak active+cache delta 0 B
 - no resource aborts.
 
-The removed 21.308 ms/token is ~54.64% of the historical ~39 ms/layer reference, contextual only. No internal attribution to Python GC, MLX allocator, Metal, CPU or I/O is claimed; physical SSD traffic remains unproven.
+Deferred post-forward streamed-layer cleanup is promoted.
 
-Decision: promote deferred post-forward streamed-layer cleanup for further marginal-lifecycle research.
+## STREAMED-LAYER-GRADIENT002 — COMPLETE
 
-## Exact next step — STREAMED-LAYER-GRADIENT 002
+Report: `research/memory/streamed-layer-gradient-002-result.md`.
+Raw evidence: `results-local/memory/streamed-layer-gradient-002/20260822-181943/`.
 
-Frozen plan: `research/memory/streamed-layer-gradient-002-plan.md`.
+Frozen improved lifecycle: shared stages persistent; explicit shared evals retained; intermediate shared cleanup absent; select-time cleanup retained per streamed layer; streamed-layer post-forward GC/cache cleanup omitted; transient modules/values deleted; one final post-head cleanup/token.
 
-Remeasure S0/S1/S2/S4 under the promoted lifecycle:
-- shared stages persistent;
-- embedding/norm/head evals retained;
-- post-embedding/post-norm shared cleanup absent;
-- streamed-layer select-time cleanup unchanged;
-- streamed-layer deletion/release unchanged;
-- streamed-layer post-forward GC/cache cleanup omitted for every streamed layer;
-- exactly one final post-head cleanup/token.
+Pooled:
 
-Use balanced order `S0 -> S4 -> S2 -> S1 -> S1 -> S2 -> S4 -> S0`, exact token parity, first three REALGEN prompts and low-overhead telemetry.
+| Arm | Streamed layers | Tok/s | Wall/token | Peak active B | Min free |
+|---|---:|---:|---:|---:|---:|
+| S0 | 0 | 11.101 | 90.078 ms | 3,806,718,372 | 23% |
+| S1 | 1 | 8.037 | 124.425 ms | 3,633,031,420 | 20% |
+| S2 | 2 | 6.546 | 152.775 ms | 3,548,604,156 | 15% |
+| S4 | 4 | 5.015 | 199.383 ms | 3,379,749,628 | 23% |
 
-Primary question: does the speed gain scale across 2 and 4 streamed layers without unacceptable transient active+cache/free/swap accumulation? Measure the new marginal slope before changing another mechanism.
+All arms 2/2 valid; exact parity PASS; no resource aborts. Deferred cleanup remained SAFE through four streamed layers.
 
-## Behavioral-freedom / Heretic requirement — FROZEN, NOT ACTIVE YET
+New marginal penalties:
+- S1-S0 +34.347 ms/layer
+- S2-S1 +28.350 ms/layer
+- S4-S2 +23.304 ms/layer
 
-Every final promoted LOOM model must eventually pass a behavioral-edit stage reducing unwanted refusal/alignment behavior while preserving measured capability and resource viability.
+Mean 28.667 ms/layer. Linear descriptive slope 26.954 ms/layer, R² 0.991260.
 
-Accepted routes:
-- Heretic directly where licensing/backend fit is acceptable; or
-- a LOOM-native clean implementation of the same general contrastive residual-direction / low-rank editing primitive.
+Two-component descriptive fit:
+`wall/token ≈ 90.078 + 11.043*I(streaming_active) + 24.746*N_streamed_layers` ms, R² 0.998866.
 
-Initial future checkpoint: `STREAMING_RESIDUAL_MEAN_PARITY` before any model editing.
+Interpretation: `DEFERRED_STREAM_LAYER_COST_FIXED_OR_NONLINEAR`. Marginal cost declines as more streamed layers are added. Cross-experiment comparison to Gradient001 is contextual only.
+
+## Exact next step — SELECT-TIME-GC-DEFER001
+
+Frozen plan: `research/memory/select-time-gc-defer-001-plan.md`.
+
+Use promoted S1 with one streamed layer and deferred post-forward cleanup.
+
+CONTROL retains the remaining select-time `gc.collect()` after `mx.load`/tensor selection and deletion/release of the full loaded weight container.
+
+TREATMENT keeps deletion/release at the identical point but omits/defer only that select-time `gc.collect()`. No other lifecycle, residency, I/O, eval, model-math or cleanup factor changes.
+
+Run low-overhead ABBA with exact token parity and first three REALGEN prompts. Measure speed plus active/cache/free/swap. If material, remeasure gradient before moving to prefetch/buffering/I-O work.
+
+## Behavioral-freedom / Heretic requirement — FROZEN, NOT ACTIVE
+
+Every final promoted LOOM model must eventually pass behavioral editing/decensoring validation with capability/resource preservation. Initial future checkpoint: `STREAMING_RESIDUAL_MEAN_PARITY` before model editing.
 
 ## Later
 
-1. STREAMED-LAYER-GRADIENT 002
-2. select the next marginal per-layer mechanism only from the new slope/resource evidence
-3. candidates: select-time cleanup, scheduling/prefetch, buffering/grouping, reconstruction/materialization reuse, source I/O only when evidenced
-4. OUTCORE-BLOCK 001 where justified
+1. SELECT-TIME-GC-DEFER001
+2. remeasure gradient if material
+3. next evidence-selected marginal mechanism: scheduling/prefetch, buffering/grouping, reconstruction/materialization reuse, source I/O only if evidenced
+4. OUTCORE-BLOCK001 where justified
 5. representation work where justified
 6. scale toward 27B/32B full-parameter-count execution
 7. capability comparison for promoted behavior-affecting systems
-8. Heretic-derived / LOOM-native decensoring validation before final model promotion
+8. Heretic-derived / LOOM-native decensoring validation before final promotion
 
 ## Local-only warning
 
-Experimental runners/raw evidence generally remain local unless explicitly synchronized. Pi focuses on code/tests; ChatGPT owns project-state documentation and GitHub administration.
+Experimental runners/raw evidence generally remain local unless explicitly synchronized. Pi focuses on code/tests; ChatGPT owns GitHub research documentation and GitHub administration.
