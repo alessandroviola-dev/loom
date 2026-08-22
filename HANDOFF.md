@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-22
-Status: ACTIVE — streamed transformer cost gradient
+Status: ACTIVE — streaming activation audit
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `SHARED_STAGE_RESIDENCY_001_COMPLETE`
-Next: `STREAMED_LAYER_GRADIENT_001`
+Current checkpoint: `STREAMED_LAYER_GRADIENT_001_COMPLETE`
+Next: `STREAMING_ACTIVATION_AUDIT_001`
 
 Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual reports.
 
@@ -34,84 +34,77 @@ Stable Pi bridge published at `4d204471aedb9262ccaa3b86f29b0e344d0c2884` with ow
 
 ## MEMORY-FRONTIER 001 — COMPLETE
 
-Report: `research/memory/memory-frontier-001-result.md`.
+Exact real-M1 parity passed for FULL/H32/H24/H16/H8. Naive synchronous partial residency is memory-effective but far too slow.
 
-Exact real-M1 parity passed for FULL/H32/H24/H16/H8 and no resource aborts.
-
-| Config | Resident fraction | Gen tok/s | Peak MLX |
-|---|---:|---:|---:|
-| F0 FULL | 100.00% | 13.433 | 3,621,677,296 B |
-| F1 H32 | 75.38% | 2.527 | 2,756,903,152 B |
-| F2 H24 | 56.54% | 1.168 | 2,081,485,040 B |
-| F3 H16 | 37.69% | 0.526 | 1,406,066,928 B |
-| F4 H8 | 18.85% | 0.435 | 730,648,816 B |
-
-Naive synchronous streaming is correctness-valid and memory-effective but far too slow.
+Pooled points:
+- F0 FULL: 13.433 tok/s; peak MLX 3,621,677,296 B
+- F1 H32: 2.527 tok/s; peak 2,756,903,152 B
+- F2 H24: 1.168 tok/s
+- F3 H16: 0.526 tok/s
+- F4 H8: 0.435 tok/s
 
 ## STREAMING-ATTRIBUTION 001 — PARTIAL
 
-Report: `research/memory/streaming-attribution-001-result.md`.
-
-Classification `STREAMING_ATTRIBUTION_001_PARTIAL`; bottleneck `ATTRIBUTION_UNRESOLVED`.
-
-Tracing preserved parity but slowed F1 from historical 2.527 tok/s to ~1.703 tok/s, preventing a clean internal bottleneck claim. The trace nevertheless identified embedding and LM head as large system-level hotspots. Physical SSD traffic remains unproven.
+Exact parity passed, but invasive tracing slowed F1 by ~32.6%, so the internal dominant mechanism remained unresolved. Physical SSD traffic remains unproven.
 
 ## SHARED-STAGE-RESIDENCY 001 — COMPLETE
 
-Report: `research/memory/shared-stage-residency-001-result.md`.
-Raw local evidence: `results-local/memory/shared-stage-residency-001/20260822-162744/`.
+Persisting embedding/final norm/LM head while leaving layers 32..35 streamed produced:
+- generation 2.532 -> 3.459 tok/s = +36.66%
+- E2E +34.80%
+- TTFT -13.34%
+- exact parity PASS
+- logical stream 882,255,872 -> 337,709,056 B/token
+- treatment still saves 337,709,056 B persistent/peak versus FULL.
 
-One-factor ABBA test on F1/H32:
+Conclusion: shared-stage streaming was materially wasteful; shared stages should be treated as hot in the current hierarchy.
 
-CONTROL:
-- layers 0..31 persistent
-- layers 32..35 streamed
-- embedding/final norm/LM head streamed
-- 2.532 real tok/s
-- peak MLX 2,739,421,424 B
-- logical streamed 882,255,872 B/token
+## STREAMED-LAYER-GRADIENT 001 — COMPLETE
 
-TREATMENT:
-- identical transformer residency
-- layers 32..35 still streamed identically
-- embedding/final norm/LM head persistent
-- 3.459 real tok/s
-- peak MLX 3,283,968,240 B
-- logical streamed 337,709,056 B/token
+Report: `research/memory/streamed-layer-gradient-001-result.md`.
+Raw local evidence: `results-local/memory/streamed-layer-gradient-001/20260822-165032/`.
 
-Causal treatment effect:
-- generation **+36.66%**
-- E2E **+34.80%**
-- TTFT **-13.34%**
-- peak MLX +544,546,816 B
-- exact token parity PASS
-- no resource aborts
+All shared stages persistent. Only streamed transformer-layer count varied.
 
-The treatment still saves 337,709,056 B persistent raw weights / peak MLX versus F0 but retains only 25.75% of F0 generation throughput.
+| Arm | Streamed layers | Gen tok/s | Wall/token | Peak MLX B |
+|---|---:|---:|---:|---:|
+| S0 | 0 | 14.022271 | 71.315 ms | 3,621,677,296 |
+| S1 | 1 | 5.819925 | 171.824 ms | 3,537,250,032 |
+| S2 | 2 | 4.755397 | 210.287 ms | 3,452,822,768 |
+| S4 | 4 | 3.463355 | 288.737 ms | 3,283,968,240 |
 
-Conclusion: repeated shared-stage streaming is a material addressable cost, but it is not sufficient to explain the F1 slowdown. After shared stages are made persistent, the remaining intentional residency difference versus FULL is the four streamed transformer layers 32..35.
+All arms 2/2 valid, exact token parity PASS, no resource aborts.
 
-## Exact next step — STREAMED-LAYER-GRADIENT 001
+Observed marginal penalties:
+- first streamed layer: +100.508 ms/token
+- second: +38.464 ms/token
+- layers 3–4: +39.225 ms/token/layer
 
-Frozen plan: `research/memory/streamed-layer-gradient-001-plan.md`.
+Classification: `STREAM_LAYER_COST_FIXED_OR_NONLINEAR`.
 
-Low-overhead causal gradient with all shared stages persistent:
-- S0: 0 streamed transformer layers / FULL residency
-- S1: layer 35 streamed
-- S2: layers 34..35 streamed
-- S4: layers 32..35 streamed
+A descriptive two-component fit explains the four pooled points almost exactly:
 
-Two fresh runs/arm in symmetric order `S0 -> S4 -> S2 -> S1 -> S1 -> S2 -> S4 -> S0`, first three REALGEN prompts, exact token parity, no invasive tracing.
+`wall/token ≈ 71.315 ms + 61.284 ms * I(streaming active) + 39.007 ms * N_streamed_layers`
 
-Measure marginal ms/token per streamed layer and classify whether residual stream cost is approximately additive or fixed/nonlinear. This decides whether the first optimization should target the per-layer lifecycle itself or a larger fixed orchestration/scheduling component.
+with `R² ≈ 0.999993`.
 
-Do not begin prefetch, buffering, range-I/O or OUTCORE-BLOCK inside this gradient.
+This is not yet an internal causal decomposition. It says there is a strong once-per-token activation/fixed term plus a stable marginal per-layer term.
+
+## Exact next step — STREAMING-ACTIVATION-AUDIT 001
+
+Frozen plan: `research/memory/streaming-activation-audit-001-plan.md`.
+
+Perform a low-cost source/control-flow audit comparing S0 and S1. Enumerate operations executed once per generated token only when the streamed-layer set is non-empty, separately from per-streamed-layer operations. Verify invocation counts statically or with low-overhead counters only.
+
+Inspect especially loader/context lifecycle, safetensors/file handle work, parameter rebinding, materialization/sync boundaries, allocator/cache cleanup, explicit release/GC and token-level stream hooks.
+
+Do not optimize yet. The audit must identify an isolatable candidate for the ~61 ms activation term before the next one-factor causal A/B.
 
 ## Later
 
-1. STREAMED-LAYER-GRADIENT 001
-2. first evidence-selected transformer streaming treatment
-3. further overlap/range-I/O/materialization work as justified
+1. STREAMING-ACTIVATION-AUDIT 001
+2. one-factor treatment of the strongest isolatable fixed-cost candidate
+3. reduce/hide the ~39 ms/layer marginal stream cost
 4. OUTCORE-BLOCK 001 where justified
 5. representation work where justified
 6. scale toward 27B/32B full-parameter-count execution
