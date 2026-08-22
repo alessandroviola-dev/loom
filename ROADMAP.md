@@ -6,7 +6,17 @@ Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880
 
 ## Mission
 
-Run excellent full-parameter-count LLMs on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models. Judge major directions on memory, speed and capability.
+Run excellent full-parameter-count LLMs on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models. Judge major directions on four axes:
+
+1. memory / residency;
+2. speed / usability;
+3. practical capability;
+4. behavioral freedom / decensoring.
+
+A final promoted LOOM-produced model must include a validated decensored behavioral profile using Heretic or a LOOM-native independently implemented equivalent. This is a later promotion requirement and does not change the current memory/runtime research order.
+
+Frozen project requirement:
+`research/behavior/decensoring-requirement-v1.md`
 
 Pi is reserved for code/tests. ChatGPT owns research direction and repository/project synchronization.
 
@@ -126,6 +136,30 @@ OUTCORE-BLOCK 001 remains a later candidate for amortizing streamed weights acro
 5. first major scale checkpoint: ~27B/32B-class full-parameter model produces correct tokens on M1 8 GB without OOM
 6. optimize toward usable speed and measure capability
 
+## K — Behavioral freedom / decensoring — REQUIRED BEFORE FINAL PROMOTION
+
+Source engineering reference:
+- audited Heretic snapshot `p-e-w/heretic@bedb94ef117a271532ac2058447fbc165d5051bd`
+- project research note `LOOM_HERETIC_TECHNICAL_PAPER.md`
+- frozen requirement `research/behavior/decensoring-requirement-v1.md`
+
+LOOM treats the transferable Heretic primitive as contrastive residual-direction model editing with reversible low-rank intervention and multi-objective preservation evaluation.
+
+Accepted implementation:
+- Heretic directly when licensing/backend constraints are acceptable; or
+- a clean LOOM-native equivalent, preferred when AGPL compatibility matters.
+
+Initial future research sequence:
+1. `STREAMING_RESIDUAL_MEAN_PARITY`
+2. direction reproducibility/stability
+3. global vs per-layer / architecture mapping where justified
+4. reversible low-rank transform validation
+5. behavior-change vs sequence/task/capability preservation
+6. resource cost of the edit on constrained hardware
+7. freeze a decensored profile only after preservation/resource gates pass.
+
+A final LOOM artifact is not promoted solely because it fits, is fast or has higher capability: its decensored profile must also be validated without unacceptable collateral capability loss.
+
 ## Immediate order
 
 1. NORM-EVAL-BOUNDARY 001
@@ -135,6 +169,7 @@ OUTCORE-BLOCK 001 remains a later candidate for amortizing streamed weights acro
 5. representation work where justified
 6. scale toward 27B/32B
 7. capability comparison for promoted behavior-affecting systems
+8. Heretic-derived / LOOM-native decensoring stage and validation before final model promotion
 
 ## Local-only implementation warning
 
