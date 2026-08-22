@@ -12,7 +12,19 @@ Historical detailed state through REALGEN 002 is preserved at commit `844325f63b
 
 ## Mission
 
-**Big models. Small machines.** Run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models, balancing memory, speed and capability.
+**Big models. Small machines.** Run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models, jointly balancing:
+
+1. memory / residency;
+2. speed / usability;
+3. practical capability;
+4. behavioral freedom / decensoring.
+
+A final promoted LOOM-produced LLM must also have a validated decensored behavioral profile produced through the Heretic approach or a LOOM-native independently implemented equivalent. Behavioral editing is a later promotion/release requirement and does **not** alter the current memory/runtime research sequence.
+
+Frozen requirement:
+`research/behavior/decensoring-requirement-v1.md`
+
+Source research is based on the audited Heretic snapshot `p-e-w/heretic@bedb94ef117a271532ac2058447fbc165d5051bd`. Heretic is treated primarily as a generic contrastive residual-direction / low-rank behavioral editing framework, not merely as a prompt jailbreak. Because the audited repository is AGPL-3.0-or-later, a clean LOOM-native implementation is preferred where licensing compatibility matters.
 
 ## Operating split
 
@@ -126,15 +138,34 @@ TREATMENT removes/defers only that final-norm eval. The downstream LM-head `mx.e
 
 Run low-overhead ABBA with exact token parity and the first three REALGEN prompts. If this is also small/no-go, the fixed eval-boundary axis should be close to closure and work should move toward the measured marginal per-layer lifecycle.
 
+## Behavioral-freedom / Heretic requirement — FROZEN, NOT ACTIVE YET
+
+Every final promoted LOOM model must eventually pass a behavioral-edit stage intended to reduce unwanted refusal/alignment behavior while preserving measured capability and resource viability.
+
+Accepted routes:
+- use Heretic directly where licensing/backend fit is acceptable; or
+- build a LOOM-native clean implementation of the same general research primitive.
+
+Important source-derived design lessons to preserve when that phase begins:
+- compute residual statistics in streaming/bounded-memory form;
+- keep sensitive geometry in FP32/FP64 even when base weights are quantized;
+- represent trial edits reversibly through low-rank adapters;
+- optimize behavior change jointly with preservation/resource metrics;
+- do not use keyword refusal rate or first-token KL as sole final validation;
+- freeze model/dataset revisions, seed, code/environment provenance and output evidence.
+
+Initial future checkpoint on this axis should be `STREAMING_RESIDUAL_MEAN_PARITY`, not immediate model editing.
+
 ## Later
 
 1. NORM-EVAL-BOUNDARY 001
-2. only one more fixed-boundary treatment if strongly justified
+2. close fixed activation unless new evidence strongly justifies another boundary test
 3. reduce/hide the ~39 ms/layer marginal streamed-layer lifecycle
 4. OUTCORE-BLOCK 001 where justified
 5. representation work where justified
 6. scale toward 27B/32B full-parameter-count execution
 7. capability comparison for promoted behavior-affecting systems
+8. Heretic-derived / LOOM-native behavioral editing and decensoring validation before final model promotion
 
 ## Local-only warning
 
