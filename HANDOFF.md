@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-22
-Status: ACTIVE — fixed stream-activation cleanup treatment
+Status: ACTIVE — fixed stream-activation eval-boundary isolation
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STREAMING_ACTIVATION_AUDIT_001_COMPLETE`
-Next: `SHARED_CLEANUP_CONSOLIDATION_001`
+Current checkpoint: `SHARED_CLEANUP_CONSOLIDATION_001_COMPLETE`
+Next: `EMBED_EVAL_BOUNDARY_001`
 
 Historical detailed state through REALGEN 002 is preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual reports.
 
@@ -32,20 +32,15 @@ ChatGPT: experiment design/review, GitHub synchronization, HANDOFF/ROADMAP and r
 
 Stable Pi bridge published at `4d204471aedb9262ccaa3b86f29b0e344d0c2884`.
 
-## Memory/residency findings
+## Memory/residency sequence
 
-MEMORY-FRONTIER 001 proved exact real-M1 partial residency but naive synchronous streaming is too slow:
-- FULL 13.433 tok/s
-- H32 2.527
-- H24 1.168
-- H16 0.526
-- H8 0.435
+MEMORY-FRONTIER 001 proved exact real-M1 partial residency but naive synchronous streaming is too slow: FULL 13.433 tok/s; H32 2.527; H24 1.168; H16 0.526; H8 0.435.
 
-SHARED-STAGE-RESIDENCY 001 then showed that embedding/final norm/LM head should remain hot: making only those shared stages persistent recovered +36.66% generation throughput with exact parity.
+SHARED-STAGE-RESIDENCY 001 established the first hierarchy rule: embedding/final norm/LM head should remain hot. Making only those shared stages persistent recovered +36.66% generation throughput with exact parity.
 
 ## STREAMED-LAYER-GRADIENT 001 — COMPLETE
 
-With all shared stages persistent:
+All shared stages persistent; streamed transformer count 0/1/2/4:
 
 | Arm | Streamed layers | Gen tok/s | Wall/token |
 |---|---:|---:|---:|
@@ -56,67 +51,71 @@ With all shared stages persistent:
 
 Exact parity PASS everywhere; no resource aborts.
 
-Marginals:
-- first streamed layer +100.508 ms/token
-- second +38.464 ms
-- layers 3–4 +39.225 ms/layer
-
-Interpretation: `STREAM_LAYER_COST_FIXED_OR_NONLINEAR`.
-
 Descriptive model:
 `wall/token ≈ 71.315 + 61.284*I(streaming active) + 39.007*N_streamed_layers` ms, R²≈0.999993.
 
-The fixed and marginal terms are system-level descriptions, not internal causal attribution.
+This is system-level description, not internal causal attribution.
 
 ## STREAMING-ACTIVATION-AUDIT 001 — COMPLETE
 
-Report: `research/memory/streaming-activation-audit-001-result.md`.
-Raw local evidence: `results-local/memory/streaming-activation-audit-001/20260822-170803/`.
-
-Source/control-flow audit found strict once-per-token, non-scaling streaming-only operations:
-- embedding stage-local `mx.eval`;
-- post-embedding `gc.collect()/mx.clear_cache()` cleanup;
-- norm stage-local `mx.eval`;
-- post-norm cleanup;
-- LM-head stage-local `mx.eval`;
-- final post-head cleanup;
+Source audit found stream-only once-per-token non-scaling work:
+- explicit embedding/norm/head `mx.eval` boundaries;
+- post-embedding/post-norm/post-head shared cleanup;
 - stream-region bookkeeping.
 
-Per-streamed-layer lifecycle scales exactly 1/2/4 across S1/S2/S4:
-- `mx.load` + selection;
-- select-time deletion/GC;
-- transient block construction/quantized parameter rebinding;
-- parameter materialization;
-- streamed forward/eval;
-- transient release + GC/cache clear.
+Per-layer load/select/reconstruction/materialization/forward/release scales exactly with streamed-layer count.
 
-Top fixed-cost candidates:
-1. three shared-stage cleanup sequences — HIGH;
-2. three shared-stage eval boundaries — HIGH;
-3. final cleanup alone — MEDIUM.
+Top fixed-cost candidates were shared-stage cleanup and shared-stage eval boundaries.
 
-Historical LOOM context strengthens cleanup cadence as the first treatment: Stretch 025 batching transformer cleanup gave ~3.86x on its frozen path; Stretch 026 shared-stage cleanup consolidation gave +14.11%; Stretch 027 one final cleanup gave +8.67%. These values are contextual only, not transferred causal effects.
+## SHARED-CLEANUP-CONSOLIDATION 001 — COMPLETE
 
-## Exact next step — SHARED-CLEANUP-CONSOLIDATION 001
+Report: `research/memory/shared-cleanup-consolidation-001-result.md`.
+Raw local evidence: `results-local/memory/shared-cleanup-consolidation-001/20260822-172422/`.
 
-Frozen plan: `research/memory/shared-cleanup-consolidation-001-plan.md`.
+Exact S1 residency in both arms:
+- layers 0..34 persistent;
+- layer 35 streamed;
+- shared stages persistent;
+- persistent raw weights 3,499,501,056 B;
+- 84,427,264 logical streamed B/token.
 
-Use S1 only: layers 0..34 persistent, layer 35 streamed, all shared stages persistent.
+CONTROL retained post-embedding, layer-35, post-norm and post-head cleanup.
 
-CONTROL: exact current S1 lifecycle.
+TREATMENT removed only the two intermediate shared-stage cleanup sequences; layer-35 cleanup, final post-head cleanup and all explicit `mx.eval` calls remained unchanged.
 
-TREATMENT changes only shared-stage cleanup cadence:
-- keep embedding `mx.eval`, omit/defer post-embedding cleanup;
-- leave layer-35 streaming and its cleanup unchanged;
-- keep norm `mx.eval`, omit/defer post-norm cleanup;
-- keep head `mx.eval` and retain exactly one final post-head shared cleanup.
+Pooled:
+- CONTROL 5.643 tok/s; 177.226 ms/token; E2E 5.047; TTFT 1.336 s
+- TREATMENT 7.065 tok/s; 141.548 ms/token; E2E 6.206; TTFT 1.228 s
 
-Run low-overhead contemporaneous ABBA with exact token parity and the first three REALGEN prompts. This directly tests the fixed non-scaling cleanup component without changing residency, source format, eval boundaries or per-layer lifecycle.
+Causal effect:
+- generation **+25.206%**
+- E2E **+22.960%**
+- wall/token **-35.678 ms (-20.131%)**
+- TTFT -8.080%
+- peak MLX delta 0 B
+- exact parity PASS everywhere
+- no resource aborts.
+
+The removed 35.678 ms/token is ~58.22% of the prior descriptive ~61.284 ms fixed term, contextual only.
+
+Conclusion: shared-stage cleanup cadence is causally a material part of fixed stream activation. No internal subsystem timing claim is made; physical SSD traffic remains unproven.
+
+## Exact next step — EMBED-EVAL-BOUNDARY 001
+
+Frozen plan: `research/memory/embed-eval-boundary-001-plan.md`.
+
+Use the successful cleanup-consolidated S1 as both-arm baseline.
+
+CONTROL retains the explicit `mx.eval(h)` immediately after persistent embedding.
+
+TREATMENT removes/defers only this one eval boundary. The first transformer block keeps its existing output eval, all other evals/cleanup/layer-35 streaming/residency/I-O/model math remain identical.
+
+Run low-overhead ABBA, exact parity, first three REALGEN prompts. This tests whether the embedding eval boundary is part of the remaining fixed activation cost without changing per-layer streaming.
 
 ## Later
 
-1. SHARED-CLEANUP-CONSOLIDATION 001
-2. if needed, isolate shared-stage eval-boundary cost
+1. EMBED-EVAL-BOUNDARY 001
+2. isolate remaining shared eval boundaries only if justified
 3. reduce/hide the ~39 ms/layer marginal streamed-layer lifecycle
 4. OUTCORE-BLOCK 001 where justified
 5. representation work where justified
