@@ -1,154 +1,131 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-23
-Current checkpoint: `SELECT_TIME_GC_DEFER_001_COMPLETE`
-Detailed history through REALGEN002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
+Current checkpoint: `STREAMED_BLOCK_REUSE_AUDIT_001_COMPLETE`
+Strategic next: `QWEN3_30B_A3B_EXTERNAL_EXPERT_FEASIBILITY_001`
 
 ## Mission
 
-Run excellent full-parameter-count LLMs on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models. Judge major directions on four axes:
-1. memory / residency;
-2. speed / usability;
-3. practical capability;
-4. behavioral freedom / decensoring.
+Run ~27B/32B-class local AI on Apple M1 / 8 GB while balancing memory/residency, speed/usability, practical capability and behavioral freedom/decensoring.
 
-Final promoted LOOM models require a validated decensored behavioral profile using Heretic or a LOOM-native independent equivalent. Frozen requirement: `research/behavior/decensoring-requirement-v1.md`.
+Final promoted models require validated decensoring via Heretic or a clean LOOM-native equivalent: `research/behavior/decensoring-requirement-v1.md`.
 
-Pi is reserved for code/tests. ChatGPT owns research direction and repository/project synchronization.
+## A — Dense Qwen3-8B laboratory — RETAINED
 
-## A — Capability baseline — COMPLETE
+Dense experiments established exact partial residency and several lifecycle rules:
+- shared stages should stay resident;
+- shared intermediate cleanup consolidation materially helps;
+- streamed post-forward cleanup defer materially helps and is safe through four streamed layers;
+- select-time GC removal is NO-GO;
+- shared eval removal is not a useful axis.
 
-CAPABILITY001:
-- practical-agent 1/11 = 9.09%
-- Coding Benchmark 45/100
-- critical failures 0.
+Gradient002 under the promoted lifecycle:
+- S0 11.101 tok/s / 90.078 ms
+- S1 8.037 / 124.425 ms
+- S2 6.546 / 152.775 ms
+- S4 5.015 / 199.383 ms
 
-## B — Memory frontier — COMPLETE
+Descriptive fit: `90.078 + 11.043*I(streaming) + 24.746*N` ms/token.
 
-Exact partial residency works. Shared-stage residency established embedding/final norm/LM head as hot/persistent.
+Dense research remains the controlled MLX implementation lab; it is no longer assumed to be the final 32B architecture.
 
-## C — Fixed stream activation — CLOSED
+## B — STREAMED-BLOCK-REUSE-AUDIT001 — COMPLETE
 
-Old Gradient001 descriptive model:
-`71.315 + 61.284*I(streaming) + 39.007*N` ms/token.
+A weightless reusable Qwen3/quantized topology shell is mechanically possible with zero retained native parameter bytes, but the current strict MLX binding path requires existing parameter leaves. A construction-only one-factor A/B is therefore invalid without changing binding semantics.
 
-Shared intermediate cleanup consolidation: +25.206% generation / -35.678 ms/token, promoted.
+Decision: close this micro-route on the present runtime.
 
-Embedding eval removal: NO-GO.
-Norm eval removal: SMALL / not promoted.
+## C — High-leverage architecture branch — ACTIVE
 
-## D — Marginal streamed-layer lifecycle — ACTIVE
+Research note: `research/architecture/high-leverage-architecture-exploration-001.md`.
 
-### Post-forward layer cleanup defer — MATERIAL PASS
+### C1 — Sparse MoE / external experts — HIGHEST PRIORITY
 
-Exact S1 one-factor A/B:
-- 6.997 -> 8.223 tok/s
-- +17.522%
-- -21.308 ms/token
-- exact parity PASS
-- no resource aborts.
+Qwen3-30B-A3B directly matches the scale target: 30.5B total / ~3.3B active per token, 128 routed experts / 8 active.
 
-Promoted.
+Relevant systems: PowerInfer/PowerInfer-2, EdgeMoE, MoE-Infinity, Fiddler, KTransformers.
 
-### STREAMED-LAYER-GRADIENT002 — COMPLETE
+Core hypothesis: keep dense/shared backbone and hot experts resident; place cold experts lower in the hierarchy; predict/cache/prefetch only activated experts; consider moving activations to compute near resident expert data when cheaper than moving weights.
 
-Under promoted deferred post-forward cleanup:
+### C2 — Neuron/cluster-level conditional loading
 
-| Streamed layers | Tok/s | Wall/token | Min free |
-|---:|---:|---:|---:|
-| 0 | 11.101 | 90.078 ms | 23% |
-| 1 | 8.037 | 124.425 ms | 20% |
-| 2 | 6.546 | 152.775 ms | 15% |
-| 4 | 5.015 | 199.383 ms | 23% |
+Relevant: DejaVu, PowerInfer-2, `LLM in a Flash`.
 
-Exact parity PASS, no aborts, resource-safe through S4.
+Potential LOOM implication: whole transformer layers are too coarse as an I/O unit. Future storage may need expert/neuron-cluster layout, contiguous flash reads and activation-aware caching.
 
-Marginals decline 34.347 -> 28.350 -> 23.304 ms/layer.
+### C3 — Multi-token/block amortization
 
-Descriptive two-component fit:
-`90.078 + 11.043*I(streaming_active) + 24.746*N` ms/token, R² 0.998866.
+Relevant: Multi-token Prediction, Medusa, EAGLE, Lookahead Decoding.
 
-### SELECT-TIME-GC-DEFER001 — COMPLETE / NO-GO
+Out-of-core implication: reduce full model/expert sweeps per accepted output token. Existing `OUTCORE-BLOCK` concept moves upward in strategic importance.
 
-Report: `research/memory/select-time-gc-defer-001-result.md`.
+### C4 — Recursive/shared-weight architectures
 
-Removing only the remaining select-time `gc.collect()` on promoted S1 while preserving deletion/ownership and all other behavior produced:
-- CONTROL 8.293 tok/s, 120.577 ms/token
-- TREATMENT 7.767 tok/s, 128.754 ms/token
-- generation **-6.351%**
-- E2E **-5.752%**
-- TTFT **+15.374%**
-- free floor 19% -> 11%
-- exact parity PASS
-- peak active/active+cache unchanged
-- no aborts.
+Mixture-of-Recursions combines shared weights with adaptive recursive depth. This is a candidate if LOOM eventually trains/builds a new architecture rather than adapting conventional pretrained dense models.
 
-Decision: retain select-time GC. Cleanup cadence is exhausted as an optimization axis on the current implementation.
+### C5 — External learned memory
 
-## E — STREAMED-BLOCK-REUSE-AUDIT001 — NEXT
+Memory Layers at Scale, RETRO and Memorizing Transformers suggest replacing some dense parametric memory with sparsely accessed external learned/retrieval memory.
 
-Frozen plan: `research/memory/streamed-block-reuse-audit-001-plan.md`.
+### C6 — Recurrent/SSM resident core
 
-Source/lifetime audit of the current streamed layer path. Separate:
-- source load/selection;
-- weight-independent module/block construction;
-- quantized-structure setup;
-- current-weight binding;
-- parameter materialization;
-- forward;
-- ownership release.
+Mamba/Mamba-2, Griffin/RecurrentGemma and RWKV can reduce state/KV costs and may be suitable cores for a sparse/external-memory LOOM architecture.
 
-Question: can only the **weight-independent block/quantized structure** be retained across tokens while current streamed weights are still reloaded, rebound, materialized and fully detached every token?
+## D — QWEN3_30B_A3B_EXTERNAL_EXPERT_FEASIBILITY001 — NEXT
 
-Requirements for any future treatment:
-- no streamed layer weight survives across tokens;
-- persistent raw-weight accounting unchanged;
-- 84,427,264 B/token logical streaming unchanged on S1;
-- same source/load and forward math;
-- exact parity preserved.
+Do anatomy/traffic modeling before attempting inference:
+1. exact dense/shared bytes;
+2. expert bytes per layer;
+3. active expert bytes/token;
+4. expected quantized storage footprint;
+5. naive NVMe bandwidth lower bound;
+6. expert-routing temporal locality and cacheability;
+7. feasible hot-expert cache sizes inside 8 GB;
+8. route-prediction/prefetch opportunity;
+9. whole-expert vs neuron-cluster I/O granularity.
 
-Audit first; do not benchmark the treatment until ownership/lifetime safety is proven.
+The result should decide whether Qwen3-30B-A3B can become the first real ~30B LOOM target.
 
-## F — Next marginal mechanisms
+## E — If external-expert feasibility passes
 
-Routing after the audit:
-- if structure reuse is cleanly isolatable -> one-factor reuse A/B;
-- if not -> move to scheduling/asynchronous prefetch or buffering/grouping;
-- reconstruction/materialization reuse only with exact residency proof;
-- source-range I/O/mmap/pread only if source-access evidence becomes strong;
-- physical SSD dominance remains unproven.
+1. capture real expert activation traces;
+2. model hot/cold distribution and temporal locality;
+3. design segmented expert cache;
+4. predict/prefetch future expert sets;
+5. evaluate contiguous flash representation;
+6. combine with multi-token/block verification to amortize I/O;
+7. measure real 30B capability/speed/memory.
 
-## G — OUTCORE-BLOCK / representation
+## F — If existing MoE is insufficient
 
-OUTCORE-BLOCK001 remains a later candidate for amortizing streamed weights over multiple exact-valid positions. Representation work may include mixed/selective precision, compressed cold weights and KV changes while preserving full parameter count.
+Begin model-system co-design research:
+- sparse neuron clusters by construction;
+- recursive/shared layer stacks;
+- learned external memory;
+- recurrent/SSM resident core;
+- multi-token output heads;
+- storage layout designed together with routing.
 
-## H — Scale beyond 8B
+## G — Promotion gates
 
-1. reduce remaining per-layer streamed lifecycle cost
-2. establish a stronger exact 8B RAM/speed point
-3. transfer architecture beyond comfortable physical RAM
-4. first major scale checkpoint: ~27B/32B full-parameter model produces correct tokens on M1 8 GB without OOM
-5. optimize toward usable speed and measure capability.
-
-## I — Behavioral freedom / decensoring — REQUIRED BEFORE FINAL PROMOTION
-
-Reference:
-- audited Heretic snapshot `p-e-w/heretic@bedb94ef117a271532ac2058447fbc165d5051bd`
-- `research/behavior/decensoring-requirement-v1.md`.
-
-Initial future sequence begins with `STREAMING_RESIDUAL_MEAN_PARITY`, then direction stability, reversible low-rank transform validation and behavior/capability/resource preservation.
+Any promoted architecture must pass:
+- full intended model capacity represented;
+- memory/residency accounting;
+- practical generation speed;
+- capability benchmark;
+- reproducibility/exactness where applicable;
+- behavioral decensoring stage with collateral capability validation.
 
 ## Immediate order
 
-1. STREAMED-BLOCK-REUSE-AUDIT001
-2. block/quantized-structure reuse A/B if safe and isolatable
-3. otherwise next evidence-selected scheduling/prefetch/buffering mechanism
-4. OUTCORE-BLOCK001 where justified
-5. representation work
-6. scale toward 27B/32B
-7. capability comparison for promoted behavior-affecting candidates
-8. Heretic-derived / LOOM-native decensoring before final model promotion
+1. `QWEN3_30B_A3B_EXTERNAL_EXPERT_FEASIBILITY_001`
+2. expert activation trace/cache study if feasible
+3. flash-aware external-expert execution
+4. multi-token/block amortization
+5. custom LOOM architecture research if necessary
+6. capability validation
+7. decensoring validation before final promotion
 
 ## Local-only implementation warning
 
-Experimental runners/raw evidence generally remain local unless explicitly synchronized. Pi should focus on code/tests. ChatGPT owns GitHub research documentation and project-state updates.
+Experimental runners/raw evidence generally remain local unless explicitly synchronized. Pi focuses on code/tests; ChatGPT owns project-state documentation and GitHub administration.
