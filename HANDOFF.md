@@ -5,7 +5,7 @@ Status: ACTIVE — 30B MoE feasibility / sparse expert offload
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `STREAMED_BLOCK_REUSE_AUDIT_001_COMPLETE`
+Current checkpoint: `LOOM_30B_MOE_MODEL_DOWNLOADED`
 Next: `LOOM_30B_MOE_FEASIBILITY_001_STATIC`
 
 ## Mission
@@ -69,20 +69,37 @@ Verified public architecture: 30.5B total parameters, 3.3B activated, 48 layers,
 
 Frozen plan: `research/moe/loom-30b-moe-feasibility-001-plan.md`.
 
+## 30B model download — COMPLETE
+
+Local model path:
+`results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
+
+Observed local snapshot:
+- total model directory: ~15 GiB by `du`
+- 4 safetensors shards
+- shard sizes approximately 5.0 GiB, 4.9 GiB, 4.9 GiB and 260 MiB
+- internal SSD free after download: ~64 GiB
+
+No full-model inference has been attempted.
+
 ## Exact next step
 
 `LOOM_30B_MOE_FEASIBILITY_001_STATIC`
 
-1. download official MLX 4-bit snapshot to internal SSD;
-2. do NOT run full-model generation yet;
-3. parse config + safetensors index/headers without whole-model load;
-4. byte-account shared tensors, routers, one expert, full expert banks and theoretical selected-expert working set;
-5. inspect shard/range locality;
-6. decide whether an <=8 GB resident/working-set runtime is structurally plausible before implementing expert streaming.
+1. parse local `config.json`, safetensors index and tensor headers without whole-model materialization;
+2. recover exact tensor naming/layout for shared backbone, routers and routed experts;
+3. byte-account shared tensors, router tensors, one expert, expert banks by layer and full model;
+4. compute selected-expert bytes/token for top-k=8 across all MoE layers;
+5. distinguish bytes that must be resident from bytes that can remain external;
+6. inspect shard/range locality and whether one routed expert is contiguous or fragmented on disk;
+7. model 8 GB resident-cache scenarios and external bandwidth lower bounds;
+8. do not run generation and do not load the full model.
+
+Static feasibility must decide whether a real external-expert runtime is structurally plausible before implementation.
 
 ## Storage state
 
-Mac internal SSD was cleaned for the 30B phase. Historical Qwen3-4B-GGUF, Qwen3-8B-GGUF and Qwen3-8B-4bit MLX were moved to external archive. Canonical `Qwen3-8B-3bit` remains local. Latest observed internal free space before 30B download: ~79 GiB.
+Mac internal SSD was cleaned for the 30B phase. Historical Qwen3-4B-GGUF, Qwen3-8B-GGUF and Qwen3-8B-4bit MLX were moved to external archive. Canonical `Qwen3-8B-3bit` remains local. Internal free space after 30B download: ~64 GiB.
 
 ## Later if static feasibility passes
 
