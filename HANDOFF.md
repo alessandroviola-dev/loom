@@ -6,8 +6,9 @@ Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
 Current checkpoint: `LOOM_30B_MOE_PHYSICAL_IO_001_CACHE_CONTROL_INVALID`
-Active side research: `VIDEO_RESEARCH_INGEST_001` (Qwen3.8-27B / DFlash2 / Harness)
+Source review: `VIDEO_RESEARCH_INGEST_001_COMPLETE`
 Next core checkpoint: `LOOM_30B_MOE_PHYSICAL_IO_002_DEVICE_VERIFIED`
+Parallel next: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
 
 ## Mission
 
@@ -106,13 +107,47 @@ Improve instrumentation rather than merely repeating `F_NOCACHE`:
 7. measure sequential, random expert, top-k=8 and 384-read token-like workloads only after the device-I/O sanity gate passes;
 8. no generation/full model load/full pack.
 
-This should distinguish page-cache service from real block-device activity without requiring `sudo`.
+## VIDEO_RESEARCH_INGEST_001 — COMPLETE
 
-## Active source ingestion
+Local source evidence:
+`results-local/research/video-ingest/qwen38-27b-harness-001/`
 
-Pi is currently transcribing/analyzing the supplied video `Qwen3.8 27B + Harness Il Coding Agent LOCALE Definitivo.mp4` with faster-whisper under `VIDEO_RESEARCH_INGEST_001`.
+Pi transcription/visual audit found:
+- video duration ~26:58;
+- presenter machine M4 Pro with 24 GB RAM;
+- shown 27B run reached ~22.68 GB used / 95% RAM and ~7.74 GB swap;
+- baseline local llama.cpp eval around 10.5 tok/s in one run, separate Ollama run around 5.99 tok/s;
+- Qwen3.8-27B DFlash2 comparison was external M5 Max, not reproduced on presenter machine;
+- external comparison around 34 -> 70 tok/s (~2.06x);
+- video does NOT demonstrate 27B viability on M1 8 GB;
+- Harness section does not materially solve LOOM runtime constraints.
 
-The video appears potentially relevant to LOOM through DFlash2/block speculative decoding and multi-token amortization, but no roadmap promotion should occur until the transcript and visual claims are reviewed.
+Independent review confirms DFlash/block speculative decoding is real, but the strategically important discovery is an exact-target speculator:
+`RedHatAI/Qwen3-30B-A3B-speculator.dflash` for `Qwen/Qwen3-30B-A3B`.
+
+Published metadata indicates roughly:
+- ~0.7B draft parameters;
+- 5 draft layers;
+- target hidden-state taps at layers 1, 12, 23, 34, 45;
+- reported average acceptance length ~2.46–3.77 depending on task.
+
+Canonical research note:
+`research/architecture/dflash-qwen3-30b-a3b-relevance-001.md`.
+
+## DFlash relevance to external experts
+
+DFlash is NOT promoted as a memory-fit solution. It adds draft-model residency/workspace.
+
+Its potential LOOM value is expert-I/O amortization during multi-token target verification. For a verification block, the critical quantity is not automatically `8 experts × tokens`; it is the per-layer UNION of routed experts touched across all verified positions, divided by accepted output tokens.
+
+If multiple positions reuse experts, one external expert load could serve several positions in the block. If routing overlap is weak, DFlash may accelerate compute while barely reducing external expert bytes/token.
+
+This must be measured; no routing-overlap assumption is allowed.
+
+Parallel checkpoints after/alongside physical-I/O instrumentation:
+1. `LOOM_30B_DFLASH_SPECULATOR_STATIC_001` — exact draft stored/resident footprint, architecture, quantization feasibility and 8 GB budget impact;
+2. `LOOM_30B_MOE_BLOCK_ROUTING_OVERLAP_001` — measure unique expert union across candidate verification blocks / accepted tokens;
+3. only then consider DFlash integration into the external-expert runtime.
 
 ## Storage state
 
