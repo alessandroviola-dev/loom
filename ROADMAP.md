@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
-Last updated: 2026-08-22
-Current checkpoint: `STREAMED_LAYER_GRADIENT_002_COMPLETE`
-Detailed history through REALGEN 002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
+Last updated: 2026-08-23
+Current checkpoint: `SELECT_TIME_GC_DEFER_001_COMPLETE`
+Detailed history through REALGEN002 remains preserved at commit `844325f63b1880107040b219524ad5391276769c` and in individual research reports.
 
 ## Mission
 
@@ -18,48 +18,39 @@ Pi is reserved for code/tests. ChatGPT owns research direction and repository/pr
 
 ## A — Capability baseline — COMPLETE
 
-Canonical CAPABILITY001:
+CAPABILITY001:
 - practical-agent 1/11 = 9.09%
 - Coding Benchmark 45/100
 - critical failures 0.
 
 ## B — Memory frontier — COMPLETE
 
-Exact partial residency works, but naive synchronous streaming is too slow. Shared-stage residency established embedding/final norm/LM head as hot/persistent.
+Exact partial residency works. Shared-stage residency established embedding/final norm/LM head as hot/persistent.
 
 ## C — Fixed stream activation — CLOSED
 
-Old Streamed-Layer Gradient001:
-- S0 71.315 ms/token
-- S1 171.824
-- S2 210.287
-- S4 288.737
-- descriptive `71.315 + 61.284*I(streaming) + 39.007*N` ms/token.
+Old Gradient001 descriptive model:
+`71.315 + 61.284*I(streaming) + 39.007*N` ms/token.
 
-Shared cleanup consolidation: +25.206% generation / -35.678 ms/token, exact parity, no peak-MLX increase. Promoted.
+Shared intermediate cleanup consolidation: +25.206% generation / -35.678 ms/token, promoted.
 
-Embed eval removal: NO-GO (-3.346%).
-Norm eval removal: SMALL (+0.762%), not promoted.
-
-Fixed-activation cleanup work is closed unless new evidence emerges.
+Embedding eval removal: NO-GO.
+Norm eval removal: SMALL / not promoted.
 
 ## D — Marginal streamed-layer lifecycle — ACTIVE
 
-### STREAMED-LAYER-CLEANUP-DEFER001 — MATERIAL PASS
+### Post-forward layer cleanup defer — MATERIAL PASS
 
-Deferring only per-layer post-forward `gc.collect()/mx.clear_cache()` on S1 while retaining select-time cleanup and all model/lifecycle semantics produced:
+Exact S1 one-factor A/B:
 - 6.997 -> 8.223 tok/s
 - +17.522%
 - -21.308 ms/token
 - exact parity PASS
-- peak active/active+cache unchanged in the A/B
 - no resource aborts.
 
 Promoted.
 
 ### STREAMED-LAYER-GRADIENT002 — COMPLETE
-
-Report: `research/memory/streamed-layer-gradient-002-result.md`.
 
 Under promoted deferred post-forward cleanup:
 
@@ -70,62 +61,76 @@ Under promoted deferred post-forward cleanup:
 | 2 | 6.546 | 152.775 ms | 15% |
 | 4 | 5.015 | 199.383 ms | 23% |
 
-All arms 2/2 valid, exact parity PASS, no resource aborts. Deferred cleanup remains resource-safe through four streamed layers.
+Exact parity PASS, no aborts, resource-safe through S4.
 
-New marginal penalties:
-- first layer +34.347 ms
-- second +28.350 ms
-- layers 3–4 +23.304 ms/layer.
+Marginals decline 34.347 -> 28.350 -> 23.304 ms/layer.
 
-Mean 28.667 ms/layer. Linear descriptive slope 26.954 ms/layer.
+Descriptive two-component fit:
+`90.078 + 11.043*I(streaming_active) + 24.746*N` ms/token, R² 0.998866.
 
-Two-component descriptive fit:
-`90.078 + 11.043*I(streaming_active) + 24.746*N_streamed_layers` ms/token, R² 0.998866.
+### SELECT-TIME-GC-DEFER001 — COMPLETE / NO-GO
 
-Interpretation: `DEFERRED_STREAM_LAYER_COST_FIXED_OR_NONLINEAR`.
+Report: `research/memory/select-time-gc-defer-001-result.md`.
 
-The next remaining clearly scalable cleanup operation is select-time `gc.collect()` once per streamed layer.
+Removing only the remaining select-time `gc.collect()` on promoted S1 while preserving deletion/ownership and all other behavior produced:
+- CONTROL 8.293 tok/s, 120.577 ms/token
+- TREATMENT 7.767 tok/s, 128.754 ms/token
+- generation **-6.351%**
+- E2E **-5.752%**
+- TTFT **+15.374%**
+- free floor 19% -> 11%
+- exact parity PASS
+- peak active/active+cache unchanged
+- no aborts.
 
-### SELECT-TIME-GC-DEFER001 — NEXT
+Decision: retain select-time GC. Cleanup cadence is exhausted as an optimization axis on the current implementation.
 
-Frozen plan: `research/memory/select-time-gc-defer-001-plan.md`.
+## E — STREAMED-BLOCK-REUSE-AUDIT001 — NEXT
 
-Exact promoted S1 A/B.
+Frozen plan: `research/memory/streamed-block-reuse-audit-001-plan.md`.
 
-CONTROL retains select-time `gc.collect()` after loading/selecting weights and releasing the full loaded weight container.
+Source/lifetime audit of the current streamed layer path. Separate:
+- source load/selection;
+- weight-independent module/block construction;
+- quantized-structure setup;
+- current-weight binding;
+- parameter materialization;
+- forward;
+- ownership release.
 
-TREATMENT keeps identical deletion/release but omits/defer only that select-time `gc.collect()`.
+Question: can only the **weight-independent block/quantized structure** be retained across tokens while current streamed weights are still reloaded, rebound, materialized and fully detached every token?
 
-All post-forward cleanup policy, final cleanup, load/select/reconstruction/materialization/forward/evals, residency, source representation and logical I/O remain identical.
+Requirements for any future treatment:
+- no streamed layer weight survives across tokens;
+- persistent raw-weight accounting unchanged;
+- 84,427,264 B/token logical streaming unchanged on S1;
+- same source/load and forward math;
+- exact parity preserved.
 
-Balanced ABBA, exact parity, low-overhead resource/speed measurement.
+Audit first; do not benchmark the treatment until ownership/lifetime safety is proven.
 
-If material, remeasure the S0/S1/S2/S4 gradient before selecting another mechanism.
+## F — Next marginal mechanisms
 
-## E — Later marginal mechanisms
+Routing after the audit:
+- if structure reuse is cleanly isolatable -> one-factor reuse A/B;
+- if not -> move to scheduling/asynchronous prefetch or buffering/grouping;
+- reconstruction/materialization reuse only with exact residency proof;
+- source-range I/O/mmap/pread only if source-access evidence becomes strong;
+- physical SSD dominance remains unproven.
 
-After cleanup cadence is exhausted, choose one factor at a time from evidence:
-- scheduling / asynchronous prefetch;
-- buffering / grouped lifecycle;
-- reconstruction/materialization reuse;
-- direct source-range I/O / mmap / pread only if source-access evidence supports it;
-- page-cache-aware source handling.
+## G — OUTCORE-BLOCK / representation
 
-Physical SSD dominance remains unproven.
+OUTCORE-BLOCK001 remains a later candidate for amortizing streamed weights over multiple exact-valid positions. Representation work may include mixed/selective precision, compressed cold weights and KV changes while preserving full parameter count.
 
-## F — OUTCORE-BLOCK / representation
+## H — Scale beyond 8B
 
-OUTCORE-BLOCK001 remains a later candidate for amortizing streamed weights over multiple exact-valid positions. Representation work may include mixed/selective precision, compressed cold weights and KV changes while retaining full parameter count.
-
-## G — Scale beyond 8B
-
-1. continue reducing the marginal streamed-layer lifecycle
-2. establish a better exact 8B RAM/speed point
+1. reduce remaining per-layer streamed lifecycle cost
+2. establish a stronger exact 8B RAM/speed point
 3. transfer architecture beyond comfortable physical RAM
 4. first major scale checkpoint: ~27B/32B full-parameter model produces correct tokens on M1 8 GB without OOM
 5. optimize toward usable speed and measure capability.
 
-## H — Behavioral freedom / decensoring — REQUIRED BEFORE FINAL PROMOTION
+## I — Behavioral freedom / decensoring — REQUIRED BEFORE FINAL PROMOTION
 
 Reference:
 - audited Heretic snapshot `p-e-w/heretic@bedb94ef117a271532ac2058447fbc165d5051bd`
@@ -135,11 +140,11 @@ Initial future sequence begins with `STREAMING_RESIDUAL_MEAN_PARITY`, then direc
 
 ## Immediate order
 
-1. SELECT-TIME-GC-DEFER001
-2. remeasure marginal gradient if material
-3. next evidence-selected marginal mechanism
+1. STREAMED-BLOCK-REUSE-AUDIT001
+2. block/quantized-structure reuse A/B if safe and isolatable
+3. otherwise next evidence-selected scheduling/prefetch/buffering mechanism
 4. OUTCORE-BLOCK001 where justified
-5. representation work where justified
+5. representation work
 6. scale toward 27B/32B
 7. capability comparison for promoted behavior-affecting candidates
 8. Heretic-derived / LOOM-native decensoring before final model promotion
