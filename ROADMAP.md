@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-23
-Current checkpoint: `STREAMED_BLOCK_REUSE_AUDIT_001_COMPLETE`
-Strategic next: `LOOM_30B_MOE_FEASIBILITY_001_STATIC`
+Current checkpoint: `LOOM_30B_MOE_FEASIBILITY_001_STATIC_CONDITIONAL`
+Strategic next: `LOOM_30B_MOE_EXPERT_PACK_001`
 
 ## Mission
 
@@ -25,92 +25,84 @@ Gradient002 under the promoted lifecycle:
 - S2 6.546 / 152.775 ms
 - S4 5.015 / 199.383 ms
 
-Descriptive fit: `90.078 + 11.043*I(streaming) + 24.746*N` ms/token.
-
 Dense research remains the controlled MLX implementation lab; it is no longer assumed to be the final 32B architecture.
 
 ## B — STREAMED-BLOCK-REUSE-AUDIT001 — COMPLETE
 
-A weightless reusable Qwen3/quantized topology shell is mechanically possible with zero retained native parameter bytes, but the current strict MLX binding path requires existing parameter leaves. A construction-only one-factor A/B is therefore invalid without changing binding semantics.
-
-Decision: close this micro-route on the present runtime.
+Weightless reusable topology is mechanically possible, but current strict MLX binding requires parameter leaves. Construction-only reuse is closed on the present runtime unless binding itself becomes a research factor.
 
 ## C — High-leverage architecture branch — ACTIVE
 
-Research note: `research/architecture/high-leverage-architecture-exploration-001.md`.
-
 ### C1 — Sparse MoE / external experts — HIGHEST PRIORITY
 
-Qwen3-30B-A3B directly matches the scale target: 30.5B total / ~3.3B active per token, 128 routed experts / 8 active.
+Current target: `Qwen/Qwen3-30B-A3B-MLX-4bit`.
 
-Relevant systems: PowerInfer/PowerInfer-2, EdgeMoE, MoE-Infinity, Fiddler, KTransformers.
+Static local audit confirmed:
+- 48 layers
+- 128 routed experts/layer
+- top-k 8
+- 16,220,499,968 B total stored tensor payload
+- only 819,015,680 B (0.763 GiB) mandatory/non-routed
+- 15,401,484,288 B (14.344 GiB) routed expert bank
+- one expert 2,506,752 B
+- zero-cache selected-expert traffic 962,592,768 B = 918 MiB/token
 
-Core hypothesis: keep dense/shared backbone and hot experts resident; place cold experts lower in the hierarchy; predict/cache/prefetch only activated experts; consider moving activations to compute near resident expert data when cheaper than moving weights.
+This validates the basic sparse-capacity premise but does not yet validate useful speed.
 
-### C2 — Neuron/cluster-level conditional loading
+### C2 — Flash/storage layout — NOW ACTIVE
 
-Relevant: DejaVu, PowerInfer-2, `LLM in a Flash`.
+Current safetensors layout is expert-bank-major. One expert is split across 9 discontiguous slices; median useful/span efficiency is only 0.080028% if treated as broad contiguous spans.
 
-Potential LOOM implication: whole transformer layers are too coarse as an I/O unit. Future storage may need expert/neuron-cluster layout, contiguous flash reads and activation-aware caching.
+Decision: `REPACK_RECOMMENDED` before serious external-expert inference.
 
-### C3 — Multi-token/block amortization
+Next representation should make each complete expert, or a small number of expert components, directly addressable through compact contiguous reads.
 
-Relevant: Multi-token Prediction, Medusa, EAGLE, Lookahead Decoding.
+### C3 — Expert cache/locality — NOT YET MEASURED
 
-Out-of-core implication: reduce full model/expert sweeps per accepted output token. Existing `OUTCORE-BLOCK` concept moves upward in strategic importance.
+A 4–6 GiB static model budget could theoretically hold about 22.6%–36.5% of the full expert bank after mandatory shared tensors, but this says nothing about real cache hit rate.
 
-### C4 — Recursive/shared-weight architectures
+Do not assume hot experts, temporal locality or route predictability. Measure them later from real routed execution traces.
 
-Mixture-of-Recursions combines shared weights with adaptive recursive depth. Candidate if LOOM eventually trains/builds a new architecture rather than adapting conventional pretrained models.
+### C4 — Multi-token/block amortization
 
-### C5 — External learned memory
+Still strategically important if expert traffic remains dominant after packing/cache. Relevant approaches include Multi-token Prediction, Medusa, EAGLE and Lookahead Decoding.
 
-Memory Layers at Scale, RETRO and Memorizing Transformers suggest replacing some dense parametric memory with sparsely accessed external learned/retrieval memory.
+### C5 — Custom LOOM architecture fallback
 
-### C6 — Recurrent/SSM resident core
+If existing MoE remains too bandwidth-bound after layout/cache/amortization work, derive a LOOM-native model-system design from measured failure modes: sparse neuron clusters, recursive/shared layers, learned external memory, recurrent/SSM resident core and storage-aware routing.
 
-Mamba/Mamba-2, Griffin/RecurrentGemma and RWKV can reduce state/KV costs and may be suitable cores for a sparse/external-memory LOOM architecture.
+## D — LOOM_30B_MOE_FEASIBILITY_001_STATIC — COMPLETE / CONDITIONAL
 
-## D — LOOM-30B-MOE-FEASIBILITY001 — NEXT
+Canonical result: `research/moe/loom-30b-moe-feasibility-001-static-result.md`.
 
-Frozen plan: `research/moe/loom-30b-moe-feasibility-001-plan.md`.
+Key decision:
+- shared/static residency: structurally promising;
+- zero-cache external traffic: too high for practical speed without substantial traffic reduction;
+- existing safetensors physical layout: unsuitable for naïve direct expert streaming;
+- first external-expert prototype: justified only if layout-aware.
 
-Initial target: `Qwen/Qwen3-30B-A3B-MLX-4bit` (~16.2 GB repository; 30.5B total / 3.3B activated; 48 layers; 128 experts; 8 activated experts/token).
+## E — LOOM_30B_MOE_EXPERT_PACK_001 — NEXT
 
-First checkpoint is static anatomy/traffic modeling before inference:
-1. download official snapshot to internal SSD;
-2. parse config and safetensors index/headers without whole-model load;
-3. exact dense/shared/router bytes;
-4. expert bytes per expert and per layer;
-5. theoretical selected-expert bytes/token;
-6. shard/range locality and fragmentation;
-7. plausible hot-expert cache sizes inside 8 GB;
-8. static resident/working-set lower bound.
+1. create deterministic derived expert-major storage without mutating source model;
+2. start with one layer or controlled subset;
+3. byte-validate reconstructed expert tensors against source safetensors slices;
+4. reduce expert access to compact contiguous ranges;
+5. measure packed range count, read amplification and actual storage throughput;
+6. quantify latency for top-k=8 reads per layer under cold/warm OS-cache conditions;
+7. decide whether full-bank repack is warranted.
 
-Completion target: `LOOM_30B_MOE_FEASIBILITY_001_STATIC_COMPLETE`.
+Gate: packed expert reads must be correct, reproducible, and materially reduce I/O amplification before progressing.
 
-No full `mlx_lm.load()` or generation is required for this first checkpoint.
+## F — After expert-pack gate
 
-## E — If external-expert feasibility passes
-
-1. exact routed-expert access prototype;
-2. capture expert activation traces;
-3. model hot/cold distribution and temporal locality;
-4. design segmented expert cache;
-5. predict/prefetch future expert sets only after trace evidence;
-6. evaluate contiguous flash representation;
-7. combine with multi-token/block verification to amortize I/O;
-8. measure real 30B capability/speed/memory.
-
-## F — If existing MoE is insufficient
-
-Begin model-system co-design research:
-- sparse neuron clusters by construction;
-- recursive/shared layer stacks;
-- learned external memory;
-- recurrent/SSM resident core;
-- multi-token output heads;
-- storage layout designed together with routing.
+1. one-layer external-expert execution prototype;
+2. validate numerical parity against canonical layer execution;
+3. build minimal routed path with controlled memory ownership;
+4. capture real expert activation traces;
+5. model hot/cold distribution and temporal locality;
+6. design expert cache only from measured traces;
+7. add prefetch prediction only after evidence;
+8. measure end-to-end 30B token rate/memory.
 
 ## G — Promotion gates
 
@@ -124,13 +116,19 @@ Any promoted architecture must pass:
 
 ## Immediate order
 
-1. `LOOM_30B_MOE_FEASIBILITY_001_STATIC`
-2. expert activation trace/cache study if feasible
-3. flash-aware external-expert execution
-4. multi-token/block amortization
-5. custom LOOM architecture research if necessary
-6. capability validation
-7. decensoring validation before final promotion
+1. `LOOM_30B_MOE_EXPERT_PACK_001`
+2. one-layer external-expert parity
+3. minimal end-to-end routed execution
+4. routing trace/cache study
+5. storage-aware cache/prefetch
+6. multi-token/block amortization if needed
+7. custom LOOM architecture only if measured limits remain structural
+8. capability validation
+9. decensoring validation before final promotion
+
+## Provenance note
+
+The static audit's local evidence run-id was reported as `20260330T000001Z`, inconsistent with the actual checkpoint date 2026-08-23. Future runs must use actual runtime UTC timestamps.
 
 ## Local-only implementation warning
 
