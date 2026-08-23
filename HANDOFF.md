@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-23
-Status: ACTIVE — 30B MoE external-expert prototype
+Status: ACTIVE — 30B MoE external-expert storage/runtime research
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_MOE_FEASIBILITY_001_STATIC_CONDITIONAL`
-Next: `LOOM_30B_MOE_EXPERT_PACK_001`
+Current checkpoint: `LOOM_30B_MOE_EXPERT_PACK_001_PASS`
+Next: `LOOM_30B_MOE_PHYSICAL_IO_001`
 
 ## Mission
 
@@ -24,91 +24,102 @@ ChatGPT: experiment design/review, GitHub synchronization, HANDOFF/ROADMAP and r
 Qwen3-8B full parameter count; affine 3-bit/group64; BF16 KV; MLX/mlx-metal 0.31.2; mlx-lm 0.31.3; thinking disabled.
 
 REALGEN001 historical real M1 generation: 13.184615357 tok/s; E2E 12.046861457 tok/s.
+
 CAPABILITY001: practical-agent 1/11 = 9.09%; Coding Benchmark 45/100; critical failures 0.
 
-Dense partial-residency research established exact streaming and lifecycle rules but naïve dense streaming remains too slow for the final ~30B architecture.
+Exact partial residency works, but naïve synchronous dense layer streaming is too slow. Retained promoted cleanup improvements:
+- shared intermediate cleanup consolidation: +25.206% generation / -35.678 ms/token;
+- streamed-layer post-forward cleanup defer: +17.522% generation / -21.308 ms/token.
 
-## 30B MoE target
+Select-time GC removal is NO-GO and shared-stage cleanup/eval micro-axes are considered exhausted absent new evidence.
 
-Local model: `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
-Public identity: `Qwen/Qwen3-30B-A3B-MLX-4bit`
+## STREAMED-BLOCK-REUSE-AUDIT001 — COMPLETE
 
-Local static audit recovered:
-- `Qwen3MoeForCausalLM`
-- 48 layers
-- hidden 2048
-- 32 Q heads / 4 KV heads / head_dim 128
-- vocab 151936
-- 128 routed experts/layer
-- top-k 8
-- MoE intermediate 768
-- no shared-expert tensors
-- MLX 4-bit, group size 128
+Report: `research/memory/streamed-block-reuse-audit-001-result.md`.
 
-Model payload: 16,220,499,968 B (15.106518 GiB).
+A weightless quantized Qwen3 topology shell is mechanically possible, but current strict MLX loading requires existing parameter leaves. Construction-only reuse cannot be isolated without changing binding semantics. This dense micro-route is closed on the present runtime.
 
-## LOOM_30B_MOE_FEASIBILITY_001_STATIC — CONDITIONAL
+## 30B target
 
-Canonical report: `research/moe/loom-30b-moe-feasibility-001-static-result.md`.
+Local model:
+`results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
 
-Mandatory/non-routed stored set: 819,015,680 B = 0.762768 GiB.
-Routed expert bank: 15,401,484,288 B = 14.343750 GiB.
-One routed expert: 2,506,752 B = 2.390625 MiB.
-Top-k 8 experts in one layer: 20,054,016 B = 19.125 MiB.
-Zero-cache selected-expert traffic across all 48 layers: 962,592,768 B = 918 MiB/token.
+Exact local static audit:
+- architecture: Qwen3MoeForCausalLM;
+- 48 MoE layers;
+- hidden size 2048;
+- 128 routed experts/layer;
+- top-k 8;
+- MoE intermediate 768;
+- MLX 4-bit/group128;
+- total stored tensor payload: 16,220,499,968 B;
+- mandatory/non-routed stored bytes: 819,015,680 B (0.763 GiB);
+- routed expert bank: 15,401,484,288 B (14.344 GiB);
+- one routed expert: 2,506,752 B (2.390625 MiB);
+- top-k expert bytes/layer: 20,054,016 B;
+- zero-cache useful expert traffic/token: 962,592,768 B (918 MiB).
 
-Static model-budget examples after reserving the mandatory set:
-- 4.0 GiB: 1,386 experts / 22.559% of expert bank
-- 5.0 GiB: 1,814 experts / 29.525%
-- 6.0 GiB: 2,243 experts / 36.507%
+Static result: `LOOM_30B_MOE_FEASIBILITY_001_STATIC_CONDITIONAL`.
+Report: `research/moe/loom-30b-moe-feasibility-001-result.md`.
 
-Zero-cache bandwidth lower bound:
-- 1 tok/s: 962.593 MB/s
-- 2 tok/s: 1,925.186 MB/s
-- 5 tok/s: 4,812.964 MB/s
-- 10 tok/s: 9,625.928 MB/s
+Core structural finding: the full model is genuinely compatible with sparse external-expert research because the mandatory non-expert set is only ~0.763 GiB while ~14.344 GiB lives in routed experts.
 
-At 2 GB/s, 5 tok/s still requires 58.446% external-traffic reduction/cache-hit-equivalent. This is an arithmetic requirement only; routing locality/popularity has not yet been measured.
+## EXPERT-PACK-001 — PASS
 
-## Critical storage-layout finding
+Report: `research/moe/loom-30b-moe-expert-pack-001-result.md`.
+Raw evidence: `results-local/moe/expert-pack-001/20260823T204053Z/`.
 
-Current safetensors are expert-bank-major, not complete-expert-major. Each routed expert consists of 9 discontiguous tensor slices. 93.75% of experts are contained in one shard; layers 15, 31 and 47 cross two shards.
+Prototype packed all 128 experts from layers 0 and 15, covering both an ordinary layer and a shard-boundary layer.
 
-Median useful expert bytes: 2,506,752 B.
-Median summed contiguous span required by the current arrangement: 3,132,327,424 B.
-Median useful/span efficiency: 0.080028%.
+Validated:
+- 256 experts;
+- 641,728,512 B useful payload;
+- 2,304 components;
+- zero hash/byte/metadata mismatches.
 
-Verdict: `REPACK_RECOMMENDED`.
+Storage geometry improvement:
+- source: 9 exact data ranges/expert;
+- packed: 1 contiguous 2,506,752 B range/expert;
+- top-k=8: 72 -> 8 data reads;
+- byte amplification remains 1.0x;
+- packed useful/span efficiency: 100%.
 
-This means the immediate blocker is the physical artifact layout, not the basic MoE parameter split. Exact expert byte slices are recoverable, but direct disk streaming from the current layout would cause excessive fragmented/range I/O.
+This proves lossless expert-major storage and independently addressable routed experts.
 
-## Strongest current conclusion
+## Critical I/O caveat
 
-Qwen3-30B-A3B remains scientifically viable as LOOM's first ~30B target. Only 0.763 GiB of stored tensors are mandatory/non-routed; 14.344 GiB are routed experts. A layout-aware expert-major representation should be tested before any full external-expert runtime.
+The same run reported ~14–15 GB/s range-read throughput and ~66 ms zero-cache 48-layer I/O-only extrapolation. These numbers are NOT canonical physical-SSD evidence.
 
-The remaining decisive unknown is not static anatomy but empirical reuse/locality: can routing/cache behavior reduce the 918 MiB/token zero-cache demand enough for practical speed on M1 8 GB?
+The benchmark used `os.pread` and Darwin `F_NOCACHE`, but tested files had already been created/read in the workflow. Throughput far exceeds plausible physical storage throughput and therefore indicates filesystem/page-cache or memory-resident service. `F_NOCACHE` alone does not prove that pre-existing resident pages were absent.
 
-## Exact next checkpoint — LOOM_30B_MOE_EXPERT_PACK_001
+Therefore:
+- pack correctness: PASS;
+- 9->1 read geometry: PASS;
+- physical SSD throughput: UNVALIDATED;
+- ~66 ms/token storage extrapolation: NON-CANONICAL.
 
-Do not attempt full-model generation yet.
+Do not build the complete 14.3 GiB expert pack solely on those throughput numbers.
 
-1. build a deterministic LOOM expert-major packed representation from the local safetensors without modifying originals;
-2. first validate one layer / a small controlled subset before optionally packing the full bank;
-3. prove byte-exact reconstruction of selected expert tensors against source slices;
-4. measure packed expert range count and read amplification;
-5. benchmark sequential/random packed expert read throughput separately from model compute;
-6. keep shared tensors untouched;
-7. if packing/access passes, proceed to a one-layer external-expert execution prototype and only then to a minimal end-to-end routed path.
+## Exact next step
 
-Do not assume expert cache hit rate or popularity until real routing traces exist.
+`LOOM_30B_MOE_PHYSICAL_IO_001`
 
-## Provenance warning
+Goal: establish defensible physical/cold-ish storage throughput and random-range latency on the reference M1 internal SSD without sudo and without confusing RAM/page-cache bandwidth with storage bandwidth.
 
-Pi's static evidence directory was reported as `results-local/moe/feasibility-001-static/20260330T000001Z/`, which does not match the actual date 2026-08-23. Treat it as a timestamp/provenance anomaly; future evidence runs must use actual runtime UTC timestamps.
+Requirements:
+1. benchmark a data set/access working set larger than available RAM or otherwise prove cache bypass/absence;
+2. use deterministic expert-sized 2,506,752 B reads and top-k-sized workloads;
+3. disable read-ahead where possible and document exact Darwin APIs;
+4. distinguish sequential throughput, random expert-sized access and token-like 384-expert access;
+5. record memory pressure/free RAM and storage state;
+6. treat any result above plausible hardware limits as invalid/cache-contaminated;
+7. no generation and no full model load.
+
+The result decides whether the next action is full expert-bank repack, one-layer external-expert execution, or stronger cache/amortization/storage redesign.
 
 ## Storage state
 
-Historical Qwen3-4B-GGUF, Qwen3-8B-GGUF and Qwen3-8B-4bit MLX are archived externally. Canonical Qwen3-8B-3bit remains local. Qwen3-30B-A3B-MLX-4bit is local. Internal free space after 30B download: ~64 GiB.
+Historical Qwen3-4B-GGUF, Qwen3-8B-GGUF and Qwen3-8B-4bit MLX were moved to external archive. Canonical Qwen3-8B-3bit remains local. Qwen3-30B-A3B-MLX-4bit is local on the internal SSD. Expert-pack prototype uses ~612 MiB plus metadata. Free space observed in the pack run: 63.251 GiB.
 
 ## Local-only warning
 
