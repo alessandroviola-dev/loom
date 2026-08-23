@@ -2,8 +2,9 @@
 
 Last updated: 2026-08-23
 Current checkpoint: `LOOM_30B_MOE_PHYSICAL_IO_001_CACHE_CONTROL_INVALID`
-Active side research: `VIDEO_RESEARCH_INGEST_001`
+Source review: `VIDEO_RESEARCH_INGEST_001_COMPLETE`
 Strategic next: `LOOM_30B_MOE_PHYSICAL_IO_002_DEVICE_VERIFIED`
+Parallel next: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
 
 ## Mission
 
@@ -63,7 +64,7 @@ Conclusion: process-level timing plus these file flags did not prove physical SS
 
 This is an instrumentation result, not an architectural NO-GO.
 
-## F — PHYSICAL-IO-002 — NEXT
+## F — PHYSICAL-IO-002 — NEXT CORE
 
 Use device-level evidence to distinguish cache from physical storage.
 
@@ -78,22 +79,69 @@ Required:
 
 If this method still cannot isolate physical storage without privileged tooling, classify the physical baseline as unresolved rather than inventing a number.
 
-## G — Multi-token/speculative amortization — SOURCE INGEST ACTIVE
+## G — VIDEO / DFLASH SOURCE REVIEW — COMPLETE
 
-A supplied video concerning Qwen3.8-27B, DFlash2 and Harness is being transcribed/visually audited under `VIDEO_RESEARCH_INGEST_001`.
+The supplied Qwen3.8-27B + Harness video was transcribed and visually audited locally.
 
-Potential relevance: block/speculative decoding may amortize expensive target/expert work across multiple accepted tokens. Do not promote this line based on the video alone until source claims are verified and separated from hardware/model-fit claims.
+It does NOT show that a 27B model is viable on 8 GB. The presenter system is M4 Pro / 24 GB and showed very high memory use and swap. The video's DFlash2 acceleration example came from a separate M5 Max result.
 
-## H — Decision after physical I/O + video review
+The video is nevertheless useful because it surfaced block speculative decoding as a possible high-leverage runtime technique.
 
-Candidate next experimental branches:
-- one-layer exact external-expert execution;
-- full expert-major pack if justified;
-- expert routing trace/cache study;
-- DFlash2/speculative block amortization if independently applicable to the target runtime;
-- route prediction/prefetch only after trace evidence.
+Canonical source-review note:
+`research/architecture/dflash-qwen3-30b-a3b-relevance-001.md`.
 
-## I — Longer-term architecture options
+## H — Exact-target DFlash branch — PROMOTED TO PARALLEL RESEARCH
+
+Independent review found an existing DFlash speculator specifically for LOOM's exact target family:
+`RedHatAI/Qwen3-30B-A3B-speculator.dflash` for `Qwen/Qwen3-30B-A3B`.
+
+Published metadata indicates roughly:
+- ~0.7B draft parameters;
+- 5 draft layers;
+- target hidden taps at layers 1, 12, 23, 34, 45;
+- published average acceptance length ~2.46–3.77 depending on workload.
+
+This makes DFlash substantially more actionable than the Qwen3.8-only video example.
+
+Critical interpretation:
+- DFlash does not solve model residency by itself and costs additional draft memory;
+- its potential benefit to LOOM is multi-token target verification;
+- for external experts, the key metric becomes the UNIQUE/UNION expert set touched across all positions in a verification block, divided by accepted tokens;
+- routing overlap must be measured rather than assumed.
+
+### H1 — `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
+
+Before downloading/integrating blindly:
+1. audit exact draft tensor bytes, architecture and target-layer dependencies;
+2. estimate/measure resident footprint under BF16 and plausible quantized variants;
+3. determine whether draft + 0.763 GiB mandatory target + runtime/KV leaves enough space for a useful expert cache on M1 8 GB;
+4. identify whether the exact-target draft can be adapted to MLX/llama.cpp or whether a custom LOOM path is required.
+
+### H2 — `LOOM_30B_MOE_BLOCK_ROUTING_OVERLAP_001`
+
+After exact target execution becomes possible:
+1. collect per-position router choices;
+2. group positions into verification blocks (e.g. 2–8 positions);
+3. compute union-of-experts/layer and total unique expert bytes/block;
+4. divide by accepted-output-token counts over realistic acceptance distributions;
+5. compare with the 918 MiB/token single-token zero-cache baseline;
+6. do not claim I/O amortization until measured.
+
+## I — Decision matrix
+
+If physical I/O is strong and routing overlap is useful:
+- full expert-major pack;
+- one-layer and then full external-expert execution;
+- block verification / DFlash integration;
+- cache and prefetch from measured traces.
+
+If physical I/O is weak but block routing overlap is strong:
+- prioritize multi-token verification + expert union batching + cache.
+
+If both are weak:
+- move toward stronger model-system co-design: neuron/cluster sparsity, route prediction, recursive/shared-weight architectures, external memory or a LOOM-native model.
+
+## J — Longer-term architecture options
 
 If existing MoE remains insufficient:
 - contextual neuron/cluster sparsity;
@@ -103,7 +151,7 @@ If existing MoE remains insufficient:
 - recurrent/SSM resident core;
 - storage layout co-designed with routing.
 
-## J — Promotion gates
+## K — Promotion gates
 
 Any promoted architecture must pass:
 - full intended model capacity represented;
@@ -115,16 +163,17 @@ Any promoted architecture must pass:
 
 ## Immediate order
 
-1. complete `VIDEO_RESEARCH_INGEST_001` already running on Pi
-2. review DFlash2/video evidence
-3. `LOOM_30B_MOE_PHYSICAL_IO_002_DEVICE_VERIFIED`
-4. one-layer external-expert execution
-5. full pack / routing trace/cache study as evidence dictates
-6. multi-token/block amortization if justified
-7. full 48-layer external-expert execution
-8. custom LOOM architecture research if necessary
-9. capability validation
-10. decensoring validation before final promotion
+1. `LOOM_30B_MOE_PHYSICAL_IO_002_DEVICE_VERIFIED`
+2. `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
+3. one-layer exact external-expert execution
+4. full expert pack if justified
+5. routing trace/cache study
+6. `LOOM_30B_MOE_BLOCK_ROUTING_OVERLAP_001`
+7. DFlash/block-verification integration only if routing/storage evidence supports it
+8. full 48-layer external-expert execution
+9. custom LOOM architecture research if necessary
+10. capability validation
+11. decensoring validation before final promotion
 
 ## Local-only implementation warning
 
