@@ -1,93 +1,98 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-23
-Status: ACTIVE — high-leverage architecture / external-expert exploration
+Status: ACTIVE — 30B MoE feasibility / sparse expert offload
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
 Current checkpoint: `STREAMED_BLOCK_REUSE_AUDIT_001_COMPLETE`
-Strategic next: `QWEN3_30B_A3B_EXTERNAL_EXPERT_FEASIBILITY_001`
+Next: `LOOM_30B_MOE_FEASIBILITY_001_STATIC`
 
 ## Mission
 
-**Big models. Small machines.** Target ~27B/32B-class local capability on Apple M1 / 8 GB while balancing memory, speed, capability and behavioral freedom/decensoring.
+**Big models. Small machines.** Run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB, ultimately toward ~27B/32B-class models, balancing memory/residency, speed/usability, practical capability and behavioral freedom/decensoring.
 
-Final promoted models require validated decensoring via Heretic or a clean LOOM-native equivalent. Frozen requirement: `research/behavior/decensoring-requirement-v1.md`.
+Every final promoted LOOM-produced model must eventually pass validated decensoring/behavioral-freedom preservation using Heretic or a LOOM-native independent equivalent. Frozen requirement: `research/behavior/decensoring-requirement-v1.md`.
 
 ## Operating split
 
-Pi: local code/runtime inspection/tests/evidence.
-ChatGPT: research direction, experiment design/review, GitHub synchronization, HANDOFF/ROADMAP.
+Pi: local code/runtime inspection/tests/concise evidence.
+ChatGPT: experiment design/review, GitHub synchronization, HANDOFF/ROADMAP and research continuity.
 
-## Canonical dense laboratory
+## Canonical dense baseline
 
-Qwen3-8B, affine 3-bit/group64, BF16 KV, MLX 0.31.2 / mlx-lm 0.31.3.
+Qwen3-8B full parameter count; affine 3-bit/group64; BF16 KV; MLX/mlx-metal 0.31.2; mlx-lm 0.31.3; thinking disabled.
 
-Dense research remains valuable as a controlled laboratory for MLX lifecycle and exact partial residency, but is no longer assumed to be the only route to the 27B/32B objective.
+REALGEN001 historical real M1 generation: 13.184615357 tok/s; E2E 12.046861457 tok/s.
 
-## Dense-streaming results retained
+CAPABILITY001: practical-agent 1/11 = 9.09%; Coding Benchmark 45/100; critical failures 0.
 
-- MEMORY-FRONTIER001: exact partial residency proven; naive synchronous streaming too slow.
-- shared stages embedding/final norm/LM head should remain resident.
-- shared intermediate cleanup consolidation: +25.206%, promoted.
-- embedding eval removal: NO-GO; norm eval removal: SMALL/not promoted.
-- streamed post-forward cleanup defer: +17.522%, promoted.
-- Gradient002 under improved lifecycle: S0/S1/S2/S4 = 11.101/8.037/6.546/5.015 tok/s; exact; resource-safe through four streamed layers.
-- Gradient002 descriptive fit: `90.078 + 11.043*I(streaming) + 24.746*N` ms/token, R² 0.998866.
-- select-time GC removal: NO-GO (-6.351%); retain it.
+## Dense streaming findings retained
 
-Cleanup cadence is considered exhausted on the current implementation.
+Exact partial residency works, but naïve synchronous dense layer streaming is too slow. Shared stages embedding/final norm/LM head are hot/persistent.
+
+Promoted cleanup improvements:
+- shared intermediate cleanup consolidation: +25.206% generation / -35.678 ms/token;
+- streamed-layer post-forward cleanup defer: +17.522% generation / -21.308 ms/token.
+
+Retained boundaries:
+- embedding eval removal NO-GO;
+- norm eval removal SMALL/not promoted;
+- select-time GC removal NO-GO: 8.293 -> 7.767 tok/s, +8.177 ms/token, free floor 19% -> 11%; retain select-time GC.
+
+STREAMED-LAYER-GRADIENT002 under promoted lifecycle:
+- S0 90.078 ms/token
+- S1 124.425
+- S2 152.775
+- S4 199.383
+- marginal penalties 34.347, 28.350, 23.304 ms/layer for first, second, layers 3–4 respectively.
+
+Cleanup cadence is exhausted unless new evidence appears.
 
 ## STREAMED-BLOCK-REUSE-AUDIT001 — COMPLETE
 
 Report: `research/memory/streamed-block-reuse-audit-001-result.md`.
 Raw local evidence: `results-local/memory/streamed-block-reuse-audit-001/20260823-181531/`.
 
-Current layer-35 path constructs a fresh Qwen3 block and quantized structure every token after loading/selecting 84,427,264 B of layer weights.
+Audit proved that weight-independent Qwen3/quantized topology can exist without retaining streamed layer weights. A detached shell retained 0 native MLX parameter bytes, no recursively found MLX arrays and no surviving weakrefs to the 25 selected layer arrays; block-output parity passed.
 
-Audit proved that a weightless topology shell can exist with zero retained native MLX parameter bytes and release all current streamed arrays. However, current strict `Module.load_weights` requires existing same-shape parameter leaves. A parameter-free shell cannot preserve the current binding path; placeholder parameters violate the metadata-only requirement; direct path-wise rebinding changes a second factor.
+However, current `Module.load_weights(..., strict=True)` requires existing same-shape parameter leaves. A truly parameter-free shell cannot preserve current binding semantics. Placeholder arrays violate the metadata-only requirement; direct path-wise rebinding changes a second factor.
 
-Classification: `STREAMED_BLOCK_REUSE_AUDIT_001_COMPLETE`.
-Decision: do not run a construction-only reuse A/B under the present strict binding lifecycle.
+Decision: do not run the construction-only block-reuse A/B. Revisit only if parameter binding itself becomes an explicit redesign factor.
 
-## High-leverage architecture exploration — NEW
+## Strategic scale pivot — 30B MoE
 
-Research note: `research/architecture/high-leverage-architecture-exploration-001.md`.
+Dense micro-optimization research remains valuable as controlled systems knowledge, but it is no longer the only primary path to ~30B on 8 GB. The high-impact scale hypothesis is sparse activation: full parameter count exists, but only a small routed subset is active/materialized per token.
 
-Main conclusion: a dense 32B that reads most weights every token is probably the wrong end-state for 8 GB. The highest-leverage literature changes the model-system contract so most parameters are cold by construction.
+Initial target: `Qwen/Qwen3-30B-A3B-MLX-4bit`.
+Verified public architecture: 30.5B total parameters, 3.3B activated, 48 layers, 128 experts, 8 activated experts/token, ~16.2 GB MLX 4-bit repository.
 
-Priority evidence:
+Frozen plan: `research/moe/loom-30b-moe-feasibility-001-plan.md`.
 
-1. **Sparse MoE / external experts.** Qwen3-30B-A3B has 30.5B total parameters but only 3.3B active per token (128 experts, 8 active). PowerInfer-2, EdgeMoE, MoE-Infinity, Fiddler and KTransformers show that sparse experts can be split across a memory hierarchy with prediction/caching/orchestration.
-2. **Neuron/cluster-level sparse access.** PowerInfer/DejaVu and Apple's `LLM in a Flash` show that active neuron subsets and flash-aware storage/layout can reduce transferred bytes dramatically compared with layer-wise loading.
-3. **Multi-token/block execution.** Medusa, multi-token prediction, EAGLE and Lookahead reduce the number of full decode sweeps. This is especially valuable out-of-core because one weight load may serve several accepted positions.
-4. **Recursive/shared weights.** Mixture-of-Recursions reuses a shared stack with adaptive recursion depth, attacking parameter capacity and compute together.
-5. **External learned memory.** Memory Layers at Scale / RETRO / Memorizing Transformers suggest a smaller resident reasoning core plus large sparsely accessed external memory.
-6. **Recurrent/SSM cores.** Mamba/Mamba-2, Griffin/RecurrentGemma and RWKV reduce state/KV costs; useful as a resident core but not sufficient alone for weight bandwidth.
+## Exact next step
 
-## Strategic next — QWEN3_30B_A3B_EXTERNAL_EXPERT_FEASIBILITY001
+`LOOM_30B_MOE_FEASIBILITY_001_STATIC`
 
-Do not attempt full 30B inference first. Perform anatomy/traffic modeling only:
-- exact shared/dense bytes per layer;
-- exact expert bytes and active-expert bytes/token;
-- quantized storage sizes relevant to M1;
-- theoretical NVMe bandwidth floor for naive active-expert reads;
-- routing/expert temporal-locality opportunities;
-- hot-expert cache sizes that fit 8 GB;
-- whether route prediction can overlap SSD fetch with preceding compute;
-- compare whole-expert vs neuron-cluster granularity.
+1. download official MLX 4-bit snapshot to internal SSD;
+2. do NOT run full-model generation yet;
+3. parse config + safetensors index/headers without whole-model load;
+4. byte-account shared tensors, routers, one expert, full expert banks and theoretical selected-expert working set;
+5. inspect shard/range locality;
+6. decide whether an <=8 GB resident/working-set runtime is structurally plausible before implementing expert streaming.
 
-This is a parallel high-leverage track. Dense Qwen3-8B evidence is preserved and may continue as the implementation laboratory, but the project should no longer assume dense 32B streaming is the final architecture.
+## Storage state
 
-## Later high-leverage directions
+Mac internal SSD was cleaned for the 30B phase. Historical Qwen3-4B-GGUF, Qwen3-8B-GGUF and Qwen3-8B-4bit MLX were moved to external archive. Canonical `Qwen3-8B-3bit` remains local. Latest observed internal free space before 30B download: ~79 GiB.
 
-1. external-expert feasibility/anatomy for Qwen3-30B-A3B
-2. expert activation trace + cache/prefetch model
-3. flash-aware contiguous expert/neuron-cluster representation
-4. multi-token/block amortization under out-of-core weights
-5. if needed, LOOM-native sparse/recursive model-system co-design
-6. capability validation
-7. behavioral decensoring validation before final promotion
+## Later if static feasibility passes
+
+1. exact routed-expert access prototype;
+2. expert cache/reuse measurement;
+3. routing prediction/prefetch only after access trace evidence;
+4. token-block/multi-token amortization where correctness permits;
+5. storage layout/range-I/O redesign only when evidence supports it;
+6. if existing MoE architecture remains fundamentally unsuitable, define LOOM-native architecture requirements from measured failure modes;
+7. capability comparison and behavioral-freedom validation before final promotion.
 
 ## Local-only warning
 
