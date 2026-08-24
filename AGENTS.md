@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 2.3
+Version: 2.4
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -74,6 +74,9 @@ Proven invariants:
 Exact-target candidate:
 `RedHatAI/Qwen3-30B-A3B-speculator.dflash`
 
+Publisher-intended target:
+`Qwen/Qwen3-30B-A3B`
+
 Static invariant:
 - BF16 safetensors 1,362,042,120 B (~1.2685 GiB), 680,813,824 learned weight elements;
 - 5 draft layers, H=2048, block=8 / proposals=7;
@@ -111,7 +114,7 @@ Drafter-decision-stability invariant:
 - 7-proposal wall P50/mean 0.08437 / 0.09067 s;
 - MLX resident 1,362,053,640 B; peak 2,305,009,460 B; RSS 1,449,148,416 B; swap delta 0.
 
-Important: that stability result predates the publisher anchor/block mask correction below. It proves MLX/reference agreement for the old semantics, not publisher-contract correctness after the mask repair.
+Important: that stability result predates the publisher anchor/block mask correction. It proves MLX/reference agreement for the old semantics, not publisher-contract correctness after the mask repair.
 
 DFlash first E2E invariant:
 - `LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`;
@@ -126,13 +129,10 @@ This is a dual failure: zero acceptance is the first blocker; memory pressure is
 
 Acceptance-alignment invariant:
 - `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001_REPAIRED_PROBE_ZERO_ACCEPTANCE`;
-- 3 deterministic P1 cycles C=43–45 inspected;
-- first concrete semantic mismatch: publisher anchor/block attention mask was absent in `Drafter.propose`;
+- first concrete semantic mismatch was missing publisher anchor/block attention mask in `Drafter.propose`;
 - publisher contract recovered: base positions `< anchor`, causal same-block synthetic attention, slots 1–7 map via `d2t`, `sample_from_anchor=False`, post-block taps `[1,12,23,34,45]`, no draft-KV carry;
-- target correction/bonus logic was already aligned;
 - only the drafter mask was mechanically repaired;
-- repaired short probe still accepted 0/21 proposals with prefixes `[0,0,0]`;
-- no simple k-1/k/k+1 proposal shift exists.
+- repaired short probe still accepted 0/21 proposals with prefixes `[0,0,0]`.
 
 Masked-reference invariant:
 - `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS`;
@@ -144,42 +144,52 @@ Masked-reference invariant:
 - final-logit max-abs distribution max/mean 0.0166407 / 0.0109135;
 - final-logit mean-abs distribution max/mean 0.00175031 / 0.00120281;
 - top1/top2 margin mean MLX/reference 0.55770 / 0.55726; max absolute margin error 0.00708771;
-- frozen-target accepted-prefix observation is `[0,0,0,0,0,0,0,0,0]` for both MLX and independent reference.
-
-Interpretation:
-- the corrected MLX drafter is now validated against an independent publisher-semantics reference;
-- the missing mask is no longer an unresolved implementation explanation for the observed zero frozen-prefix acceptance;
-- target/drafter compatibility is now the next scientific question;
-- the local `Qwen3-30B-A3B-MLX-4bit` target is a hypothesis to audit, not an established cause;
-- do not attribute incompatibility specifically to 4-bit quantization without isolating that variable.
-
-Target-compatibility audit precondition history:
-- first attempt of `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` classified `ENGINE_OR_DATA_BLOCKED` before Gate A;
-- target replay and compatibility scoring were not run;
-- only 45/63 immutable continuation decisions were then available;
-- `P1_t32`, `P2_t32`, `P3_t32` each lacked six required continuation tokens;
-- evidence: `results-local/research/dflash-target-compatibility-audit-001/20260824T144106Z/`.
+- frozen-target accepted-prefix observation `[0,0,0,0,0,0,0,0,0]` for both paths.
 
 Target-continuation freeze invariant:
 - `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS`;
-- historical recovery result: `NOT_RECOVERED_INCOMPLETE_P1_P2_P3_T32`;
-- baseline type: `REBASELINED_REFERENCE` generated through an independent already-validated target oracle, not the compatibility replay/scoring path;
-- exact historical overlap parity: 45/45; first mismatch none;
-- same 9 exact frozen states; complete continuation corpus 63/63;
-- 18 previously missing decisions are explicitly labeled `REBASELINED_REFERENCE`, not historical observations;
+- baseline type `REBASELINED_REFERENCE` generated through an independent already-validated target oracle, not compatibility replay/scoring;
+- historical overlap 45/45; first mismatch none;
+- same 9 exact frozen states; complete corpus 63/63;
+- 18 previously missing decisions explicitly labeled `REBASELINED_REFERENCE`;
 - deterministic rerun PASS; no NaN/Inf;
-- canonical reference artifact SHA-256: `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`;
-- evidence: `results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/`;
-- provenance: `results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/provenance.json`.
+- canonical SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`;
+- evidence `results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/`.
 
-The immutable-data blocker is removed. This freeze does not itself prove drafter/target compatibility.
+Target-compatibility invariant:
+- `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_PASS`;
+- reference hash PASS;
+- current target replay 63/63 PASS;
+- scoring-path frozen-target control 63/63 PASS;
+- deterministic rerun PASS; no NaN/Inf;
+- 63 drafter proposals scored under exact frozen target-prefix conditioning;
+- drafter/target top1 parity 0/63;
+- proposal target-rank min/P50/mean/max = 987 / 14,195 / 28,621.08 / 146,487;
+- top5/top10/top50 hits all 0/63;
+- proposal target logprob P50/mean = -37.3015 / -35.7567;
+- target top1/top2 margin P50/mean = 8.8752 / 9.0658;
+- accepted prefixes `[0,0,0,0,0,0,0,0,0]`;
+- verdict `INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`.
+
+Interpretation:
+- this is structural distributional incompatibility on the frozen corpus, not a near-boundary greedy mismatch;
+- corrected MLX drafter semantics and current target replay/scorer are independently validated;
+- the cause of incompatibility is still unresolved;
+- do NOT attribute causality to 4-bit quantization without isolating target identity and then precision/hidden-state effects.
 
 Next checkpoint:
-`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
+`LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001`
 
-Resume the previously blocked audit. First verify the frozen reference SHA-256 and require exact current-target replay against all 63 decisions, deterministic rerun and finite outputs. The frozen target continuation must also pass through the same scoring/validation path as a control and recover target top1 on all 63 decisions. If replay or control fails, stop before compatibility interpretation. Only after both gates pass characterize the validated masked drafter proposals under exact target-prefix conditioning: proposal-vs-target top1 parity, target rank, proposal log-probability, top5/top10/top50 inclusion, target margins and accepted-prefix distribution.
+Audit static/provenance identity of the local target against publisher-intended `Qwen/Qwen3-30B-A3B` before any expensive unquantized control. Prove or localize:
+- source model lineage/revision where recoverable;
+- architecture/config identity relevant to DFlash taps and logits;
+- tokenizer/vocab/special-token identity;
+- `d2t`/`t2d` target-ID semantics against the target tokenizer;
+- quantization/conversion provenance.
 
-Do not rerun full E2E or optimize memory/performance yet. Do not change drafter, target, weights, mapping, acceptance rules or thresholds. Do not attribute any incompatibility specifically to 4-bit quantization without a later isolated control.
+Goal: determine whether any material mismatch other than quantization/conversion exists. If yes, stop and localize it. If static identity is compatible and quantization remains the material unresolved transformation, the next scientific checkpoint should isolate target hidden-state/precision effects using an independent unquantized control, without yet rerunning full E2E.
+
+Do not rerun full E2E or optimize memory/performance. Do not change drafter, target, weights, mapping, acceptance rules or thresholds.
 
 For volatile project state, read `HANDOFF.md` only when explicitly needed. Do not edit it.
 
