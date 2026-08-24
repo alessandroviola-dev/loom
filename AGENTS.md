@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.1
+Version: 1.2
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -76,6 +76,16 @@ DFlash exact-target static invariant:
 - exact target taps `[1,12,23,34,45]`, concatenated to 10,240 then fused to 2048;
 - static M1/8-GB fit is plausible, but current LOOM/MLX has **no native DFlash integration path**;
 - do not integrate the drafter until target-tap capture/parity and multi-position target verification are separately proven.
+
+DFlash target-interface invariant:
+- `LOOM_DFLASH_TARGET_INTERFACE_001_PASS`;
+- tap IDs `[1,12,23,34,45]` are 1-based post-block outputs (`layers[i-1]`);
+- prefill tap shape `[1,28,2048]`, decode `[1,1,2048]`, dtype `float32`;
+- logical tap payload: 1,146,880 B prefill / 40,960 B decode;
+- taps-enabled target remains router/logit/token bitwise exact;
+- MLX peak delta measured +18,612,224 B, RSS high-water unchanged, swap delta 0;
+- captured tap references are released before the next forward and routed-expert ownership remains zero;
+- next prerequisite is multi-position/block target verification; do not integrate DFlash weights before it passes.
 
 For volatile project state, read `HANDOFF.md` only when the active work package explicitly needs it. Do not edit it.
 
