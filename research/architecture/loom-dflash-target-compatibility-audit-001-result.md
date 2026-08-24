@@ -2,72 +2,111 @@
 
 Date: 2026-08-24
 Checkpoint: `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
-Classification: `ENGINE_OR_DATA_BLOCKED`
-Gate: `BLOCKED`
+Classification: `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_PASS`
+Gate: `PASS`
 
 ## Purpose
 
-Audit the validated masked DFlash drafter against the current Qwen3-30B-A3B MLX 4-bit target, with exact target replay integrity as the hard first gate.
+Audit the validated masked DFlash drafter against the current Qwen3-30B-A3B MLX 4-bit target, with exact target replay integrity as a hard precondition before interpreting compatibility.
+
+## Attempt history
+
+The first attempt stopped as `ENGINE_OR_DATA_BLOCKED` because only 45/63 immutable continuation decisions existed. No compatibility measurements were made in that attempt.
+
+`LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS` subsequently supplied a complete provenance-safe `REBASELINED_REFERENCE`:
+- historical overlap 45/45;
+- 63/63 decisions complete;
+- 18 new decisions explicitly labeled `REBASELINED_REFERENCE`;
+- deterministic rerun PASS;
+- SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`.
+
+The compatibility audit was then resumed.
 
 ## Evidence
 
-Local raw evidence:
-`results-local/research/dflash-target-compatibility-audit-001/20260824T144106Z/`
+Final raw evidence:
+`results-local/research/dflash-target-compatibility-audit-001/20260824T151134Z/`
 
-Files:
-- `precondition.json`
-- `provenance.json`
+Runner:
+`scripts/loom_dflash_target_compatibility_audit_001.py`
 
-## Precondition result
+## Replay / validator gates
 
-The audit did not run target replay or compatibility scoring because the frozen continuation corpus is incomplete.
+- frozen-reference SHA-256: PASS;
+- current-target replay: 63/63 PASS;
+- frozen-target control through the scoring path: 63/63 PASS;
+- deterministic rerun: PASS;
+- NaN/Inf: none.
 
-Available immutable frozen target decisions:
-- `45/63` required decisions.
+Therefore the target reference and the compatibility scorer are valid for this corpus.
 
-Missing data:
-- `P1_t32`: 6 continuation tokens missing;
-- `P2_t32`: 6 continuation tokens missing;
-- `P3_t32`: 6 continuation tokens missing.
+## Drafter versus target
 
-Each `*_t32` state therefore has only one of the seven required frozen continuation decisions available.
+Decisions scored: 63.
 
-## Measurements not authorized
+Top1 parity:
+- `0/63` = `0%`.
 
-Because Gate A could not establish replay integrity, the following were not measured:
-- current-target replay parity;
-- frozen-continuation validation control;
-- drafter/target top1 parity;
-- target ranks of proposed tokens;
-- top-k hit rates;
-- proposed-token log-probabilities;
-- target margins;
-- accepted-prefix distribution.
+First mismatch:
+- state: `P1_t01`;
+- proposal position: 1;
+- drafter proposal token: `1778`;
+- target top1 token: `12050`;
+- proposed-token target rank: `23,235`;
+- proposed-token target log-probability: `-40.4061`.
 
-## Root conclusion
+Target-rank distribution of drafter proposals:
+- minimum: `987`;
+- P50: `14,195`;
+- mean: `28,621.08`;
+- maximum: `146,487`.
 
-Gate A cannot establish target replay integrity without immutable seven-token frozen continuations for all nine states.
+Top-k inclusion:
+- top5: `0/63`;
+- top10: `0/63`;
+- top50: `0/63`.
 
-The compatibility verdict remains `CONDITIONAL`.
+Proposal target log-probability:
+- P50: `-37.3015`;
+- mean: `-35.7567`.
 
-Do not create the missing 18 historical decisions by simply running the same current target/scoring path that the replay gate is intended to validate; that would make the replay proof circular.
+Target top1/top2 margin:
+- P50: `8.8752`;
+- mean: `9.0658`.
+
+Accepted-prefix distribution across the nine frozen states:
+`[0,0,0,0,0,0,0,0,0]`
+
+## Interpretation
+
+This is not a narrow greedy-boundary mismatch.
+
+The validated masked drafter proposals are structurally far from the current target distribution on the frozen corpus:
+- zero top1 agreement;
+- zero top50 inclusion;
+- best observed proposed-token rank still 987;
+- median rank 14,195;
+- large target decision margins.
+
+The corrected MLX drafter already matches an independent publisher-semantics reference on all 63 proposal decisions, while the current target and validation path reproduce the frozen target reference exactly on all 63 decisions.
+
+Therefore the supported compatibility verdict is:
+
+`INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`
+
+This checkpoint does **not** establish why the incompatibility exists. In particular it does not prove that 4-bit quantization is causal.
 
 ## Next checkpoint
 
-`LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001`
+`LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001`
 
-Recover an existing pre-audit continuation artifact if one exists locally and has usable provenance. If none exists, create a new explicitly rebaselined seven-token continuation corpus with an independent already-validated target oracle path, not the later compatibility scoring/replay path.
+Before constructing an expensive unquantized target control, audit the intended publisher target versus the local target provenance and static identity:
+- exact model family/source lineage;
+- architecture/config fields relevant to DFlash;
+- tokenizer/vocabulary and special-token identity;
+- d2t/t2d target-ID semantics;
+- quantization/conversion provenance and revision information where locally recoverable.
 
-The freeze checkpoint must:
-1. preserve the same nine frozen prefixes/states;
-2. verify the already-existing historical first continuation token before extending each state;
-3. generate/freeze seven target tokens per state with the independent oracle;
-4. deterministic rerun PASS;
-5. hash/provenance the complete 63-token artifact;
-6. clearly label newly generated decisions as a new reference baseline rather than pretending they were historically frozen.
+The goal is to determine whether the local target differs from the publisher-intended `Qwen/Qwen3-30B-A3B` in any material way other than quantization/conversion. If an identity mismatch exists, localize it before a BF16 control. If static identity is compatible and quantization remains the material unresolved transformation, then design a separate isolated hidden-state/target precision control.
 
-Only after this artifact exists may `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` be rerun.
-
-## Gate
-
-`BLOCKED — FROZEN_CONTINUATION_CORPUS_INCOMPLETE`
+No model changes, no threshold changes, no memory remediation and no full E2E rerun are authorized by this result.
