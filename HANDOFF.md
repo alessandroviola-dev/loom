@@ -1,13 +1,12 @@
 # LOOM — Active Handoff
 
-Last updated: 2026-08-23
-Status: ACTIVE — 30B MoE external-expert storage/runtime research
+Last updated: 2026-08-24
+Status: ACTIVE — 30B MoE external-expert runtime / traffic-reduction research
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_MOE_PHYSICAL_IO_001_CACHE_CONTROL_INVALID`
-Source review: `VIDEO_RESEARCH_INGEST_001_COMPLETE`
-Next core checkpoint: `LOOM_30B_MOE_PHYSICAL_IO_002_DEVICE_VERIFIED`
+Current checkpoint: `LOOM_30B_MOE_PHYSICAL_IO_002_CONDITIONAL`
+Next core checkpoint: `LOOM_30B_MOE_ONE_LAYER_EXTERNAL_EXPERT_001`
 Parallel next: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
 
 ## Mission
@@ -35,7 +34,7 @@ Dense partial-residency research remains a controlled implementation laboratory.
 Local model:
 `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
 
-Exact local static audit:
+Exact static anatomy:
 - Qwen3MoeForCausalLM;
 - 48 MoE layers;
 - hidden 2048;
@@ -51,7 +50,6 @@ Exact local static audit:
 - zero-cache expert traffic/token 962,592,768 B (918 MiB).
 
 Static result: `LOOM_30B_MOE_FEASIBILITY_001_STATIC_CONDITIONAL`.
-Core finding: sparse external-expert research is structurally justified because almost all model storage lives in routed experts while mandatory non-expert weights are <1 GiB.
 
 ## EXPERT-PACK-001 — PASS
 
@@ -67,91 +65,87 @@ Validated on layers 0 and 15:
 - byte amplification remains 1.0x;
 - packed useful/span efficiency 100%.
 
-This proves a lossless expert-major representation and independent expert addressing.
+Lossless expert-major storage is proven. Full 14.344 GiB repack remains conditional until runtime evidence shows it is worth materializing.
 
-The same run's ~14–15 GB/s throughput and ~66 ms 48-layer extrapolation remain NON-CANONICAL because the data could have been served from memory/page cache.
-
-## PHYSICAL-IO-001 — CACHE CONTROL INVALID
+## PHYSICAL-IO-001 — INVALID METHOD, CLOSED
 
 Run: `results-local/moe/physical-io-001/20260823T204945Z/`.
 Classification: `LOOM_30B_MOE_PHYSICAL_IO_001_CACHE_CONTROL_INVALID`.
 
-Verified:
-- `F_NOCACHE=48` recovered from local SDK and accepted;
-- `F_RDAHEAD=45` recovered from local SDK and accepted;
-- 1,002,700,800 B control region;
-- warm control ~14,439 MB/s;
-- nominal cache-minimized path ~13,800 MB/s;
-- only ~1.046x separation.
+Warm and nominal cache-minimized results both appeared memory-like (~14 GB/s), so no physical SSD number was promoted.
 
-Interpretation: the method did not defensibly isolate physical SSD service. The run correctly stopped at the sanity gate before >RAM, random expert, top-k or token-like measurements.
+## PHYSICAL-IO-002 — CONDITIONAL / DEVICE VERIFIED
 
-Therefore:
-- physical SSD throughput: UNKNOWN;
-- physical expert-read latency: UNKNOWN;
-- zero-cache seconds/token: NOT DERIVED;
-- cache/reuse requirement: NOT YET QUANTIFIED;
-- external-expert architecture: NOT INVALIDATED.
+Report: `research/moe/loom-30b-moe-physical-io-002-result.md`.
+Raw evidence: `results-local/moe/physical-io-002/20260824T062607Z/`.
+Classification: `LOOM_30B_MOE_PHYSICAL_IO_002_CONDITIONAL`.
 
-## Next core checkpoint
+Physical backing device: internal APPLE SSD AP0256Q (`disk0`). Device-level `iostat` evidence passed the sanity gate: a 12.53 GB cache-minimized workload produced ~10.97 GB conservative net device transfer (87.55% coverage); downstream sequential/random/top-k/token-like workloads had ~94.7–101.5% device-byte coverage.
 
-`LOOM_30B_MOE_PHYSICAL_IO_002_DEVICE_VERIFIED`
+Canonical physical results:
+- sequential: 2,391.9 MB/s;
+- random expert physical: 1,890.4 MB/s;
+- one expert latency P50/P90/P95/P99: 1.197 / 1.509 / 1.643 / 2.019 ms;
+- top-k=8 physical: 1,823.1 MB/s;
+- top-k latency P50/P90/P95/P99: 9.839 / 12.622 / 13.159 / 14.783 ms;
+- token-like 384-read latency P50: 460.074 ms;
+- token-like physical: 1,998.8 MB/s.
 
-Improve instrumentation rather than merely repeating `F_NOCACHE`:
-1. identify the actual internal physical disk backing the LOOM volume;
-2. use macOS `iostat` device counters/rates before, during and after test reads;
-3. require actual device MB transferred to materially track requested bytes before accepting a result as physical-storage evidence;
-4. keep deterministic 2,506,752 B expert-sized reads;
-5. use >RAM unique working set across the model shards;
-6. retain `F_NOCACHE` + disabled read-ahead where supported;
-7. measure sequential, random expert, top-k=8 and 384-read token-like workloads only after the device-I/O sanity gate passes;
-8. no generation/full model load/full pack.
+Zero-cache storage-only lower bound:
+- 0.4816 s/token;
+- 2.076 tok/s maximum before any model compute.
 
-## VIDEO_RESEARCH_INGEST_001 — COMPLETE
+Necessary external-traffic reduction from storage alone:
+- 1 tok/s: 0%;
+- 2 tok/s: 0%;
+- 5 tok/s: 58.47%;
+- 10 tok/s: 79.24%.
 
-Local source evidence:
-`results-local/research/video-ingest/qwen38-27b-harness-001/`
+Interpretation: SSD bandwidth is not a structural NO-GO, but zero-cache execution cannot deliver the target usability. Cache/reuse and/or multi-token block amortization are now PRIMARY REQUIREMENTS rather than optional optimizations. Because compute adds additional latency, practical 5/10 tok/s operation will require more than the I/O-only reduction figures above.
 
-Pi transcription/visual audit found:
-- video duration ~26:58;
-- presenter machine M4 Pro with 24 GB RAM;
-- shown 27B run reached ~22.68 GB used / 95% RAM and ~7.74 GB swap;
-- baseline local llama.cpp eval around 10.5 tok/s in one run, separate Ollama run around 5.99 tok/s;
-- Qwen3.8-27B DFlash2 comparison was external M5 Max, not reproduced on presenter machine;
-- external comparison around 34 -> 70 tok/s (~2.06x);
-- video does NOT demonstrate 27B viability on M1 8 GB;
-- Harness section does not materially solve LOOM runtime constraints.
+## DFlash / block speculative branch
 
-Independent review confirms DFlash/block speculative decoding is real, but the strategically important discovery is an exact-target speculator:
+Source ingestion complete for the supplied Qwen3.8-27B/DFlash2/Harness video. The video does not demonstrate 27B viability on 8 GB; it used M4 Pro/24 GB and an external M5 Max DFlash benchmark.
+
+Independent research found an exact-target draft model:
 `RedHatAI/Qwen3-30B-A3B-speculator.dflash` for `Qwen/Qwen3-30B-A3B`.
 
-Published metadata indicates roughly:
-- ~0.7B draft parameters;
-- 5 draft layers;
-- target hidden-state taps at layers 1, 12, 23, 34, 45;
-- reported average acceptance length ~2.46–3.77 depending on task.
+Published metadata indicates roughly ~0.7B draft parameters, 5 draft layers, target hidden-state taps at layers 1/12/23/34/45, and average acceptance length ~2.46–3.77 depending on workload.
+
+DFlash is not a memory-fit solution. Its possible LOOM value is amortizing target/expert work across multiple verified positions. The relevant metric is per-layer UNION of routed experts across the verification block divided by accepted tokens. Routing overlap must be measured; no benefit is assumed.
 
 Canonical research note:
 `research/architecture/dflash-qwen3-30b-a3b-relevance-001.md`.
 
-## DFlash relevance to external experts
+## Exact next steps
 
-DFlash is NOT promoted as a memory-fit solution. It adds draft-model residency/workspace.
+### Core — `LOOM_30B_MOE_ONE_LAYER_EXTERNAL_EXPERT_001`
 
-Its potential LOOM value is expert-I/O amortization during multi-token target verification. For a verification block, the critical quantity is not automatically `8 experts × tokens`; it is the per-layer UNION of routed experts touched across all verified positions, divided by accepted output tokens.
+Prove correct one-layer Qwen3-30B-A3B execution while keeping routed experts external:
+1. use layer 0 packed expert-major prototype;
+2. keep only the required attention/norm/router/shared tensors resident;
+3. route a controlled real activation to top-k experts;
+4. load only selected packed experts;
+5. reconstruct/apply quantized expert projections exactly;
+6. compare output against canonical full-layer execution for parity/tolerance;
+7. measure real peak memory, expert-load bytes, I/O latency and total layer latency;
+8. no full-model generation yet.
 
-If multiple positions reuse experts, one external expert load could serve several positions in the block. If routing overlap is weak, DFlash may accelerate compute while barely reducing external expert bytes/token.
+### Parallel — `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
 
-This must be measured; no routing-overlap assumption is allowed.
+Audit exact draft tensor bytes, architecture, quantization options and 8 GB budget impact before integration.
 
-Parallel checkpoints after/alongside physical-I/O instrumentation:
-1. `LOOM_30B_DFLASH_SPECULATOR_STATIC_001` — exact draft stored/resident footprint, architecture, quantization feasibility and 8 GB budget impact;
-2. `LOOM_30B_MOE_BLOCK_ROUTING_OVERLAP_001` — measure unique expert union across candidate verification blocks / accepted tokens;
-3. only then consider DFlash integration into the external-expert runtime.
+### After exact execution exists
+
+`LOOM_30B_MOE_BLOCK_ROUTING_OVERLAP_001`:
+- collect real per-position routing choices;
+- evaluate blocks 2–8 positions;
+- measure unique expert union/layer and expert bytes per accepted token;
+- compare with 918 MiB/token baseline and with required 58.47% / 79.24% reductions.
 
 ## Storage state
 
-Historical Qwen3-4B-GGUF, Qwen3-8B-GGUF and Qwen3-8B-4bit MLX are archived externally. Qwen3-8B-3bit and Qwen3-30B-A3B-MLX-4bit remain local. Expert-pack prototype uses ~612 MiB plus metadata. Latest physical-I/O run observed ~63.1 GiB free.
+Historical Qwen3-4B-GGUF, Qwen3-8B-GGUF and Qwen3-8B-4bit MLX are archived externally. Qwen3-8B-3bit and Qwen3-30B-A3B-MLX-4bit remain local. Expert-pack prototype uses ~612 MiB plus metadata. Latest observed free internal space was ~63 GiB before subsequent small evidence files.
 
 ## Local-only warning
 
