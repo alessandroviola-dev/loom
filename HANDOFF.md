@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-24
-Status: ACTIVE — 30B MoE external-expert runtime / whole-model residency research
+Status: ACTIVE — first complete 30B external-expert forward
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_MOE_ONE_LAYER_EXTERNAL_EXPERT_001_PASS`
-Next core checkpoint: `LOOM_30B_MOE_SHARED_BACKBONE_RESIDENCY_001`
+Current checkpoint: `LOOM_30B_MOE_SHARED_BACKBONE_RESIDENCY_001_PASS`
+Next core checkpoint: `LOOM_30B_MOE_FULL_FORWARD_EXTERNAL_001`
 Parallel next: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
 
 ## Mission
@@ -88,12 +88,10 @@ Report: `research/moe/loom-30b-moe-physical-io-002-result.md`.
 Report: `research/moe/loom-30b-moe-one-layer-external-expert-001-result.md`.
 Raw evidence: `results-local/moe/one-layer-external-expert-001/20260824T070045Z/`.
 
-A real layer-0 Qwen3-30B-A3B decoder layer executed with canonical MLX semantics while routed experts remained external and only one selected expert was live at a time.
+A real layer-0 decoder layer executed with canonical MLX semantics while routed experts remained external and only one selected expert was live at a time.
 
 Correctness:
-- deterministic T1/T4/T8 float16 inputs;
-- T1 top-k expert IDs `[118, 56, 65, 84, 98, 97, 119, 36]`;
-- router IDs and weights bitwise exact;
+- router IDs/weights bitwise exact;
 - all 8 selected expert outputs bitwise exact;
 - MoE output bitwise exact;
 - complete decoder-layer output bitwise exact (`atol=0`, `rtol=0`).
@@ -104,23 +102,61 @@ Residency:
 - expert residency reduction: 99.21875%;
 - CONTROL peak MLX / RSS: 331,495,092 B / 644,284,416 B;
 - SERIAL_EXPERT peak MLX / RSS: 12,938,408 B / 130,367,488 B;
-- ownership/release audit PASS; expert arrays were dead before the next expert load.
+- ownership/release audit PASS.
 
 Timing:
 - external MoE P50 15.455 ms;
 - full treatment layer P50 16.282 ms;
-- descriptive physical-I/O+compute one-layer bound 14.103 ms;
-- linear 48-layer descriptive extrapolation 0.677 s, explicitly not a full-model token prediction.
+- descriptive physical-I/O+compute one-layer bound 14.103 ms.
 
-Early synthetic routing overlap only:
-- T4: 30 unique experts / 32 selections;
-- T8: 51 / 64.
+## SHARED-BACKBONE-RESIDENCY-001 — PASS
 
-Strategic consequence: external-expert computation is now proven correct and memory-efficient. The remaining primary questions are whole-model shared/backbone residency and traffic reduction, not per-expert correctness.
+Report: `research/moe/loom-30b-moe-shared-backbone-residency-001-result.md`.
+Raw evidence: `results-local/moe/shared-backbone-residency-001/20260824T071921Z/`.
+
+The complete non-routed Qwen3-30B-A3B target was constructed by exact targeted safetensor reads while every routed-expert tensor remained absent.
+
+Exact results:
+- resident non-expert tensors: 919;
+- logical stored bytes: 819,015,680 B — exact reconciliation PASS;
+- routed-expert tensors resident: 0 / 0 B;
+- final MLX active: 819,032,072 B;
+- final MLX cache: 0 B;
+- final RSS: 817,463,296 B;
+- peak MLX construction: 819,032,072 B;
+- peak RSS construction: 1,122,189,312 B;
+- swap: 921.94 -> 921.94 MiB, no growth;
+- memory-pressure gate: PASS.
+
+Functional checks all PASS:
+- embedding;
+- layer-0 attention;
+- routers L0/L23/L47;
+- final norm;
+- LM head.
+
+BF16 KV accounting:
+- 98,304 B/token = 96 KiB/token;
+- 1,024 tokens = 96 MiB;
+- 4,096 = 384 MiB;
+- 8,192 = 768 MiB.
+
+Capacity reference at 2,506,752 B/expert:
+- 512 MiB cache: 214 experts;
+- 1 GiB: 428;
+- 2 GiB: 856;
+- 3 GiB: 1,285;
+- 4 GiB: 1,713.
+
+Decision: complete shared target viable YES; serial external-expert headroom YES; meaningful expert-cache headroom YES; plausible quantized-DFlash headroom YES; complete 48-layer external forward justified YES.
+
+Strategic consequence: both independent prerequisites for a full 30B external-expert model path are now proven on the M1 8 GB machine:
+1. all non-expert target structure resident at ~0.82 GB;
+2. exact routed-expert computation with only one ~2.39 MiB expert live at a time.
 
 ## DFlash / block speculative branch
 
-Video/source review is complete. The supplied Qwen3.8-27B video does not demonstrate 27B viability on 8 GB, but independent research found an exact-target speculator: `RedHatAI/Qwen3-30B-A3B-speculator.dflash` for `Qwen/Qwen3-30B-A3B`.
+Source/video review complete. The supplied Qwen3.8-27B video does not demonstrate 27B viability on 8 GB, but independent research found an exact-target speculator: `RedHatAI/Qwen3-30B-A3B-speculator.dflash` for `Qwen/Qwen3-30B-A3B`.
 
 Published metadata indicates roughly ~0.7B draft parameters, 5 draft layers, target hidden-state taps at layers 1/12/23/34/45, and average acceptance length ~2.46–3.77 depending on workload.
 
@@ -130,27 +166,29 @@ Canonical note: `research/architecture/dflash-qwen3-30b-a3b-relevance-001.md`.
 
 ## Exact next step — core
 
-`LOOM_30B_MOE_SHARED_BACKBONE_RESIDENCY_001`
+`LOOM_30B_MOE_FULL_FORWARD_EXTERNAL_001`
 
-Goal: prove that the entire non-expert target structure can remain resident on the 8 GB M1 without materializing routed expert banks.
+Goal: first complete end-to-end target forward through embedding, all 48 decoder layers, final norm and LM head with the full shared backbone resident and routed experts loaded only when selected.
+
+For correctness, do not require the full 14.344 GiB expert-major pack. The first treatment may read exact selected expert slices directly from the original safetensors (9 component ranges/expert) or consume validated layer packs where available. A reference path can stream one full layer expert bank at a time rather than loading the whole 30B.
 
 Required:
-1. instantiate/load embeddings, all 48 attentions, all norms, all routers, final norm and LM head;
-2. exclude every routed expert tensor and prove exclusion by ownership/inventory;
-3. compare logical stored bytes with actual MLX active/peak/cache memory and RSS;
-4. inspect Python/module overhead and temporary load peaks;
-5. determine safe remaining memory budgets for KV/runtime/expert cache/DFlash;
-6. do not run full generation and do not silently materialize expert banks.
+1. deterministic short token sequence;
+2. CONTROL full-target forward with one complete layer expert bank resident at a time, released before the next layer;
+3. TREATMENT full-target forward with only selected experts live, serially released;
+4. compare layer checkpoints, final hidden state and logits for exact/tolerance parity;
+5. record all real router top-k IDs per layer/position;
+6. prove zero accumulation of routed-expert parameters across layers;
+7. measure full-forward memory and timing breakdown;
+8. no autoregressive generation yet, no cache/prefetch/DFlash assumptions.
 
-If the shared backbone residency test passes, LOOM will have separately proven both components required for a full external-expert forward: resident shared structure + exact serial expert execution.
+If this passes, LOOM has a real full-capacity 30B forward path on M1 8 GB. The next steps become routing-trace/cache analysis and first generation, not basic feasibility.
 
-## After backbone residency
+## Parallel next
 
-Next candidate: `LOOM_30B_MOE_FULL_FORWARD_EXTERNAL_001` — first complete 48-layer forward using resident shared backbone and external selected experts, initially without speculative decoding or cache assumptions. This should also begin real router-trace collection.
+`LOOM_30B_DFLASH_SPECULATOR_STATIC_001` — exact draft bytes/architecture/quantization/runtime-compatibility and budget impact.
 
-Parallel: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`.
-
-Then: `LOOM_30B_MOE_BLOCK_ROUTING_OVERLAP_001` using real routing traces, followed by cache/reuse policy and only then DFlash integration if net-positive under the 8 GB budget.
+Then `LOOM_30B_MOE_BLOCK_ROUTING_OVERLAP_001` from real router traces, followed by cache/reuse policy and DFlash integration only if net-positive.
 
 ## Storage state
 
