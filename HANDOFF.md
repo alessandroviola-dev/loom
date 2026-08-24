@@ -1,109 +1,126 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-24
-Status: ACTIVE — exact target verifier + decision-stable MLX DFlash drafter proven; first end-to-end speculative loop next
+Status: ACTIVE — DFlash target/drafter components proven; first E2E loop failed with zero acceptance and memory pressure
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001_PASS`
-Next core checkpoint: `LOOM_DFLASH_GREEDY_E2E_001`
+Current checkpoint: `LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`
+Next core checkpoint: `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001`
 
 ## Mission
 
 **Big models. Small machines.** Run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB while balancing memory, speed, capability and later behavioral-freedom validation.
 
-Stable target anatomy and proven invariants live in `/AGENTS.md`. Pi uses compact work packages; ChatGPT owns Git/HANDOFF/ROADMAP.
+Stable target anatomy and long-lived invariants live in `/AGENTS.md`. Pi uses compact work packages; ChatGPT owns Git/HANDOFF/ROADMAP.
 
 ## Established target/runtime
 
 - Qwen3-30B-A3B external-expert execution is bitwise exact across all 48 layers.
 - Shared resident backbone 819,015,680 B; routed bank external.
 - Real greedy generation works on M1 8 GB.
-- Expert-major disk access materially improves decode.
-- 4-GiB raw RAM cache is rejected despite real ~80.9% reuse because it causes +2.41 GiB swap and slowdown.
+- Expert-major disk layout materially improves decode.
+- 4-GiB raw RAM cache is rejected: ~80.9% hit but +2.41 GiB swap and severe slowdown.
 
-## DFlash target side — COMPLETE
+## DFlash prerequisites already proven
 
 Candidate: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`.
 
-Static:
-- BF16 checkpoint ~1.2685 GiB;
-- 5 draft layers;
-- proposals=7;
-- taps `[1,12,23,34,45]`.
-
-Target interface:
-- exact taps exposed with target router/logits/tokens bitwise exact;
-- small memory overhead; swap delta 0.
-
-Exact B7 verification:
-- `LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS`;
+Target side:
+- exact taps `[1,12,23,34,45]` exposed with router/logit/token bitwise parity;
+- exact B7 wavefront verifier PASS;
 - canonical q_len=1 attention per position;
-- seven candidate positions advance layer-by-layer;
-- each unique expert loaded once/layer and reused across assigned positions;
-- hidden/KV/router/final logits/token decisions bitwise exact;
+- unique expert reuse per layer;
+- B7 hidden/KV/router/logits/token decisions bitwise exact;
 - 431,519,451 B useful expert bytes/verified position;
 - 10.8152 s sequential -> 6.5430 s wavefront = 1.653x;
-- swap delta 0; no expert leak.
+- zero swap/expert leak.
 
-## DFlash learned drafter — COMPONENT + DECISION STABILITY PASS
-
-`LOOM_DFLASH_DRAFTER_PORT_001_PASS` proved complete MLX weight mapping and memory safety.
-
-`LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001_PASS` now validates the port across real target states.
-
-Report: `research/architecture/loom-dflash-drafter-decision-stability-001-result.md`.
-Raw evidence: `results-local/research/dflash-drafter-decision-stability-001/20260824T114723Z/`.
-
-Corpus:
-- 9 frozen real target-tap states;
-- P1/P2/P3 at trace positions 1,16,32;
-- seven-step autoregressive draft rollout per state.
-
-Decision stability:
-- 63 proposal decisions compared;
-- 63/63 mapped token parity = 100%;
-- mismatches 0;
+Drafter side:
+- MLX maps all 680,813,824 learned BF16 params;
+- 9-state real-tap corpus, 63/63 seven-step proposal decisions match independent NumPy publisher translation;
 - deterministic rerun PASS;
-- no NaN/Inf.
+- seven-proposal drafter P50 ~0.08437 s;
+- standalone memory pressure PASS / swap 0.
 
-Margins/errors:
-- top1-top2 margin P50/P10/min 0.4271 / 0.04625 / 0.00510;
-- final-logit max-abs P50/max 0.00904 / 0.01310;
-- mean-abs P50/max 0.0009983 / 0.001386.
+## DFLASH-GREEDY-E2E-001 — FAIL GATE
 
-Standalone drafter cost:
-- seven-proposal wall P50 0.08437 s, mean 0.09067 s.
+Report: `research/architecture/loom-dflash-greedy-e2e-001-result.md`.
+Raw evidence: `results-local/research/dflash-greedy-e2e-001/20260824T124009Z/`.
+Runner: `scripts/loom_dflash_greedy_e2e_001.py`.
+
+Correctness of committed target output:
+- P1/P2/P3 completed;
+- 96 committed tokens;
+- ordinary-greedy output token parity PASS;
+- target KV/router/logit parity bitwise PASS;
+- deterministic rerun PASS;
+- zero routed-expert leak.
+
+But proposal acceptance is a complete failure:
+- 96 speculative cycles;
+- accepted proposals/cycle mean/P50 = **0.0 / 0.0**;
+- acceptance rate = **0%**.
+
+Economics:
+- verifier calls/output token: 1.96875;
+- useful external expert bytes/output token: 3,098,293,248 B;
+- control: 0.7735 tok/s;
+- DFlash treatment: 0.1544 tok/s;
+- relative speed: 0.1996x.
+
+Wall:
+- drafter 43.906 s;
+- verifier 574.698 s;
+- other 3.110 s;
+- total 621.713 s.
 
 Memory:
-- MLX resident 1,362,053,640 B;
-- MLX peak 2,305,009,460 B;
-- workspace 942,955,820 B;
-- RSS 1,449,148,416 B;
-- swap delta 0;
-- memory pressure PASS.
+- MLX peak 3,148,206,740 B;
+- RSS peak 1,259,044,864 B;
+- swap delta +737.43 MiB;
+- memory pressure FAIL.
 
-Interpretation: the MLX drafter is now sufficiently stable to serve as the proposal source for a first controlled greedy end-to-end DFlash checkpoint. This still does not establish acceptance length or end-to-end speedup.
+## Scientific interpretation
 
-## Exact next step — `LOOM_DFLASH_GREEDY_E2E_001`
+Do not treat this as `memory only`.
 
-Combine only already-proven components:
-1. normal target prefill with exact taps;
-2. MLX DFlash drafter proposes up to 7 mapped target tokens;
-3. exact B7 wavefront target verifier evaluates the proposal block;
-4. implement canonical greedy speculative acceptance/rejection semantics from the publisher/speculation contract;
-5. compare generated target token sequence against ordinary greedy target generation on the same prompts;
-6. measure accepted proposal lengths, verifier calls/output token, expert bytes/output token, combined wall/tok-s, MLX/RSS/swap and ownership.
+There are **two independent blockers**:
+1. zero proposal acceptance — the speculative system currently provides no amortization at all;
+2. +737.43 MiB swap — combined target+drafter execution is not memory-clean.
 
-No cache rescue, no quantization, no prefetch, no new storage optimization and no capability claims in this checkpoint.
+Acceptance is the first priority. Fixing memory while acceptance remains zero would only make a useless path less memory-heavy.
 
-Promotion requires exact target output parity and memory safety. Performance may PASS/CONDITIONAL independently depending on measured throughput.
+The previous decision-stability checkpoint proved MLX and the NumPy translation make the same proposal decisions. It did not prove that both were aligned correctly to the target's real speculative-generation contract. A shared integration error can therefore explain 63/63 MLX-vs-NumPy parity and 0/96 target acceptance simultaneously.
+
+## Exact next step — `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001`
+
+Use the existing E2E runner/evidence and publisher/source snapshots. Do not optimize memory or performance.
+
+For a small deterministic subset of cycles, reconstruct and compare token-by-token:
+1. ordinary target greedy continuation;
+2. actual mapped DFlash proposal sequence;
+3. target logits used to verify each proposal;
+4. proposal seed/input token;
+5. target tap position/timing used by the drafter;
+6. draft logit index used for proposal 1..7;
+7. d2t/t2d mapping location;
+8. draft KV initialization, carry and reset semantics;
+9. proposal-vs-target-token offset (`k`, `k+1`, etc.);
+10. publisher/source generation semantics, including bonus/correction behavior only where relevant.
+
+Required outcome: identify the **first semantic/alignment mismatch** or prove integration alignment correct and show that the drafter truly has zero acceptance against this quantized target.
+
+Do not relax acceptance rules and do not modify the drafter weights in this diagnostic.
+
+If a mechanical off-by-one/seed/tap/KV/mapping bug is proven, repair only that variable and rerun a short acceptance probe before full E2E. If alignment is correct and acceptance remains near zero, investigate target compatibility (e.g. 4-bit target vs the drafter's intended target) as a separate checkpoint.
 
 ## Later order
 
-1. first greedy DFlash end-to-end loop;
-2. if correct, longer sustained generation across multiple prompts;
-3. optimize drafter/verifier/storage only from measured bottlenecks;
-4. capability/coding benchmark;
-5. context/stability;
-6. behavioral decensoring validation before final promotion.
+1. acceptance/alignment diagnosis;
+2. short repaired acceptance probe if a mechanical cause is found;
+3. only after nonzero acceptance, memory remediation of combined target+drafter runtime;
+4. rerun full E2E economics;
+5. capability/coding benchmark once practical speed improves;
+6. context/stability;
+7. behavioral decensoring validation before final promotion.
