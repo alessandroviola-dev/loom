@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-24
-Status: ACTIVE — corrected DFlash drafter validated; target compatibility audit blocked by incomplete frozen continuation corpus
+Status: ACTIVE — DFlash target continuation corpus complete and hash-frozen; target/drafter compatibility audit ready to resume
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_ENGINE_OR_DATA_BLOCKED`
-Next core checkpoint: `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001`
+Current checkpoint: `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS`
+Next core checkpoint: `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
 
 ## Mission
 
@@ -38,13 +38,13 @@ Target side:
 
 Drafter side:
 - MLX maps all 680,813,824 learned BF16 params;
-- component memory-safe standalone;
-- publisher anchor/block mask semantics independently revalidated after repair.
+- standalone component memory-safe;
+- publisher anchor/block mask repaired and independently revalidated;
+- corrected MLX/reference masked parity 63/63 proposal decisions.
 
 ## First end-to-end DFlash — FAIL
 
 `LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`:
-- P1/P2/P3 completed;
 - 96 committed output tokens with ordinary-greedy parity PASS;
 - target KV/router/logit parity bitwise PASS;
 - deterministic rerun PASS;
@@ -62,72 +62,103 @@ Acceptance remains the first blocker; memory remediation stays deferred.
 
 `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001_REPAIRED_PROBE_ZERO_ACCEPTANCE` found and repaired the missing publisher anchor/block attention mask in `Drafter.propose`.
 
-`LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS` then independently validated the repaired semantics:
+`LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS` then established:
 - explicit independent 8×13 mask assertion PASS;
-- same 9 frozen P1/P2/P3 states at positions 1/16/32;
+- 9 frozen P1/P2/P3 states at positions 1/16/32;
 - 63/63 mapped proposal decisions match;
-- first mismatch none;
 - deterministic rerun PASS;
 - no NaN/Inf;
-- final-logit max-abs distribution max/mean 0.0166407 / 0.0109135;
-- final-logit mean-abs distribution max/mean 0.00175031 / 0.00120281;
-- mean top1/top2 margin MLX/reference 0.55770 / 0.55726;
-- max absolute margin error 0.00708771;
-- frozen-prefix acceptance observation `[0,0,0,0,0,0,0,0,0]` in both paths.
+- frozen-prefix acceptance observation `[0,0,0,0,0,0,0,0,0]` in both MLX and independent reference.
 
 Therefore the corrected MLX drafter implementation is no longer the leading explanation for zero acceptance. Target compatibility remains unproven, and 4-bit causality is not established.
 
-## TARGET-COMPATIBILITY-AUDIT-001 — BLOCKED
+## First target-compatibility attempt — BLOCKED
 
-Classification: `ENGINE_OR_DATA_BLOCKED`.
+`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` initially stopped as `ENGINE_OR_DATA_BLOCKED` before Gate A because only 45/63 immutable frozen target continuation decisions existed.
+
+The missing 18 decisions were six tokens each for `P1_t32`, `P2_t32`, and `P3_t32`.
+
+No target replay/control or compatibility statistics were run in that attempt.
 
 Report:
 `research/architecture/loom-dflash-target-compatibility-audit-001-result.md`
 
-Raw evidence:
+Evidence:
 `results-local/research/dflash-target-compatibility-audit-001/20260824T144106Z/`
 
-Files:
-- `precondition.json`
-- `provenance.json`
+## TARGET-CONTINUATION-FREEZE-001 — PASS
 
-Gate A did not run because the immutable frozen continuation corpus contains only 45/63 required target decisions.
+Classification:
+`LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS`
 
-Missing:
-- `P1_t32`: six continuation tokens;
-- `P2_t32`: six continuation tokens;
-- `P3_t32`: six continuation tokens.
+Report:
+`research/architecture/loom-dflash-target-continuation-freeze-001-result.md`
 
-Consequently no target replay/control, drafter-target parity, ranks, top-k rates, logprobs, margins or accepted-prefix characterization is yet valid.
+Historical recovery:
+`NOT_RECOVERED_INCOMPLETE_P1_P2_P3_T32`
 
-This is a data/provenance blocker, not evidence for or against target compatibility.
+A complete reference was therefore generated through an independent already-validated target oracle, not through the compatibility replay/scoring path.
 
-## Exact next step — `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001`
+Baseline type:
+`REBASELINED_REFERENCE`
 
-Do not fill the 18 missing decisions using the same current compatibility replay/scoring path. That would make Gate A circular.
+Hard overlap gate:
+- 45 historical decisions available;
+- independent oracle parity 45/45;
+- first mismatch none.
 
-First inspect only the relevant pre-existing local evidence for any independently captured and provenance-usable continuation artifact.
+Complete frozen corpus:
+- same 9 exact frozen states;
+- 63/63 continuation decisions;
+- 45 historical decisions preserved;
+- 18 new decisions explicitly labeled `REBASELINED_REFERENCE`, not historical observations;
+- deterministic rerun PASS;
+- no NaN/Inf.
 
-If none exists, create an explicitly **new rebaselined reference** using an independent already-validated target oracle path:
-1. same nine frozen prefixes/states;
-2. seven greedy target continuation tokens per state;
-3. require exact oracle agreement with all 45 already-available historical frozen decisions (`45/45`);
-4. only then accept the 18 missing decisions as new reference data;
-5. deterministic rerun PASS;
-6. no NaN/Inf;
-7. freeze exact model/prefix/oracle provenance;
-8. hash the complete 63-token artifact;
-9. label newly generated tokens as rebaselined reference data, not historical frozen observations.
+Canonical artifact SHA-256:
+`0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`
 
-Only after this gate passes should `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` be rerun.
+Evidence:
+`results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/`
+
+Provenance:
+`results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/provenance.json`
+
+The data/provenance blocker is now removed.
+
+## Exact next step — resume `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
+
+Do not rerun full E2E and do not optimize memory/performance.
+
+Gate A:
+1. verify the canonical frozen-reference SHA-256;
+2. replay the current target against all 63 frozen continuation decisions;
+3. require exact 63/63 parity;
+4. deterministic rerun PASS;
+5. no NaN/Inf.
+
+Validation control:
+- pass the frozen target continuation through the same scoring/validation path used for proposal analysis;
+- require target-top1 recovery 63/63.
+
+If replay or validation control fails, STOP before drafter compatibility interpretation.
+
+Only if both pass, score the validated masked DFlash proposals under exact target-prefix conditioning and report:
+- proposal-vs-target top1 parity;
+- target rank of each proposal;
+- proposal log-probability;
+- top5/top10/top50 inclusion;
+- target top1/top2 margins;
+- accepted-prefix distribution across all 9 states.
+
+Do not change target, drafter, weights, mappings, acceptance rules or thresholds. Do not attribute any incompatibility specifically to 4-bit quantization without a later isolated control.
 
 ## Later order
 
-1. target continuation freeze/recovery;
-2. rerun target/drafter compatibility audit;
-3. isolate compatibility cause only if needed;
-4. only after nonzero useful acceptance, combined-runtime memory remediation;
-5. rerun full E2E economics;
-6. capability/coding benchmark once practical speed improves;
-7. context/stability;
-8. behavioral decensoring validation before final promotion.
+1. complete target/drafter compatibility audit;
+2. isolate compatibility cause only if needed;
+3. only after nonzero useful acceptance, combined-runtime memory remediation;
+4. rerun full E2E economics;
+5. capability/coding benchmark once practical speed improves;
+6. context/stability;
+7. behavioral decensoring validation before final promotion.
