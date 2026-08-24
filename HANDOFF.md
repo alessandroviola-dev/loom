@@ -111,12 +111,13 @@ First inspect only the relevant pre-existing local evidence for any independentl
 If none exists, create an explicitly **new rebaselined reference** using an independent already-validated target oracle path:
 1. same nine frozen prefixes/states;
 2. seven greedy target continuation tokens per state;
-3. every already-existing historical first token must match the oracle result;
-4. deterministic rerun PASS;
-5. no NaN/Inf;
-6. freeze exact model/prefix/oracle provenance;
-7. hash the complete 63-token artifact;
-8. label newly generated tokens as rebaselined reference data, not historical frozen observations.
+3. require exact oracle agreement with all 45 already-available historical frozen decisions (`45/45`);
+4. only then accept the 18 missing decisions as new reference data;
+5. deterministic rerun PASS;
+6. no NaN/Inf;
+7. freeze exact model/prefix/oracle provenance;
+8. hash the complete 63-token artifact;
+9. label newly generated tokens as rebaselined reference data, not historical frozen observations.
 
 Only after this gate passes should `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` be rerun.
 
