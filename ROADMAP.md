@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-24
-Current checkpoint: `LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`
-Strategic next: `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001`
+Current checkpoint: `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001_REPAIRED_PROBE_ZERO_ACCEPTANCE`
+Strategic next: `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001`
 
 ## Mission
 
@@ -20,7 +20,7 @@ Canonical target values and stable invariants live in `/AGENTS.md`.
 - 4-GiB resident raw cache rejected for memory pressure;
 - exact DFlash target taps `[1,12,23,34,45]`;
 - exact B7 wavefront target verification with expert reuse;
-- MLX DFlash drafter port and cross-implementation decision stability.
+- MLX DFlash drafter component runs and fits.
 
 ## DFlash target side — PASS
 
@@ -33,75 +33,73 @@ Canonical target values and stable invariants live in `/AGENTS.md`.
 - 10.8152 -> 6.5430 s = 1.653x;
 - swap delta 0; no expert leak.
 
-## DFlash drafter — COMPONENT/STABILITY PASS
+## DFlash drafter — COMPONENT PASS, publisher-semantics parity reopened
 
-- all 680,813,824 learned BF16 params mapped in MLX;
-- 9 real target-tap states;
-- 63/63 mapped proposal decisions match the independent NumPy publisher translation;
-- deterministic rerun PASS;
-- seven-proposal drafter P50 ~0.08437 s;
-- standalone memory pressure PASS.
+The MLX port maps all 680,813,824 learned BF16 params and is standalone memory-safe.
+
+A prior decision-stability corpus showed 63/63 MLX-vs-NumPy proposal parity, but the subsequent E2E alignment diagnostic found that both validations preceded correction of the publisher anchor/block attention mask. Therefore that old 63/63 result is not sufficient proof of the corrected publisher contract.
 
 ## First end-to-end DFlash — FAIL
 
-`LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`.
-
-Report: `research/architecture/loom-dflash-greedy-e2e-001-result.md`.
-
-Correct committed target behavior:
-- P1/P2/P3 completed;
-- 96 output tokens;
-- committed token parity PASS;
-- target KV/router/logit parity PASS;
-- deterministic rerun PASS;
-- zero expert leak.
-
-But speculative usefulness is zero:
-- 96 cycles;
-- mean/P50 accepted proposals = 0.0;
-- acceptance rate = 0%;
-- verifier calls/output token = 1.96875;
-- useful external expert bytes/output token = 3,098,293,248 B;
-- control 0.7735 tok/s;
-- DFlash 0.1544 tok/s = 0.1996x.
-
-Memory also fails:
-- MLX peak 3,148,206,740 B;
-- RSS peak 1,259,044,864 B;
+`LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`:
+- 96 output tokens with committed target parity PASS;
+- target KV/router/logit correctness PASS;
+- acceptance 0/96;
+- 3,098,293,248 useful external expert B/output token;
+- control 0.7735 tok/s vs treatment 0.1544 tok/s;
 - swap +737.43 MiB.
 
-This is not a memory-only failure. Zero acceptance is an independent blocker and is now the first priority.
+Do not optimize memory while acceptance remains zero.
 
-## Next — acceptance alignment diagnosis
+## Acceptance alignment diagnosis — mask bug repaired, acceptance still zero
 
-Checkpoint: `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001`.
+`LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001_REPAIRED_PROBE_ZERO_ACCEPTANCE`.
 
-Before any memory/performance optimization, determine why the decision-stable drafter receives zero target acceptance.
+Report: `research/architecture/loom-dflash-acceptance-alignment-diag-001-result.md`.
 
-Audit a small deterministic set of E2E cycles against publisher/source semantics:
-1. target greedy continuation tokens;
-2. actual mapped proposals 1..7;
-3. verifier target logits/token positions;
-4. drafter seed/input token;
-5. target-tap timing/position;
-6. draft-logit index per proposal;
-7. d2t/t2d mapping location;
-8. draft KV init/carry/reset;
-9. proposal offset relative to target continuation;
-10. acceptance/correction/bonus semantics.
+Recovered publisher contract:
+- base attention positions strictly before anchor;
+- causal same-block synthetic attention;
+- slots 1–7 map via `d2t`;
+- `sample_from_anchor=False`;
+- target taps remain post-block `[1,12,23,34,45]`;
+- no draft-KV carry;
+- target correction/bonus logic aligned.
 
-The key distinction is:
-- **integration/alignment bug**: off-by-one, wrong seed, tap timing, mapping or KV semantics. Repair only the proven variable and run a short acceptance probe;
-- **alignment correct but acceptance truly ~0**: investigate drafter/target compatibility, especially the drafter trained for the intended Qwen3 target versus the local MLX 4-bit target, in a separate checkpoint.
+The MLX port had omitted the anchor/block attention mask. Only `Drafter.propose` masking was repaired.
 
-Do not optimize memory, caching, packing, quantization or verifier kernels while zero acceptance is unresolved.
+Short repaired probe:
+- 3 cycles;
+- 0/21 proposals accepted;
+- prefixes `[0,0,0]`;
+- no k-1/k/k+1 systematic shift.
 
-## After nonzero acceptance
+This does not yet prove drafter/target incompatibility. The corrected MLX path must first be compared with an independent masked publisher-semantics reference.
 
-1. memory remediation for combined target + BF16 drafter runtime;
+## Next — masked publisher-reference parity
+
+Checkpoint: `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001`.
+
+Required experiment:
+1. implement the publisher mask independently in the reference path, not by calling/reusing the MLX mask builder;
+2. assert the visibility matrix for anchor/base/synthetic slots against publisher source semantics;
+3. use real frozen target-tap states from multiple prompts/positions;
+4. compare MLX vs independent reference through fusion, five draft layers and seven autoregressive proposal positions;
+5. require mapped proposal-token parity and deterministic rerun;
+6. quantify final-logit error/margin distributions;
+7. record target acceptance only as an observation.
+
+Decision:
+- parity FAIL => localize/fix corrected drafter implementation before any target compatibility claim;
+- parity PASS + acceptance ~0 => proceed to a separate target/drafter compatibility audit, with local MLX 4-bit target mismatch as a hypothesis to test;
+- do not rerun full E2E or remediate memory yet.
+
+## After acceptance becomes nonzero
+
+1. combined target+drafter memory remediation;
 2. full E2E rerun;
 3. measure accepted tokens/verifier, expert bytes/output token and sustained tok/s;
-4. optimize only the measured dominant cost;
+4. optimize only the dominant measured cost;
 5. capability/coding benchmark;
 6. context/stability;
 7. if still insufficient: route prediction/prefetch, finer sparsity or LOOM-native co-design;
