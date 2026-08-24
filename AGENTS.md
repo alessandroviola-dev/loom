@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.5
+Version: 1.6
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -100,7 +100,16 @@ Wavefront invariant:
 - wall 10.8152 s sequential vs 6.5430 s wavefront = 1.653x speedup;
 - peak MLX 985,002,536 B; peak RSS 1,003,978,752 B; swap delta 0; no expert leak.
 
-Target-side prerequisites for a minimal DFlash drafter port are now complete. The learned drafter itself has NOT yet been executed in LOOM. Do not make speculative-generation or acceptance claims until a drafter-port parity checkpoint passes.
+Drafter-port invariant:
+- `LOOM_DFLASH_DRAFTER_PORT_001_PASS`;
+- MLX maps all 680,813,824 learned BF16 params = 1,361,627,648 B, 60 learned + 2 mapping tensors, no missing/extra learned weights;
+- independent reference is a separate NumPy translation of publisher source because publisher Torch/Speculators runtime is unavailable locally;
+- fusion max abs error 1.38e-05; draft-layer max abs error 0.0515–0.1442; final-logit max/mean 0.01956 / 0.003045;
+- mapped draft-token decisions were identical on the tested deterministic case; no NaN/Inf;
+- measured MLX resident 1,362,053,632 B; peak 2,289,441,196 B; workspace 927,387,564 B; RSS peak 1,423,212,544 B; swap delta 0; memory PASS;
+- this is component-port PASS only. Do NOT connect it to speculative generation yet: broader decision stability across real target taps/full 7-proposal rollouts must pass first because the official publisher runtime is unavailable and intermediate cross-implementation deltas are nontrivial.
+
+Target-side prerequisites are complete; drafter implementation exists and is memory-safe, but speculative integration remains blocked pending decision-stability validation.
 
 For volatile project state, read `HANDOFF.md` only when the active work package explicitly needs it. Do not edit it.
 
