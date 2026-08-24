@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 2.8
+Version: 2.9
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is persistent context for Pi. Prompts contain only the active WP delta.
@@ -93,9 +93,7 @@ Target identity:
 - local material delta: MLX affine 4-bit, group 128, 386 quantized triplets;
 - exact historical DFlash-era verifier revision remains unpinned.
 
-## Unquantized-control preflight
-
-`LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001` = `CONDITIONAL_PREFLIGHT_DISK_AND_ADAPTATION_REQUIRED`.
+## Unquantized-control provenance
 
 Pinned upstream BF16 control candidate:
 - revision `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`;
@@ -108,7 +106,7 @@ Public provenance: current upstream BF16 shard objects/tokenizer trace to origin
 
 ## Q4 tap replay provenance invariant
 
-Initial `LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001` attempt stopped as `CONTROL_ADAPTER_PARITY_FAIL` before BF16 access because current MLX 0.32.0 replay did not bitwise equal the frozen `P1_t01` taps, although adapter vs current Q4 oracle, router, logits and greedy token all matched.
+Initial `LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001` attempt stopped before BF16 access because current MLX 0.32.0 replay did not bitwise equal the frozen `P1_t01` taps, although adapter vs current Q4 oracle, router, logits and greedy token all matched.
 
 `LOOM_DFLASH_Q4_TAP_REPLAY_DRIFT_DIAG_001` classified `MECHANICAL_REPLAY_MISMATCH_REPAIRED`.
 
@@ -123,42 +121,81 @@ Exact state/capture identity:
 Root cause:
 - frozen evidence was captured under MLX 0.31.2 (`results-local/mlx/venv-mlx-lm-0.31.3`);
 - failed replay used MLX 0.32.0;
-- first tap difference: layer 1 post-block, 55,514/88,064 elements, max abs `2.3841858e-07`;
-- earliest localized difference: layer 1 / position 0 / expert 116 SwiGLU, 157/768 elements, max abs `2.9802322e-08`; gate/up projections bitwise equal;
+- earliest localized numerical difference: layer 1 / position 0 / expert 116 SwiGLU, max abs `2.9802322e-08`;
 - router/final-logit/greedy behavior remained exact.
 
 Mechanical repair:
 - replay with freeze-time MLX 0.31.2 only;
 - no code/model/prefix/position/capture change;
-- frozen tap parity restored to **5/5 bitwise**;
-- independent exact-oracle rerun confirms parity;
-- router logits 48/48 bitwise, final logits bitwise, greedy token 12050, finite/no leak PASS.
+- frozen tap parity restored to 5/5 bitwise;
+- router 48/48 bitwise, final logits bitwise, greedy token 12050, finite/no leak PASS.
+
+Runtime/library version is part of frozen-state provenance.
+
+## P1_t01 BF16 vs Q4 control — COMPLETE
+
+`LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001` = `PASS`.
+
+Gate A under MLX 0.31.2:
+- frozen taps 5/5 bitwise;
+- router 48/48 bitwise;
+- final logits bitwise;
+- greedy token 12050;
+- deterministic/finite/no-leak PASS.
+
+Gate B changed only the target weight source to pinned upstream BF16.
+
+Execution:
+- 3,470 BF16 layer-expert pairs;
+- expert payload fetched `32,747,028,480 B`;
+- 435 dense tensors / `3,082,186,752 B` reused with no dense redownload;
+- 13 network retries, 0 exhausted failures;
+- peak dedicated disk `3,091,655,835 B`;
+- wall time `5,888.0 s`;
+- deterministic/finite/no-leak PASS.
+
+Measured Q4 vs BF16 drift on `P1_t01`:
+- first router divergence: layer 0, position 1;
+- full-prefix router top-k identical layers: `0/48`;
+- tap relative-L2 at `[1,12,23,34,45]`: `0.114863, 0.345792, 0.310635, 0.198639, 0.274675`;
+- final normalized hidden: relative-L2 `0.270665`, cosine `0.964671`;
+- final logits: relative-L2 `0.336189`, cosine `0.957269`;
+- Q4 top1 = BF16 top1 = `12050`;
+- top1/top2 margin: Q4 `12.90015`, BF16 `11.875`;
+- top-5 overlap `4/5`.
 
 Interpretation:
-- no persistent Q4 hidden-state drift is established;
-- frozen tap corpus does not require refreezing from this diagnostic;
-- runtime/library version is part of frozen-state provenance;
-- BF16/quantization has still not been tested.
+- target Q4 precision materially changes the internal hidden/router/logit distribution on this state;
+- same greedy target token does not remove this as a DFlash hypothesis because DFlash consumes the five internal target taps;
+- this is still `NOT_CAUSAL`: one pinned current-upstream state does not prove that quantization caused the 0/63 DFlash compatibility failure.
+
+Transport note:
+- expert-major execution, pooled HTTPS and 64 MiB range coalescing were mechanical I/O remediation only;
+- no scientific model/math/capture/gate change.
 
 ## Next checkpoint
 
-Resume `LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001` under the pinned freeze-time runtime MLX 0.31.2.
+`LOOM_DFLASH_BF16_TAP_DRAFTER_PROBE_001`
 
-One-factor gate:
-1. run the bounded control adapter with local/dequantized Q4 values under MLX 0.31.2;
-2. require 5/5 frozen taps bitwise, router 48/48 bitwise, final logits bitwise and greedy parity;
-3. only then switch the weight source to pinned upstream BF16 tensors;
-4. keep runtime, prefix, code path, capture semantics and comparison logic fixed.
+Goal: isolate whether the measured Q4/BF16 target-tap distribution shift actually changes DFlash compatibility.
 
-BF16 comparison remains bounded to `P1_t01` and must report post-block taps `[1,12,23,34,45]`, final normalized hidden, router logits/top-k/weights, full logits, greedy top1/margin/top5 overlap, and max/mean abs, RMSE, relative-L2, cosine.
+One-factor intervention on the same `P1_t01` state:
+1. use the already validated unchanged DFlash drafter;
+2. preserve drafter weights, mapping, mask, anchor semantics and proposal path;
+3. establish the Q4-tap proposal baseline from the frozen/validated state;
+4. replace only the five target tap tensors with the completed BF16 control taps;
+5. compare proposal token/logits/rank/top-k compatibility against the pinned BF16 target next-token distribution for the same state.
+
+Required interpretation:
+- material recovery with BF16 taps -> precision-induced tap distribution shift becomes a strong mechanistic contributor; preregister broader frozen-state confirmation before causal promotion;
+- no material recovery -> simple target-tap precision drift becomes less likely to explain catastrophic DFlash incompatibility; reopen training/interface/distribution hypotheses.
 
 Restrictions:
-- no full 61-GB snapshot;
-- bounded range/shard staging only;
 - no DFlash E2E;
-- no target/drafter/mapping/acceptance changes;
-- no memory/performance remediation;
-- no quantization-causality claim from a single state.
+- no target/drafter retraining or remapping;
+- no acceptance/memory/performance remediation;
+- no broader state sweep in this WP;
+- no causal claim from one intervention state.
 
 ## Work-package contract
 
