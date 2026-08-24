@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.4
+Version: 1.5
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -69,38 +69,38 @@ Proven invariants:
 - persistent live-MLX expert cache is not currently promoted;
 - full 14.344-GiB expert pack is not automatically authorized.
 
-DFlash exact-target static invariant:
-- candidate: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`;
+## DFlash stable context
+
+Exact-target candidate:
+`RedHatAI/Qwen3-30B-A3B-speculator.dflash`
+
+Static invariant:
 - BF16 safetensors 1,362,042,120 B (~1.2685 GiB), 680,813,824 learned weight elements;
 - 5 draft layers, H=2048, block=8 / proposals=7;
 - exact target taps `[1,12,23,34,45]`, concatenated to 10,240 then fused to 2048;
-- static M1/8-GB fit is plausible, but current LOOM/MLX has **no native DFlash integration path**;
-- do not integrate the drafter until target-tap capture/parity and multi-position target verification are separately proven.
+- static M1/8-GB fit is plausible; current LOOM/MLX requires a custom port.
 
-DFlash target-interface invariant:
+Target-interface invariant:
 - `LOOM_DFLASH_TARGET_INTERFACE_001_PASS`;
-- tap IDs `[1,12,23,34,45]` are 1-based post-block outputs (`layers[i-1]`);
-- prefill tap shape `[1,28,2048]`, decode `[1,1,2048]`, dtype `float32`;
-- logical tap payload: 1,146,880 B prefill / 40,960 B decode;
-- taps-enabled target remains router/logit/token bitwise exact;
-- MLX peak delta measured +18,612,224 B, RSS high-water unchanged, swap delta 0;
-- captured tap references are released before the next forward and routed-expert ownership remains zero.
+- taps are 1-based post-block outputs (`layers[i-1]`);
+- prefill `[1,28,2048]`, decode `[1,1,2048]`, float32;
+- router/logits/tokens remain bitwise exact;
+- MLX peak delta +18,612,224 B; swap delta 0; no expert leak.
 
-DFlash block-verifier invariant:
-- `LOOM_DFLASH_BLOCK_VERIFIER_001_FAIL_GATE`;
-- B2 and B4 multi-position verification are bitwise exact vs sequential teacher forcing;
-- B7 preserves token decisions and selected router IDs but is not bitwise exact: max final-logit diff 0.0214348, max router-logit diff 0.00273609, KV reaches correct length 50 but differs bitwise;
-- B7 union geometry is favorable (1,264 unique layer-expert instances; 452,647,790 B/verified position) and block wall was 6.317 s vs 9.927 s sequential, but performance is not promoted while parity fails;
-- memory/ownership remained safe: peak MLX 960,393,224 B, swap delta 0, no expert leak.
+B7 verifier history:
+- batched multi-position attention was rejected because it introduced tiny layer-0 numerical divergence that cascaded;
+- diagnosis proved union-coalesced MoE was not the source.
 
-DFlash B7 parity-diagnosis invariant:
-- `LOOM_DFLASH_BLOCK_B7_PARITY_DIAG_001_FAIL_GATE`;
-- sequential reference A differs from both normal block B and union-coalesced block C starting at layer 0 / position 0 / `post_attention_hidden`;
-- first max/mean abs error `1.4901161e-08 / 2.6425653e-09` while K/V are still bitwise exact;
-- B and C are bitwise identical across all 336 layer/position/stage comparisons, proving union-coalesced MoE is not the divergence source;
-- root cause is B7 block-attention batching/floating execution, whose tiny initial difference cascades to final-logit max/mean `0.021434784 / 0.001928339`;
-- do not relax correctness tolerance or integrate DFlash from this result;
-- next candidate should preserve canonical `q_len=1` attention per position while reordering execution layer-by-layer so each unique routed expert can be loaded once and reused across the B7 positions.
+Wavefront invariant:
+- `LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS`;
+- canonical `q_len=1` attention is executed sequentially per position while the seven positions advance layer-by-layer;
+- after routing each layer, each unique expert is loaded once and reused across assigned positions;
+- all layer hidden states, KV, router IDs/weights, final logits and token decisions are bitwise exact vs sequential teacher forcing;
+- B7 uses 1,205 unique `(layer,expert)` instances = 431,519,451 B useful expert bytes/verified position;
+- wall 10.8152 s sequential vs 6.5430 s wavefront = 1.653x speedup;
+- peak MLX 985,002,536 B; peak RSS 1,003,978,752 B; swap delta 0; no expert leak.
+
+Target-side prerequisites for a minimal DFlash drafter port are now complete. The learned drafter itself has NOT yet been executed in LOOM. Do not make speculative-generation or acceptance claims until a drafter-port parity checkpoint passes.
 
 For volatile project state, read `HANDOFF.md` only when the active work package explicitly needs it. Do not edit it.
 
