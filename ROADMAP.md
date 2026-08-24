@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-24
-Current checkpoint: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001_CONDITIONAL_STATIC_MEMORY_FIT__INTEGRATION_BLOCKED`
-Strategic next: `LOOM_30B_DFLASH_TARGET_INTERFACE_001`
+Current checkpoint: `LOOM_DFLASH_TARGET_INTERFACE_001_PASS`
+Strategic next: `LOOM_30B_DFLASH_BLOCK_VERIFIER_001`
 
 ## Mission
 
@@ -10,154 +10,128 @@ Run ~27B/32B-class local AI on Apple M1 / 8 GB while balancing memory/residency,
 
 Final promoted models require validated decensoring via Heretic or a clean LOOM-native equivalent: `research/behavior/decensoring-requirement-v1.md`.
 
-## A — Architecture feasibility — PROVEN
+## A — Architecture/runtime feasibility — PROVEN
 
 Target: local `Qwen3-30B-A3B-MLX-4bit`.
 
 Established on M1 8 GB:
-- lossless expert-major representation;
-- device-verified SSD feasibility;
-- bitwise-exact external expert computation;
-- complete 819-MB shared backbone residency;
-- bitwise-exact 48-layer full forward;
-- production-like `GC_END_ONLY` runtime;
+- full external-expert execution across all 48 layers;
+- exact final logits;
+- complete shared-backbone residency;
 - real greedy generation;
-- real packed decode improvement;
-- long real routing/cache trace.
+- packed expert-major access as a real decode win;
+- long routing trace and cache economics;
+- 4-GiB raw RAM cache rejected for memory pressure.
 
-Canonical target values remain in `/AGENTS.md`.
+Canonical target values and stable invariants live in `/AGENTS.md`.
 
-## B — Real generation / storage baseline
+## B — Current real baseline
 
 `FIRST_GREEDY_GENERATION_001_PASS`:
-- correct real autoregressive output;
 - source zero-cache decode ~0.647 tok/s.
 
 `TRACE_PACK_DECODE_AB_001_PASS`:
-- expert-major 9->1 range access preserved exact output;
-- expert-read wall -59.27%;
-- total decode wall -43.72%;
-- packed decode-equivalent ~1.0799 tok/s.
+- packed decode-equivalent ~1.080 tok/s;
+- exact output preserved;
+- expert access remains a major cost.
 
-Packed disk geometry remains a proven optimization, though a full duplicate expert pack is still conditional.
-
-## C — Cache branch result
-
-`ROUTING_CACHE_TRACE_001_PASS` proved strong real temporal reuse and predicted ~79.6% hit for global LRU 4 GiB.
-
-`REAL_RAW_CACHE_001_MEMORY_FAIL` then validated the hit rate (~80.9%) but rejected the implementation:
-- +2410.56 MiB swap;
-- memory pressure FAIL;
+`REAL_RAW_CACHE_001_MEMORY_FAIL`:
+- actual LRU hit ~80.9%;
+- +2.41 GiB swap;
 - decode slowed to ~0.205 tok/s.
 
-Therefore:
-- do not retry the same 4-GiB raw-cache design;
-- do not jump to persistent live-MLX cache;
-- cache alone cannot escape the current ~2.066 tok/s single-token fixed-cost ceiling anyway.
+Conclusion: reuse is real but a large resident cache is not the path on M1 8 GB. The single-token runtime ceiling remains ~2.066 tok/s even with ideal cache hits.
 
-## D — DFlash exact-target static audit — COMPLETE / BLOCKED FOR INTEGRATION
+## C — DFlash exact-target static — COMPLETE / INTEGRATION BLOCKED
 
-`LOOM_30B_DFLASH_SPECULATOR_STATIC_001`.
+`LOOM_30B_DFLASH_SPECULATOR_STATIC_001`:
+- exact-target BF16 drafter ~1.2685 GiB;
+- 5 draft layers;
+- block=8 / proposals=7;
+- target taps `[1,12,23,34,45]`;
+- static memory fit plausible;
+- no native LOOM/MLX DFlash path.
 
-Report: `research/architecture/loom-30b-dflash-speculator-static-001-result.md`.
+DFlash is considered only as a target-work amortization mechanism, not a model-fit mechanism.
 
-Candidate:
-`RedHatAI/Qwen3-30B-A3B-speculator.dflash`.
+## D — Target DFlash interface — PASS
 
-Static facts:
-- learned BF16 weights: 680,813,824 elements;
-- published safetensors: 1,362,042,120 B = 1.268501 GiB;
-- 5 draft layers, H=2048, 32 Q / 4 KV heads, MLP 6144;
-- block=8, configured proposals=7;
-- exact target hidden-state taps `[1,12,23,34,45]`;
-- five target states concatenate to width 10,240 and are fused to 2048;
-- draft attention consumes fused target context.
+`LOOM_DFLASH_TARGET_INTERFACE_001_PASS`.
 
-Static memory fit on M1 8 GB is plausible, including BF16 draft, target KV and analytical draft KV. Quantized INT8/INT4 values currently remain lower-bound accounting only because exact quantizer metadata/scale overhead is not established.
+Report: `research/architecture/loom-30b-dflash-target-interface-001-result.md`.
 
-Current integration status: **NO**.
+Exact target tap contract is now proven in the real external-expert runtime:
+- 1-based post-block outputs `[1,12,23,34,45]`;
+- prefill `[1,28,2048]`, decode `[1,1,2048]`;
+- float32;
+- router/logits/token sequence remain bitwise exact;
+- tap payload 1,146,880 B prefill / 40,960 B decode;
+- MLX peak delta +18,612,224 B;
+- RSS unchanged;
+- swap delta 0;
+- no expert leak.
 
-Reason:
-- no native DFlash path in current MLX/LOOM runtime;
-- target-tap capture/fusion path absent;
-- block-mask / multi-position target verification absent;
-- local acceptance/workspace/routing-union economics unmeasured.
+This closes the first runtime prerequisite for a DFlash port.
 
-## E — Target-side DFlash interface — NEXT
+## E — Multi-position/block target verifier — NEXT
 
-Checkpoint: `LOOM_30B_DFLASH_TARGET_INTERFACE_001`.
+Checkpoint: `LOOM_30B_DFLASH_BLOCK_VERIFIER_001`.
 
-Before implementing any draft model, modify only the target runtime interface enough to expose the exact required hidden states.
+Goal: prove target verification of multiple candidate positions independently of the learned drafter.
 
-Required proof:
-1. capture target outputs after layers `[1,12,23,34,45]` on real external-expert forward/decode;
-2. define exact tensor contract: shape, dtype, token-position semantics and lifecycle;
-3. keep target router selections and final logits bitwise exact to baseline;
-4. measure tap memory overhead, MLX peak, RSS and swap;
-5. preserve zero routed-expert accumulation and `GC_END_ONLY` lifecycle;
-6. no DFlash weights, fusion, draft attention, block masking or speculative acceptance yet.
+Required experiment:
+1. use real deterministic continuation tokens from existing generation/trace evidence;
+2. establish exact speculative candidate/logit alignment from source/runtime semantics;
+3. compare sequential teacher-forced verification with one causal multi-position target block for B=2,4,7;
+4. verify KV advancement and per-position logits/token decisions;
+5. preserve external-expert ownership and memory safety;
+6. measure layer-local unique-expert union and bytes/verified-position;
+7. if semantics pass, evaluate a union-coalesced external-expert path where each unique expert is loaded once per layer/block;
+8. separate correctness from performance promotion.
 
-If this fails, DFlash custom integration remains blocked.
+If this fails, DFlash integration remains blocked.
 
-## F — Multi-position target verifier — AFTER E
-
-If target taps pass, separately prove the second target-side prerequisite:
-- process/verify multiple candidate positions in one target step while preserving exact causal semantics;
-- measure expert union/reuse and unique external bytes per verified position;
-- establish block-mask/KV behavior;
-- no learned DFlash drafter required initially.
-
-Real trace mean routing-union bytes/position already decline structurally with block length:
-- B2 749,343,645 B;
-- B3 642,396,979;
-- B4 570,480,569;
-- B5 519,237,866;
-- B6 479,315,740;
-- B7 446,068,713;
-- B8 417,808,712.
-
-These are structural counterfactuals, not measured block runtime or speculative speedup.
-
-## G — DFlash implementation gate
+## F — DFlash implementation gate
 
 Only after both:
 - target interface PASS;
-- multi-position target verification PASS;
+- block verifier PASS;
 
-should LOOM attempt a DFlash port/integration.
+may LOOM implement the learned DFlash drafter.
 
 Then measure:
-- real drafter resident/workspace bytes;
+- actual BF16/quantized resident and workspace footprint;
 - acceptance length on local workloads;
 - target verification steps/output token;
-- unique expert bytes/accepted token;
-- sustained tok/s and memory pressure;
-- exact deterministic target correctness.
+- unique external expert bytes/accepted token;
+- sustained generation tok/s;
+- memory pressure and deterministic correctness.
 
 A drafter that fits but does not improve accepted-token economics is not promoted.
 
-## H — Storage/cache later
+## G — Storage/cache later
 
-Possible complementary experiments only after block economics are known:
-- smaller/admission-controlled cache with strict swap gate;
-- hot-set packed + source-cold fallback;
-- on-demand/layer-segmented packed representation;
-- full 14.344-GiB expert-major pack only when arbitrary cold-miss economics justify it.
+Possible complementary work after block economics:
+- smaller/admission-controlled cache under strict swap gates;
+- packed hot-set + source-cold fallback;
+- on-demand/layer-segmented pack;
+- full expert-major pack only if arbitrary cold-miss economics justify duplicating the routed bank.
 
-## I — Promotion path
+Do not retry the failed 4-GiB raw cache or jump to persistent live-MLX caching.
 
-1. `LOOM_30B_DFLASH_TARGET_INTERFACE_001`.
-2. Multi-position/block target verifier.
-3. DFlash custom integration if both prerequisites pass.
-4. Rebenchmark sustained generation.
-5. Capability/coding benchmark.
-6. Context scaling and memory stability.
-7. If practical speed remains insufficient: route prediction/prefetch, finer-grained sparsity or LOOM-native system/model co-design.
-8. Behavioral decensoring validation before final promotion.
+## H — Promotion path
+
+1. `LOOM_30B_DFLASH_BLOCK_VERIFIER_001`.
+2. Minimal DFlash port if PASS.
+3. Sustained real generation benchmark.
+4. Capability/coding benchmark.
+5. Context scaling and memory stability.
+6. If speed remains insufficient: route prediction/prefetch, finer-grained sparsity or LOOM-native system/model co-design.
+7. Behavioral decensoring validation before final promotion.
 
 ## Token-efficient Pi workflow
 
-Root `/AGENTS.md` is authoritative persistent context. Pi prompts should normally be compact work packages containing only the active delta, inputs, gates, evidence and requested return fields. Pi remains local execution only; ChatGPT owns Git/HANDOFF/ROADMAP.
+Root `/AGENTS.md` is authoritative persistent context. Pi prompts should contain only the active delta, exact inputs, gates, evidence and concise return fields. Pi remains local execution only; ChatGPT owns Git/HANDOFF/ROADMAP.
 
 ## Local-only implementation warning
 
