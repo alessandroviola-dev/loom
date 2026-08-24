@@ -1,156 +1,144 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-24
-Current checkpoint: `LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001_IDENTITY_MATCH_EXCEPT_QUANTIZATION`
-Strategic next: `LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001`
+Current checkpoint: `LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001_CONDITIONAL`
+Strategic next: `LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001`
 
 ## Mission
 
-Run ~27B/32B-class local AI on Apple M1 / 8 GB with practical speed, full intended model capacity, reproducible correctness and later behavioral-freedom validation.
+Run ~27B/32B-class local AI on Apple M1 / 8 GB with practical speed, exactness and reproducible bounded experiments.
 
-Canonical target values and stable invariants live in `/AGENTS.md`.
+Canonical long-lived context is in `/AGENTS.md`.
 
-## Proven target/runtime
+## Proven DFlash chain
 
-- full Qwen3-30B-A3B external-expert execution across all 48 layers;
-- exact final logits and real greedy generation;
-- complete ~819-MB shared-backbone residency;
-- expert-major disk access gives a real decode win;
-- real routing reuse exists;
-- 4-GiB resident raw cache rejected for memory pressure;
-- exact DFlash target taps `[1,12,23,34,45]`;
-- exact B7 wavefront target verification with expert reuse;
-- MLX DFlash drafter component runs and fits.
+- exact target taps `[1,12,23,34,45]`;
+- exact B7 wavefront target verifier;
+- complete MLX drafter port;
+- publisher anchor/block mask repaired;
+- independent masked publisher reference PASS;
+- corrected MLX/reference proposal parity 63/63.
 
-## DFlash drafter — publisher semantics PASS
-
-`LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS`:
-- repaired MLX drafter matches an independently implemented masked publisher reference;
-- explicit independent 8×13 mask assertion PASS;
-- 9 frozen real target-tap states;
-- 63/63 mapped proposal-token decisions match;
-- deterministic rerun PASS;
-- no NaN/Inf.
-
-The corrected MLX mask/port path is no longer the leading explanation for zero acceptance.
-
-## First end-to-end DFlash — FAIL
-
-`LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`:
-- target committed behavior exact;
+First E2E:
+`LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`
+- target behavior exact;
 - acceptance 0/96;
-- useful external expert bytes/output token 3,098,293,248 B;
-- control 0.7735 tok/s vs treatment 0.1544 tok/s;
+- DFlash 0.1544 tok/s vs control 0.7735 tok/s;
 - swap +737.43 MiB.
 
-Do not optimize memory while acceptance remains zero.
+Memory/performance remediation remains deferred while acceptance is zero.
 
-## Frozen target continuation — PASS
+## Structural target incompatibility
 
-`LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS`:
-- independent-oracle historical overlap 45/45;
+Frozen target continuation:
+- 45/45 historical overlap;
 - complete 63/63 reference;
-- 18 new decisions marked `REBASELINED_REFERENCE`;
-- deterministic rerun PASS;
+- deterministic/finite;
 - SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`.
 
-## Target/drafter compatibility — structural incompatibility
-
-`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_PASS`:
+Compatibility audit:
 - target replay 63/63 PASS;
 - scoring control 63/63 PASS;
-- drafter/target top1 parity 0/63;
-- top5/top10/top50 hits all 0/63;
-- target rank min/P50/mean/max 987 / 14,195 / 28,621.08 / 146,487;
-- proposal logprob P50/mean -37.3015 / -35.7567;
-- target top1/top2 margin P50/mean 8.8752 / 9.0658;
-- accepted prefixes `[0,0,0,0,0,0,0,0,0]`.
+- drafter/target top1 0/63;
+- top5/top10/top50 all 0/63;
+- target proposal rank min/P50/mean/max 987 / 14,195 / 28,621.08 / 146,487;
+- accepted prefixes all zero.
 
 Verdict:
-`INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`
+`INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`.
 
-This is not a near-boundary greedy mismatch.
+## Target identity
 
-## Target identity — MATCH EXCEPT QUANTIZATION
+`IDENTITY_MATCH_EXCEPT_QUANTIZATION`:
+- DFlash-relevant config/architecture PASS;
+- tokenizer/vocab/special-token PASS;
+- d2t/t2d semantics PASS;
+- no material non-quantization mismatch.
 
-`LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001` classified:
-`IDENTITY_MATCH_EXCEPT_QUANTIZATION`.
+Local delta:
+MLX affine 4-bit, group 128, 386 quantized triplets.
 
-Publisher target:
-`Qwen/Qwen3-30B-A3B`
+Hidden-state/precision drift is therefore the leading hypothesis, not causal proof.
 
-Local target:
-`Qwen/Qwen3-30B-A3B-MLX-4bit`, revision `4e2776a4…`
+## Unquantized control preflight
 
-Checks:
-- DFlash-relevant config/architecture parity PASS;
-- tokenizer parity PASS;
-- special-token parity PASS;
-- vocab parity PASS;
-- `d2t`/`t2d` audit PASS;
-- first material non-quantization mismatch: none.
+`LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001`
+classified `CONDITIONAL_PREFLIGHT_DISK_AND_ADAPTATION_REQUIRED`.
 
-Conversion delta:
-- MLX affine 4-bit;
-- group size 128;
-- 386 weight/scales/biases triplets.
+Candidate upstream BF16 revision:
+`ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`.
 
-Unresolved provenance:
-- exact original unquantized revision unavailable locally;
-- publisher tokenizer byte snapshot unavailable locally.
+Artifacts:
+- 16 BF16 safetensors shards + index;
+- 18,867 tensors;
+- 61,066,575,648 B total.
 
-Conclusion:
-- static architecture/token semantics do not explain the incompatibility;
-- target hidden-state / precision drift is now the leading hypothesis;
-- quantization causality is still unproven.
+Disk:
+- free 60,668,579,840 B;
+- full-snapshot peak 65,066,551,120 B;
+- shortfall 4,397,971,280 B.
 
-Report:
-`research/architecture/loom-dflash-target-identity-audit-001-result.md`
+Therefore the full snapshot route is rejected.
 
-Evidence:
-`results-local/research/dflash-target-identity-audit-001/20260824T155624Z/`
+External-expert reuse is conditional because a BF16 reader/math path does not yet exist.
 
-## Next — unquantized control preflight
+Public provenance check supports using pinned current upstream BF16 object hashes: the weight shard objects and tokenizer.json trace to the original upstream upload commit `fd4bf3b`. The DFlash publisher does not pin an exact verifier revision, so this control must not be described as an exact historical-training replica.
+
+## Next — P1_t01 bounded BF16 control
 
 Checkpoint:
-`LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001`
+`LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001`
 
-Before downloading or running the large unquantized target, establish the minimum valid isolated control.
+Frozen state:
+`P1_t01`, context 43.
 
-Preflight questions:
-1. Which exact upstream unquantized model revision/artifacts should be used?
-2. What download and temporary disk footprint is required?
-3. Can the existing LOOM external-expert path consume unquantized weights without full-model residency?
-4. What is the smallest frozen prefix/state subset that can decisively test hidden-state drift?
-5. Which quantities must be compared at taps `[1,12,23,34,45]` and final logits?
-6. What numerical gates distinguish small expected precision noise from a DFlash-breaking distributional shift?
-7. What temporary artifacts are produced and how are they cleaned up?
+Critical one-factor design:
+1. build only the bounded BF16-capable control reader/math adapter;
+2. validate that adapter using local/dequantized 4-bit target values against canonical P1_t01 target evidence;
+3. require target/tap/router/logit parity before any BF16 interpretation;
+4. if adapter parity fails, STOP as `CONTROL_ADAPTER_PARITY_FAIL`;
+5. only after parity passes, change only the weight source to pinned upstream BF16 tensors;
+6. do not materialize the full BF16 model locally.
 
-Preflight restrictions:
-- do not download the full unquantized model;
-- do not run the full unquantized target yet;
-- no target/drafter/mapping changes;
-- no full E2E;
+Compare:
+- post-block taps `[1,12,23,34,45]` at final prefix position;
+- final normalized hidden;
+- all 48 router logits/top-k/weights;
+- full final logits;
+- greedy top1, top1/top2 margin and top5 overlap.
+
+Metrics:
+- max/mean abs;
+- RMSE;
+- relative-L2;
+- cosine;
+- determinism/no NaN/no leak.
+
+Restrictions:
+- bounded range/shard staging only;
+- no full 61-GB snapshot;
+- no DFlash E2E;
+- no target/drafter/mapping/acceptance changes;
 - no memory/performance remediation;
-- no causal claim against quantization.
+- no quantization-causality claim unless adapter parity makes the comparison one-factor.
 
-Decision after preflight:
-- feasible bounded control -> preregister and execute isolated unquantized hidden-state/logit comparison;
-- infeasible on M1/storage/runtime -> identify the minimum alternative independent control rather than silently weakening the experiment;
-- only a successful isolated control may promote or reject 4-bit hidden-state drift as the cause.
+## Decision after control
+
+- adapter FAIL -> debug only adapter semantics;
+- adapter PASS + BF16/4-bit hidden states/logits materially diverge -> precision/weight drift gains direct evidence; broader-state confirmation may be required before causal promotion;
+- adapter PASS + BF16/4-bit states remain close -> reject simple 4-bit hidden-state drift as sufficient explanation and reopen the next unresolved DFlash interface/training-distribution hypothesis;
+- only after a scientifically supported route to nonzero acceptance should memory optimization resume.
 
 ## Later order
 
-1. unquantized-control preflight;
-2. isolated unquantized target hidden-state/logit control;
-3. decide whether the existing DFlash drafter is salvageable for LOOM;
-4. only after nonzero useful acceptance, combined-runtime memory remediation;
-5. full E2E rerun and economics;
-6. capability/coding benchmark;
-7. context/stability;
-8. if DFlash remains nonviable, return to the next highest-leverage LOOM architecture/I/O branch;
-9. behavioral decensoring validation before final promotion.
+1. P1_t01 bounded BF16 control;
+2. broader confirmation if required;
+3. decide DFlash salvageability;
+4. memory remediation only after useful acceptance;
+5. full E2E economics;
+6. capability/coding/context validation;
+7. otherwise return to the next high-leverage LOOM architecture/I/O branch.
 
 ## Token-efficient Pi workflow
 
-Root `/AGENTS.md` is authoritative persistent context. Pi prompts contain only active delta, exact inputs, gates, evidence and concise return fields. Pi performs local execution/tests/evidence; ChatGPT owns Git/HANDOFF/ROADMAP.
+Root `/AGENTS.md` is persistent context. Pi prompts carry only the active delta. Pi executes local work; ChatGPT owns Git/HANDOFF/ROADMAP.
