@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 2.4
+Version: 2.5
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -174,22 +174,39 @@ Target-compatibility invariant:
 Interpretation:
 - this is structural distributional incompatibility on the frozen corpus, not a near-boundary greedy mismatch;
 - corrected MLX drafter semantics and current target replay/scorer are independently validated;
-- the cause of incompatibility is still unresolved;
-- do NOT attribute causality to 4-bit quantization without isolating target identity and then precision/hidden-state effects.
+- the cause of incompatibility is still unresolved.
+
+Target-identity invariant:
+- `LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001` classified `IDENTITY_MATCH_EXCEPT_QUANTIZATION`;
+- publisher-intended target `Qwen/Qwen3-30B-A3B`;
+- local provenance `Qwen/Qwen3-30B-A3B-MLX-4bit`, revision `4e2776a4…`;
+- DFlash-relevant config/architecture parity PASS; first mismatch none;
+- tokenizer, special-token and vocabulary parity PASS;
+- `d2t`/`t2d` audit PASS; all mapped/support IDs valid; literal inverse is not applicable (`d2t` I64 duplicate scatter map; `t2d` BOOL);
+- material conversion delta: MLX affine 4-bit, group size 128, 386 weight/scales/biases triplets;
+- unresolved provenance: exact original unquantized revision and publisher tokenizer byte snapshot unavailable locally;
+- no material non-quantization architecture/token-semantic mismatch was found;
+- evidence `results-local/research/dflash-target-identity-audit-001/20260824T155624Z/`.
+
+Interpretation:
+- target hidden-state / precision drift is now the leading hypothesis for DFlash incompatibility;
+- this remains a hypothesis, not causal proof against 4-bit quantization;
+- an independent unquantized target control is required before any causal claim.
 
 Next checkpoint:
-`LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001`
+`LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001`
 
-Audit static/provenance identity of the local target against publisher-intended `Qwen/Qwen3-30B-A3B` before any expensive unquantized control. Prove or localize:
-- source model lineage/revision where recoverable;
-- architecture/config identity relevant to DFlash taps and logits;
-- tokenizer/vocab/special-token identity;
-- `d2t`/`t2d` target-ID semantics against the target tokenizer;
-- quantization/conversion provenance.
+Before downloading or executing a large unquantized target, determine the minimum valid isolated control needed to compare the publisher-intended unquantized target against the current 4-bit target on the same frozen prefixes/taps. Establish:
+- exact upstream artifact/revision availability and provenance;
+- required local download/storage footprint;
+- whether LOOM's external-expert execution can consume the unquantized weights without full-model residency;
+- the minimum frozen state/prefix subset sufficient for a decisive first hidden-state/logit comparison;
+- exact tensors/layers/logits to compare and acceptance criteria;
+- expected temporary disk artifacts and cleanup plan.
 
-Goal: determine whether any material mismatch other than quantization/conversion exists. If yes, stop and localize it. If static identity is compatible and quantization remains the material unresolved transformation, the next scientific checkpoint should isolate target hidden-state/precision effects using an independent unquantized control, without yet rerunning full E2E.
+This is preflight only. Do NOT download the full unquantized model, do NOT run the full unquantized forward, and do NOT modify target/drafter/mapping/runtime behavior unless the work package explicitly authorizes it.
 
-Do not rerun full E2E or optimize memory/performance. Do not change drafter, target, weights, mapping, acceptance rules or thresholds.
+Do not rerun full E2E or optimize memory/performance.
 
 For volatile project state, read `HANDOFF.md` only when explicitly needed. Do not edit it.
 
