@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 2.2
+Version: 2.3
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -153,23 +153,33 @@ Interpretation:
 - the local `Qwen3-30B-A3B-MLX-4bit` target is a hypothesis to audit, not an established cause;
 - do not attribute incompatibility specifically to 4-bit quantization without isolating that variable.
 
-Target-compatibility audit precondition invariant:
-- `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` attempted Gate A and classified `ENGINE_OR_DATA_BLOCKED`;
+Target-compatibility audit precondition history:
+- first attempt of `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` classified `ENGINE_OR_DATA_BLOCKED` before Gate A;
 - target replay and compatibility scoring were not run;
-- immutable frozen continuation decisions available: 45/63;
-- `P1_t32`, `P2_t32`, `P3_t32` each lack six of the seven required continuation tokens;
-- drafter/target parity, ranks, top-k, logprobs, margins and accepted prefixes are therefore not measurable yet;
-- evidence: `results-local/research/dflash-target-compatibility-audit-001/20260824T144106Z/` (`precondition.json`, `provenance.json`);
-- do not fabricate the missing historical decisions by running the same current replay/scoring path; that would make Gate A circular.
+- only 45/63 immutable continuation decisions were then available;
+- `P1_t32`, `P2_t32`, `P3_t32` each lacked six required continuation tokens;
+- evidence: `results-local/research/dflash-target-compatibility-audit-001/20260824T144106Z/`.
+
+Target-continuation freeze invariant:
+- `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS`;
+- historical recovery result: `NOT_RECOVERED_INCOMPLETE_P1_P2_P3_T32`;
+- baseline type: `REBASELINED_REFERENCE` generated through an independent already-validated target oracle, not the compatibility replay/scoring path;
+- exact historical overlap parity: 45/45; first mismatch none;
+- same 9 exact frozen states; complete continuation corpus 63/63;
+- 18 previously missing decisions are explicitly labeled `REBASELINED_REFERENCE`, not historical observations;
+- deterministic rerun PASS; no NaN/Inf;
+- canonical reference artifact SHA-256: `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`;
+- evidence: `results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/`;
+- provenance: `results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/provenance.json`.
+
+The immutable-data blocker is removed. This freeze does not itself prove drafter/target compatibility.
 
 Next checkpoint:
-`LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001`
+`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
 
-First search only relevant pre-existing local evidence for an independently captured/provenanced seven-token continuation corpus. If none exists, explicitly create a NEW rebaselined 63-token target-continuation reference with an independent already-validated target oracle path, not the later compatibility scorer/replay path. Preserve the same nine frozen prefixes. The rebaseline must reproduce all 45 already-available historical frozen decisions exactly (`45/45`) before the 18 missing decisions can be accepted as new reference data. Require deterministic rerun, finite outputs, exact provenance and a content hash. Newly generated continuation tokens must be labeled as rebaselined reference data, not historical frozen observations.
+Resume the previously blocked audit. First verify the frozen reference SHA-256 and require exact current-target replay against all 63 decisions, deterministic rerun and finite outputs. The frozen target continuation must also pass through the same scoring/validation path as a control and recover target top1 on all 63 decisions. If replay or control fails, stop before compatibility interpretation. Only after both gates pass characterize the validated masked drafter proposals under exact target-prefix conditioning: proposal-vs-target top1 parity, target rank, proposal log-probability, top5/top10/top50 inclusion, target margins and accepted-prefix distribution.
 
-Only after that freeze passes may `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` be rerun.
-
-Do not rerun full E2E or optimize memory/performance yet.
+Do not rerun full E2E or optimize memory/performance yet. Do not change drafter, target, weights, mapping, acceptance rules or thresholds. Do not attribute any incompatibility specifically to 4-bit quantization without a later isolated control.
 
 For volatile project state, read `HANDOFF.md` only when explicitly needed. Do not edit it.
 
