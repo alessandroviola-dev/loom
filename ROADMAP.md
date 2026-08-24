@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-24
-Current checkpoint: `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_PASS`
-Strategic next: `LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001`
+Current checkpoint: `LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001_IDENTITY_MATCH_EXCEPT_QUANTIZATION`
+Strategic next: `LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001`
 
 ## Mission
 
@@ -32,13 +32,12 @@ Canonical target values and stable invariants live in `/AGENTS.md`.
 - deterministic rerun PASS;
 - no NaN/Inf.
 
-This removes the corrected MLX mask/port path as the leading explanation for zero acceptance.
+The corrected MLX mask/port path is no longer the leading explanation for zero acceptance.
 
 ## First end-to-end DFlash — FAIL
 
 `LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`:
-- target committed-token parity PASS;
-- target KV/router/logit correctness PASS;
+- target committed behavior exact;
 - acceptance 0/96;
 - useful external expert bytes/output token 3,098,293,248 B;
 - control 0.7735 tok/s vs treatment 0.1544 tok/s;
@@ -46,81 +45,111 @@ This removes the corrected MLX mask/port path as the leading explanation for zer
 
 Do not optimize memory while acceptance remains zero.
 
-## Target continuation reference — PASS
+## Frozen target continuation — PASS
 
 `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS`:
-- 45/45 historical overlap through an independent target oracle;
+- independent-oracle historical overlap 45/45;
 - complete 63/63 reference;
 - 18 new decisions marked `REBASELINED_REFERENCE`;
 - deterministic rerun PASS;
 - SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`.
 
-## Target/drafter compatibility — INCOMPATIBLE on frozen prefixes
+## Target/drafter compatibility — structural incompatibility
 
-`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_PASS`.
-
-Validation:
-- frozen reference hash PASS;
-- current-target replay 63/63 PASS;
-- scoring-path frozen-target control 63/63 PASS;
-- deterministic rerun PASS;
-- no NaN/Inf.
-
-Compatibility:
-- 63 decisions scored;
+`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_PASS`:
+- target replay 63/63 PASS;
+- scoring control 63/63 PASS;
 - drafter/target top1 parity 0/63;
 - top5/top10/top50 hits all 0/63;
-- proposal target rank min/P50/mean/max = 987 / 14,195 / 28,621.08 / 146,487;
-- proposal target logprob P50/mean = -37.3015 / -35.7567;
-- target top1/top2 margin P50/mean = 8.8752 / 9.0658;
+- target rank min/P50/mean/max 987 / 14,195 / 28,621.08 / 146,487;
+- proposal logprob P50/mean -37.3015 / -35.7567;
+- target top1/top2 margin P50/mean 8.8752 / 9.0658;
 - accepted prefixes `[0,0,0,0,0,0,0,0,0]`.
 
 Verdict:
 `INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`
 
-This is structural incompatibility, not a near-boundary greedy mismatch. The cause is not yet identified. No causal attribution to 4-bit quantization is supported yet.
+This is not a near-boundary greedy mismatch.
+
+## Target identity — MATCH EXCEPT QUANTIZATION
+
+`LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001` classified:
+`IDENTITY_MATCH_EXCEPT_QUANTIZATION`.
+
+Publisher target:
+`Qwen/Qwen3-30B-A3B`
+
+Local target:
+`Qwen/Qwen3-30B-A3B-MLX-4bit`, revision `4e2776a4…`
+
+Checks:
+- DFlash-relevant config/architecture parity PASS;
+- tokenizer parity PASS;
+- special-token parity PASS;
+- vocab parity PASS;
+- `d2t`/`t2d` audit PASS;
+- first material non-quantization mismatch: none.
+
+Conversion delta:
+- MLX affine 4-bit;
+- group size 128;
+- 386 weight/scales/biases triplets.
+
+Unresolved provenance:
+- exact original unquantized revision unavailable locally;
+- publisher tokenizer byte snapshot unavailable locally.
+
+Conclusion:
+- static architecture/token semantics do not explain the incompatibility;
+- target hidden-state / precision drift is now the leading hypothesis;
+- quantization causality is still unproven.
 
 Report:
-`research/architecture/loom-dflash-target-compatibility-audit-001-result.md`
+`research/architecture/loom-dflash-target-identity-audit-001-result.md`
 
 Evidence:
-`results-local/research/dflash-target-compatibility-audit-001/20260824T151134Z/`
+`results-local/research/dflash-target-identity-audit-001/20260824T155624Z/`
 
-## Next — target identity audit
+## Next — unquantized control preflight
 
 Checkpoint:
-`LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001`
+`LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001`
 
-The DFlash publisher identifies the intended target as `Qwen/Qwen3-30B-A3B`. Before building an expensive unquantized target control, prove whether the local target is the same static/token semantic model modulo conversion/quantization.
+Before downloading or running the large unquantized target, establish the minimum valid isolated control.
 
-Audit:
-1. local source model lineage and revision metadata where recoverable;
-2. architecture/config fields relevant to taps/logits/routing;
-3. tokenizer, vocabulary and special-token identity;
-4. d2t/t2d mapping semantics against the actual local target tokenizer;
-5. conversion/quantization metadata and provenance.
+Preflight questions:
+1. Which exact upstream unquantized model revision/artifacts should be used?
+2. What download and temporary disk footprint is required?
+3. Can the existing LOOM external-expert path consume unquantized weights without full-model residency?
+4. What is the smallest frozen prefix/state subset that can decisively test hidden-state drift?
+5. Which quantities must be compared at taps `[1,12,23,34,45]` and final logits?
+6. What numerical gates distinguish small expected precision noise from a DFlash-breaking distributional shift?
+7. What temporary artifacts are produced and how are they cleaned up?
 
-Decision:
-- any material non-quantization identity mismatch -> localize and stop before precision testing;
-- static identity compatible except quantization/conversion -> promote target hidden-state/precision drift to the leading hypothesis and design a separate isolated unquantized control;
-- do not call quantization causal until that control passes.
+Preflight restrictions:
+- do not download the full unquantized model;
+- do not run the full unquantized target yet;
+- no target/drafter/mapping changes;
+- no full E2E;
+- no memory/performance remediation;
+- no causal claim against quantization.
 
-Restrictions:
-- no full E2E rerun;
-- no target/drafter/weight/mapping changes;
-- no threshold or acceptance tuning;
-- no memory/performance remediation.
+Decision after preflight:
+- feasible bounded control -> preregister and execute isolated unquantized hidden-state/logit comparison;
+- infeasible on M1/storage/runtime -> identify the minimum alternative independent control rather than silently weakening the experiment;
+- only a successful isolated control may promote or reject 4-bit hidden-state drift as the cause.
 
-## After identity audit
+## Later order
 
-1. isolated target precision/hidden-state control if required;
-2. determine whether the existing DFlash drafter is salvageable for LOOM;
-3. only after nonzero useful acceptance, combined-runtime memory remediation;
-4. full E2E rerun and economics;
-5. capability/coding benchmark;
-6. context/stability;
-7. if DFlash remains nonviable, return to the next highest-leverage LOOM I/O/architecture branch;
-8. behavioral decensoring validation before final promotion.
+1. unquantized-control preflight;
+2. isolated unquantized target hidden-state/logit control;
+3. decide whether the existing DFlash drafter is salvageable for LOOM;
+4. only after nonzero useful acceptance, combined-runtime memory remediation;
+5. full E2E rerun and economics;
+6. capability/coding benchmark;
+7. context/stability;
+8. if DFlash remains nonviable, return to the next highest-leverage LOOM architecture/I/O branch;
+9. behavioral decensoring validation before final promotion.
 
 ## Token-efficient Pi workflow
 
