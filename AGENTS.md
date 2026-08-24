@@ -1,254 +1,225 @@
 # LOOM — Pi Agent Protocol
 
-Version: 2.5
+Version: 2.6
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
-This file is the persistent context for Pi. Do not require long prompts that restate it.
+This file is the persistent context for Pi. Prompts should contain only the active work-package delta.
 
-## Role split — local override
+## Role split
 
 Pi owns only local technical execution:
 - inspect relevant local code/runtime;
-- write the minimum code required by the active work package;
+- implement the minimum code required by the active WP;
 - run tests/benchmarks;
 - create local evidence under `results-local/`;
-- diagnose and mechanically self-correct inside scope.
+- mechanically self-correct inside scope.
 
 ChatGPT owns:
-- scientific direction and experiment selection;
+- scientific direction/experiment selection;
 - Git/GitHub synchronization;
 - `HANDOFF.md`, `ROADMAP.md`, research result documents and project-state administration.
 
-Therefore Pi must NOT run Git operations, edit `HANDOFF.md`/`ROADMAP.md`, open PRs, merge, push, or create project documentation unless the work package explicitly overrides this rule.
+Pi must NOT run Git operations, edit HANDOFF/ROADMAP, open/merge/push PRs, or create project documentation unless the WP explicitly overrides this.
 
-## Token-efficiency rules
+## Token-efficiency / scientific rules
 
-Use tokens for execution, not narration.
+1. Read this file, then only files/evidence relevant to the WP.
+2. Prefer exact paths and targeted search; do not rescan the repo without need.
+3. Do not restate project history or full logs.
+4. Do not create extra notes/changelogs.
+5. Preserve one-factor experiments, deterministic inputs, provenance and explicit gates.
+6. Distinguish measured fact, inference, hypothesis and unverified limit.
+7. Mechanical failures may be fixed inside scope; failed scientific treatments may not be silently rescued by parameter changes.
+8. Stop on scientific ambiguity, missing required artifacts, destructive actions or an explicit STOP gate.
 
-1. Read this file, then only files/evidence explicitly relevant to the work package.
-2. Use targeted search (`rg`, exact paths); do not scan the whole repo without need.
-3. Do not restate project history or the prompt.
-4. Do not create notes, research dumps, changelogs or extra documentation.
-5. Do not print full logs; preserve them locally and return only decisive evidence.
-6. Do not refactor or change architecture outside the requested variable.
-7. Distinguish measured fact, inference, hypothesis and unverified limit.
-8. Mechanical failures may be diagnosed/fixed autonomously inside scope; do not broaden the scientific experiment as a rescue.
-9. A failed preregistered treatment remains failed; no silent parameter changes.
-10. Stop on scientific ambiguity, safety/destructive action, missing required artifact, or a gate that explicitly says STOP.
-
-## Scientific loop
-
+Scientific loop:
 `OBSERVE -> EXECUTE -> VERIFY -> DIAGNOSE -> CORRECT(mechanical only) -> CHECKPOINT`
 
-Preserve one-factor experiments, deterministic inputs, exactness/parity gates, provenance and explicit failure classifications.
-
-## Stable LOOM target context
+## Stable LOOM target
 
 Reference machine: Apple M1 / 8 GB unified memory.
 
-Target model:
+Local target:
 `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
 
 Canonical anatomy:
-- 48 MoE layers; 128 routed experts/layer; top-k 8;
-- full stored tensor payload: 16,220,499,968 B;
-- resident non-routed backbone: 819,015,680 B;
-- external routed bank: 15,401,484,288 B;
-- one expert: 2,506,752 B;
-- zero-cache expert payload: 962,592,768 B/token;
-- BF16 KV: 98,304 B/token.
+- 48 MoE layers; 128 experts/layer; top-k 8;
+- full stored payload 16,220,499,968 B;
+- resident non-routed backbone 819,015,680 B;
+- routed bank 15,401,484,288 B;
+- one local 4-bit expert 2,506,752 B;
+- zero-cache expert payload 962,592,768 B/token;
+- BF16 KV 98,304 B/token.
 
-Proven invariants:
-- external serial-expert math is bitwise exact;
-- full 48-layer forward/logits are exact;
-- only one routed expert needs to be live at a time;
-- production-like lifecycle uses `GC_END_ONLY`; never add per-expert `gc.collect()` or per-expert RSS subprocesses to timed paths;
-- on-disk expert-major `9 ranges -> 1 contiguous read` is lossless and materially faster when available;
-- source-range access remains the general fallback for arbitrary un-packed experts;
-- 4-GiB raw `GLOBAL_LRU` cache is `MEMORY_FAIL`: ~80.9% hits were real but swap grew +2.41 GiB and decode slowed. Do not reuse this design unless a future work package explicitly revisits it;
-- persistent live-MLX expert cache is not currently promoted;
+Stable runtime invariants:
+- external serial-expert math and full 48-layer logits are exact;
+- one routed expert needs to be live at a time;
+- production lifecycle is `GC_END_ONLY`;
+- expert-major contiguous disk access is lossless and faster when available;
+- source-range access is the general fallback;
+- 4-GiB raw `GLOBAL_LRU` is rejected: ~80.9% hits but +2.41 GiB swap and slowdown;
+- persistent live-MLX expert cache is not promoted;
 - full 14.344-GiB expert pack is not automatically authorized.
 
-## DFlash stable context
+## DFlash candidate and validated chain
 
-Exact-target candidate:
+Drafter:
 `RedHatAI/Qwen3-30B-A3B-speculator.dflash`
 
 Publisher-intended target:
 `Qwen/Qwen3-30B-A3B`
 
-Static invariant:
-- BF16 safetensors 1,362,042,120 B (~1.2685 GiB), 680,813,824 learned weight elements;
-- 5 draft layers, H=2048, block=8 / proposals=7;
-- exact target taps `[1,12,23,34,45]`, concatenated to 10,240 then fused to 2048;
-- static M1/8-GB fit is plausible; current LOOM/MLX requires a custom port.
+Static drafter:
+- 680,813,824 learned BF16 params;
+- 5 layers, H=2048;
+- target taps `[1,12,23,34,45]`;
+- block 8 / 7 proposals.
 
-Target-interface invariant:
-- `LOOM_DFLASH_TARGET_INTERFACE_001_PASS`;
-- taps are 1-based post-block outputs (`layers[i-1]`);
-- prefill `[1,28,2048]`, decode `[1,1,2048]`, float32;
-- router/logits/tokens remain bitwise exact;
-- MLX peak delta +18,612,224 B; swap delta 0; no expert leak.
+Validated prerequisites:
+- `LOOM_DFLASH_TARGET_INTERFACE_001_PASS`: exact post-block taps, target router/logit/token parity;
+- `LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS`: exact seven-position target verification, 1.653x vs sequential teacher forcing, zero swap/leak;
+- `LOOM_DFLASH_DRAFTER_PORT_001_PASS`: all drafter weights mapped;
+- missing publisher anchor/block attention mask was found and repaired;
+- `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS`: independent masked publisher reference, explicit 8×13 mask assertion, 63/63 mapped proposal parity, deterministic and finite.
 
-Wavefront invariant:
-- `LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS`;
-- canonical `q_len=1` attention is sequential per position while seven positions advance layer-by-layer;
-- each unique expert is loaded once per layer and reused across assigned positions;
-- layer hidden/KV/router/final logits/token decisions are bitwise exact vs sequential teacher forcing;
-- B7 uses 1,205 unique `(layer,expert)` instances = 431,519,451 B useful expert bytes/verified position;
-- wall 10.8152 s sequential vs 6.5430 s wavefront = 1.653x;
-- peak MLX 985,002,536 B; peak RSS 1,003,978,752 B; swap delta 0; no expert leak.
-
-Drafter-port invariant:
-- `LOOM_DFLASH_DRAFTER_PORT_001_PASS`;
-- all 680,813,824 learned BF16 params mapped = 1,361,627,648 B, 60 learned + 2 mapping tensors, no missing/extra learned weights;
-- independent reference is a NumPy translation of publisher source because publisher Torch/Speculators runtime is unavailable locally;
-- fusion max abs 1.38e-05; draft-layer max abs 0.0515–0.1442; final-logit max/mean 0.01956 / 0.003045;
-- MLX resident 1,362,053,632 B; peak 2,289,441,196 B; swap delta 0.
-
-Drafter-decision-stability invariant:
-- `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001_PASS`;
-- 9 frozen real target-tap states from P1/P2/P3 at positions 1/16/32;
-- 63/63 mapped proposal decisions matched the then-current independent NumPy translation across 7-step rollouts;
-- deterministic rerun PASS; no NaN/Inf;
-- 7-proposal wall P50/mean 0.08437 / 0.09067 s;
-- MLX resident 1,362,053,640 B; peak 2,305,009,460 B; RSS 1,449,148,416 B; swap delta 0.
-
-Important: that stability result predates the publisher anchor/block mask correction. It proves MLX/reference agreement for the old semantics, not publisher-contract correctness after the mask repair.
-
-DFlash first E2E invariant:
+First E2E:
 - `LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`;
-- P1/P2/P3 completed, 96 committed output tokens, ordinary-greedy token parity PASS;
-- target KV/router/logits bitwise PASS; deterministic rerun PASS; zero routed-expert leak;
-- acceptance 0/96 cycles: mean/P50 0.0, rate 0%;
-- verifier calls/output token 1.96875; useful expert bytes/output token 3,098,293,248 B;
-- control 0.7735 tok/s vs DFlash 0.1544 tok/s = 0.1996x;
-- MLX peak 3,148,206,740 B; RSS 1,259,044,864 B; swap delta +737.43 MiB.
+- target committed behavior exact;
+- acceptance 0/96 cycles;
+- control 0.7735 tok/s vs DFlash 0.1544 tok/s;
+- swap +737.43 MiB.
 
-This is a dual failure: zero acceptance is the first blocker; memory pressure is separate. Do not optimize memory while acceptance remains zero.
+Do not remediate memory/performance while acceptance remains zero.
 
-Acceptance-alignment invariant:
-- `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001_REPAIRED_PROBE_ZERO_ACCEPTANCE`;
-- first concrete semantic mismatch was missing publisher anchor/block attention mask in `Drafter.propose`;
-- publisher contract recovered: base positions `< anchor`, causal same-block synthetic attention, slots 1–7 map via `d2t`, `sample_from_anchor=False`, post-block taps `[1,12,23,34,45]`, no draft-KV carry;
-- only the drafter mask was mechanically repaired;
-- repaired short probe still accepted 0/21 proposals with prefixes `[0,0,0]`.
-
-Masked-reference invariant:
-- `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS`;
-- independent publisher-semantics reference implements the corrected anchor/block mask separately from the MLX path;
-- explicit independent 8×13 anchor/block mask assertion PASS;
-- same 9 frozen P1/P2/P3 states at positions 1/16/32;
-- 63/63 mapped proposal-token decisions match across full seven-step autoregressive rollouts; first mismatch none;
-- deterministic rerun PASS; no NaN/Inf;
-- final-logit max-abs distribution max/mean 0.0166407 / 0.0109135;
-- final-logit mean-abs distribution max/mean 0.00175031 / 0.00120281;
-- top1/top2 margin mean MLX/reference 0.55770 / 0.55726; max absolute margin error 0.00708771;
-- frozen-target accepted-prefix observation `[0,0,0,0,0,0,0,0,0]` for both paths.
-
-Target-continuation freeze invariant:
+Frozen target reference:
 - `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS`;
-- baseline type `REBASELINED_REFERENCE` generated through an independent already-validated target oracle, not compatibility replay/scoring;
-- historical overlap 45/45; first mismatch none;
-- same 9 exact frozen states; complete corpus 63/63;
-- 18 previously missing decisions explicitly labeled `REBASELINED_REFERENCE`;
-- deterministic rerun PASS; no NaN/Inf;
-- canonical SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`;
-- evidence `results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/`.
+- 45/45 historical overlap through independent target oracle;
+- complete 63/63 reference, 18 new decisions labeled `REBASELINED_REFERENCE`;
+- deterministic/finite;
+- SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`.
 
-Target-compatibility invariant:
+Compatibility audit:
 - `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_PASS`;
-- reference hash PASS;
-- current target replay 63/63 PASS;
-- scoring-path frozen-target control 63/63 PASS;
-- deterministic rerun PASS; no NaN/Inf;
-- 63 drafter proposals scored under exact frozen target-prefix conditioning;
-- drafter/target top1 parity 0/63;
-- proposal target-rank min/P50/mean/max = 987 / 14,195 / 28,621.08 / 146,487;
-- top5/top10/top50 hits all 0/63;
-- proposal target logprob P50/mean = -37.3015 / -35.7567;
+- target replay 63/63 and scoring control 63/63;
+- drafter/target top1 0/63;
+- top5/top10/top50 all 0/63;
+- target proposal rank min/P50/mean/max = 987 / 14,195 / 28,621.08 / 146,487;
+- proposal logprob P50/mean = -37.3015 / -35.7567;
 - target top1/top2 margin P50/mean = 8.8752 / 9.0658;
 - accepted prefixes `[0,0,0,0,0,0,0,0,0]`;
 - verdict `INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`.
 
-Interpretation:
-- this is structural distributional incompatibility on the frozen corpus, not a near-boundary greedy mismatch;
-- corrected MLX drafter semantics and current target replay/scorer are independently validated;
-- the cause of incompatibility is still unresolved.
+This is structural incompatibility, not a near-boundary greedy miss.
 
-Target-identity invariant:
-- `LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001` classified `IDENTITY_MATCH_EXCEPT_QUANTIZATION`;
-- publisher-intended target `Qwen/Qwen3-30B-A3B`;
+Target identity:
+- `LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001`: `IDENTITY_MATCH_EXCEPT_QUANTIZATION`;
 - local provenance `Qwen/Qwen3-30B-A3B-MLX-4bit`, revision `4e2776a4…`;
-- DFlash-relevant config/architecture parity PASS; first mismatch none;
-- tokenizer, special-token and vocabulary parity PASS;
-- `d2t`/`t2d` audit PASS; all mapped/support IDs valid; literal inverse is not applicable (`d2t` I64 duplicate scatter map; `t2d` BOOL);
-- material conversion delta: MLX affine 4-bit, group size 128, 386 weight/scales/biases triplets;
-- unresolved provenance: exact original unquantized revision and publisher tokenizer byte snapshot unavailable locally;
-- no material non-quantization architecture/token-semantic mismatch was found;
-- evidence `results-local/research/dflash-target-identity-audit-001/20260824T155624Z/`.
+- architecture/config/tokenizer/special-token/vocab parity PASS;
+- d2t/t2d semantics PASS;
+- no material non-quantization identity mismatch;
+- material delta: MLX affine 4-bit, group 128, 386 weight/scales/biases triplets;
+- exact historical DFlash-era target revision remains unpinned.
 
-Interpretation:
-- target hidden-state / precision drift is now the leading hypothesis for DFlash incompatibility;
-- this remains a hypothesis, not causal proof against 4-bit quantization;
-- an independent unquantized target control is required before any causal claim.
+Therefore 4-bit/hidden-state drift is the leading hypothesis, not causal proof.
+
+## Unquantized-control preflight invariant
+
+`LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001`
+classified `CONDITIONAL_PREFLIGHT_DISK_AND_ADAPTATION_REQUIRED`.
+
+Candidate upstream revision:
+`ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`
+
+Artifacts:
+- BF16;
+- 16 safetensors shards + index;
+- 18,867 tensors;
+- total 61,066,575,648 B.
+
+Disk:
+- free 60,668,579,840 B (56.50 GiB);
+- estimated full-snapshot peak 65,066,551,120 B;
+- shortfall 4,397,971,280 B;
+- full snapshot is NOT authorized.
+
+Runtime feasibility:
+- external-expert reuse `CONDITIONAL`;
+- current quantized-triplet reader is not drop-in for upstream BF16;
+- required: BF16 tensor catalog, dense/expert path, three-projection expert reader and bounded range/shard-backed storage.
+
+First isolated state:
+`P1_t01`, context 43.
+
+Compare:
+- final-position post-block taps `[1,12,23,34,45]`;
+- final normalized hidden;
+- full logits;
+- all 48 router logits/top-k/weights;
+- greedy top1 and margin.
+
+Metrics:
+max/mean abs, RMSE, relative-L2, cosine; logits top1/margin/top5 overlap.
+No causal numerical threshold is preregistered yet.
+
+Analytical BF16 control footprint:
+- resident backbone 3,082,186,752 B;
+- one live expert 9,437,184 B;
+- KV at C=43 4,227,072 B.
+
+Public provenance note:
+- DFlash model card names `Qwen/Qwen3-30B-A3B` but does not pin a verifier commit;
+- current upstream BF16 shard objects and `tokenizer.json` trace to the original upstream upload commit `fd4bf3b`;
+- future control must pin exact weight-object/hash provenance and be described as a pinned upstream BF16 control, not an exact historical DFlash-training replica.
+
+Critical one-factor safeguard:
+- the BF16 reader/math adapter is a new implementation variable;
+- before interpreting BF16 differences, run the new control path with local/dequantized 4-bit target values and require parity with canonical local P1_t01 taps/router/logits;
+- adapter parity failure => `CONTROL_ADAPTER_PARITY_FAIL` and STOP;
+- only after adapter parity PASS may the weight source alone switch to pinned upstream BF16 objects.
 
 Next checkpoint:
-`LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001`
+`LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001`
 
-Before downloading or executing a large unquantized target, determine the minimum valid isolated control needed to compare the publisher-intended unquantized target against the current 4-bit target on the same frozen prefixes/taps. Establish:
-- exact upstream artifact/revision availability and provenance;
-- required local download/storage footprint;
-- whether LOOM's external-expert execution can consume the unquantized weights without full-model residency;
-- the minimum frozen state/prefix subset sufficient for a decisive first hidden-state/logit comparison;
-- exact tensors/layers/logits to compare and acceptance criteria;
-- expected temporary disk artifacts and cleanup plan.
-
-This is preflight only. Do NOT download the full unquantized model, do NOT run the full unquantized forward, and do NOT modify target/drafter/mapping/runtime behavior unless the work package explicitly authorizes it.
-
-Do not rerun full E2E or optimize memory/performance.
-
-For volatile project state, read `HANDOFF.md` only when explicitly needed. Do not edit it.
+Restrictions:
+- no full 61-GB snapshot;
+- bounded range/shard staging only;
+- no DFlash E2E rerun;
+- no target/drafter/mapping/acceptance changes;
+- no memory/performance remediation;
+- no quantization-causality claim until the isolated control is interpretable.
 
 ## Work-package contract
 
-A normal prompt may now be only:
-
+Normal prompt:
 ```text
 LOOM WP <id>
 Goal: ...
-Inputs: exact files/evidence to inspect
-Change: single allowed variable / code scope
-Gates: correctness + performance/memory criteria
+Inputs: exact files/evidence
+Change: single allowed variable/scope
+Gates: correctness + stop conditions
 Evidence: output directory/files
-Return: requested key metrics only
+Return: decisive metrics only
 STOP
 ```
 
-Everything not changed by the work package inherits this file.
+Everything not changed by the WP inherits this file.
 
-## Default evidence rules
+Default evidence:
+- original model files immutable;
+- experimental scripts may live under `scripts/`;
+- raw evidence under `results-local/<area>/<checkpoint>/<UTC>/`;
+- record real UTC/provenance;
+- do not manufacture measurements or infer unmeasured physical I/O.
 
-- Original model files are immutable.
-- Experimental scripts may be local under `scripts/`.
-- Raw benchmark evidence stays local under `results-local/<area>/<checkpoint>/<UTC-RUN-ID>/`.
-- Record real UTC run ID and enough provenance to reproduce the test.
-- Do not manufacture measurements or infer unmeasured physical I/O.
-
-## Default concise return
-
-Unless the work package requests different fields, return only:
-
+Default concise return:
 ```text
 Checkpoint: <id>
 Classification: <PASS/CONDITIONAL/FAIL-specific>
-Key metrics: <only decisive values>
+Key metrics: <decisive values>
 Parity/tests: <PASS/FAIL>
 Memory/safety: <decisive values>
 Evidence: <directory>
 Files: <created/modified>
-Blocker: <only if present>
+Blocker: <if present>
 STOP
 ```
-
-Local LOOM restrictions prevail where stricter than general agent protocols.
