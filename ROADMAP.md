@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-24
-Current checkpoint: `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_ENGINE_OR_DATA_BLOCKED`
-Strategic next: `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001`
+Current checkpoint: `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS`
+Strategic next: `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
 
 ## Mission
 
@@ -22,17 +22,6 @@ Canonical target values and stable invariants live in `/AGENTS.md`.
 - exact B7 wavefront target verification with expert reuse;
 - MLX DFlash drafter component runs and fits.
 
-## DFlash target side — PASS
-
-`LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS`:
-- canonical q_len=1 attention per candidate position;
-- seven positions move layer-by-layer;
-- each unique expert loaded once/layer and reused;
-- hidden/KV/router/logits/token decisions bitwise exact;
-- 431,519,451 B useful expert bytes/verified position;
-- 10.8152 -> 6.5430 s = 1.653x;
-- swap delta 0; no expert leak.
-
 ## DFlash drafter — publisher-semantics parity PASS
 
 `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS`:
@@ -41,16 +30,11 @@ Canonical target values and stable invariants live in `/AGENTS.md`.
 - 9 frozen real target-tap states from P1/P2/P3 at positions 1/16/32;
 - 63/63 mapped proposal-token decisions match across seven autoregressive proposal positions;
 - deterministic rerun PASS;
-- no NaN/Inf;
-- no first mismatch;
-- final-logit max-abs distribution max/mean 0.0166407 / 0.0109135;
-- final-logit mean-abs distribution max/mean 0.00175031 / 0.00120281;
-- MLX/reference top1-top2 mean margins 0.55770 / 0.55726;
-- max absolute margin error 0.00708771.
+- no NaN/Inf.
 
-Frozen-prefix accepted-prefix observation remained `[0,0,0,0,0,0,0,0,0]` in both paths.
+Frozen-prefix acceptance remained `[0,0,0,0,0,0,0,0,0]` in both MLX and independent reference.
 
-The corrected MLX drafter is therefore validated against independent publisher semantics. This does not yet establish target incompatibility and does not identify 4-bit quantization as causal.
+The corrected MLX drafter is therefore validated against independent publisher semantics. This does not establish target incompatibility and does not identify 4-bit quantization as causal.
 
 ## First end-to-end DFlash — FAIL
 
@@ -64,63 +48,74 @@ The corrected MLX drafter is therefore validated against independent publisher s
 
 Do not optimize memory while acceptance remains zero.
 
-## Target/drafter compatibility audit — BLOCKED on immutable continuation data
+## Target/drafter compatibility audit — initial attempt BLOCKED
 
-`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` was opened with target replay integrity as Gate A.
+The first `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` attempt stopped as `ENGINE_OR_DATA_BLOCKED` before target replay because only 45/63 immutable target continuation decisions existed.
 
-Result:
-`ENGINE_OR_DATA_BLOCKED`.
+No compatibility conclusion was produced.
 
-Available immutable frozen target decisions:
-- 45/63.
+## Target continuation freeze — PASS
 
-Missing:
-- six continuation tokens for `P1_t32`;
-- six continuation tokens for `P2_t32`;
-- six continuation tokens for `P3_t32`.
+`LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS` removed the data/provenance blocker.
 
-Target replay/control and all compatibility statistics were therefore not run. This checkpoint supplies no compatibility conclusion.
+Historical recovery:
+`NOT_RECOVERED_INCOMPLETE_P1_P2_P3_T32`
+
+A new complete `REBASELINED_REFERENCE` was generated with an independent already-validated target oracle, not the later compatibility replay/scoring path.
+
+Hard overlap validation:
+- historical decisions available: 45;
+- independent oracle parity: 45/45;
+- first mismatch: none.
+
+Complete reference:
+- 9 exact frozen states;
+- 63/63 target continuation decisions;
+- 45 historical decisions retained;
+- 18 previously missing decisions explicitly labeled `REBASELINED_REFERENCE`;
+- deterministic rerun PASS;
+- no NaN/Inf.
+
+Canonical reference SHA-256:
+`0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`
 
 Report:
-`research/architecture/loom-dflash-target-compatibility-audit-001-result.md`
+`research/architecture/loom-dflash-target-continuation-freeze-001-result.md`
 
 Evidence:
-`results-local/research/dflash-target-compatibility-audit-001/20260824T144106Z/`
+`results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/`
 
-Do not backfill the missing historical decisions using the same current replay/scoring implementation. That would invalidate the intended replay-integrity proof by circular construction.
+The frozen-reference precondition for the compatibility audit is now satisfied.
 
-## Next — target continuation freeze
+## Next — resume target/drafter compatibility audit
 
-Checkpoint: `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001`.
+Checkpoint:
+`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
 
-Phase A — provenance recovery:
-1. inspect only relevant existing local DFlash evidence/corpora;
-2. search for a pre-existing independently captured seven-token target continuation for the three `*_t32` states;
-3. accept recovered data only if state identity and provenance are unambiguous.
+Gate A — target replay integrity:
+1. verify the frozen artifact SHA-256;
+2. replay the current target against all 63 frozen continuation decisions;
+3. require exact 63/63 parity;
+4. deterministic rerun PASS;
+5. no NaN/Inf.
 
-Phase B — rebaseline only if recovery fails:
-1. use the same nine frozen prefixes/states;
-2. use an independent already-validated target oracle path, not the later compatibility replay/scoring path;
-3. generate seven greedy target continuation tokens per state;
-4. require exact parity with all 45 already-available historical frozen decisions (`45/45`);
-5. only after that overlap gate passes may the 18 missing decisions be accepted as new reference data;
-6. require deterministic rerun and finite outputs;
-7. freeze exact model/prefix/oracle provenance;
-8. write and SHA-256 hash the complete 63-token reference artifact;
-9. label newly generated decisions explicitly as `REBASELINED_REFERENCE`, not historical frozen data.
+Validation control:
+1. pass the frozen target continuation through the same scoring path used for proposal analysis;
+2. require exact target-top1 recovery 63/63.
 
-Gate:
-- recovery with valid provenance OR independent-oracle rebaseline PASS;
-- 63/63 complete continuation decisions;
-- historical overlap parity 45/45 PASS;
-- deterministic rerun PASS;
-- content hash recorded.
+If either gate fails, stop before interpreting drafter compatibility.
 
-Only after this checkpoint passes should `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` be rerun.
+Only if both pass:
+1. score validated masked DFlash proposals under exact target-prefix conditioning;
+2. report proposal-vs-target top1 parity;
+3. record target rank and log-probability of each proposed token;
+4. report top5/top10/top50 hit rates;
+5. report target top1/top2 margins;
+6. report exact accepted-prefix distribution across all 9 states.
 
 Restrictions:
-- no drafter/target weights or token-map changes;
-- no acceptance-rule/threshold tuning;
+- no target/drafter/weight/mapping changes;
+- no acceptance-rule or threshold tuning;
 - no memory/performance remediation;
 - no full E2E rerun;
 - no causal claim against 4-bit quantization.
