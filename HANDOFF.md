@@ -1,13 +1,13 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-24
-Status: ACTIVE — full 30B external-expert execution proven; runtime-overhead attribution next
+Status: ACTIVE — full 30B external-expert forward proven and de-instrumented; first greedy generation next
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_MOE_FULL_FORWARD_EXTERNAL_001_CONDITIONAL`
-Next core checkpoint: `LOOM_30B_MOE_FULL_FORWARD_OVERHEAD_ATTRIBUTION_001`
-Parallel next: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
+Current checkpoint: `LOOM_30B_MOE_FULL_FORWARD_OVERHEAD_ATTRIBUTION_001_PASS`
+Next core checkpoint: `LOOM_30B_MOE_FIRST_GREEDY_GENERATION_001`
+Parallel later: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
 
 ## Mission
 
@@ -37,126 +37,133 @@ Local model: `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`.
 - one routed expert 2,506,752 B;
 - zero-cache useful expert traffic 962,592,768 B/position (918 MiB).
 
-## Proven prerequisites
+## Proven architecture primitives
 
 ### Expert-major storage — PASS
 
-`LOOM_30B_MOE_EXPERT_PACK_001_PASS` proved lossless expert-major packing on layers 0 and 15: 9 source ranges/expert -> 1 contiguous range/expert, zero mismatches, no byte amplification.
+`LOOM_30B_MOE_EXPERT_PACK_001_PASS` proved lossless expert-major packing on representative layers: 9 source ranges/expert -> 1 contiguous range/expert, zero mismatches, no byte amplification. Full 14.344 GiB repack remains deferred.
 
 ### Physical I/O — CONDITIONAL / device verified
 
-`LOOM_30B_MOE_PHYSICAL_IO_002_CONDITIONAL` established the real internal-SSD baseline:
+`LOOM_30B_MOE_PHYSICAL_IO_002_CONDITIONAL` established the internal SSD baseline:
 - random expert physical ~1,890.4 MB/s;
 - expert latency P50 1.197 ms;
 - top-k latency P50 9.839 ms;
 - zero-cache storage-only lower bound 0.4816 s/token;
 - storage-only maximum 2.076 tok/s;
-- required traffic reduction from storage alone: 58.47% for 5 tok/s, 79.24% for 10 tok/s.
+- traffic reduction needed from storage alone: 58.47% for 5 tok/s, 79.24% for 10 tok/s.
 
 ### One-layer external experts — PASS
 
-`LOOM_30B_MOE_ONE_LAYER_EXTERNAL_EXPERT_001_PASS` proved exact decoder-layer computation with one selected expert live at a time:
-- router, expert outputs, MoE and full layer bitwise exact;
-- 320,864,256 B full expert bank -> 2,506,752 B maximum logical expert live;
+`LOOM_30B_MOE_ONE_LAYER_EXTERNAL_EXPERT_001_PASS` proved exact decoder-layer computation with one selected routed expert live at a time:
+- router/expert/MoE/full-layer outputs bitwise exact;
+- 320,864,256 B full expert bank -> 2,506,752 B maximum logical live expert;
 - 99.21875% expert residency reduction;
-- ownership/release gate PASS.
+- ownership/release PASS.
 
 ### Shared backbone residency — PASS
 
-`LOOM_30B_MOE_SHARED_BACKBONE_RESIDENCY_001_PASS` proved the complete non-routed target can remain resident:
-- 919 non-expert tensors;
-- 819,015,680 B exact logical stored bytes;
+`LOOM_30B_MOE_SHARED_BACKBONE_RESIDENCY_001_PASS` proved:
+- 919 non-expert tensors resident;
+- 819,015,680 B exact logical target backbone;
 - zero routed experts resident;
-- final MLX active 819,032,072 B;
-- peak construction MLX 819,032,072 B;
-- no swap growth;
-- functional embedding/attention/router/final-norm/LM-head checks PASS;
+- final MLX active ~819 MB;
+- no swap growth during construction;
+- embedding/attention/router/final-norm/LM-head checks PASS;
 - BF16 KV = 98,304 B/token (96 KiB/token).
 
-## FULL-FORWARD-EXTERNAL-001 — CONDITIONAL
+## FULL-FORWARD-EXTERNAL-001 — CONDITIONAL, correctness proven
 
 Report: `research/moe/loom-30b-moe-full-forward-external-001-result.md`.
 Raw evidence: `results-local/moe/full-forward-external-001/20260824T073551Z/`.
 
-The complete full-capacity target executed end-to-end on the M1 8 GB machine with the shared backbone resident and routed experts external.
-
-Correctness:
-- CONTROL completed 48/48 layers;
-- TREATMENT completed 48/48;
-- router IDs/weights bitwise exact at all layers;
+The full-capacity target executed end-to-end on M1 8 GB:
+- CONTROL 48/48 layers;
+- TREATMENT 48/48;
+- router IDs/weights bitwise exact all layers;
 - layer hidden states bitwise exact 48/48;
-- final hidden state and logits zero error;
-- argmax and top-10 ranking parity PASS.
+- final hidden/logits zero error;
+- argmax and top-10 parity PASS;
+- full 16,220,499,968 B model capacity represented;
+- backbone 819,015,680 B resident;
+- routed bank 15,401,484,288 B external;
+- one 2,506,752 B expert maximum live;
+- final routed expert residency 0 B.
 
-Capacity/residency:
-- full model bytes represented 16,220,499,968 B;
-- backbone resident 819,015,680 B;
-- routed bank externally represented 15,401,484,288 B;
-- F1 useful expert bytes read 962,592,768 B;
-- maximum logical routed expert live 2,506,752 B;
-- final routed expert resident count/bytes 0 / 0;
-- ownership gate PASS;
-- treatment peak MLX 821,640,984 B.
+The original instrumented F1 wall was 20.333756 s, but this was later shown to be dominated by research instrumentation rather than target computation.
 
-Memory caveat:
-- swap 1,096.19 -> 1,227.19 MiB (+131 MiB);
-- traversal completed, but memory-pressure gate failed on swap growth;
-- therefore classification remains CONDITIONAL rather than unconditional PASS.
-
-Runtime caveat — highest-priority unknown:
-- F1 full-forward wall 20.333756 s;
-- per-layer wall P50 ~0.420643 s;
-- explicitly timed components total only ~2.18 s across the full forward:
-  - attention/shared 0.148352 s;
-  - expert read 1.486196 s;
-  - decode/view 0.002486 s;
-  - MLX reconstruction 0.160427 s;
-  - expert compute 0.340194 s;
-  - aggregation 0.043012 s.
-
-Thus roughly 18 s of wall time is currently unattributed. This gap dominates the present runtime and must be localized before autoregressive speed or cache/DFlash impact is meaningfully evaluated.
-
-Real routing-overlap observations:
+Real routing overlap from ordinary target multi-position forwards:
 - F4: 1,086 unique expert instances / 1,536 naive selections; potential union accounting 680,583,168 B/position;
 - F8: 1,547 / 3,072; potential union accounting 484,743,168 B/position;
-- F8 is 49.64% below the F1 962,592,768 B baseline.
+- F8 potential union bytes/position are 49.64% below the F1 962,592,768 B baseline.
 
-This is promising real routing overlap but is observational only. It falls short by itself of the 58.47% storage-only reduction required for a 5 tok/s envelope, and actual compute/runtime costs remain larger.
+## FULL-FORWARD-OVERHEAD-ATTRIBUTION-001 — PASS
 
-## Exact next step — core
+Report: `research/moe/loom-30b-moe-full-forward-overhead-attribution-001-result.md`.
+Raw evidence: `results-local/moe/full-forward-overhead-attribution-001/20260824T080141Z/`.
 
-`LOOM_30B_MOE_FULL_FORWARD_OVERHEAD_ATTRIBUTION_001`
+The ~18 s unexplained gap was overwhelmingly observer effect:
+- forced `gc.collect`: 13.350101 s / 61.63%;
+- per-expert RSS sampling: 5.879225 s / 27.14%;
+- `pread`: 1.217114 s / 5.62%;
+- expert-output `mx.eval`: 0.301939 s / 1.39%;
+- all other named categories individually small.
 
-Goal: explain the ~18 s gap between full-forward wall time and explicitly instrumented work.
+864 explicit GC calls were issued by the research path.
 
-Priority suspects to isolate without changing semantics:
-1. Python/module construction and destruction;
-2. safetensors/index/header parsing and source-range setup outside read timers;
-3. GC and weakref/ownership auditing;
-4. `mx.eval` synchronization / lazy graph realization;
-5. quantized parameter binding / tree update overhead;
-6. per-expert/per-layer file open/close/manifest lookup overhead;
-7. instrumentation itself;
-8. allocator/cache cleanup and Python GC;
-9. any repeated shard/index scan or tensor metadata reconstruction.
+Controlled GC cadence result:
+- GC every expert: 14.188257 s;
+- GC every layer: 2.359604 s;
+- GC at end only: **1.641729 s**.
 
-Do not optimize before attribution. Run one-factor timing probes and reconcile >95% of wall time into named categories.
+`GC_END_ONLY` is the new clean exact baseline for the next generation experiment:
+- logits parity PASS;
+- router parity PASS;
+- final routed expert residency 0 / 0 B;
+- maximum logical expert live 2,506,752 B;
+- MLX peak 821,640,984 B;
+- RSS peak 1,247,002,624 B;
+- isolated swap delta 0.0 MiB;
+- memory-pressure PASS;
+- per-layer P50/P90/P95/max 0.032469 / 0.033652 / 0.034337 / 0.063860 s.
 
-## Parallel DFlash branch
+Fastest-safe forward-equivalent rate is 0.6091/s, explicitly not generation TPS.
 
-Exact-target speculator exists: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`.
+Approximate fastest-safe cost shares:
+- file/pread 65.36%;
+- compute 21.93%;
+- remaining software/runtime overhead 12.71%.
 
-`LOOM_30B_DFLASH_SPECULATOR_STATIC_001` should audit exact draft bytes/architecture/quantization/runtime compatibility and 8 GB budget impact. DFlash is relevant only after the baseline full-forward overhead is understood; it is not a memory-fit solution.
+Strategic consequence: the 30B architecture is no longer blocked by correctness, baseline residency, or the apparent 20 s forward. The next unknown is real autoregressive token stepping with KV cache, sequential routing reuse and sustained memory behavior.
 
-## After overhead attribution
+## Exact next step — `LOOM_30B_MOE_FIRST_GREEDY_GENERATION_001`
 
-1. remove/replace dominant mechanical overhead if safe;
-2. repeat exact full forward;
-3. collect cleaner real routing traces;
-4. routing-cache / block-overlap study;
-5. decide full expert-major pack from measured syscall/layout value;
-6. first autoregressive generation only when token-step baseline is not dominated by unexplained overhead;
-7. DFlash integration only if net-positive under the measured memory/cache budget.
+Run the first short real autoregressive greedy generation using the clean `GC_END_ONLY` external-expert path.
+
+Requirements:
+1. normal local tokenizer/chat formatting with thinking disabled where supported;
+2. resident shared backbone from the proven loader;
+3. BF16 KV cache with exact accounting;
+4. routed experts remain source-external; no full pack/cache/prefetch/DFlash;
+5. generate only a short bounded sequence initially (enough to measure multiple decode steps safely);
+6. record per-token wall time, expert bytes, selected expert IDs, KV growth, MLX/RSS/swap, and final text;
+7. verify no routed-expert accumulation and no swap growth attributable to the treatment;
+8. use the resulting real consecutive-token routing trace as the canonical input for routing-cache/reuse simulation.
+
+Do not add expert cache in this first generation checkpoint. We need a clean zero-cache sequential baseline first.
+
+## After first generation
+
+1. `LOOM_30B_MOE_ROUTING_CACHE_TRACE_001` — simulate measured cache policies from real token traces and quantify bytes/token reduction;
+2. decide whether a minimal real expert cache can reach a useful speed envelope;
+3. audit exact-target DFlash footprint/compatibility only against the measured baseline and memory budget;
+4. integrate block/speculative decoding only if it improves net accepted-token economics;
+5. capability benchmark after practical generation speed exists;
+6. decensoring validation before final promotion.
+
+## Full expert-major pack
+
+Still NOT justified by the measured bottleneck. Source exact-range execution is correct; packing should be reconsidered only if future production profiling shows read-call/layout overhead is material relative to transfer volume.
 
 ## Local-only warning
 
