@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.8
+Version: 1.9
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -106,26 +106,36 @@ Drafter-port invariant:
 Drafter-decision-stability invariant:
 - `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001_PASS`;
 - 9 frozen real target-tap states from P1/P2/P3 at positions 1/16/32;
-- 63/63 mapped proposal decisions match the independent NumPy translation across full 7-step rollouts; mismatches 0;
+- 63/63 mapped proposal decisions matched the then-current independent NumPy translation across 7-step rollouts;
 - deterministic rerun PASS; no NaN/Inf;
 - 7-proposal wall P50/mean 0.08437 / 0.09067 s;
 - MLX resident 1,362,053,640 B; peak 2,305,009,460 B; RSS 1,449,148,416 B; swap delta 0.
+
+Important: that stability result predates the publisher anchor/block mask correction below. It proves MLX/reference agreement for the old semantics, not publisher-contract correctness after the mask repair.
 
 DFlash first E2E invariant:
 - `LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`;
 - P1/P2/P3 completed, 96 committed output tokens, ordinary-greedy token parity PASS;
 - target KV/router/logits bitwise PASS; deterministic rerun PASS; zero routed-expert leak;
-- **acceptance is 0/96 cycles: mean/P50 accepted proposals 0.0, acceptance rate 0%**;
+- acceptance 0/96 cycles: mean/P50 0.0, rate 0%;
 - verifier calls/output token 1.96875; useful expert bytes/output token 3,098,293,248 B;
 - control 0.7735 tok/s vs DFlash 0.1544 tok/s = 0.1996x;
-- wall: drafter 43.906 s, verifier 574.698 s, other 3.110 s, total 621.713 s;
-- MLX peak 3,148,206,740 B; RSS 1,259,044,864 B; swap delta +737.43 MiB => memory pressure FAIL.
+- MLX peak 3,148,206,740 B; RSS 1,259,044,864 B; swap delta +737.43 MiB.
 
-Important interpretation:
-- this is **not a memory-only failure**. Zero proposal acceptance is an independent primary blocker and makes the current speculative integration useless even if memory were fixed;
-- the previous MLX-vs-NumPy stability check only proved cross-implementation agreement. A shared seed/tap/logit-offset/KV/mapping alignment mistake could pass that test while being wrong relative to the target speculative contract;
-- do not optimize memory, cache, packing, quantization or verifier speed yet;
-- next diagnose exact publisher/source rollout alignment: proposal seed/input token, target-tap timing, draft-logit index, d2t/t2d mapping point, candidate-vs-target-logit offset, draft KV initialization/carry/reset, and proposal offset relative to ordinary greedy continuation.
+This is a dual failure: zero acceptance is the first blocker; memory pressure is separate. Do not optimize memory while acceptance remains zero.
+
+Acceptance-alignment invariant:
+- `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001_REPAIRED_PROBE_ZERO_ACCEPTANCE`;
+- 3 deterministic P1 cycles C=43–45 inspected;
+- first concrete semantic mismatch: publisher anchor/block attention mask was absent in `Drafter.propose`;
+- publisher contract recovered: base positions `< anchor`, causal same-block synthetic attention, slots 1–7 map via `d2t`, `sample_from_anchor=False`, post-block taps `[1,12,23,34,45]`, no draft-KV carry;
+- target correction/bonus logic was already aligned;
+- only the drafter mask was mechanically repaired;
+- repaired short probe still accepted 0/21 proposals with prefixes `[0,0,0]`;
+- no simple k-1/k/k+1 proposal shift exists;
+- target/drafter incompatibility is NOT established yet because the independent reference has not yet been revalidated with the corrected publisher mask semantics.
+
+Do not rerun full E2E or change memory/performance variables yet. Next prove corrected MLX drafter parity against an independently implemented masked publisher reference on real target-tap states and full seven-step rollouts.
 
 For volatile project state, read `HANDOFF.md` only when explicitly needed. Do not edit it.
 
