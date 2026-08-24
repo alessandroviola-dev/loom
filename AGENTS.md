@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 2.0
+Version: 2.1
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -153,12 +153,23 @@ Interpretation:
 - the local `Qwen3-30B-A3B-MLX-4bit` target is a hypothesis to audit, not an established cause;
 - do not attribute incompatibility specifically to 4-bit quantization without isolating that variable.
 
-Do not rerun full E2E or optimize memory/performance yet.
+Target-compatibility audit precondition invariant:
+- `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` attempted Gate A and classified `ENGINE_OR_DATA_BLOCKED`;
+- target replay and compatibility scoring were not run;
+- immutable frozen continuation decisions available: 45/63;
+- `P1_t32`, `P2_t32`, `P3_t32` each lack six of the seven required continuation tokens;
+- drafter/target parity, ranks, top-k, logprobs, margins and accepted prefixes are therefore not measurable yet;
+- evidence: `results-local/research/dflash-target-compatibility-audit-001/20260824T144106Z/` (`precondition.json`, `provenance.json`);
+- do not fabricate the missing historical decisions by running the same current replay/scoring path; that would make Gate A circular.
 
 Next checkpoint:
-`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
+`LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001`
 
-First gate of that audit must prove current-target replay integrity against the frozen target continuation. If replay does not match the frozen target, classify target replay drift and stop before interpreting drafter compatibility. If replay passes, characterize proposal-vs-target top1 parity, target ranks/log-probabilities/top-k proximity, margins and accepted-prefix distribution without changing drafter/target/weights/mapping or acceptance rules.
+First search only relevant pre-existing local evidence for an independently captured/provenanced seven-token continuation corpus. If none exists, explicitly create a NEW rebaselined 63-token target-continuation reference with an independent already-validated target oracle path, not the later compatibility scorer/replay path. Preserve the same nine frozen prefixes, require agreement with every already-existing historical first continuation token, deterministic rerun, finite outputs, exact provenance and a content hash. Newly generated continuation tokens must be labeled as rebaselined reference data, not historical frozen observations.
+
+Only after that freeze passes may `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` be rerun.
+
+Do not rerun full E2E or optimize memory/performance yet.
 
 For volatile project state, read `HANDOFF.md` only when explicitly needed. Do not edit it.
 
