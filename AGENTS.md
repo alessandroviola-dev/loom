@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 2.1
+Version: 2.2
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -165,7 +165,7 @@ Target-compatibility audit precondition invariant:
 Next checkpoint:
 `LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001`
 
-First search only relevant pre-existing local evidence for an independently captured/provenanced seven-token continuation corpus. If none exists, explicitly create a NEW rebaselined 63-token target-continuation reference with an independent already-validated target oracle path, not the later compatibility scorer/replay path. Preserve the same nine frozen prefixes, require agreement with every already-existing historical first continuation token, deterministic rerun, finite outputs, exact provenance and a content hash. Newly generated continuation tokens must be labeled as rebaselined reference data, not historical frozen observations.
+First search only relevant pre-existing local evidence for an independently captured/provenanced seven-token continuation corpus. If none exists, explicitly create a NEW rebaselined 63-token target-continuation reference with an independent already-validated target oracle path, not the later compatibility scorer/replay path. Preserve the same nine frozen prefixes. The rebaseline must reproduce all 45 already-available historical frozen decisions exactly (`45/45`) before the 18 missing decisions can be accepted as new reference data. Require deterministic rerun, finite outputs, exact provenance and a content hash. Newly generated continuation tokens must be labeled as rebaselined reference data, not historical frozen observations.
 
 Only after that freeze passes may `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001` be rerun.
 
