@@ -1,138 +1,128 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-24
-Status: ACTIVE — DFlash drafter is structurally incompatible with the current target; static identity matches except 4-bit conversion; bounded BF16 control designed
+Status: ACTIVE — bounded BF16 control stopped before BF16 access because current Q4 replay no longer matches frozen P1_t01 taps; tap replay provenance diagnostic next
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001_CONDITIONAL`
-Next core checkpoint: `LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001`
+Current checkpoint: `LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001_CONTROL_ADAPTER_PARITY_FAIL`
+Next core checkpoint: `LOOM_DFLASH_Q4_TAP_REPLAY_DRIFT_DIAG_001`
 
 ## Mission
 
 **Big models. Small machines.** Run the strongest practical full-parameter-count LLM possible on Apple M1 / 8 GB while preserving correctness, bounded memory and reproducible evidence.
 
-Stable context lives in `/AGENTS.md`. Pi executes compact local WPs; ChatGPT owns Git/HANDOFF/ROADMAP and scientific checkpoint administration.
+Stable context lives in `/AGENTS.md`. Pi executes compact local WPs; ChatGPT owns Git/HANDOFF/ROADMAP and checkpoint administration.
 
-## DFlash state
+## DFlash chain already proven
 
-Candidate:
-`RedHatAI/Qwen3-30B-A3B-speculator.dflash`
+Candidate: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`
+Publisher target: `Qwen/Qwen3-30B-A3B`
 
-Publisher target:
-`Qwen/Qwen3-30B-A3B`
-
-Already proven:
-- target taps `[1,12,23,34,45]` exact;
-- exact B7 wavefront verifier;
-- all drafter BF16 weights mapped;
+Proven:
+- target tap interface `[1,12,23,34,45]`;
+- exact B7 wavefront target verifier;
+- complete MLX drafter port;
 - publisher anchor/block mask repaired;
 - independent masked publisher reference PASS;
 - corrected MLX/reference proposal parity 63/63.
 
 First E2E remains rejected:
-- target behavior exact;
+- target committed behavior exact;
 - acceptance 0/96;
 - DFlash 0.1544 tok/s vs control 0.7735 tok/s;
 - swap +737.43 MiB.
 
 Do not optimize memory/performance while acceptance remains zero.
 
-## Frozen target / compatibility
+## Frozen target and compatibility history
 
-`LOOM_DFLASH_TARGET_CONTINUATION_FREEZE_001_PASS`:
-- historical overlap 45/45;
-- complete 63/63 target reference;
+Frozen continuation reference:
+- 45/45 historical overlap;
+- complete 63/63 token reference;
 - SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`.
 
-`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_PASS`:
-- target replay and scoring control 63/63;
+Compatibility audit on the frozen tap states:
+- target replay/control 63/63;
 - drafter/target top1 0/63;
-- top5/top10/top50 0/63;
-- target proposal rank min/P50/mean/max 987 / 14,195 / 28,621.08 / 146,487;
-- accepted prefixes all zero.
+- top5/top10/top50 all 0/63;
+- proposal ranks structurally far from target;
+- accepted prefixes all zero;
+- verdict `INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`.
 
-Verdict:
-`INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`.
+This remains true for those frozen states. Its interpretation as live-target compatibility is now reopened because current Q4 no longer reconstructs the frozen P1_t01 taps bitwise.
 
-## Target identity
+## Target identity / BF16 preflight
 
-`LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001`:
+Target identity audit:
 `IDENTITY_MATCH_EXCEPT_QUANTIZATION`.
 
-Architecture/config/tokenizer/vocab/special tokens and d2t/t2d semantics all pass. No material non-quantization mismatch found.
+No material architecture/tokenizer/vocab/mapping mismatch was found. Material local delta remains MLX affine 4-bit (group 128).
 
-Material delta:
-MLX affine 4-bit, group size 128, 386 quantized triplets.
+BF16 preflight:
+- pinned upstream control candidate available;
+- full BF16 snapshot ~61.1 GB;
+- full snapshot rejected due disk shortfall;
+- bounded range/shard staging designed;
+- no causal quantization claim yet.
 
-Therefore hidden-state/precision drift is the leading hypothesis, not proof.
+## P1T01 bounded control — STOP before BF16
 
-## UNQUANTIZED-CONTROL-PREFLIGHT-001
-
-Classification:
-`CONDITIONAL_PREFLIGHT_DISK_AND_ADAPTATION_REQUIRED`.
-
-Report:
-`research/architecture/loom-dflash-unquantized-control-preflight-001-result.md`
-
-Evidence:
-`results-local/research/dflash-unquantized-control-preflight-001/20260824T160413Z/`
-
-Candidate BF16 upstream revision:
-`ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`
-
-Layout:
-- 16 BF16 safetensors shards + index;
-- 18,867 tensors;
-- 61,066,575,648 B total.
-
-Disk:
-- free 60,668,579,840 B;
-- full-snapshot peak estimate 65,066,551,120 B;
-- shortfall 4,397,971,280 B.
-
-Full BF16 snapshot is therefore NOT authorized.
-
-Runtime:
-- existing quantized-triplet reader is not drop-in for BF16;
-- bounded BF16 tensor/range or shard-staging adapter required;
-- analytical resident backbone 3,082,186,752 B;
-- one BF16 expert 9,437,184 B;
-- KV at context 43 4,227,072 B.
-
-Public provenance check:
-- DFlash names `Qwen/Qwen3-30B-A3B` but does not pin target commit;
-- current upstream BF16 weight objects and tokenizer.json trace to original upload commit `fd4bf3b`;
-- control must pin exact object hashes and must not claim exact historical DFlash-training reproduction.
-
-## Exact next step
-
+Checkpoint:
 `LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001`
 
-Frozen state:
-`P1_t01`, context 43.
+Classification:
+`CONTROL_ADAPTER_PARITY_FAIL`
 
-One-factor design:
-1. implement the bounded BF16-capable control reader/math path;
-2. first feed it local/dequantized 4-bit target values and require parity against the canonical local P1_t01 taps/router/logits;
-3. adapter parity failure => STOP;
-4. only after adapter parity passes, replace only the weight source with pinned upstream BF16 tensors;
-5. compare final-position taps `[1,12,23,34,45]`, final normalized hidden, all router decisions and full logits.
+Evidence:
+`results-local/research/dflash-unquantized-target-p1t01-range-control-001/20260824T161949Z/`
 
-Report max/mean abs, RMSE, relative-L2, cosine, logits top1/margin/top5 overlap, determinism and finite values.
+Result:
+- frozen state `P1_t01`, context 43;
+- adapter vs current Q4 oracle: bitwise parity PASS;
+- current Q4 router/logits/greedy: PASS;
+- deterministic/finite/no-leak PASS;
+- current Q4 replay vs frozen P1_t01 taps: FAIL at all five taps `[1,12,23,34,45]`;
+- first mismatch layer 1;
+- BF16 weights not accessed;
+- bytes fetched 0 B; peak dedicated disk 0 B.
+
+Root observation:
+The new adapter is not the immediate problem: it reproduces the current Q4 oracle. The problem is that the current Q4 oracle does not bitwise reproduce the earlier frozen tap artifact.
+
+No BF16 comparison exists yet.
+
+## Exact next step — Q4 tap replay drift diagnostic
+
+Checkpoint:
+`LOOM_DFLASH_Q4_TAP_REPLAY_DRIFT_DIAG_001`
+
+Goal: recover the exact provenance and replay contract of frozen `P1_t01` and localize the first reason its taps differ from current Q4.
+
+Audit, without BF16:
+1. exact frozen prefix token IDs, length, hash and state position;
+2. whether `P1_t01` means the same target position in frozen and current paths;
+3. tap contract: 1-based post-block outputs, dtype/shape/capture timing;
+4. model/config/quantized weight provenance and hashes where available;
+5. target/runtime/script provenance at freeze time vs current path where recoverable;
+6. layer-by-layer current vs frozen hidden outputs to identify earliest mismatch;
+7. router/logit/token controls to show downstream convergence/preservation.
+
+Decision:
+- proven prefix/position/capture/code mismatch -> repair only that mechanical variable and validate/refreeze affected tap states;
+- identical replay provenance but deterministic hidden mismatch -> classify genuine Q4 hidden-state drift and localize earliest differing operation;
+- do not resume BF16 control until tap replay integrity is restored or explicitly rebaselined under provenance.
 
 Restrictions:
-- no full 61-GB snapshot;
-- bounded range/shard staging only;
-- no DFlash E2E;
-- no target/drafter/mapping/acceptance changes;
+- no BF16 access;
+- no DFlash proposals/E2E;
 - no memory/performance remediation;
-- no causal quantization conclusion unless the one-factor control is valid.
+- no quantization-causality claim.
 
 ## Later order
 
-1. P1_t01 bounded BF16 control;
-2. if interpretable, decide whether precision drift explains the DFlash incompatibility and whether broader-state confirmation is needed;
-3. determine whether this drafter is salvageable;
-4. only after nonzero useful acceptance: memory remediation and full E2E economics;
-5. capability/coding/context validation;
-6. if DFlash is nonviable, return to next highest-leverage LOOM architecture/I/O branch.
+1. Q4 tap replay drift diagnostic;
+2. repair/refreeze current tap corpus if required;
+3. rerun live compatibility check if frozen states changed materially;
+4. resume bounded BF16 one-factor control only after Q4 tap replay integrity passes;
+5. decide DFlash salvageability;
+6. memory remediation only after useful acceptance.
