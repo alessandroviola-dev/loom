@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-24
-Status: ACTIVE — DFlash first E2E failed; publisher mask bug repaired; acceptance still zero; masked reference parity next
+Status: ACTIVE — corrected DFlash drafter validated against independent masked publisher reference; frozen-prefix acceptance remains zero; target compatibility audit next
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001_REPAIRED_PROBE_ZERO_ACCEPTANCE`
-Next core checkpoint: `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001`
+Current checkpoint: `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS`
+Next core checkpoint: `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
 
 ## Mission
 
@@ -39,7 +39,7 @@ Target side:
 Drafter side:
 - MLX maps all 680,813,824 learned BF16 params;
 - component memory-safe standalone;
-- previous 9-state/63-decision MLX-vs-NumPy stability PASS, but that comparison used the pre-mask semantics and must not be treated as publisher-contract proof after the repair below.
+- publisher anchor/block mask semantics have now been independently revalidated after repair.
 
 ## First end-to-end DFlash — FAIL
 
@@ -48,9 +48,7 @@ Drafter side:
 - 96 committed output tokens with ordinary-greedy parity PASS;
 - target KV/router/logit parity bitwise PASS;
 - deterministic rerun PASS;
-- zero expert leak.
-
-But:
+- zero expert leak;
 - acceptance 0/96 cycles;
 - verifier calls/output token 1.96875;
 - useful external expert bytes/output token 3,098,293,248 B;
@@ -58,61 +56,88 @@ But:
 - DFlash 0.1544 tok/s = 0.1996x;
 - swap delta +737.43 MiB.
 
-This is a dual failure. Acceptance is the first blocker; memory remediation is deferred.
+This remains a dual failure. Acceptance is the first blocker; memory remediation stays deferred.
 
-## ACCEPTANCE-ALIGNMENT-DIAG-001 — MASK BUG FOUND, PROBE STILL ZERO
+## Acceptance alignment diagnostic — mask bug repaired
+
+`LOOM_DFLASH_ACCEPTANCE_ALIGNMENT_DIAG_001_REPAIRED_PROBE_ZERO_ACCEPTANCE`.
 
 Report: `research/architecture/loom-dflash-acceptance-alignment-diag-001-result.md`.
 Raw evidence: `results-local/research/dflash-acceptance-alignment-diag-001/20260824T141239Z/`.
 
-Three deterministic P1 cycles C=43–45 were inspected.
-
-First concrete semantic mismatch:
-- publisher anchor/block attention mask was absent in the MLX drafter path;
-- old port exposed anchor feature C-1 and future MASK slots incorrectly;
-- publisher requires base positions `< anchor` plus causal same-block synthetic attention.
-
-Publisher contract recovered:
+Recovered publisher contract:
+- base positions `< anchor`;
+- causal same-block synthetic attention;
 - slots 1–7 map via `d2t`;
 - `sample_from_anchor=False`;
 - post-block taps `[1,12,23,34,45]`;
 - no draft-KV carry;
-- target correction/bonus logic already aligned.
+- target correction/bonus logic aligned.
 
-Repair:
-- only `Drafter.propose` mask semantics changed.
+Only the missing drafter mask was mechanically repaired. The short repaired probe still accepted 0/21 proposals with prefixes `[0,0,0]`.
 
-Short repaired probe:
-- acceptance 0/21;
-- prefixes `[0,0,0]`;
-- no simple proposal offset: k-1 0/20, k 0/21, k+1 0/21.
+## MASKED-REFERENCE-PARITY-001 — PASS
+
+Classification: `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS`.
+
+Report: `research/architecture/loom-dflash-masked-reference-parity-001-result.md`.
+Raw evidence: `results-local/research/dflash-masked-reference-parity-001/20260824T142830Z/`.
+
+Independent publisher-semantics reference:
+- implements the corrected anchor/block attention mask independently from MLX;
+- explicit 8×13 mask-matrix assertion PASS;
+- same 9 frozen P1/P2/P3 states at positions 1/16/32;
+- 63/63 mapped proposal-token parity over full seven-step autoregressive rollouts;
+- first mismatch none;
+- deterministic rerun PASS;
+- no NaN/Inf.
+
+Numerics:
+- final-logit max-abs distribution max/mean: 0.0166407 / 0.0109135;
+- final-logit mean-abs distribution max/mean: 0.00175031 / 0.00120281;
+- top1/top2 mean margin MLX/reference: 0.55770 / 0.55726;
+- maximum absolute margin error: 0.00708771.
+
+Frozen target continuation observation:
+- MLX accepted-prefixes: `[0,0,0,0,0,0,0,0,0]`;
+- independent reference accepted-prefixes: `[0,0,0,0,0,0,0,0,0]`.
 
 Interpretation:
-- missing mask was a real integration bug;
-- repair alone does not explain/solve zero acceptance;
-- drafter/target incompatibility is not yet established because the independent reference has not been revalidated under the corrected publisher mask semantics.
+- the repaired MLX drafter now matches the independently implemented masked publisher semantics;
+- a remaining MLX drafter-port/mask error is no longer the leading explanation for the observed zero frozen-prefix acceptance;
+- this does NOT yet prove incompatibility with the current target;
+- this does NOT prove 4-bit quantization is causal.
 
-## Exact next step — `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001`
+## Exact next step — `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
 
 Do not rerun full E2E and do not optimize memory/performance.
 
-Build an independent publisher-semantics reference that implements the anchor/block mask separately from the MLX code. Validate corrected MLX against that reference on real frozen target-tap states and full seven-step rollouts.
+The audit must first validate current-target replay against the frozen target continuation. This is a hard gate: if the current target does not reproduce the frozen continuation deterministically, classify target replay drift and stop before interpreting drafter compatibility.
 
-Required proof:
-1. exact anchor/base/synthetic-slot visibility matrix matches publisher source;
-2. MLX/reference fusion and per-layer outputs quantified;
-3. proposal-token parity across all seven rollout positions;
-4. deterministic rerun;
-5. no NaN/Inf;
-6. record proposal-vs-target acceptance only as observation, not as compatibility conclusion until masked reference parity passes.
+Only if target replay integrity passes should the validated masked drafter proposals be scored against the target to characterize:
+- proposal-vs-target top1 parity;
+- target rank of each proposed token;
+- proposed-token log-probability;
+- top-k inclusion;
+- target margins;
+- exact accepted-prefix distribution.
 
-If masked MLX/reference parity fails, fix/localize the first publisher-semantic mismatch. If it passes and target acceptance remains ~0, then open a separate target-compatibility checkpoint, with the local Qwen3-30B-A3B MLX 4-bit target as the leading hypothesis rather than an established cause.
+A frozen-target continuation control must go through the same validation path to prove the scorer/validator itself recovers target top1 correctly.
+
+Do not change drafter, target, weights, token mapping, acceptance rules, thresholds or memory policy.
+
+## Decision tree after compatibility audit
+
+1. target replay FAIL -> repair/localize target replay drift only; no drafter compatibility claim;
+2. target replay PASS + proposals structurally far from target -> drafter/target incompatibility becomes strong evidence;
+3. target replay PASS + proposals consistently near target top1 -> characterize whether acceptance failure is caused by narrow decision margins or another interface condition;
+4. do not attribute any incompatibility specifically to 4-bit quantization until a later control isolates quantization.
 
 ## Later order
 
-1. masked publisher-reference parity;
-2. target/drafter compatibility audit only if parity PASS and acceptance still zero;
-3. only after nonzero acceptance, combined-runtime memory remediation;
+1. target/drafter compatibility audit;
+2. isolate compatibility cause only if needed;
+3. only after nonzero useful acceptance, combined-runtime memory remediation;
 4. rerun full E2E economics;
 5. capability/coding benchmark once practical speed improves;
 6. context/stability;
