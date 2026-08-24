@@ -102,16 +102,17 @@ Phase B — rebaseline only if recovery fails:
 1. use the same nine frozen prefixes/states;
 2. use an independent already-validated target oracle path, not the later compatibility replay/scoring path;
 3. generate seven greedy target continuation tokens per state;
-4. require agreement with every already-existing historical first continuation token;
-5. require deterministic rerun and finite outputs;
-6. freeze exact model/prefix/oracle provenance;
-7. write and SHA-256 hash the complete 63-token reference artifact;
-8. label newly generated decisions explicitly as `REBASELINED_REFERENCE`, not historical frozen data.
+4. require exact parity with all 45 already-available historical frozen decisions (`45/45`);
+5. only after that overlap gate passes may the 18 missing decisions be accepted as new reference data;
+6. require deterministic rerun and finite outputs;
+7. freeze exact model/prefix/oracle provenance;
+8. write and SHA-256 hash the complete 63-token reference artifact;
+9. label newly generated decisions explicitly as `REBASELINED_REFERENCE`, not historical frozen data.
 
 Gate:
 - recovery with valid provenance OR independent-oracle rebaseline PASS;
 - 63/63 complete continuation decisions;
-- historical first-token overlap parity PASS;
+- historical overlap parity 45/45 PASS;
 - deterministic rerun PASS;
 - content hash recorded.
 
