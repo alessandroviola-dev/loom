@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.0
+Version: 1.1
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -68,6 +68,14 @@ Proven invariants:
 - 4-GiB raw `GLOBAL_LRU` cache is `MEMORY_FAIL`: ~80.9% hits were real but swap grew +2.41 GiB and decode slowed. Do not reuse this design unless a future work package explicitly revisits it;
 - persistent live-MLX expert cache is not currently promoted;
 - full 14.344-GiB expert pack is not automatically authorized.
+
+DFlash exact-target static invariant:
+- candidate: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`;
+- BF16 safetensors 1,362,042,120 B (~1.2685 GiB), 680,813,824 learned weight elements;
+- 5 draft layers, H=2048, block=8 / proposals=7;
+- exact target taps `[1,12,23,34,45]`, concatenated to 10,240 then fused to 2048;
+- static M1/8-GB fit is plausible, but current LOOM/MLX has **no native DFlash integration path**;
+- do not integrate the drafter until target-tap capture/parity and multi-position target verification are separately proven.
 
 For volatile project state, read `HANDOFF.md` only when the active work package explicitly needs it. Do not edit it.
 
