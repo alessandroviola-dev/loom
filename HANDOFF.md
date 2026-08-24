@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-24
-Status: ACTIVE — 30B MoE external-expert runtime / traffic-reduction research
+Status: ACTIVE — 30B MoE external-expert runtime / whole-model residency research
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_MOE_PHYSICAL_IO_002_CONDITIONAL`
-Next core checkpoint: `LOOM_30B_MOE_ONE_LAYER_EXTERNAL_EXPERT_001`
+Current checkpoint: `LOOM_30B_MOE_ONE_LAYER_EXTERNAL_EXPERT_001_PASS`
+Next core checkpoint: `LOOM_30B_MOE_SHARED_BACKBONE_RESIDENCY_001`
 Parallel next: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
 
 ## Mission
@@ -29,12 +29,10 @@ CAPABILITY001: practical-agent 1/11 = 9.09%; Coding Benchmark 45/100; critical f
 
 Dense partial-residency research remains a controlled implementation laboratory. Naive synchronous dense streaming is too slow; current cleanup/binding micro-axes are exhausted absent new evidence.
 
-## 30B target
+## 30B target — exact local anatomy
 
-Local model:
-`results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
+Local model: `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`.
 
-Exact static anatomy:
 - Qwen3MoeForCausalLM;
 - 48 MoE layers;
 - hidden 2048;
@@ -51,97 +49,108 @@ Exact static anatomy:
 
 Static result: `LOOM_30B_MOE_FEASIBILITY_001_STATIC_CONDITIONAL`.
 
-## EXPERT-PACK-001 — PASS
+## Expert-major storage — PASS
 
-Raw evidence: `results-local/moe/expert-pack-001/20260823T204053Z/`.
-
-Validated on layers 0 and 15:
-- 256 experts;
-- 641,728,512 B;
-- 2,304 components;
+`LOOM_30B_MOE_EXPERT_PACK_001_PASS` proved lossless expert-major packing on layers 0 and 15:
+- 256 experts / 641,728,512 B validated;
 - zero hash/byte/metadata mismatches;
 - source 9 ranges/expert -> packed 1 contiguous range/expert;
 - top-k=8 reads 72 -> 8;
-- byte amplification remains 1.0x;
-- packed useful/span efficiency 100%.
+- byte amplification 1.0x;
+- 100% packed useful/span efficiency.
 
-Lossless expert-major storage is proven. Full 14.344 GiB repack remains conditional until runtime evidence shows it is worth materializing.
+Full 14.344 GiB repack remains deferred until whole-model runtime evidence makes it necessary.
 
-## PHYSICAL-IO-001 — INVALID METHOD, CLOSED
+## Physical I/O — DEVICE VERIFIED / CONDITIONAL
 
-Run: `results-local/moe/physical-io-001/20260823T204945Z/`.
-Classification: `LOOM_30B_MOE_PHYSICAL_IO_001_CACHE_CONTROL_INVALID`.
+`LOOM_30B_MOE_PHYSICAL_IO_002_CONDITIONAL` established the real internal-SSD baseline on APPLE SSD AP0256Q (`disk0`) using device-level `iostat` evidence.
 
-Warm and nominal cache-minimized results both appeared memory-like (~14 GB/s), so no physical SSD number was promoted.
+Canonical results:
+- sequential physical 2,391.9 MB/s;
+- random expert physical 1,890.4 MB/s;
+- expert latency P50/P90/P95/P99 1.197 / 1.509 / 1.643 / 2.019 ms;
+- top-k=8 physical 1,823.1 MB/s;
+- top-k latency P50/P90/P95/P99 9.839 / 12.622 / 13.159 / 14.783 ms;
+- token-like 384-read P50 460.074 ms;
+- zero-cache storage-only lower bound 0.4816 s/token;
+- storage-only maximum 2.076 tok/s.
 
-## PHYSICAL-IO-002 — CONDITIONAL / DEVICE VERIFIED
-
-Report: `research/moe/loom-30b-moe-physical-io-002-result.md`.
-Raw evidence: `results-local/moe/physical-io-002/20260824T062607Z/`.
-Classification: `LOOM_30B_MOE_PHYSICAL_IO_002_CONDITIONAL`.
-
-Physical backing device: internal APPLE SSD AP0256Q (`disk0`). Device-level `iostat` evidence passed the sanity gate: a 12.53 GB cache-minimized workload produced ~10.97 GB conservative net device transfer (87.55% coverage); downstream sequential/random/top-k/token-like workloads had ~94.7–101.5% device-byte coverage.
-
-Canonical physical results:
-- sequential: 2,391.9 MB/s;
-- random expert physical: 1,890.4 MB/s;
-- one expert latency P50/P90/P95/P99: 1.197 / 1.509 / 1.643 / 2.019 ms;
-- top-k=8 physical: 1,823.1 MB/s;
-- top-k latency P50/P90/P95/P99: 9.839 / 12.622 / 13.159 / 14.783 ms;
-- token-like 384-read latency P50: 460.074 ms;
-- token-like physical: 1,998.8 MB/s.
-
-Zero-cache storage-only lower bound:
-- 0.4816 s/token;
-- 2.076 tok/s maximum before any model compute.
-
-Necessary external-traffic reduction from storage alone:
-- 1 tok/s: 0%;
-- 2 tok/s: 0%;
+Required external-traffic reduction from storage alone:
 - 5 tok/s: 58.47%;
 - 10 tok/s: 79.24%.
 
-Interpretation: SSD bandwidth is not a structural NO-GO, but zero-cache execution cannot deliver the target usability. Cache/reuse and/or multi-token block amortization are now PRIMARY REQUIREMENTS rather than optional optimizations. Because compute adds additional latency, practical 5/10 tok/s operation will require more than the I/O-only reduction figures above.
+Interpretation: SSD bandwidth is not a structural NO-GO, but cache/reuse and/or multi-token amortization are primary requirements for high usability.
+
+Report: `research/moe/loom-30b-moe-physical-io-002-result.md`.
+
+## ONE-LAYER-EXTERNAL-EXPERT-001 — PASS
+
+Report: `research/moe/loom-30b-moe-one-layer-external-expert-001-result.md`.
+Raw evidence: `results-local/moe/one-layer-external-expert-001/20260824T070045Z/`.
+
+A real layer-0 Qwen3-30B-A3B decoder layer executed with canonical MLX semantics while routed experts remained external and only one selected expert was live at a time.
+
+Correctness:
+- deterministic T1/T4/T8 float16 inputs;
+- T1 top-k expert IDs `[118, 56, 65, 84, 98, 97, 119, 36]`;
+- router IDs and weights bitwise exact;
+- all 8 selected expert outputs bitwise exact;
+- MoE output bitwise exact;
+- complete decoder-layer output bitwise exact (`atol=0`, `rtol=0`).
+
+Residency:
+- CONTROL full expert bank: 320,864,256 B;
+- SERIAL_EXPERT maximum logical expert bytes live: 2,506,752 B;
+- expert residency reduction: 99.21875%;
+- CONTROL peak MLX / RSS: 331,495,092 B / 644,284,416 B;
+- SERIAL_EXPERT peak MLX / RSS: 12,938,408 B / 130,367,488 B;
+- ownership/release audit PASS; expert arrays were dead before the next expert load.
+
+Timing:
+- external MoE P50 15.455 ms;
+- full treatment layer P50 16.282 ms;
+- descriptive physical-I/O+compute one-layer bound 14.103 ms;
+- linear 48-layer descriptive extrapolation 0.677 s, explicitly not a full-model token prediction.
+
+Early synthetic routing overlap only:
+- T4: 30 unique experts / 32 selections;
+- T8: 51 / 64.
+
+Strategic consequence: external-expert computation is now proven correct and memory-efficient. The remaining primary questions are whole-model shared/backbone residency and traffic reduction, not per-expert correctness.
 
 ## DFlash / block speculative branch
 
-Source ingestion complete for the supplied Qwen3.8-27B/DFlash2/Harness video. The video does not demonstrate 27B viability on 8 GB; it used M4 Pro/24 GB and an external M5 Max DFlash benchmark.
-
-Independent research found an exact-target draft model:
-`RedHatAI/Qwen3-30B-A3B-speculator.dflash` for `Qwen/Qwen3-30B-A3B`.
+Video/source review is complete. The supplied Qwen3.8-27B video does not demonstrate 27B viability on 8 GB, but independent research found an exact-target speculator: `RedHatAI/Qwen3-30B-A3B-speculator.dflash` for `Qwen/Qwen3-30B-A3B`.
 
 Published metadata indicates roughly ~0.7B draft parameters, 5 draft layers, target hidden-state taps at layers 1/12/23/34/45, and average acceptance length ~2.46–3.77 depending on workload.
 
-DFlash is not a memory-fit solution. Its possible LOOM value is amortizing target/expert work across multiple verified positions. The relevant metric is per-layer UNION of routed experts across the verification block divided by accepted tokens. Routing overlap must be measured; no benefit is assumed.
+DFlash is not a memory-fit solution. Potential LOOM value is multi-token target verification plus possible expert-union reuse across positions. This must be measured from real routing traces.
 
-Canonical research note:
-`research/architecture/dflash-qwen3-30b-a3b-relevance-001.md`.
+Canonical note: `research/architecture/dflash-qwen3-30b-a3b-relevance-001.md`.
 
-## Exact next steps
+## Exact next step — core
 
-### Core — `LOOM_30B_MOE_ONE_LAYER_EXTERNAL_EXPERT_001`
+`LOOM_30B_MOE_SHARED_BACKBONE_RESIDENCY_001`
 
-Prove correct one-layer Qwen3-30B-A3B execution while keeping routed experts external:
-1. use layer 0 packed expert-major prototype;
-2. keep only the required attention/norm/router/shared tensors resident;
-3. route a controlled real activation to top-k experts;
-4. load only selected packed experts;
-5. reconstruct/apply quantized expert projections exactly;
-6. compare output against canonical full-layer execution for parity/tolerance;
-7. measure real peak memory, expert-load bytes, I/O latency and total layer latency;
-8. no full-model generation yet.
+Goal: prove that the entire non-expert target structure can remain resident on the 8 GB M1 without materializing routed expert banks.
 
-### Parallel — `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
+Required:
+1. instantiate/load embeddings, all 48 attentions, all norms, all routers, final norm and LM head;
+2. exclude every routed expert tensor and prove exclusion by ownership/inventory;
+3. compare logical stored bytes with actual MLX active/peak/cache memory and RSS;
+4. inspect Python/module overhead and temporary load peaks;
+5. determine safe remaining memory budgets for KV/runtime/expert cache/DFlash;
+6. do not run full generation and do not silently materialize expert banks.
 
-Audit exact draft tensor bytes, architecture, quantization options and 8 GB budget impact before integration.
+If the shared backbone residency test passes, LOOM will have separately proven both components required for a full external-expert forward: resident shared structure + exact serial expert execution.
 
-### After exact execution exists
+## After backbone residency
 
-`LOOM_30B_MOE_BLOCK_ROUTING_OVERLAP_001`:
-- collect real per-position routing choices;
-- evaluate blocks 2–8 positions;
-- measure unique expert union/layer and expert bytes per accepted token;
-- compare with 918 MiB/token baseline and with required 58.47% / 79.24% reductions.
+Next candidate: `LOOM_30B_MOE_FULL_FORWARD_EXTERNAL_001` — first complete 48-layer forward using resident shared backbone and external selected experts, initially without speculative decoding or cache assumptions. This should also begin real router-trace collection.
+
+Parallel: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`.
+
+Then: `LOOM_30B_MOE_BLOCK_ROUTING_OVERLAP_001` using real routing traces, followed by cache/reuse policy and only then DFlash integration if net-positive under the 8 GB budget.
 
 ## Storage state
 
