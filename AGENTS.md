@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.3
+Version: 1.4
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -91,8 +91,16 @@ DFlash block-verifier invariant:
 - B2 and B4 multi-position verification are bitwise exact vs sequential teacher forcing;
 - B7 preserves token decisions and selected router IDs but is not bitwise exact: max final-logit diff 0.0214348, max router-logit diff 0.00273609, KV reaches correct length 50 but differs bitwise;
 - B7 union geometry is favorable (1,264 unique layer-expert instances; 452,647,790 B/verified position) and block wall was 6.317 s vs 9.927 s sequential, but performance is not promoted while parity fails;
-- memory/ownership remained safe: peak MLX 960,393,224 B, swap delta 0, no expert leak;
-- do not integrate DFlash or relax the B7 correctness gate; next isolate whether divergence comes from block attention/KV or union-coalesced MoE/arithmetic ordering.
+- memory/ownership remained safe: peak MLX 960,393,224 B, swap delta 0, no expert leak.
+
+DFlash B7 parity-diagnosis invariant:
+- `LOOM_DFLASH_BLOCK_B7_PARITY_DIAG_001_FAIL_GATE`;
+- sequential reference A differs from both normal block B and union-coalesced block C starting at layer 0 / position 0 / `post_attention_hidden`;
+- first max/mean abs error `1.4901161e-08 / 2.6425653e-09` while K/V are still bitwise exact;
+- B and C are bitwise identical across all 336 layer/position/stage comparisons, proving union-coalesced MoE is not the divergence source;
+- root cause is B7 block-attention batching/floating execution, whose tiny initial difference cascades to final-logit max/mean `0.021434784 / 0.001928339`;
+- do not relax correctness tolerance or integrate DFlash from this result;
+- next candidate should preserve canonical `q_len=1` attention per position while reordering execution layer-by-layer so each unique routed expert can be loaded once and reused across the B7 positions.
 
 For volatile project state, read `HANDOFF.md` only when the active work package explicitly needs it. Do not edit it.
 
