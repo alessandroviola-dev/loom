@@ -1,9 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-24
-Current checkpoint: `LOOM_30B_MOE_TRACE_PACK_DECODE_AB_001_PASS`
-Strategic next: `LOOM_30B_MOE_ROUTING_CACHE_TRACE_001`
-Parallel later: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
+Current checkpoint: `LOOM_30B_MOE_ROUTING_CACHE_TRACE_001_PASS`
+Strategic next: `LOOM_30B_MOE_REAL_RAW_CACHE_001`
+Then: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
 
 ## Mission
 
@@ -21,187 +21,171 @@ Exact anatomy:
 - external routed bank 15,401,484,288 B;
 - 48 layers, 128 experts/layer, top-k 8;
 - one expert 2,506,752 B;
-- zero-cache expert payload 962,592,768 B/position;
+- zero-cache expert payload 962,592,768 B/token;
 - BF16 KV 98,304 B/token.
 
 Established on M1 8 GB:
 - lossless expert-major representation;
 - device-verified SSD feasibility;
 - bitwise-exact one-layer external experts;
-- complete shared backbone residency;
+- complete shared-backbone residency;
 - bitwise-exact 48-layer full forward;
-- production-like GC cadence with zero swap delta;
-- first real greedy generation.
+- de-instrumented production-like full forward;
+- first real greedy generation;
+- real packed decode baseline;
+- long real routing/cache trace.
 
-## B — First real greedy generation — PASS
+## B — Real generation baseline
 
 `LOOM_30B_MOE_FIRST_GREEDY_GENERATION_001_PASS`:
-- prompt -> correct `4`, then EOS;
-- zero-cache decode 1.54535 s / 0.6471 tok/s;
-- 962,592,768 expert bytes/decode token;
-- source layout 3,456 component preads/token;
-- no expert leak, no swap growth.
+- correct `4` then EOS;
+- source zero-cache decode ~1.545 s / 0.647 tok/s;
+- no expert leak or swap growth.
 
-This established the first real sequential baseline but showed expert access dominated decode.
+`LOOM_30B_MOE_TRACE_PACK_DECODE_AB_001_PASS`:
+- source 3,456 preads/token -> packed 384;
+- bytes unchanged at 962,592,768 B/token;
+- expert-read wall -59.27%;
+- decode wall -43.72%;
+- packed decode-equivalent ~1.0799 tok/s;
+- exact output preserved.
 
-## C — Expert-major real decode A/B — PASS
+`PACKED` is the correct miss/access baseline for cache economics.
 
-`LOOM_30B_MOE_TRACE_PACK_DECODE_AB_001_PASS`.
+## C — Routing/cache trace — PASS
 
-Report: `research/moe/loom-30b-moe-trace-pack-decode-ab-001-result.md`.
+`LOOM_30B_MOE_ROUTING_CACHE_TRACE_001_PASS`.
 
-A trace-scoped 962,592,768-B expert-major binary containing the 384 experts required by the canonical decode step was validated exactly.
+Report: `research/moe/loom-30b-moe-routing-cache-trace-001-result.md`.
 
-One-factor A/B:
-- source layout: 3,456 preads/token;
-- packed layout: 384 preads/token;
-- useful bytes unchanged;
-- read-call reduction: 88.89%;
-- router/logits/output parity: PASS.
+Trace:
+- 3/3 prompts;
+- 96 decode positions;
+- 36,864 selections;
+- 3,747 unique `(layer, expert)` keys = 60.9863% of expert universe;
+- consecutive same-layer intersection mean/P50/P90 3.545 / 3 / 6;
+- reuse within 1/2/4/8/16/32 tokens 42.923 / 53.079 / 62.826 / 72.030 / 78.692 / 80.265%.
 
-Measured effect:
-- expert-read median 1.085528 -> 0.442087 s (-59.27%);
-- total decode median 1.645328 -> 0.926028 s (-43.72%);
-- decode-equivalent 0.607781 -> 1.079881 tok/s.
+Best tested online policy: `GLOBAL_LRU`.
 
-Packed treatment remains memory-safe:
-- MLX peak ~881 MB;
-- RSS peak ~911 MB;
-- swap delta 0;
-- final expert residency 0.
+Global LRU:
+- 1 GiB: 43.473% hit, 544,121,856 B external/token;
+- 2 GiB: 59.961%, 385,413,120 B/token;
+- 3 GiB: 71.864%, 270,833,664 B/token;
+- 4 GiB: 79.598%, 196,388,352 B/token.
 
-Strategic consequence: **PACKED is now the correct baseline for cache economics.** Storage layout alone roughly doubled the practical one-step decode rate relative to the original source-range path, without reducing bytes transferred.
+At 4 GiB, oracle Belady is 87.961% and the trace-fitted static hot set is 82.935%, so global LRU is close enough to justify a real implementation rather than further policy simulation.
 
-## D — Current bottleneck after packing
+Projected 4-GiB cache economics:
+- raw packed-byte cache: ~0.6126 s/token = ~1.632 tok/s;
+- optimistic live-MLX cache: ~0.5741 s/token = ~1.742 tok/s;
+- logical cache + backbone + trace KV: ~5.122 GB;
+- ~1.32 GB headroom under a conservative 6-GiB envelope.
 
-Packed treatment median cost:
-- expert access ~47.74%;
-- attention ~19.56%;
-- reconstruction ~4.72%;
-- expert compute ~0.45%;
-- other ~27.52%, including material synchronization cost.
+## D — Structural cache ceiling
 
-Expert traffic remains 918 MiB/token at zero cache. Packing improves access geometry but does not solve transfer volume.
+The current PACKED non-read floor is ~0.483941 s/token.
 
-The next high-leverage question is therefore real cross-token expert reuse.
+Even 100% expert-cache hits therefore cap the present single-token runtime near **2.066 tok/s**.
 
-## E — Routing/cache trace — NEXT CORE
+Cache alone:
+- 2 tok/s: YES;
+- 3 tok/s: NO;
+- 5 tok/s: NO.
 
-Checkpoint: `LOOM_30B_MOE_ROUTING_CACHE_TRACE_001`.
+Therefore cache is necessary and worth implementing, but it is not sufficient for the final usability target. Multi-token/block amortization or further fixed-cost reduction is structurally required for 3+ tok/s.
 
-Goal: collect a materially longer real generation trace and quantify cache value before implementing any cache.
+## E — First real cache — NEXT CORE
 
-### Trace acquisition
+Checkpoint: `LOOM_30B_MOE_REAL_RAW_CACHE_001`.
 
-Use a deterministic prompt that reliably produces a nontrivial answer. Target:
-- minimum 16 decode positions;
-- preferred 24–32 if safe;
-- bounded generation;
-- greedy deterministic output;
-- BF16 KV;
-- resident backbone + serial external experts + `GC_END_ONLY`.
+Implement one policy only:
+- GLOBAL LRU;
+- 4 GiB logical target;
+- 1,713 complete expert entries;
+- cache raw canonical expert bytes in RAM;
+- cold miss reads original 9 source ranges, assembles the canonical 2,506,752-B expert object and admits it;
+- hit avoids source/disk reads but still performs transient MLX reconstruction and expert compute;
+- no persistent MLX expert objects in this first cache checkpoint.
 
-Because the existing packed binary covers only the prior one-step trace, arbitrary trace acquisition may temporarily use source exact ranges. Performance from that acquisition is not the promoted packed baseline.
+Why raw bytes first:
+- memory ownership is simpler;
+- large live-MLX cache allocator/object overhead is not yet measured;
+- simulation predicts ~1.63 tok/s if trace behavior generalizes.
 
-### Required trace analysis
+Required real A/B:
+- cache OFF vs 4-GiB GLOBAL LRU;
+- same prompts / greedy decoding / BF16 KV / `GC_END_ONLY`;
+- exact token-sequence parity;
+- measured hit rate and cold-start/warm-state behavior;
+- physical/source bytes per token;
+- decode tok/s;
+- MLX/RSS/swap/memory pressure;
+- no expert accumulation outside cache semantics.
 
-For every token/layer:
-- top-k expert IDs and weights;
-- same-layer overlap with previous tokens;
-- reuse distance;
-- expert frequency/hotness;
-- transition structure;
-- working-set size by layer and globally.
+Use multiple prompts and enough decode positions to avoid one-prompt overfitting.
 
-### Cache simulation
+## F — Storage representation
 
-No real cache yet.
+Full 14.344-GiB expert-major pack remains `CONDITIONAL`.
 
-Simulate at minimum:
-- LRU;
-- LFU or frequency-aware admission;
-- segmented/hot-cold policy if trace evidence supports it.
+Current preferred design from trace evidence:
+`HOT_SET_PACK_SOURCE_COLD`.
 
-Budgets:
-- 512 MiB;
-- 1 GiB;
-- 2 GiB;
-- 3 GiB;
-- 4 GiB.
+Do not duplicate the entire routed bank yet. The first real cache may use source-range cold misses and raw in-RAM hot entries. After measured cache behavior, decide whether to pre-pack a persistent hot set, add on-demand packing, or build the full pack.
 
-One complete expert = 2,506,752 B.
-
-Report for each policy/budget:
-- experts capacity;
-- hit rate;
-- misses/token;
-- external bytes/token;
-- traffic reduction vs 962,592,768-B zero-cache baseline;
-- estimated packed reads/token;
-- estimated packed I/O/access wall using measured packed-path costs;
-- memory headroom with resident backbone + observed KV.
-
-Do not infer speed from hit rate alone; calculate packed-path lower-bound economics explicitly.
-
-## F — Full expert-major pack decision
-
-Current status: CONDITIONAL.
-
-The 43.72% real decode gain strongly supports expert-major storage, but we do not yet automatically duplicate all 14.344 GiB routed weights.
-
-After cache trace, choose among:
-1. full 14.344-GiB expert-major pack;
-2. hot-set packed cache + source cold fallback;
-3. on-demand packed representation;
-4. layer-segmented packs.
-
-Prefer the smallest representation that captures measured performance value.
-
-## G — Real cache implementation
-
-Only after trace simulation:
-1. select one policy/budget;
-2. implement against PACKED semantics;
-3. preserve deterministic output;
-4. measure actual bytes/token, decode tok/s, MLX/RSS/swap;
-5. compare with packed zero-cache ~1.08 decode-equivalent tok/s and original source zero-cache ~0.65 tok/s.
-
-## H — DFlash / block speculative branch — LATER/PARALLEL
+## G — DFlash / block branch — AFTER REAL CACHE
 
 Exact-target speculator: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`.
 
-Audit static footprint/compatibility after cache economics are known. Potential value is accepted-token amortization and union-of-experts reuse; it must be net-positive after draft memory/workspace and remaining external traffic.
+Checkpoint: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`.
 
-## I — Performance escalation order
+The cache trace makes this branch more important, not less: the measured single-token fixed-cost floor prevents 3+ tok/s even with perfect cache.
 
-If packed + cache remains insufficient:
-- block union/coalescing;
-- DFlash/speculative verification;
-- route prediction/prefetch;
-- lower storage granularity / neuron clusters;
-- faster external NVMe as a secondary hardware branch;
-- LOOM-native model/system co-design if necessary.
+Audit:
+- exact draft stored/resident bytes;
+- quantization feasibility;
+- target hidden-state dependencies;
+- MLX/llama.cpp/custom compatibility;
+- remaining memory after backbone + KV + a practical expert cache.
 
-## J — Promotion gates
+Then test block/speculative processing only if accepted-token economics can beat the single-token fixed-cost ceiling.
 
-After practical speed exists:
-- longer stable generation;
-- capability/coding benchmark;
-- context scaling;
-- reproducibility;
-- behavioral decensoring via Heretic or LOOM-native equivalent.
+## H — Block-union structure
 
-## Immediate order
+Real trace mean expert-union bytes/position fall with block length:
+- 2: 749,343,645 B;
+- 3: 642,396,979 B;
+- 4: 570,480,569 B;
+- 5: 519,237,866 B;
+- 6: 479,315,740 B;
+- 7: 446,068,713 B;
+- 8: 417,808,712 B.
 
-1. `LOOM_30B_MOE_ROUTING_CACHE_TRACE_001`
-2. choose full/hot/on-demand packed representation from trace evidence
-3. implement smallest trace-backed expert cache
-4. remeasure real generation
-5. `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
-6. DFlash/block integration only if net-positive
-7. capability benchmark
-8. custom architecture research if necessary
-9. decensoring validation before final promotion
+These values show structural overlap but are NOT a DFlash speedup or accepted-token result.
+
+## I — Escalation path
+
+1. real 4-GiB raw GLOBAL_LRU cache;
+2. compare measured result with ~1.63 tok/s projection;
+3. DFlash static audit;
+4. multi-token/block execution experiment;
+5. optional live-MLX cache if memory overhead is safe;
+6. reconsider hot-set/full pack from measured miss behavior;
+7. capability and long-context validation once practical speed improves;
+8. route prediction/prefetch or lower-granularity sparsity if necessary;
+9. LOOM-native architecture research if existing MoE remains insufficient;
+10. behavioral decensoring validation before final promotion.
+
+## Promotion gates
+
+Any promoted architecture must pass:
+- full intended model capacity represented;
+- memory/residency accounting;
+- practical generation speed;
+- capability benchmark;
+- reproducibility/exactness where applicable;
+- behavioral decensoring stage with collateral capability validation.
 
 ## Local-only implementation warning
 
