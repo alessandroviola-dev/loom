@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-24
-Current checkpoint: `LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS`
-Strategic next: `LOOM_DFLASH_DRAFTER_PORT_001`
+Current checkpoint: `LOOM_DFLASH_DRAFTER_PORT_001_PASS`
+Strategic next: `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001`
 
 ## Mission
 
@@ -18,73 +18,79 @@ Canonical target values and stable invariants live in `/AGENTS.md`.
 - expert-major disk geometry as a real decode win;
 - real routing reuse;
 - large 4-GiB resident raw cache rejected for memory pressure;
-- exact DFlash target taps `[1,12,23,34,45]` exposed with small overhead.
+- exact DFlash target taps `[1,12,23,34,45]` exposed with small overhead;
+- exact B7 target verification with wavefront expert reuse.
 
 ## DFlash target verification — PASS
 
-Exact-target candidate:
-`RedHatAI/Qwen3-30B-A3B-speculator.dflash`.
+`LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS` establishes the target schedule needed for proposals=7:
+- q_len=1 attention remains canonical per position;
+- seven candidate positions move layer-by-layer;
+- each unique expert is loaded once/layer and reused across assigned positions;
+- hidden/KV/router/logits/token decisions are bitwise exact;
+- useful external expert bytes fall to 431,519,451 B/verified position;
+- B7 target verification wall: 10.8152 s sequential -> 6.5430 s wavefront = 1.653x;
+- swap delta 0; no expert leak.
 
-Static draft:
-- BF16 ~1.2685 GiB;
-- 5 layers;
-- proposals=7;
-- static M1/8-GB fit plausible;
-- custom LOOM/MLX port required.
+## DFlash learned drafter port — PASS AS COMPONENT
 
-The first B7 block implementation was not exact because batched attention changed floating execution. Diagnosis proved expert union/coalescing was not the cause.
+`LOOM_DFLASH_DRAFTER_PORT_001_PASS`.
 
-`LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS` establishes the correct target-side schedule:
-1. canonical `q_len=1` attention sequentially per position;
-2. seven positions progress layer-by-layer;
-3. routes are collected for all positions at a layer;
-4. each unique expert is loaded once and reused across assigned positions.
+Report: `research/architecture/loom-dflash-drafter-port-001-result.md`.
 
-Result:
-- hidden/KV/router/final logits/token decisions bitwise exact;
-- 1,205 unique layer-expert instances;
-- 431,519,451 B external expert bytes/verified position;
-- B7 wall 10.8152 s sequential -> 6.5430 s wavefront;
-- 1.653x measured speedup;
-- peak MLX ~985 MB;
-- peak RSS ~1.004 GB;
+MLX mapping:
+- 680,813,824 learned BF16 params;
+- 1,361,627,648 learned weight bytes;
+- 60 learned + 2 mapping tensors;
+- no missing/extra learned weights.
+
+Independent reference is a NumPy translation of publisher source because the official Torch/Speculators runtime is unavailable locally.
+
+Observed cross-implementation errors:
+- fusion max abs 1.38e-05;
+- draft layers max abs 0.0515–0.1442;
+- final draft logits max/mean 0.01956 / 0.003045.
+
+The tested deterministic mapped draft-token decisions were identical and no NaN/Inf occurred.
+
+Measured M1 memory:
+- MLX resident 1,362,053,632 B;
+- MLX peak 2,289,441,196 B;
+- workspace 927,387,564 B;
+- RSS peak 1,423,212,544 B;
 - swap delta 0;
-- no expert leak.
+- memory gate PASS.
 
-This completes both target-side prerequisites for a learned DFlash port: target taps and exact B7 verification.
+This proves the component can run and fit, but does not yet certify it as a reliable speculative proposal source across real states.
 
-## Next — minimal learned drafter port
+## Next — drafter decision stability
 
-Checkpoint: `LOOM_DFLASH_DRAFTER_PORT_001`.
+Checkpoint: `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001`.
 
-Scope:
-- port/instantiate only the exact learned DFlash drafter in MLX;
-- map publisher BF16 weights exactly;
-- feed frozen target taps using the proven contract;
-- reproduce fusion + five draft layers + draft/block logits;
-- compare with an independent/source reference where runnable;
-- measure actual M1 resident/workspace memory;
-- no speculative-generation integration yet.
+Before end-to-end speculative integration:
+1. collect a preregistered corpus of real frozen target taps from multiple prompts and positions;
+2. compare MLX vs independent NumPy source translation on identical states;
+3. run full autoregressive draft rollouts up to seven proposals;
+4. require mapped proposal-token parity at every rollout position;
+5. record proposal top-1/top-2 margins and logit-error distributions;
+6. repeat deterministically;
+7. measure standalone drafter wall, resident/peak MLX, RSS and swap.
 
-Required gate:
-- tensor mapping complete;
-- deterministic reference parity at justified exact/tolerance level;
-- no NaN/Inf;
-- memory pressure PASS / no unexpected swap;
-- target/external-expert runtime remains untouched.
+If PASS, integrate the learned drafter with the exact B7 wavefront target verifier for a first greedy end-to-end DFlash experiment.
 
-If the drafter port passes, integrate it with the exact B7 wavefront verifier and measure real acceptance length and accepted-token economics.
+If FAIL, localize the first real state/rollout decision mismatch before any integration.
 
-## After drafter PASS
+## After decision-stability PASS
 
-1. DFlash speculative loop + B7 wavefront verifier;
-2. measure acceptance length and target verification steps/output token;
+1. first greedy DFlash speculative loop + exact B7 wavefront verifier;
+2. measure real acceptance length and target verification steps/output token;
 3. measure unique external expert bytes/accepted token and sustained generation tok/s;
-4. reconsider only small complementary cache/storage from measured block economics;
-5. capability/coding benchmark;
-6. context/stability;
-7. if speed remains insufficient: route prediction/prefetch, finer-grained sparsity or LOOM-native co-design;
-8. behavioral decensoring validation before final promotion.
+4. compare against current source and packed non-speculative baselines;
+5. only then reconsider complementary small cache/storage ideas;
+6. capability/coding benchmark;
+7. context/stability;
+8. if speed remains insufficient: route prediction/prefetch, finer-grained sparsity or LOOM-native co-design;
+9. behavioral decensoring validation before final promotion.
 
 ## Token-efficient Pi workflow
 
