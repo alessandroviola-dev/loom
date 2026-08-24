@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 2.7
+Version: 2.8
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is persistent context for Pi. Prompts contain only the active WP delta.
@@ -19,15 +19,16 @@ Pi must NOT run Git, edit HANDOFF/ROADMAP, open/merge/push PRs, or create projec
 2. Use targeted search; do not rescan the repo without need.
 3. Do not restate history or full logs.
 4. Preserve one-factor experiments, deterministic inputs, provenance and explicit gates.
-5. Distinguish measured fact, inference, hypothesis and unverified limit.
-6. Mechanical failures may be repaired inside scope; failed scientific treatments may not be silently rescued.
-7. STOP on scientific ambiguity, missing required artifacts, destructive actions or explicit stop gates.
+5. Treat runtime/library version as an experimental variable whenever bitwise hidden-state parity matters.
+6. Distinguish measured fact, inference, hypothesis and unverified limit.
+7. Mechanical failures may be repaired inside scope; failed scientific treatments may not be silently rescued.
+8. STOP on scientific ambiguity, missing required artifacts, destructive actions or explicit stop gates.
 
 Loop: `OBSERVE -> EXECUTE -> VERIFY -> DIAGNOSE -> CORRECT(mechanical only) -> CHECKPOINT`.
 
 ## Stable target/runtime
 
-Reference: Apple M1 / 8 GB unified memory.
+Reference machine: Apple M1 / 8 GB unified memory.
 
 Local target:
 `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
@@ -77,7 +78,7 @@ Frozen target continuation:
 - complete 63/63 token reference;
 - SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`.
 
-Compatibility audit on the then-frozen tap corpus:
+Compatibility audit on frozen tap corpus:
 - `LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001_PASS`;
 - target replay/control 63/63;
 - drafter/target top1 0/63;
@@ -85,8 +86,6 @@ Compatibility audit on the then-frozen tap corpus:
 - proposal target rank min/P50/mean/max 987 / 14,195 / 28,621.08 / 146,487;
 - accepted prefixes all zero;
 - verdict `INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`.
-
-Important: this compatibility result remains valid for the frozen states themselves, but live-target interpretation is now reopened by the tap replay failure below.
 
 Target identity:
 - `LOOM_DFLASH_TARGET_IDENTITY_AUDIT_001`: `IDENTITY_MATCH_EXCEPT_QUANTIZATION`;
@@ -98,49 +97,68 @@ Target identity:
 
 `LOOM_DFLASH_UNQUANTIZED_CONTROL_PREFLIGHT_001` = `CONDITIONAL_PREFLIGHT_DISK_AND_ADAPTATION_REQUIRED`.
 
-Candidate pinned upstream BF16 control:
+Pinned upstream BF16 control candidate:
 - revision `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`;
 - 16 BF16 safetensors shards + index;
 - total 61,066,575,648 B;
-- full snapshot NOT authorized because disk peak would exceed free space;
+- full snapshot NOT authorized;
 - bounded range/shard staging only.
 
-Public provenance: current upstream BF16 shard objects/tokenizer trace to original upload commit `fd4bf3b`; DFlash does not pin an exact verifier revision, so this is a pinned upstream BF16 control, not an exact historical-training replica.
+Public provenance: current upstream BF16 shard objects/tokenizer trace to original upload commit `fd4bf3b`; DFlash does not pin an exact verifier revision. Treat this as a pinned upstream BF16 control, not an exact historical-training replica.
 
-## Current blocker — Q4 tap replay drift
+## Q4 tap replay provenance invariant
 
-`LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001` classified `CONTROL_ADAPTER_PARITY_FAIL` at Gate A.
+Initial `LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001` attempt stopped as `CONTROL_ADAPTER_PARITY_FAIL` before BF16 access because current MLX 0.32.0 replay did not bitwise equal the frozen `P1_t01` taps, although adapter vs current Q4 oracle, router, logits and greedy token all matched.
 
-Frozen state: `P1_t01`, context 43.
+`LOOM_DFLASH_Q4_TAP_REPLAY_DRIFT_DIAG_001` classified `MECHANICAL_REPLAY_MISMATCH_REPAIRED`.
 
-Measured:
-- new control adapter vs **current** local Q4 oracle: bitwise parity PASS;
-- current router/logits/greedy: PASS;
-- deterministic rerun PASS; finite/no leak;
-- current Q4 replay vs previously frozen P1_t01 taps: FAIL at all five taps `[1,12,23,34,45]`;
-- first tap mismatch: layer 1;
-- BF16 access: none; bytes fetched 0 B; peak dedicated disk 0 B.
+Exact state/capture identity:
+- `P1_t01`, context 43;
+- token-prefix SHA-256 `7ec7658fa9f4ce945144d9627c57b65a20d993e39f193093069ab105c79a176f`;
+- positions 0..42; anchor position 42; token 271;
+- float32 `[5,43,2048]`;
+- taps `[1,12,23,34,45]` 1-based post-block;
+- model/config/scripts unchanged; all four Q4 shards match download-manifest hashes.
+
+Root cause:
+- frozen evidence was captured under MLX 0.31.2 (`results-local/mlx/venv-mlx-lm-0.31.3`);
+- failed replay used MLX 0.32.0;
+- first tap difference: layer 1 post-block, 55,514/88,064 elements, max abs `2.3841858e-07`;
+- earliest localized difference: layer 1 / position 0 / expert 116 SwiGLU, 157/768 elements, max abs `2.9802322e-08`; gate/up projections bitwise equal;
+- router/final-logit/greedy behavior remained exact.
+
+Mechanical repair:
+- replay with freeze-time MLX 0.31.2 only;
+- no code/model/prefix/position/capture change;
+- frozen tap parity restored to **5/5 bitwise**;
+- independent exact-oracle rerun confirms parity;
+- router logits 48/48 bitwise, final logits bitwise, greedy token 12050, finite/no leak PASS.
 
 Interpretation:
-- BF16/quantization causality is not tested yet;
-- immediate blocker is provenance/replay integrity of the frozen Q4 tap state;
-- possibilities include prefix/state identity drift, off-by-one/capture semantics, target/runtime code-path drift, or genuine deterministic hidden-state drift;
-- because adapter and current oracle agree, do not debug the BF16 adapter first;
-- do not use the stale/frozen tap corpus as definitive evidence for live-target compatibility until this is resolved.
+- no persistent Q4 hidden-state drift is established;
+- frozen tap corpus does not require refreezing from this diagnostic;
+- runtime/library version is part of frozen-state provenance;
+- BF16/quantization has still not been tested.
 
-Next checkpoint:
-`LOOM_DFLASH_Q4_TAP_REPLAY_DRIFT_DIAG_001`
+## Next checkpoint
 
-Required goal: reconstruct exact frozen `P1_t01` provenance and localize the first cause of mismatch against current Q4 replay. Compare exact token prefix/hash and context length, position semantics, tap capture semantics, model/config/weight provenance, runtime/code provenance where recoverable, and layer-by-layer current-vs-frozen outputs. Determine whether this is a mechanical replay/capture mismatch or genuine target hidden-state drift.
+Resume `LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001` under the pinned freeze-time runtime MLX 0.31.2.
 
-If a mechanical mismatch is proven, repair only that variable and validate/refreeze the affected tap corpus before resuming compatibility or BF16 controls. If exact replay provenance matches yet taps deterministically differ, classify genuine Q4 hidden-state drift and identify the earliest differing operation/layer.
+One-factor gate:
+1. run the bounded control adapter with local/dequantized Q4 values under MLX 0.31.2;
+2. require 5/5 frozen taps bitwise, router 48/48 bitwise, final logits bitwise and greedy parity;
+3. only then switch the weight source to pinned upstream BF16 tensors;
+4. keep runtime, prefix, code path, capture semantics and comparison logic fixed.
+
+BF16 comparison remains bounded to `P1_t01` and must report post-block taps `[1,12,23,34,45]`, final normalized hidden, router logits/top-k/weights, full logits, greedy top1/margin/top5 overlap, and max/mean abs, RMSE, relative-L2, cosine.
 
 Restrictions:
-- no BF16 weight access;
-- no DFlash proposal/E2E rerun;
-- no target/drafter/mapping/acceptance changes except a proven mechanical replay/capture repair inside the diagnostic;
+- no full 61-GB snapshot;
+- bounded range/shard staging only;
+- no DFlash E2E;
+- no target/drafter/mapping/acceptance changes;
 - no memory/performance remediation;
-- no quantization-causality claim.
+- no quantization-causality claim from a single state.
 
 ## Work-package contract
 
