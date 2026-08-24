@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.9
+Version: 2.0
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -132,10 +132,33 @@ Acceptance-alignment invariant:
 - target correction/bonus logic was already aligned;
 - only the drafter mask was mechanically repaired;
 - repaired short probe still accepted 0/21 proposals with prefixes `[0,0,0]`;
-- no simple k-1/k/k+1 proposal shift exists;
-- target/drafter incompatibility is NOT established yet because the independent reference has not yet been revalidated with the corrected publisher mask semantics.
+- no simple k-1/k/k+1 proposal shift exists.
 
-Do not rerun full E2E or change memory/performance variables yet. Next prove corrected MLX drafter parity against an independently implemented masked publisher reference on real target-tap states and full seven-step rollouts.
+Masked-reference invariant:
+- `LOOM_DFLASH_MASKED_REFERENCE_PARITY_001_PASS`;
+- independent publisher-semantics reference implements the corrected anchor/block mask separately from the MLX path;
+- explicit independent 8×13 anchor/block mask assertion PASS;
+- same 9 frozen P1/P2/P3 states at positions 1/16/32;
+- 63/63 mapped proposal-token decisions match across full seven-step autoregressive rollouts; first mismatch none;
+- deterministic rerun PASS; no NaN/Inf;
+- final-logit max-abs distribution max/mean 0.0166407 / 0.0109135;
+- final-logit mean-abs distribution max/mean 0.00175031 / 0.00120281;
+- top1/top2 margin mean MLX/reference 0.55770 / 0.55726; max absolute margin error 0.00708771;
+- frozen-target accepted-prefix observation is `[0,0,0,0,0,0,0,0,0]` for both MLX and independent reference.
+
+Interpretation:
+- the corrected MLX drafter is now validated against an independent publisher-semantics reference;
+- the missing mask is no longer an unresolved implementation explanation for the observed zero frozen-prefix acceptance;
+- target/drafter compatibility is now the next scientific question;
+- the local `Qwen3-30B-A3B-MLX-4bit` target is a hypothesis to audit, not an established cause;
+- do not attribute incompatibility specifically to 4-bit quantization without isolating that variable.
+
+Do not rerun full E2E or optimize memory/performance yet.
+
+Next checkpoint:
+`LOOM_DFLASH_TARGET_COMPATIBILITY_AUDIT_001`
+
+First gate of that audit must prove current-target replay integrity against the frozen target continuation. If replay does not match the frozen target, classify target replay drift and stop before interpreting drafter compatibility. If replay passes, characterize proposal-vs-target top1 parity, target ranks/log-probabilities/top-k proximity, margins and accepted-prefix distribution without changing drafter/target/weights/mapping or acceptance rules.
 
 For volatile project state, read `HANDOFF.md` only when explicitly needed. Do not edit it.
 
