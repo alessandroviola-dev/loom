@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.2
+Version: 1.3
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -84,8 +84,15 @@ DFlash target-interface invariant:
 - logical tap payload: 1,146,880 B prefill / 40,960 B decode;
 - taps-enabled target remains router/logit/token bitwise exact;
 - MLX peak delta measured +18,612,224 B, RSS high-water unchanged, swap delta 0;
-- captured tap references are released before the next forward and routed-expert ownership remains zero;
-- next prerequisite is multi-position/block target verification; do not integrate DFlash weights before it passes.
+- captured tap references are released before the next forward and routed-expert ownership remains zero.
+
+DFlash block-verifier invariant:
+- `LOOM_DFLASH_BLOCK_VERIFIER_001_FAIL_GATE`;
+- B2 and B4 multi-position verification are bitwise exact vs sequential teacher forcing;
+- B7 preserves token decisions and selected router IDs but is not bitwise exact: max final-logit diff 0.0214348, max router-logit diff 0.00273609, KV reaches correct length 50 but differs bitwise;
+- B7 union geometry is favorable (1,264 unique layer-expert instances; 452,647,790 B/verified position) and block wall was 6.317 s vs 9.927 s sequential, but performance is not promoted while parity fails;
+- memory/ownership remained safe: peak MLX 960,393,224 B, swap delta 0, no expert leak;
+- do not integrate DFlash or relax the B7 correctness gate; next isolate whether divergence comes from block attention/KV or union-coalesced MoE/arithmetic ordering.
 
 For volatile project state, read `HANDOFF.md` only when the active work package explicitly needs it. Do not edit it.
 
