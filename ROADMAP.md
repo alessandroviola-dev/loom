@@ -1,9 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-24
-Current checkpoint: `LOOM_30B_MOE_ROUTING_CACHE_TRACE_001_PASS`
-Strategic next: `LOOM_30B_MOE_REAL_RAW_CACHE_001`
-Then: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
+Current checkpoint: `LOOM_30B_MOE_REAL_RAW_CACHE_001_MEMORY_FAIL`
+Strategic next: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`
 
 ## Mission
 
@@ -33,127 +32,116 @@ Established on M1 8 GB:
 - de-instrumented production-like full forward;
 - first real greedy generation;
 - real packed decode baseline;
-- long real routing/cache trace.
+- long routing/cache trace.
 
-## B — Real generation baseline
+## B — Real generation + packed baseline
 
 `LOOM_30B_MOE_FIRST_GREEDY_GENERATION_001_PASS`:
-- correct `4` then EOS;
-- source zero-cache decode ~1.545 s / 0.647 tok/s;
+- correct `4`, then EOS;
+- source zero-cache decode ~1.545 s/token / 0.647 tok/s;
 - no expert leak or swap growth.
 
 `LOOM_30B_MOE_TRACE_PACK_DECODE_AB_001_PASS`:
-- source 3,456 preads/token -> packed 384;
+- source 3,456 reads/token -> packed 384;
 - bytes unchanged at 962,592,768 B/token;
 - expert-read wall -59.27%;
-- decode wall -43.72%;
+- total decode wall -43.72%;
 - packed decode-equivalent ~1.0799 tok/s;
 - exact output preserved.
 
-`PACKED` is the correct miss/access baseline for cache economics.
+Packed on-disk expert-major geometry is a proven performance optimization when present.
 
 ## C — Routing/cache trace — PASS
 
-`LOOM_30B_MOE_ROUTING_CACHE_TRACE_001_PASS`.
+`LOOM_30B_MOE_ROUTING_CACHE_TRACE_001_PASS` proved real temporal expert reuse:
+- 96 positions;
+- 36,864 expert selections;
+- 3,747 unique `(layer, expert)` keys;
+- best online simulation: global LRU;
+- 4 GiB / 1,713 experts predicted 79.598% hit and 196,388,352 B external/token.
 
-Report: `research/moe/loom-30b-moe-routing-cache-trace-001-result.md`.
+The current packed non-read floor is ~0.483941 s/token, implying a perfect single-token cache ceiling around **2.066 tok/s**.
 
-Trace:
-- 3/3 prompts;
-- 96 decode positions;
-- 36,864 selections;
-- 3,747 unique `(layer, expert)` keys = 60.9863% of expert universe;
-- consecutive same-layer intersection mean/P50/P90 3.545 / 3 / 6;
-- reuse within 1/2/4/8/16/32 tokens 42.923 / 53.079 / 62.826 / 72.030 / 78.692 / 80.265%.
+Thus even ideal expert caching alone cannot reach 3/5/10 tok/s under the current one-token execution structure.
 
-Best tested online policy: `GLOBAL_LRU`.
+## D — Real 4-GiB raw cache — MEMORY FAIL
 
-Global LRU:
-- 1 GiB: 43.473% hit, 544,121,856 B external/token;
-- 2 GiB: 59.961%, 385,413,120 B/token;
-- 3 GiB: 71.864%, 270,833,664 B/token;
-- 4 GiB: 79.598%, 196,388,352 B/token.
+`LOOM_30B_MOE_REAL_RAW_CACHE_001_MEMORY_FAIL`.
 
-At 4 GiB, oracle Belady is 87.961% and the trace-fitted static hot set is 82.935%, so global LRU is close enough to justify a real implementation rather than further policy simulation.
+Report: `research/moe/loom-30b-moe-real-raw-cache-001-result.md`.
 
-Projected 4-GiB cache economics:
-- raw packed-byte cache: ~0.6126 s/token = ~1.632 tok/s;
-- optimistic live-MLX cache: ~0.5741 s/token = ~1.742 tok/s;
-- logical cache + backbone + trace KV: ~5.122 GB;
-- ~1.32 GB headroom under a conservative 6-GiB envelope.
+The trace prediction itself was validated:
+- actual real hit rate: **80.9056%**;
+- simulated: 79.598%;
+- traffic reduction: 80.9056%;
+- per-prompt hit rates remained stable around ~78–84%.
 
-## D — Structural cache ceiling
+But the 4-GiB resident raw payload is incompatible with practical M1-8GB execution:
+- CONTROL: 1.428821 s/token / 0.699878 tok/s;
+- TREATMENT: 4.883706 s/token / 0.204763 tok/s;
+- swap delta: **+2410.56 MiB**;
+- memory pressure FAIL;
+- progressive memory growth YES;
+- deterministic output still exact;
+- persistent routed MLX expert residency remained 0 B.
 
-The current PACKED non-read floor is ~0.483941 s/token.
+Conclusion: reuse is real, but **4-GiB raw RAM caching is rejected**. Do not move directly to a persistent live-MLX cache, and do not silently reduce the cache size as a rescue of the failed checkpoint.
 
-Even 100% expert-cache hits therefore cap the present single-token runtime near **2.066 tok/s**.
+Immediate cold-path direction: `SOURCE_COLD_ONLY` unless a future separately preregistered storage/cache experiment changes it.
 
-Cache alone:
-- 2 tok/s: YES;
-- 3 tok/s: NO;
-- 5 tok/s: NO.
+The prior expert-major disk-layout win remains valid independently; full 14.344-GiB pack remains conditional.
 
-Therefore cache is necessary and worth implementing, but it is not sufficient for the final usability target. Multi-token/block amortization or further fixed-cost reduction is structurally required for 3+ tok/s.
+## E — Token-efficient Pi workflow — ACTIVE
 
-## E — First real cache — NEXT CORE
+LOOM now has root `/AGENTS.md`, derived from the Ophelia Vault token-efficient and bounded-agent protocols.
 
-Checkpoint: `LOOM_30B_MOE_REAL_RAW_CACHE_001`.
+Stable project rules and already-proven invariants live there. Future Pi work should use compact work packages rather than multi-thousand-token prompts.
 
-Implement one policy only:
-- GLOBAL LRU;
-- 4 GiB logical target;
-- 1,713 complete expert entries;
-- cache raw canonical expert bytes in RAM;
-- cold miss reads original 9 source ranges, assembles the canonical 2,506,752-B expert object and admits it;
-- hit avoids source/disk reads but still performs transient MLX reconstruction and expert compute;
-- no persistent MLX expert objects in this first cache checkpoint.
+Default form:
 
-Why raw bytes first:
-- memory ownership is simpler;
-- large live-MLX cache allocator/object overhead is not yet measured;
-- simulation predicts ~1.63 tok/s if trace behavior generalizes.
+```text
+Read AGENTS.md.
+LOOM WP <id>
+Goal: ...
+Inputs: ...
+Change: ...
+Gates: ...
+Evidence: ...
+Return: ...
+STOP
+```
 
-Required real A/B:
-- cache OFF vs 4-GiB GLOBAL LRU;
-- same prompts / greedy decoding / BF16 KV / `GC_END_ONLY`;
-- exact token-sequence parity;
-- measured hit rate and cold-start/warm-state behavior;
-- physical/source bytes per token;
-- decode tok/s;
-- MLX/RSS/swap/memory pressure;
-- no expert accumulation outside cache semantics.
+Pi remains local execution only; ChatGPT keeps Git/HANDOFF/ROADMAP ownership. More restrictive LOOM rules override general Vault autonomy.
 
-Use multiple prompts and enough decode positions to avoid one-prompt overfitting.
-
-## F — Storage representation
-
-Full 14.344-GiB expert-major pack remains `CONDITIONAL`.
-
-Current preferred design from trace evidence:
-`HOT_SET_PACK_SOURCE_COLD`.
-
-Do not duplicate the entire routed bank yet. The first real cache may use source-range cold misses and raw in-RAM hot entries. After measured cache behavior, decide whether to pre-pack a persistent hot set, add on-demand packing, or build the full pack.
-
-## G — DFlash / block branch — AFTER REAL CACHE
-
-Exact-target speculator: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`.
+## F — DFlash exact-target static audit — NEXT
 
 Checkpoint: `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`.
 
-The cache trace makes this branch more important, not less: the measured single-token fixed-cost floor prevents 3+ tok/s even with perfect cache.
+Exact-target candidate:
+`RedHatAI/Qwen3-30B-A3B-speculator.dflash`.
 
-Audit:
-- exact draft stored/resident bytes;
-- quantization feasibility;
-- target hidden-state dependencies;
-- MLX/llama.cpp/custom compatibility;
-- remaining memory after backbone + KV + a practical expert cache.
+Before integration, establish:
+1. exact architecture and tensor payload;
+2. precision and plausible quantized resident footprints;
+3. target hidden-state dependencies / tap layers;
+4. required runtime semantics;
+5. MLX / llama.cpp / custom-runtime compatibility;
+6. memory budget on M1 8 GB with 819-MB backbone + BF16 KV;
+7. whether a useful drafter leaves enough working memory without reintroducing swap pressure;
+8. published acceptance-length evidence separated from local measured facts.
 
-Then test block/speculative processing only if accepted-token economics can beat the single-token fixed-cost ceiling.
+DFlash is not a fit mechanism. Its value is potential target-verification amortization across multiple accepted tokens.
 
-## H — Block-union structure
+## G — Multi-token / block branch
 
-Real trace mean expert-union bytes/position fall with block length:
+After DFlash static feasibility:
+- evaluate target verification of multiple positions in one step;
+- combine real routing-union structure with accepted-token counts;
+- measure unique expert bytes per accepted output token;
+- determine whether expert loads can be shared across positions;
+- preserve exact target semantics.
+
+Real trace mean union bytes/position already fall with block length:
 - 2: 749,343,645 B;
 - 3: 642,396,979 B;
 - 4: 570,480,569 B;
@@ -162,20 +150,31 @@ Real trace mean expert-union bytes/position fall with block length:
 - 7: 446,068,713 B;
 - 8: 417,808,712 B.
 
-These values show structural overlap but are NOT a DFlash speedup or accepted-token result.
+These are routing-structure observations, not DFlash speed measurements.
 
-## I — Escalation path
+## H — Cache/storage reconsideration
 
-1. real 4-GiB raw GLOBAL_LRU cache;
-2. compare measured result with ~1.63 tok/s projection;
-3. DFlash static audit;
-4. multi-token/block execution experiment;
-5. optional live-MLX cache if memory overhead is safe;
-6. reconsider hot-set/full pack from measured miss behavior;
-7. capability and long-context validation once practical speed improves;
-8. route prediction/prefetch or lower-granularity sparsity if necessary;
-9. LOOM-native architecture research if existing MoE remains insufficient;
-10. behavioral decensoring validation before final promotion.
+Do not retry the failed 4-GiB raw-cache design.
+
+Possible later experiments, only if block/DFlash evidence makes them useful:
+- much smaller/admission-controlled cache under a strict memory-pressure gate;
+- packed hot-set with source cold fallback;
+- on-demand/layer-segmented pack;
+- full expert-major pack only if arbitrary-generation cold misses justify the extra 14.344 GiB storage.
+
+Persistent live-MLX expert cache is currently not promoted.
+
+## I — Performance path
+
+1. `LOOM_30B_DFLASH_SPECULATOR_STATIC_001`.
+2. If static feasible, block/multi-token target-verification experiment.
+3. Measure accepted tokens, target forwards, expert union bytes and real memory.
+4. Revisit small cache/storage only if complementary rather than competing for the same memory budget.
+5. Rebenchmark sustained real generation.
+6. Capability/coding benchmark.
+7. Context scaling and memory stability.
+8. If existing MoE still cannot reach practical speed, escalate to route prediction/prefetch, finer-grained sparsity or LOOM-native model/system co-design.
+9. Behavioral decensoring validation before final promotion.
 
 ## Promotion gates
 
@@ -185,7 +184,7 @@ Any promoted architecture must pass:
 - practical generation speed;
 - capability benchmark;
 - reproducibility/exactness where applicable;
-- behavioral decensoring stage with collateral capability validation.
+- behavioral decensoring with collateral-capability validation.
 
 ## Local-only implementation warning
 
