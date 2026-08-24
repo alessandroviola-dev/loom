@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.6
+Version: 1.7
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -105,11 +105,19 @@ Drafter-port invariant:
 - MLX maps all 680,813,824 learned BF16 params = 1,361,627,648 B, 60 learned + 2 mapping tensors, no missing/extra learned weights;
 - independent reference is a separate NumPy translation of publisher source because publisher Torch/Speculators runtime is unavailable locally;
 - fusion max abs error 1.38e-05; draft-layer max abs error 0.0515–0.1442; final-logit max/mean 0.01956 / 0.003045;
-- mapped draft-token decisions were identical on the tested deterministic case; no NaN/Inf;
-- measured MLX resident 1,362,053,632 B; peak 2,289,441,196 B; workspace 927,387,564 B; RSS peak 1,423,212,544 B; swap delta 0; memory PASS;
-- this is component-port PASS only. Do NOT connect it to speculative generation yet: broader decision stability across real target taps/full 7-proposal rollouts must pass first because the official publisher runtime is unavailable and intermediate cross-implementation deltas are nontrivial.
+- measured MLX resident 1,362,053,632 B; peak 2,289,441,196 B; swap delta 0; memory PASS.
 
-Target-side prerequisites are complete; drafter implementation exists and is memory-safe, but speculative integration remains blocked pending decision-stability validation.
+Drafter-decision-stability invariant:
+- `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001_PASS`;
+- corpus: 9 frozen real target-tap states from P1/P2/P3 at trace positions 1/16/32;
+- 63/63 mapped proposal decisions match the independent NumPy publisher translation across full 7-step autoregressive draft rollouts; mismatches 0;
+- top1-top2 margin P50/P10/min = 0.4271 / 0.04625 / 0.00510;
+- final-logit max-abs P50/max = 0.00904 / 0.01310; mean-abs P50/max = 0.0009983 / 0.001386;
+- deterministic rerun PASS; no NaN/Inf;
+- 7-proposal drafter wall P50/mean = 0.08437 / 0.09067 s;
+- MLX resident 1,362,053,640 B; peak 2,305,009,460 B; RSS 1,449,148,416 B; swap delta 0; memory pressure PASS.
+
+The MLX drafter is now accepted as sufficiently decision-stable for the first controlled greedy end-to-end DFlash experiment. Do not yet claim speculative speedup, acceptance length or sustained generation performance; those are unmeasured until the drafter is connected to the exact wavefront target verifier.
 
 For volatile project state, read `HANDOFF.md` only when the active work package explicitly needs it. Do not edit it.
 
