@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-24
-Status: ACTIVE — exact target verification and MLX DFlash drafter port proven; drafter decision stability next
+Status: ACTIVE — exact target verifier + decision-stable MLX DFlash drafter proven; first end-to-end speculative loop next
 Repository: `Ilcoach/loom`
 Local path: `<repository-root>`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_DFLASH_DRAFTER_PORT_001_PASS`
-Next core checkpoint: `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001`
+Current checkpoint: `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001_PASS`
+Next core checkpoint: `LOOM_DFLASH_GREEDY_E2E_001`
 
 ## Mission
 
@@ -14,90 +14,96 @@ Next core checkpoint: `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001`
 
 Stable target anatomy and proven invariants live in `/AGENTS.md`. Pi uses compact work packages; ChatGPT owns Git/HANDOFF/ROADMAP.
 
-## Established runtime
+## Established target/runtime
 
 - Qwen3-30B-A3B external-expert execution is bitwise exact across all 48 layers.
-- Shared resident backbone: 819,015,680 B; routed bank stays external.
+- Shared resident backbone 819,015,680 B; routed bank external.
 - Real greedy generation works on M1 8 GB.
-- Expert-major disk layout materially improves decode.
-- 4-GiB raw RAM cache is rejected despite real ~80.9% reuse because it causes severe swap/memory pressure.
+- Expert-major disk access materially improves decode.
+- 4-GiB raw RAM cache is rejected despite real ~80.9% reuse because it causes +2.41 GiB swap and slowdown.
 
 ## DFlash target side — COMPLETE
 
-Exact-target candidate: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`.
+Candidate: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`.
 
 Static:
 - BF16 checkpoint ~1.2685 GiB;
 - 5 draft layers;
 - proposals=7;
-- target taps `[1,12,23,34,45]`.
+- taps `[1,12,23,34,45]`.
 
 Target interface:
 - exact taps exposed with target router/logits/tokens bitwise exact;
-- small memory overhead and zero swap.
+- small memory overhead; swap delta 0.
 
-Exact B7 target verification:
+Exact B7 verification:
 - `LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS`;
-- canonical q_len=1 attention per position, seven positions advanced layer-by-layer;
+- canonical q_len=1 attention per position;
+- seven candidate positions advance layer-by-layer;
 - each unique expert loaded once/layer and reused across assigned positions;
 - hidden/KV/router/final logits/token decisions bitwise exact;
 - 431,519,451 B useful expert bytes/verified position;
 - 10.8152 s sequential -> 6.5430 s wavefront = 1.653x;
 - swap delta 0; no expert leak.
 
-## DFLASH-DRAFTER-PORT-001 — PASS
+## DFlash learned drafter — COMPONENT + DECISION STABILITY PASS
 
-Report: `research/architecture/loom-dflash-drafter-port-001-result.md`.
-Raw evidence: `results-local/research/dflash-drafter-port-001/20260824T113139Z/`.
+`LOOM_DFLASH_DRAFTER_PORT_001_PASS` proved complete MLX weight mapping and memory safety.
 
-MLX drafter component:
-- 680,813,824 learned BF16 params;
-- 1,361,627,648 learned weight bytes;
-- 60 learned + 2 mapping tensors;
-- no missing/extra learned weights.
+`LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001_PASS` now validates the port across real target states.
 
-Reference:
-- separate NumPy translation of publisher source;
-- publisher Torch/Speculators runtime unavailable locally.
+Report: `research/architecture/loom-dflash-drafter-decision-stability-001-result.md`.
+Raw evidence: `results-local/research/dflash-drafter-decision-stability-001/20260824T114723Z/`.
 
-Cross-implementation numerics:
-- fusion max abs: 1.38e-05;
-- draft-layer max abs: 0.0515–0.1442;
-- draft-layer mean abs: 0.00768–0.02422;
-- final-logit max/mean: 0.01956 / 0.003045;
-- mapped draft-token decisions identical on the tested deterministic case;
+Corpus:
+- 9 frozen real target-tap states;
+- P1/P2/P3 at trace positions 1,16,32;
+- seven-step autoregressive draft rollout per state.
+
+Decision stability:
+- 63 proposal decisions compared;
+- 63/63 mapped token parity = 100%;
+- mismatches 0;
+- deterministic rerun PASS;
 - no NaN/Inf.
 
+Margins/errors:
+- top1-top2 margin P50/P10/min 0.4271 / 0.04625 / 0.00510;
+- final-logit max-abs P50/max 0.00904 / 0.01310;
+- mean-abs P50/max 0.0009983 / 0.001386.
+
+Standalone drafter cost:
+- seven-proposal wall P50 0.08437 s, mean 0.09067 s.
+
 Memory:
-- MLX resident 1,362,053,632 B;
-- MLX peak 2,289,441,196 B;
-- workspace 927,387,564 B;
-- RSS peak 1,423,212,544 B;
+- MLX resident 1,362,053,640 B;
+- MLX peak 2,305,009,460 B;
+- workspace 942,955,820 B;
+- RSS 1,449,148,416 B;
 - swap delta 0;
-- memory PASS.
+- memory pressure PASS.
 
-Interpretation: the MLX component port is accepted, but speculative integration remains blocked. Because the official publisher runtime is unavailable and intermediate cross-implementation errors are nontrivial, one deterministic case is insufficient to certify the MLX drafter as a stable proposal source.
+Interpretation: the MLX drafter is now sufficiently stable to serve as the proposal source for a first controlled greedy end-to-end DFlash checkpoint. This still does not establish acceptance length or end-to-end speedup.
 
-## Exact next step — `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001`
+## Exact next step — `LOOM_DFLASH_GREEDY_E2E_001`
 
-Do not connect drafter and target verifier yet.
+Combine only already-proven components:
+1. normal target prefill with exact taps;
+2. MLX DFlash drafter proposes up to 7 mapped target tokens;
+3. exact B7 wavefront target verifier evaluates the proposal block;
+4. implement canonical greedy speculative acceptance/rejection semantics from the publisher/speculation contract;
+5. compare generated target token sequence against ordinary greedy target generation on the same prompts;
+6. measure accepted proposal lengths, verifier calls/output token, expert bytes/output token, combined wall/tok-s, MLX/RSS/swap and ownership.
 
-Validate decision stability over real target states:
-1. collect frozen real target tap sets from multiple prompts/positions using the proven target interface;
-2. run the MLX drafter and independent NumPy publisher translation on exactly the same states;
-3. exercise full autoregressive draft rollouts up to 7 proposals, including d2t/t2d mapping semantics;
-4. require proposal-token parity at every draft position;
-5. record top-1/top-2 margins and final-logit error distribution so apparent parity is not supported only by large accidental margins;
-6. require deterministic rerun stability and no NaN/Inf;
-7. measure standalone drafter wall and memory without target verification.
+No cache rescue, no quantization, no prefetch, no new storage optimization and no capability claims in this checkpoint.
 
-If proposal parity remains stable across the preregistered corpus, a first greedy end-to-end DFlash integration with the exact B7 wavefront verifier becomes justified. If decisions diverge, localize the earliest rollout/state mismatch before integration.
+Promotion requires exact target output parity and memory safety. Performance may PASS/CONDITIONAL independently depending on measured throughput.
 
 ## Later order
 
-1. drafter decision-stability corpus;
-2. first greedy DFlash loop only if PASS;
-3. measure real acceptance length, target verifications/output token, external expert bytes/accepted token and sustained tok/s;
-4. capability/coding benchmark after practical speed improves;
+1. first greedy DFlash end-to-end loop;
+2. if correct, longer sustained generation across multiple prompts;
+3. optimize drafter/verifier/storage only from measured bottlenecks;
+4. capability/coding benchmark;
 5. context/stability;
 6. behavioral decensoring validation before final promotion.
