@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 1.7
+Version: 1.8
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is the persistent context for Pi. Do not require long prompts that restate it.
@@ -87,39 +87,47 @@ Target-interface invariant:
 - router/logits/tokens remain bitwise exact;
 - MLX peak delta +18,612,224 B; swap delta 0; no expert leak.
 
-B7 verifier history:
-- batched multi-position attention was rejected because it introduced tiny layer-0 numerical divergence that cascaded;
-- diagnosis proved union-coalesced MoE was not the source.
-
 Wavefront invariant:
 - `LOOM_DFLASH_B7_WAVEFRONT_VERIFIER_001_PASS`;
-- canonical `q_len=1` attention is executed sequentially per position while the seven positions advance layer-by-layer;
-- after routing each layer, each unique expert is loaded once and reused across assigned positions;
-- all layer hidden states, KV, router IDs/weights, final logits and token decisions are bitwise exact vs sequential teacher forcing;
+- canonical `q_len=1` attention is sequential per position while seven positions advance layer-by-layer;
+- each unique expert is loaded once per layer and reused across assigned positions;
+- layer hidden/KV/router/final logits/token decisions are bitwise exact vs sequential teacher forcing;
 - B7 uses 1,205 unique `(layer,expert)` instances = 431,519,451 B useful expert bytes/verified position;
-- wall 10.8152 s sequential vs 6.5430 s wavefront = 1.653x speedup;
+- wall 10.8152 s sequential vs 6.5430 s wavefront = 1.653x;
 - peak MLX 985,002,536 B; peak RSS 1,003,978,752 B; swap delta 0; no expert leak.
 
 Drafter-port invariant:
 - `LOOM_DFLASH_DRAFTER_PORT_001_PASS`;
-- MLX maps all 680,813,824 learned BF16 params = 1,361,627,648 B, 60 learned + 2 mapping tensors, no missing/extra learned weights;
-- independent reference is a separate NumPy translation of publisher source because publisher Torch/Speculators runtime is unavailable locally;
-- fusion max abs error 1.38e-05; draft-layer max abs error 0.0515–0.1442; final-logit max/mean 0.01956 / 0.003045;
-- measured MLX resident 1,362,053,632 B; peak 2,289,441,196 B; swap delta 0; memory PASS.
+- all 680,813,824 learned BF16 params mapped = 1,361,627,648 B, 60 learned + 2 mapping tensors, no missing/extra learned weights;
+- independent reference is a NumPy translation of publisher source because publisher Torch/Speculators runtime is unavailable locally;
+- fusion max abs 1.38e-05; draft-layer max abs 0.0515–0.1442; final-logit max/mean 0.01956 / 0.003045;
+- MLX resident 1,362,053,632 B; peak 2,289,441,196 B; swap delta 0.
 
 Drafter-decision-stability invariant:
 - `LOOM_DFLASH_DRAFTER_DECISION_STABILITY_001_PASS`;
-- corpus: 9 frozen real target-tap states from P1/P2/P3 at trace positions 1/16/32;
-- 63/63 mapped proposal decisions match the independent NumPy publisher translation across full 7-step autoregressive draft rollouts; mismatches 0;
-- top1-top2 margin P50/P10/min = 0.4271 / 0.04625 / 0.00510;
-- final-logit max-abs P50/max = 0.00904 / 0.01310; mean-abs P50/max = 0.0009983 / 0.001386;
+- 9 frozen real target-tap states from P1/P2/P3 at positions 1/16/32;
+- 63/63 mapped proposal decisions match the independent NumPy translation across full 7-step rollouts; mismatches 0;
 - deterministic rerun PASS; no NaN/Inf;
-- 7-proposal drafter wall P50/mean = 0.08437 / 0.09067 s;
-- MLX resident 1,362,053,640 B; peak 2,305,009,460 B; RSS 1,449,148,416 B; swap delta 0; memory pressure PASS.
+- 7-proposal wall P50/mean 0.08437 / 0.09067 s;
+- MLX resident 1,362,053,640 B; peak 2,305,009,460 B; RSS 1,449,148,416 B; swap delta 0.
 
-The MLX drafter is now accepted as sufficiently decision-stable for the first controlled greedy end-to-end DFlash experiment. Do not yet claim speculative speedup, acceptance length or sustained generation performance; those are unmeasured until the drafter is connected to the exact wavefront target verifier.
+DFlash first E2E invariant:
+- `LOOM_DFLASH_GREEDY_E2E_001_FAIL_GATE`;
+- P1/P2/P3 completed, 96 committed output tokens, ordinary-greedy token parity PASS;
+- target KV/router/logits bitwise PASS; deterministic rerun PASS; zero routed-expert leak;
+- **acceptance is 0/96 cycles: mean/P50 accepted proposals 0.0, acceptance rate 0%**;
+- verifier calls/output token 1.96875; useful expert bytes/output token 3,098,293,248 B;
+- control 0.7735 tok/s vs DFlash 0.1544 tok/s = 0.1996x;
+- wall: drafter 43.906 s, verifier 574.698 s, other 3.110 s, total 621.713 s;
+- MLX peak 3,148,206,740 B; RSS 1,259,044,864 B; swap delta +737.43 MiB => memory pressure FAIL.
 
-For volatile project state, read `HANDOFF.md` only when the active work package explicitly needs it. Do not edit it.
+Important interpretation:
+- this is **not a memory-only failure**. Zero proposal acceptance is an independent primary blocker and makes the current speculative integration useless even if memory were fixed;
+- the previous MLX-vs-NumPy stability check only proved cross-implementation agreement. A shared seed/tap/logit-offset/KV/mapping alignment mistake could pass that test while being wrong relative to the target speculative contract;
+- do not optimize memory, cache, packing, quantization or verifier speed yet;
+- next diagnose exact publisher/source rollout alignment: proposal seed/input token, target-tap timing, draft-logit index, d2t/t2d mapping point, candidate-vs-target-logit offset, draft KV initialization/carry/reset, and proposal offset relative to ordinary greedy continuation.
+
+For volatile project state, read `HANDOFF.md` only when explicitly needed. Do not edit it.
 
 ## Work-package contract
 
@@ -162,4 +170,4 @@ Blocker: <only if present>
 STOP
 ```
 
-This protocol implements the project-local form of the Ophelia Vault token-efficient / bounded-agent workflow. Local LOOM restrictions above prevail where they are stricter.
+Local LOOM restrictions prevail where stricter than general agent protocols.
