@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.5
+Version: 3.6
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is persistent context for Pi. WP prompts must contain only the active delta.
@@ -122,48 +122,47 @@ For 50 representable targets:
 
 Conclusion: zero top1 is real, but the drafter carries substantial directional signal.
 
-## Temporal alignment audit — PARTIAL RANGE COMPLETE
+## Temporal alignment — CLOSED
 
-`LOOM_DFLASH_CORRECTED_TEMPORAL_ALIGNMENT_AUDIT_001` executed offsets `-3..+3` using retained evidence only.
+`LOOM_DFLASH_CORRECTED_TEMPORAL_ALIGNMENT_AUDIT_001` plus `LOOM_DFLASH_TEMPORAL_ALIGNMENT_RANGE_COMPLETION_001` close the preregistered full relative-offset range `-7..+7`.
 
-Scientific review classification:
-`NO_SYSTEMATIC_TEMPORAL_SHIFT_WITHIN_PM3`.
+Final classification:
+`NO_SYSTEMATIC_TEMPORAL_SHIFT`.
 
-Report:
-`research/architecture/loom-dflash-corrected-temporal-alignment-audit-001-result.md`
+Reports:
+- `research/architecture/loom-dflash-corrected-temporal-alignment-audit-001-result.md`
+- `research/architecture/loom-dflash-temporal-alignment-range-completion-001-result.md`
 
-Facts within ±3:
-- offset 0: 50 representable, top1 0, top5/10/50/100 `8/11/19/26`, median rank `93.5`;
-- +2 and +3 each produce 2 descriptive top1 neighbor matches, but do not dominate offset 0 on top-k or median rank;
-- +2/+3 gains occur in P1/P2 only, not P3;
-- offset 0 remains best aggregate alignment;
-- 333 valid prompt-local comparisons; no boundary crossing or model replay.
+Range-completion evidence:
+`results-local/research/dflash-temporal-alignment-range-completion-001/20260825T101610Z/`
 
-Methodological note:
-`AGENTS.md` v3.4 preregistered offsets `-7..+7`, while the later active Pi prompt narrowed execution to `-3..+3`. Therefore full temporal-alignment closure requires only a cheap static completion of the missing offsets `-7,-6,-5,-4,+4,+5,+6,+7`.
+Full-range facts:
+- total valid prompt-local comparisons: `441`;
+- offset 0 remains strongest aggregate alignment: 50 representable; top1/top5/top10/top50/top100 `0/8/11/19/26`; median rank `93.5`;
+- all nonzero corrected-proposal neighbor matches total only `5`: +2=2, +3=2, +4=1;
+- those matches occur only in P1/P2; none in P3;
+- no nonzero offset dominates offset 0 on exact-match, top-k, median-rank, and cross-trajectory consistency criteria.
 
-Do NOT modify positions/anchors/masks based on the current ±3 result.
+Do NOT alter positions, anchors, masks, block alignment, mapping, or tap ordering based on temporal-shift hypotheses.
 
 ## Next checkpoint
 
-`LOOM_DFLASH_TEMPORAL_ALIGNMENT_RANGE_COMPLETION_001`
+`LOOM_DFLASH_FULL_LOGIT_REFERENCE_PARITY_001`
 
-Goal: using the same retained corrected 32k logits and frozen trajectories, compute only missing offsets `±4..±7` and combine them with the existing `-3..+3` evidence.
+Goal: distinguish residual MLX-port numerical divergence from genuine drafter/target-distribution incompatibility by comparing the entire 32k drafter-logit vector against an authoritative publisher/reference implementation on a small stratified set of already-frozen states.
 
 Required direction:
-1. no model replay;
-2. never cross trajectory boundaries;
-3. same metrics as existing temporal audit: valid/representable counts, top1, top5/10/50/100, target-row rank min/median/mean/max;
-4. proposal-vs-neighbor exact matches;
-5. per-prompt consistency;
-6. compare every nonzero offset across the full `-7..+7` range against offset 0;
-7. classify only after full range is complete.
-
-If no nonzero offset materially and consistently dominates offset 0, next high-leverage checkpoint is a small stratified **full 32k MLX-vs-authoritative-reference logit parity audit** to distinguish port divergence from genuine drafter/target-distribution mismatch.
+1. choose a small preregistered stratified subset from existing frozen states, including near-target and poor-rank examples across P1/P2/P3;
+2. use exactly the same frozen target taps/input IDs/positions/mask semantics and publisher weights;
+3. compare MLX vs authoritative reference BEFORE any target-token decode: full 32k logits, argmax draft row, top-k rows, max/mean absolute error, RMSE, relative-L2, cosine, and tolerance/bitwise status where meaningful;
+4. separately verify corrected `row + d2t[row]` decode parity after logit comparison;
+5. if full-logit parity passes, treat the remaining frozen mismatch as candidate/interface/distribution behavior rather than MLX port error;
+6. if parity fails materially, STOP and localize the first numerical divergence before any E2E.
 
 Restrictions:
-- no target/BF16/model forward;
-- no downloads;
+- no target-model forward;
+- no BF16 target forward;
+- no downloads unless a precise missing authoritative local reference dependency is identified and separately authorized;
 - no E2E;
 - no retraining/remapping;
 - no performance work.
