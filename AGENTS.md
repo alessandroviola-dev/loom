@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.12
+Version: 3.13
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is persistent context for Pi. WP prompts carry only the active delta.
@@ -95,35 +95,26 @@ Available BF16 verifier revision:
 
 `LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CONTROL_PREFLIGHT_001` = `BF16_TARGET_PILOT_READY_WITH_BOUNDED_MISSING_CACHE`.
 
-Selected states:
-- P1 `P1_t32:6`, rank 3, frozen target 326, 79-token prefix;
-- P2 `P2_t16:3`, rank 3, frozen target 994, 74-token prefix;
-- P3 `P3_t01:2`, rank 2, frozen target 1620, 64-token prefix.
+Selected deterministic states:
+- P1 `P1_t32:6`, baseline rank 3, frozen Q4 target 326, 79-token verifier prefix;
+- P2 `P2_t16:3`, baseline rank 3, frozen Q4 target 994, 74-token prefix;
+- P3 `P3_t01:2`, baseline rank 2, frozen Q4 target 1620, 64-token prefix.
 
-No compute sharing across trajectories.
+No compute sharing across trajectories; use fresh KV state per prompt.
 
-Cache audit:
+BF16 cache audit:
 - 435 dense manifests;
 - 3,470 expert manifests / 10,410 projections SHA-256 verified;
-- failures 0;
+- integrity failures 0;
 - total BF16 cache `35,837,957,463 B`;
 - external free disk `1,152.25 GiB`;
-- Q4-route estimate: 703 combined unique misses / `6,634,340,352 B` missing.
+- Q4-route planning estimate: 703 combined unique misses / `6,634,340,352 B` missing.
 
 Actual BF16 routing may diverge.
 
-Pilot ceiling after source parity:
-- hard network `8 GiB`;
-- hard requests `1,024`;
-- `NETWORK_CAP_ABORT` before dispatch;
-- persistent/resumable cache.
-
-## BF16 network-cap guard — VALIDATED LOCALLY
+## BF16 network-cap guard — COMPLETE AND REMOTE-REPRODUCIBLE
 
 `LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_001` = `BF16_NETWORK_CAP_GUARD_PASS`.
-
-Evidence:
-`results-local/research/dflash-bf16-network-cap-guard-001/20260825T121354Z/`
 
 Validated behavior:
 - synthetic tests `6/6` PASS; compile PASS;
@@ -133,61 +124,62 @@ Validated behavior:
 - retries counted and bounded;
 - cache hits charge `0 B / 0 requests`;
 - abort preserves complete/partial cache and resumability;
-- real network dispatches observed `0`.
+- real network dispatches observed `0` during validation.
 
-Validated local files:
-- `scripts/loom_dflash_unquantized_target_p1t01_range_control_001.py`;
-- `scripts/loom_dflash_bf16_tap_drafter_probe_001.py`;
-- `scripts/test_loom_dflash_bf16_network_cap_guard_001.py`.
+Source export and payload handoff are now closed:
 
-## Guard source export — COMPLETE
-
-`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_SYNC_001` = `BF16_NETWORK_CAP_GUARD_SOURCE_EXPORT_PASS`.
+`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_HANDOFF_001` = `BF16_NETWORK_CAP_GUARD_REMOTE_SOURCE_PARITY_PASS`.
 
 Report:
-`research/architecture/loom-dflash-bf16-network-cap-guard-source-sync-001-result.md`
+`research/architecture/loom-dflash-bf16-network-cap-guard-source-payload-handoff-001-result.md`
 
-Evidence:
-`results-local/research/dflash-bf16-network-cap-guard-source-sync-001/20260825T122613Z/`
+Validated remote source identities at user commit `01a5f9b`:
+- `scripts/loom_dflash_unquantized_target_p1t01_range_control_001.py` — 74,261 B — SHA-256 `dc0bdb6af282805cdfb623404bcfc778922c28a7b21df750cee08340b365a376` — Git blob `00287bc793fce8b552c55b8706a2d7f4d69be08e`;
+- `scripts/loom_dflash_bf16_tap_drafter_probe_001.py` — 26,443 B — SHA-256 `7a6119f01c99eb5d0833ff5bc5b6a7e47c540161ac5414aae246adc62bec479f` — Git blob `b2366c1c78b960e0bba224a3eb2da8efe92e7bfc`;
+- `scripts/test_loom_dflash_bf16_network_cap_guard_001.py` — 11,741 B — SHA-256 `7b6577076bffd73733f7766ca87638004618a7c4a121ae4f5fc6a5a318e776ae` — Git blob `8ded2333d8007abec857d20b82e891b961add69b`.
 
-Export method: `FULL_CONTENT` UTF-8 copies under `full-content/scripts/`.
-
-Pinned validated source identities:
-- `scripts/loom_dflash_unquantized_target_p1t01_range_control_001.py` — 74,261 B — SHA-256 `dc0bdb6af282805cdfb623404bcfc778922c28a7b21df750cee08340b365a376`;
-- `scripts/loom_dflash_bf16_tap_drafter_probe_001.py` — 26,443 B — SHA-256 `7a6119f01c99eb5d0833ff5bc5b6a7e47c540161ac5414aae246adc62bec479f`;
-- `scripts/test_loom_dflash_bf16_network_cap_guard_001.py` — 11,741 B — SHA-256 `7b6577076bffd73733f7766ca87638004618a7c4a121ae4f5fc6a5a318e776ae`.
-
-All exported copies byte-match local validated sources and prior hashes.
-
-Critical remaining blocker: the full exported file bytes were saved on the user's local filesystem but were not included in the chat payload. ChatGPT cannot reconstruct source from hashes alone. Remote/fresh-clone source parity is therefore still NOT established.
+Fresh-clone source parity is established. The local-only blocker is CLOSED.
 
 ## Next checkpoint
 
-`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_HANDOFF_001`
+`LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CAUSAL_PILOT_001`
 
-Goal: transfer the exact already-exported full source payload into a form ChatGPT can access, without modifying code.
+Goal: test whether verifier precision/distribution (Q4 target state vs pinned BF16 target state) causally recovers DFlash compatibility on the three preregistered representable near-target states.
 
-Required direction:
-1. make NO source changes;
-2. do NOT run Git;
-3. create one deterministic payload containing the exact three exported UTF-8 files, preferably a single base64-encoded tar/zip or equivalent text artifact;
-4. include payload SHA-256 plus the three pinned per-file SHA-256 values above;
-5. output/present the payload in a way the user can attach or paste into ChatGPT; if attachment creation is possible locally, produce a single compact artifact for upload;
-6. no target/network execution.
+Execution order for bounded feasibility:
+1. P3 `P3_t01:2`;
+2. P1 `P1_t32:6`;
+3. P2 `P2_t16:3`.
 
-Classification:
-- `BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_READY`
-- `BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_AMBIGUOUS`
+This order is fixed from ascending preflight-estimated missing network bytes and does not change state selection.
 
-After ChatGPT receives the actual payload, it must write the exact files to GitHub and verify content hashes before authorizing the expensive BF16 pilot.
+Hard aggregate ceilings across the whole BF16 pilot:
+- network bytes: `8 GiB`;
+- requests: `1,024`, retries included;
+- `NETWORK_CAP_ABORT` before dispatch if the next request would exceed either cap;
+- persistent cache and partial progress retained.
 
-## Later pilot measurement rule
+Required gates / measurements:
+1. reproduce the Q4 baseline for each state before interpreting BF16; frozen target token and retained Q4 state must remain consistent;
+2. run the pinned BF16 verifier teacher-forced only to the selected state/prefix;
+3. retain BF16 taps `[1,12,23,34,45]`, target final logits/top1, routing and network/cache ledger;
+4. compare Q4-vs-BF16 taps per layer: max abs, mean abs, RMSE, rel-L2, cosine;
+5. run the unchanged DFlash drafter on Q4 taps and BF16 taps with identical IDs/positions/masks/tap order/weights/mapping;
+6. compare full 32k DFlash logits: max abs, mean abs, RMSE, rel-L2, cosine and proposal change;
+7. preserve both labels per state: frozen Q4 target token and BF16 verifier top1 token;
+8. report DFlash rank/top5/top10/top50/top100/top1 for the frozen token in both conditions;
+9. if BF16 verifier top1 is DFlash-representable, report the same metrics and exact proposal match for that BF16 label;
+10. retain completed-state evidence even if a later state hits the network cap; do not post-hoc replace states.
 
-For each selected state preserve both labels:
-- frozen Q4 target token;
-- BF16 verifier top1 token at the same state.
+Decision classifications:
+- `BF16_TARGET_RECOVERY_SIGNAL`: at least 2 selected states achieve BF16-tap DFlash top1 equal to the BF16 verifier top1 (representable), while the corresponding Q4-tap condition is not exact;
+- `NO_USEFUL_BF16_TARGET_RECOVERY`: zero exact BF16-label recoveries and no broad decision-level/top-k improvement;
+- `BF16_TARGET_EFFECT_AMBIGUOUS`: exactly one exact recovery, label-support ambiguity, or systematic non-top1 movement insufficient for the recovery gate;
+- `BF16_TARGET_PILOT_NETWORK_CAP_ABORT`: hard cap stops completion; retain partial evidence but do not infer the missing states.
 
-Measure DFlash under Q4 vs BF16 taps against the frozen Q4 target and, when representable, against the BF16 verifier top1.
+If Q4 baseline replay/provenance fails, STOP as an invalid pilot rather than rescuing.
+
+No E2E, retraining, remapping or unrelated performance optimization in this checkpoint.
 
 ## WP contract
 
