@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.10
+Version: 3.11
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is persistent context for Pi. WP prompts carry only the active delta.
@@ -15,18 +15,14 @@ Pi must NOT run Git, edit AGENTS/HANDOFF/ROADMAP, push/open/merge PRs, or create
 
 ## Scientific rules
 
-1. Read this file first, then only files/evidence relevant to the active WP.
-2. Preserve one-factor experiments, deterministic inputs, provenance and explicit gates.
-3. Distinguish fact, inference, hypothesis and unverified limit.
-4. Mechanical failures may be repaired inside scope; failed scientific treatments may not be silently rescued.
-5. STOP on scientific ambiguity, destructive actions, missing required artifacts, or explicit stop gates.
-6. Do not optimize memory/performance while the active scientific blocker is unresolved unless required for feasibility.
+1. Preserve one-factor experiments, deterministic inputs, provenance and explicit gates.
+2. Distinguish fact, inference, hypothesis and unverified limit.
+3. Mechanical failures may be repaired inside scope; failed scientific treatments may not be silently rescued.
+4. STOP on scientific ambiguity, destructive actions, missing required artifacts, or explicit stop gates.
+5. No memory/performance optimization while the active scientific blocker is unresolved unless required for feasibility.
+6. Before expensive network/compute work define retention, resumability and hard cost/stop gates. Network caps must be enforced before dispatch.
 
 Loop: `OBSERVE -> EXECUTE -> VERIFY -> DIAGNOSE -> CORRECT(mechanical only) -> CHECKPOINT`.
-
-## Storage / expensive-run rule
-
-Before materially expensive network/compute work, define retention, provenance, resumability, cache behavior and hard cost/stop gates. A network cap must be enforced **before dispatch**, not only checked after transfer.
 
 External LOOM root:
 `<external-archive>/`
@@ -34,16 +30,14 @@ External LOOM root:
 Persistent BF16 cache:
 `<external-archive>/bf16-cache/`
 
-Persistent research artifacts:
+Persistent artifacts:
 `<external-archive>/artifacts/`
-
-Operational Q4 target remains on internal SSD.
 
 ## Mission / stable target
 
 Mission: **Big models. Small machines.** Make ~27B/32B-class local AI practical on Apple M1 / 8 GB with exactness, bounded memory and reproducible evidence.
 
-Local target:
+Operational Q4 target:
 `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
 
 Stable target facts:
@@ -61,10 +55,10 @@ Stable target facts:
 ## DFlash stable chain
 
 Drafter: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`
-Verifier/target: `Qwen/Qwen3-30B-A3B`
-Target taps: `[1,12,23,34,45]`.
+Verifier: `Qwen/Qwen3-30B-A3B`
+Taps: `[1,12,23,34,45]`.
 
-Validated and still usable:
+Still valid:
 - exact target-tap implementation;
 - exact B7 wavefront verifier;
 - all 680,813,824 learned BF16 drafter params mapped;
@@ -73,54 +67,37 @@ Validated and still usable:
 - frozen target continuation 63/63, SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`;
 - target identity `IDENTITY_MATCH_EXCEPT_QUANTIZATION`.
 
-## Mapping / compatibility facts
-
 Correct publisher decode:
 `target_id = draft_row + d2t[draft_row]`.
 
-Support:
+Support / corrected compatibility:
 - 32,000 valid unique target IDs;
 - frozen `50/63` representable, `13/63` unsupported;
-- corrected exact top1 remains `0/63`.
-
-For 50 representable states:
-- rank min / median / mean / max `2 / 93.5 / 438.82 / 3510`;
-- top5 `8/50`, top10 `11/50`, top50 `19/50`, top100 `26/50`;
-- top1 `0/50`.
+- corrected exact top1 remains `0/63`;
+- representable ranks min/median/mean/max `2 / 93.5 / 438.82 / 3510`;
+- top5/top10/top50/top100 `8/11/19/26`.
 
 Historical E2E `0/96` used the old decode and is not current acceptance evidence.
 
 ## Closed leading hypotheses
 
-Temporal alignment:
-- full preregistered `-7..+7` = `NO_SYSTEMATIC_TEMPORAL_SHIFT`.
+- temporal/off-by-N: `NO_SYSTEMATIC_TEMPORAL_SHIFT` over full `-7..+7`;
+- MLX drafter implementation: `FULL_LOGIT_REFERENCE_PARITY_PASS` on 6 stratified states;
+- verifier/tap static interface: `PROVENANCE_UNPINNED_NO_MATERIAL_MISMATCH_FOUND`, contract `16/16` PASS;
+- tap transport float32-vs-BF16: `NO_MATERIAL_TAP_DTYPE_EFFECT`, proposal changes `0/63`, no top-k crossings.
 
-MLX drafter implementation:
-- `LOOM_DFLASH_FULL_LOGIT_REFERENCE_PARITY_001` = `FULL_LOGIT_REFERENCE_PARITY_PASS`;
-- decision-level parity exact on 6 stratified states, full 32k vectors numerically equivalent under established gates.
-
-Verifier provenance/tap semantics:
-- `LOOM_DFLASH_VERIFIER_PROVENANCE_TAP_INTERFACE_AUDIT_001` = `PROVENANCE_UNPINNED_NO_MATERIAL_MISMATCH_FOUND`;
-- static contract `16/16` PASS;
-- `[1,12,23,34,45]` are ordered 1-based post-block residuals, pre-final-norm;
-- no demonstrated material target revision/config/tokenizer/tap mismatch.
-
-Tap transport dtype:
-- `LOOM_DFLASH_TAP_TRANSPORT_BF16_SENSITIVITY_001` = `NO_MATERIAL_TAP_DTYPE_EFFECT`;
-- float32 -> BF16 -> float32 tap round-trip caused `0/63` proposal changes, no top-k boundary crossings, exact matches `0/50 -> 0/50`.
-
-Do not revisit these mechanisms without new evidence.
+Do not reopen these without new evidence.
 
 ## BF16 target context
 
-Available upstream BF16 target revision:
+Available BF16 verifier revision:
 `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`.
 
-Prior P1_t01 Q4->BF16 control materially changed routing/taps/logits but target top1 stayed `12050`; P1_t01 is outside DFlash support, so it cannot test exact recovery on a representable target.
+Prior P1_t01 Q4->BF16 materially changed routing/taps/logits but P1_t01 target `12050` is outside DFlash support, so it cannot test representable-target recovery.
 
 Persistent BF16 cache is reusable.
 
-## Representable BF16 target pilot preflight — COMPLETE
+## Representable BF16 target preflight — COMPLETE
 
 `LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CONTROL_PREFLIGHT_001` = `BF16_TARGET_PILOT_READY_WITH_BOUNDED_MISSING_CACHE`.
 
@@ -130,67 +107,83 @@ Report:
 Evidence:
 `results-local/research/dflash-representable-bf16-target-control-preflight-001/20260825T115402Z/`
 
-Selected deterministic near-target states:
-- P1 `P1_t32:6`, rank 3, target 326, 79-token verifier prefix;
-- P2 `P2_t16:3`, rank 3, target 994, 74-token prefix;
-- P3 `P3_t01:2`, rank 2, target 1620, 64-token prefix.
+Selected states:
+- P1 `P1_t32:6`, rank 3, frozen target 326, 79-token prefix;
+- P2 `P2_t16:3`, rank 3, frozen target 994, 74-token prefix;
+- P3 `P3_t01:2`, rank 2, frozen target 1620, 64-token prefix.
 
-No compute sharing: distinct P1/P2/P3 trajectories and fresh KV state.
+No compute sharing across trajectories.
 
 BF16 cache audit:
 - 435 dense manifests;
 - 3,470 expert manifests / 10,410 projections SHA-256 verified;
-- failures `0`;
-- dense `3,082,218,423 B`;
-- experts `32,755,649,797 B`;
-- total `35,837,957,463 B`;
-- free external disk `1,152.25 GiB`.
+- integrity failures 0;
+- dense 3,082,218,423 B;
+- experts 32,755,649,797 B;
+- total 35,837,957,463 B;
+- free external disk 1,152.25 GiB.
 
-Q4-routing planning estimate only, because BF16 routing may diverge:
-- P1: 1,942 hits / 315 misses / 2,972,712,960 B missing;
-- P2: 1,476 / 507 / 4,784,652,288 B;
-- P3: 371 / 13 / 122,683,392 B;
-- combined unique: 2,325 hits / 703 misses / 6,634,340,352 B.
+Q4-routing planning estimate only; BF16 routing may diverge:
+- P1 misses 315 / 2,972,712,960 B;
+- P2 misses 507 / 4,784,652,288 B;
+- P3 misses 13 / 122,683,392 B;
+- combined unique misses 703 / 6,634,340,352 B.
 
-Existing BF16 fetch/cache path is atomic and resumable but does **not** pre-check byte/request caps before dispatch.
+Pilot ceiling: hard `8 GiB` total network and `1,024` requests, with `NETWORK_CAP_ABORT` before dispatch.
 
-Proposed expensive pilot ceiling after safety repair:
-- 8 GiB total network budget;
-- 1,024 request budget;
-- `NETWORK_CAP_ABORT` before dispatch if next request would exceed either limit;
-- retain taps, final logits, routing, DFlash 32k logits, target ranks/top-k, network/cache ledger and partial persistent cache.
+## BF16 network cap guard — VALIDATED LOCALLY
+
+`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_001` = `BF16_NETWORK_CAP_GUARD_PASS`.
+
+Report:
+`research/architecture/loom-dflash-bf16-network-cap-guard-001-result.md`
+
+Evidence:
+`results-local/research/dflash-bf16-network-cap-guard-001/20260825T121354Z/`
+
+Validated local working-tree files:
+- `scripts/loom_dflash_unquantized_target_p1t01_range_control_001.py`;
+- `scripts/loom_dflash_bf16_tap_drafter_probe_001.py`;
+- `scripts/test_loom_dflash_bf16_network_cap_guard_001.py`.
+
+Results:
+- synthetic tests `6/6` PASS; compile PASS;
+- exact boundary allow PASS;
+- byte/request rejects occur before `HTTPSConnection.request` and emit deterministic `NETWORK_CAP_ABORT`;
+- retry reservations counted exactly once; 2 attempts = 10 B / 2 requests with one bounded retry;
+- cache hits cost 0 B / 0 requests;
+- abort preserves complete/partial cache and resumability;
+- real network dispatches observed: `0`.
+
+Critical reproducibility state: the validated guard source delta exists in the **local working tree only** and is not yet represented in the GitHub branch. Do not claim remote source parity or run the expensive pilot from a fresh clone until exact source synchronization is complete.
 
 ## Next checkpoint
 
-`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_001`
+`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_SYNC_001`
 
-Goal: mechanically add and validate a pre-dispatch network byte/request guard to the existing on-demand BF16 fetch/cache path before any new BF16 target execution.
+Goal: capture the exact already-validated local guard implementation for the three files above and synchronize it to GitHub without altering behavior.
 
 Required direction:
-1. modify only the shared BF16 fetch/cache accounting/dispatch path required for the later pilot;
-2. support explicit hard caps for cumulative network bytes and requests;
-3. before every network dispatch, compute the maximum accounted cost of that request from the existing range/request plan and refuse dispatch if it would exceed either cap;
-4. emit deterministic `NETWORK_CAP_ABORT` with current ledger, proposed request cost and cap values;
-5. cache hits must consume zero network bytes/requests;
-6. successful requests update the persistent/run ledger exactly once; retries must be explicitly counted and bounded;
-7. abort must preserve already-valid persistent cache and resumability;
-8. add local synthetic/unit tests for: exact-boundary allow, byte-cap reject-before-dispatch, request-cap reject-before-dispatch, cache-hit zero-cost, retry accounting, and resume/partial-cache preservation;
-9. no real network request is authorized in this checkpoint.
+1. make NO code changes;
+2. do NOT run Git;
+3. output exact full UTF-8 contents of the three modified files, or deterministic complete patches against the current branch versions, sufficient for ChatGPT to reproduce them byte-for-byte;
+4. include SHA-256 of each local file;
+5. rerun no expensive tests; at most re-run the existing synthetic guard test if needed to prove the exported files remain the validated state;
+6. no network/target execution.
 
 Classification:
-- `BF16_NETWORK_CAP_GUARD_PASS`
-- `BF16_NETWORK_CAP_GUARD_FAIL`
-- `BF16_NETWORK_CAP_GUARD_AMBIGUOUS`
+- `BF16_NETWORK_CAP_GUARD_SOURCE_EXPORT_PASS`
+- `BF16_NETWORK_CAP_GUARD_SOURCE_EXPORT_AMBIGUOUS`
 
-If PASS, next checkpoint may authorize the preregistered 3-state Q4-vs-BF16 target causal pilot under hard `8 GiB / 1,024 request` limits.
+After ChatGPT applies the exact source delta and verifies remote parity, authorize the preregistered 3-state Q4-vs-BF16 target causal pilot under hard `8 GiB / 1,024 request` limits.
 
-Restrictions:
-- no target/BF16 target forward;
-- no real downloads/network;
-- no E2E;
-- no retraining/remapping;
-- no unrelated performance optimization;
-- no Git/docs edits.
+## Later pilot measurement rule
+
+For each selected state, the eventual causal pilot must preserve both labels:
+- frozen Q4 target token for continuity;
+- BF16 verifier top1 token at the same state.
+
+Measure DFlash under Q4 vs BF16 taps against the frozen Q4 target and, when representable, against the BF16 verifier top1. This avoids falsely calling recovery/failure if verifier precision itself changes the target top1.
 
 ## WP contract
 
