@@ -1,14 +1,14 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-25
-Current checkpoint: `LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_SYNC_001_BF16_NETWORK_CAP_GUARD_SOURCE_EXPORT_PASS`
-Strategic next: `LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_HANDOFF_001`
+Current checkpoint: `LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_HANDOFF_001_BF16_NETWORK_CAP_GUARD_REMOTE_SOURCE_PARITY_PASS`
+Strategic next: `LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CAUSAL_PILOT_001`
 
 ## Mission
 
 Run ~27B/32B-class local AI on Apple M1 / 8 GB with practical speed, exactness and reproducible bounded experiments.
 
-Canonical persistent context: `/AGENTS.md` v3.12.
+Canonical persistent context: `/AGENTS.md` v3.13.
 
 ## Stable DFlash chain
 
@@ -25,8 +25,8 @@ Correct mapping:
 `target_id = draft_row + d2t[draft_row]`.
 
 Compatibility baseline:
-- frozen 50/63 representable, 13/63 unsupported;
-- corrected exact top1 0/63;
+- frozen `50/63` representable, `13/63` unsupported;
+- corrected exact top1 `0/63`;
 - representable ranks min/median/mean/max `2 / 93.5 / 438.82 / 3510`;
 - top5/top10/top50/top100 `8/11/19/26`.
 
@@ -36,8 +36,10 @@ Historical E2E `0/96` remains invalid current acceptance evidence because it use
 
 - temporal alignment: `NO_SYSTEMATIC_TEMPORAL_SHIFT` across full `-7..+7`;
 - MLX drafter port: `FULL_LOGIT_REFERENCE_PARITY_PASS`;
-- verifier/tap interface: static 16/16 PASS, no material mismatch demonstrated;
+- verifier/tap interface: static 16/16 PASS, no demonstrated material mismatch;
 - tap transport dtype: `NO_MATERIAL_TAP_DTYPE_EFFECT`.
+
+Do not revisit without new evidence.
 
 ## Representable BF16 target path
 
@@ -45,9 +47,11 @@ Preflight:
 `LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CONTROL_PREFLIGHT_001` = `BF16_TARGET_PILOT_READY_WITH_BOUNDED_MISSING_CACHE`.
 
 Selected deterministic states:
-- P1 `P1_t32:6`, rank 3, target 326, 79-token prefix;
-- P2 `P2_t16:3`, rank 3, target 994, 74-token prefix;
-- P3 `P3_t01:2`, rank 2, target 1620, 64-token prefix.
+- P1 `P1_t32:6`, baseline rank 3, frozen target 326, 79-token prefix;
+- P2 `P2_t16:3`, baseline rank 3, frozen target 994, 74-token prefix;
+- P3 `P3_t01:2`, baseline rank 2, frozen target 1620, 64-token prefix.
+
+No compute sharing across prompt trajectories.
 
 Cache state:
 - 435 dense manifests;
@@ -58,78 +62,83 @@ Cache state:
 
 BF16 routing may diverge, so actual misses remain unknown until execution.
 
-## BF16 network-cap guard — validated
+## BF16 network-cap guard — complete
 
 `LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_001` = `BF16_NETWORK_CAP_GUARD_PASS`.
 
-Behavior:
-- 6/6 synthetic tests PASS;
+Validated behavior:
+- 6/6 synthetic tests PASS; compile PASS;
 - exact-boundary allow;
 - byte/request overflow rejected before HTTPS dispatch;
 - deterministic `NETWORK_CAP_ABORT`;
 - retries counted and bounded;
 - cache hits zero network cost;
 - abort preserves partial/complete cache and resumability;
-- zero real network dispatches in validation.
+- zero real network dispatches during validation.
 
-## Completed — exact source export
+## Remote source parity — complete
 
-`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_SYNC_001` = `BF16_NETWORK_CAP_GUARD_SOURCE_EXPORT_PASS`.
+`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_HANDOFF_001` = `BF16_NETWORK_CAP_GUARD_REMOTE_SOURCE_PARITY_PASS`.
 
 Report:
-`research/architecture/loom-dflash-bf16-network-cap-guard-source-sync-001-result.md`
+`research/architecture/loom-dflash-bf16-network-cap-guard-source-payload-handoff-001-result.md`
 
-Evidence:
-`results-local/research/dflash-bf16-network-cap-guard-source-sync-001/20260825T122613Z/`
+Received archive:
+- bytes `30,095`;
+- SHA-256 `0c8fc52938c1be5642b8ca4abc1ba25944e8d44ff78fe038048ede19f433be2e`;
+- exactly three validated guard source files.
 
-Export method: full UTF-8 contents.
+User commit `01a5f9b` placed those exact files on the branch. Direct remote Git blob identities match `git hash-object` of the received payload:
+- range control: `00287bc793fce8b552c55b8706a2d7f4d69be08e`;
+- BF16 tap probe: `b2366c1c78b960e0bba224a3eb2da8efe92e7bfc`;
+- guard test: `8ded2333d8007abec857d20b82e891b961add69b`.
 
-Pinned local source identities:
-- `scripts/loom_dflash_unquantized_target_p1t01_range_control_001.py` — 74,261 B — SHA-256 `dc0bdb6af282805cdfb623404bcfc778922c28a7b21df750cee08340b365a376`;
-- `scripts/loom_dflash_bf16_tap_drafter_probe_001.py` — 26,443 B — SHA-256 `7a6119f01c99eb5d0833ff5bc5b6a7e47c540161ac5414aae246adc62bec479f`;
-- `scripts/test_loom_dflash_bf16_network_cap_guard_001.py` — 11,741 B — SHA-256 `7b6577076bffd73733f7766ca87638004618a7c4a121ae4f5fc6a5a318e776ae`.
+The remote/fresh-clone reproducibility gate is CLOSED.
 
-The local exported copies byte-match the validated state.
+## Next — representable BF16 causal pilot
 
-## Immediate reproducibility gate — payload handoff
-
-The source export exists on the user's Mac, but its full bytes were not included in the chat payload. ChatGPT cannot access the local evidence directory directly and hashes cannot reconstruct source.
-
-Next checkpoint:
-`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_HANDOFF_001`
+Checkpoint:
+`LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CAUSAL_PILOT_001`
 
 Purpose:
-- package the already-exported exact files without modifying them;
-- produce one deterministic payload/artifact accessible to ChatGPT;
-- include payload SHA-256 and per-file SHA-256;
-- ChatGPT writes exact files to branch and verifies remote content identities.
+Test the remaining material hypothesis: verifier-state precision/distribution (Q4 vs pinned BF16) causes the residual DFlash mismatch on representable targets.
 
-This is a mechanical transfer gate only. No scientific change is permitted.
+Fixed state set is unchanged. Execution order is frozen from ascending preflight-estimated network exposure:
+1. P3 `P3_t01:2`;
+2. P1 `P1_t32:6`;
+3. P2 `P2_t16:3`.
 
-## After remote source parity
+Hard aggregate limits:
+- `8 GiB` network bytes;
+- `1,024` requests including retries;
+- reject before dispatch with `NETWORK_CAP_ABORT`;
+- retain persistent cache and completed partial evidence.
 
-Authorize one bounded representable-state Q4-vs-BF16 target causal pilot:
-- P1_t32:6;
-- P2_t16:3;
-- P3_t01:2;
-- separate fresh KV trajectory per prompt;
-- hard network ceiling `8 GiB`;
-- hard request ceiling `1,024`;
-- pre-dispatch `NETWORK_CAP_ABORT`;
-- persistent/resumable cache.
+Required per-state sequence:
+1. Q4 baseline replay/provenance gate;
+2. pinned BF16 teacher-forced verifier to the selected state only;
+3. retain BF16 taps `[1,12,23,34,45]`, verifier final logits/top1, routing and network/cache ledger;
+4. compute layerwise Q4-vs-BF16 tap movement;
+5. unchanged DFlash forward on Q4 taps and BF16 taps with IDs/positions/masks/tap order/weights/mapping frozen;
+6. compare full 32k DFlash movement and proposal;
+7. preserve both labels: frozen Q4 target token and BF16 verifier top1 token;
+8. compare DFlash rank/top5/top10/top50/top100/top1 for each representable label.
 
-Measure:
-- Q4-vs-BF16 target tap drift;
-- target final-logit/top1 drift;
-- DFlash full-32k movement;
-- frozen-Q4-target rank/top5/top10/top50/top100/top1;
-- BF16 verifier top1 and its DFlash rank/top-k/top1 when representable;
-- routing/network/cache ledger.
+Preregistered outcomes:
+- `BF16_TARGET_RECOVERY_SIGNAL`: >=2 selected states produce BF16-tap DFlash top1 equal to the representable BF16 verifier top1, while corresponding Q4-tap condition is not exact;
+- `NO_USEFUL_BF16_TARGET_RECOVERY`: zero exact BF16-label recoveries and no broad decision-level/top-k improvement;
+- `BF16_TARGET_EFFECT_AMBIGUOUS`: exactly one exact recovery, label/support ambiguity, or consistent non-top1 movement insufficient for the recovery criterion;
+- `BF16_TARGET_PILOT_NETWORK_CAP_ABORT`: hard cap stops full completion; no inference for unexecuted states.
 
-Decision after pilot:
-- broad representable-target recovery -> continue DFlash salvage only on isolated mechanism;
-- no useful recovery -> explicitly reassess/terminate DFlash salvage before corrected E2E and return to higher-leverage 30B-on-8GB serving/I/O work;
-- mixed/label-changing evidence -> classify ambiguous; no post-hoc rescue.
+Q4 baseline failure invalidates the pilot and must STOP without rescue or state replacement.
+
+## Decision after pilot
+
+- broad recovery signal -> continue DFlash salvage only along the isolated BF16 verifier-state mechanism;
+- no useful recovery -> explicitly reassess/terminate DFlash salvage before corrected E2E and return to LOOM's higher-leverage 30B-on-8GB serving/I/O path;
+- ambiguous -> record only; no post-hoc rescue or candidate/state substitution.
+
+No corrected E2E until a real compatibility/acceptance mechanism exists.
 
 ## Token-efficient workflow
 
