@@ -1,140 +1,92 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-25
-Current checkpoint: `LOOM_DFLASH_OUTPUT_SUPPORT_COVERAGE_AUDIT_001_SUPPORT_COVERAGE_MAJOR_BLOCKER`
-Strategic next: `LOOM_DFLASH_OUTPUT_MAPPING_SEMANTICS_AUDIT_001`
+Current checkpoint: `LOOM_DFLASH_OUTPUT_MAPPING_SEMANTICS_AUDIT_001_CONVERSION_OR_DECODE_SEMANTICS_BUG`
+Strategic next: `LOOM_DFLASH_D2T_OFFSET_DECODE_REPAIR_001`
 
 ## Mission
 
 Run ~27B/32B-class local AI on Apple M1 / 8 GB with practical speed, exactness and reproducible bounded experiments.
 
-Canonical long-lived context is in `/AGENTS.md`.
+Canonical persistent context: `/AGENTS.md` v3.2.
 
-## Proven DFlash chain
+## DFlash status
 
-- target tap interface `[1,12,23,34,45]` established;
+Still-valid chain:
+- target tap interface `[1,12,23,34,45]`;
 - exact B7 wavefront verifier;
-- complete MLX drafter port;
-- publisher anchor/block mask repaired;
-- corrected publisher-reference proposal parity 63/63.
+- complete 680,813,824-param BF16 drafter port;
+- publisher attention-mask repair;
+- deterministic/finite 32k drafter forward path;
+- frozen 63-state target continuation;
+- target identity `IDENTITY_MATCH_EXCEPT_QUANTIZATION`.
 
-First E2E:
-- target committed behavior exact;
-- acceptance 0/96;
-- DFlash 0.1544 tok/s vs control 0.7735 tok/s;
-- swap +737.43 MiB.
+BF16 branch:
+- Q4->BF16 target states drift materially;
+- Q4/BF16 target top1 on P1_t01 both `12050`;
+- Q4->BF16 taps materially move drafter 32k logits;
+- ~33 GiB BF16 cache and exact P1_t01 taps/logits retained externally.
 
-Memory/performance optimization remains deferred while DFlash compatibility is unresolved.
+## Critical correction — d2t is an offset
 
-## Frozen compatibility baseline
+The previous output-support audit interpreted publisher `d2t` values as absolute target-token IDs. That interpretation is wrong.
 
-Frozen target continuation:
-- historical overlap 45/45;
-- complete 63/63 target token reference;
-- SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`.
+Authoritative upstream semantics:
+- exact RedHatAI model card uses `--draft-vocab-size 32000`;
+- `speculators` builds `d2t = selected_target_ids - arange(32000)`;
+- correct decode is `target_id = draft_row + d2t[draft_row]`;
+- `t2d` is a BOOL mask over the verifier vocab with the 32,000 selected target IDs set true;
+- current vLLM Qwen3 DFlash reconstructs `targets = arange(32000) + draft_id_to_target_id` before expanding draft logits into verifier-vocab space.
 
-Compatibility audit:
-- target replay/control 63/63 PASS;
-- drafter/target top1 0/63;
-- top5/top10/top50 all 0/63;
-- proposal ranks min/P50/mean/max 987 / 14,195 / 28,621.08 / 146,487;
-- accepted prefixes all zero;
-- verdict `INCOMPATIBLE_ON_FROZEN_TARGET_PREFIXES`.
-
-Target identity: `IDENTITY_MATCH_EXCEPT_QUANTIZATION`.
-
-## Completed — BF16 precision branch
-
-`LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001_PASS`:
-- substantial Q4/BF16 hidden/router/logit drift;
-- Q4 top1 = BF16 top1 = `12050`;
-- result remained `NOT_CAUSAL`.
-
-`LOOM_DFLASH_BF16_TAP_DRAFTER_PROBE_001_NO_MATERIAL_RECOVERY`:
-- Q4-tap proposal `1778`, BF16-target rank `41641`;
-- BF16-tap proposal still `1778`, rank still `41641`;
-- drafter logits moved (relative-L2 `0.215100`, cosine `0.977013`) without proposal/top-k recovery.
-
-Conclusion: target precision materially affects DFlash internals but is not sufficient to explain/repair P1_t01 incompatibility.
-
-Persistent BF16 infrastructure:
-- external root `<external-archive>/`;
-- ~33 GiB retained BF16 cache;
-- exact P1_t01 BF16 taps/logits retained;
-- subsequent full BF16 re-extraction used HDD cache with 0 network bytes.
-
-## Completed — output support coverage audit
-
-Checkpoint:
-`LOOM_DFLASH_OUTPUT_SUPPORT_COVERAGE_AUDIT_001`
-
-Classification:
-`SUPPORT_COVERAGE_MAJOR_BLOCKER`
+Local MLX instead used `d2t[argmax]` directly. This is classified:
+`CONVERSION_OR_DECODE_SEMANTICS_BUG`.
 
 Report:
-`research/architecture/loom-dflash-output-support-coverage-audit-001-result.md`
+`research/architecture/loom-dflash-output-mapping-semantics-audit-001-result.md`
 
-Evidence:
-`results-local/research/dflash-output-support-coverage-audit-001/20260825T090327Z/`
+Local evidence:
+`results-local/research/dflash-output-mapping-semantics-audit-001/20260825T091537Z/`
 
-Static mapping facts:
-- mapping `d2t`: drafter output index -> target token ID;
-- output rows: `32,000`;
-- target vocabulary: `151,936`;
-- unique mapped target-token support: `17,018`;
-- duplicate entries beyond unique support: `14,982`;
-- duplicated target IDs: `6,098`;
-- invalid/out-of-vocab IDs: `0`.
+## Results requiring recomputation
 
-Frozen 63-state coverage:
-- representable `30/63` = `47.62%`;
-- structurally unsupported `33/63` = `52.38%`;
-- representable but wrong `30/63`;
-- target matches `0/63`;
-- P1_t01 target `12050` unsupported.
+Pending corrected decode, do NOT treat these as valid scientific conclusions:
+- effective support `17,018`;
+- `33/63` structurally unsupported / `30/63` representable;
+- P1_t01 `12050` unsupported;
+- proposal target IDs/ranks derived by direct `d2t` lookup;
+- `0/63` compatibility insofar as based on wrong target IDs;
+- first E2E `0/96` acceptance if it used the same decode.
 
-Implications:
-- exact proposal is structurally impossible on 33 states through current mapped support;
-- support coverage is therefore a major blocker;
-- it is not the only incompatibility because every one of the 30 representable states is also wrong;
-- 32,000 rows collapsing to 17,018 unique target IDs is a high-leverage structural observation, but not yet established as erroneous.
+Underlying drafter weights/logits/taps/mask math remain usable unless the repair finds another defect.
 
-## Next — output mapping semantics audit
+## Next — mechanical offset-decode repair
 
 Checkpoint:
-`LOOM_DFLASH_OUTPUT_MAPPING_SEMANTICS_AUDIT_001`
+`LOOM_DFLASH_D2T_OFFSET_DECODE_REPAIR_001`
 
 Purpose:
-Determine whether the observed many-to-one `d2t` mapping is exactly intended by the publisher's DFlash/tokenizer interface or is a local conversion/interpretation defect.
+repair only the mapping semantics and cheaply determine what DFlash actually predicts on the frozen corpus.
 
-Static audit:
-1. recover authoritative publisher `d2t` / `t2d` artifacts or generation logic from already available local/frozen provenance;
-2. verify publisher/local mapping semantics and exact equality where possible;
-3. quantify collision multiplicities and inspect tokenizer-equivalent, special, byte/fallback cases;
-4. establish authoritative unique target support cardinality;
-5. no mapping modification during the audit.
+Required order:
+1. locate every local direct-`d2t` absolute-ID interpretation;
+2. replace with authoritative `row + d2t[row]` semantics only;
+3. prove reconstructed 32,000 target IDs are unique, in-vocab and exactly equal `nonzero(t2d)`;
+4. recompute true support over the frozen 63 target tokens;
+5. recompute corrected proposal IDs and target ranks/top-k from retained draft logits where available;
+6. if retained evidence is insufficient, allow only the minimum drafter-only replay; no target/BF16 rerun;
+7. scientifically review corrected 63-state compatibility before any E2E.
 
-Decision:
-- publisher-intended 17,018 unique support -> coverage blocker intrinsic to candidate/interface; together with 30 representable-but-wrong states, DFlash salvage would require substantive model/output-head changes, so compare that cost against returning to LOOM's practical 30B-on-8GB path;
-- local semantic/conversion mismatch -> repair mapping mechanically, re-prove publisher parity, rerun cheap support coverage before any E2E.
+Decision after repair:
+- useful corrected compatibility/acceptance signal -> continue DFlash salvage and then authorize a bounded corrected E2E;
+- still catastrophic compatibility -> investigate remaining drafter training/interface mismatch or abandon DFlash in favor of the next high-leverage LOOM serving architecture/I/O path.
 
 Restrictions:
-- static/local evidence first;
+- no retraining;
 - no BF16 forward;
-- no target generation;
-- no DFlash E2E;
-- no model download unless a precise missing authoritative artifact is separately justified;
-- no performance/memory optimization;
-- no speculative mapping repair inside the audit.
+- no target regeneration unless separately justified;
+- no E2E yet;
+- no performance/memory optimization until corrected compatibility is known.
 
-## Later order
+## Token-efficient workflow
 
-1. `LOOM_DFLASH_OUTPUT_MAPPING_SEMANTICS_AUDIT_001`;
-2. if local mapping defect, repair and re-audit support cheaply;
-3. if publisher-intended blocker, make an explicit DFlash salvage-vs-abandon decision;
-4. investigate representable-but-wrong mechanism only if DFlash remains worth salvaging;
-5. otherwise return to the next high-leverage LOOM architecture/I/O branch toward practical 30B-on-8GB serving.
-
-## Token-efficient Pi workflow
-
-Root `/AGENTS.md` is persistent context. Pi prompts carry only the active delta. Pi executes local work; ChatGPT owns Git/HANDOFF/ROADMAP and scientific checkpoint administration.
+Pi reads `/AGENTS.md`; WP prompts carry only the active delta. Pi executes local work; ChatGPT owns scientific/Git state.
