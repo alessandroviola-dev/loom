@@ -1,14 +1,14 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-25
-Current checkpoint: `LOOM_DFLASH_CORRECTED_TEMPORAL_ALIGNMENT_AUDIT_001_NO_SYSTEMATIC_TEMPORAL_SHIFT_WITHIN_PM3`
-Strategic next: `LOOM_DFLASH_TEMPORAL_ALIGNMENT_RANGE_COMPLETION_001`
+Current checkpoint: `LOOM_DFLASH_TEMPORAL_ALIGNMENT_RANGE_COMPLETION_001_NO_SYSTEMATIC_TEMPORAL_SHIFT`
+Strategic next: `LOOM_DFLASH_FULL_LOGIT_REFERENCE_PARITY_001`
 
 ## Mission
 
 Run ~27B/32B-class local AI on Apple M1 / 8 GB with practical speed, exactness and reproducible bounded experiments.
 
-Canonical persistent context: `/AGENTS.md` v3.5.
+Canonical persistent context: `/AGENTS.md` v3.6.
 
 ## Stable DFlash chain
 
@@ -46,7 +46,7 @@ BF16 target taps materially move drafter logits but did not establish recovery.
 
 `LOOM_DFLASH_CORRECTED_DRAFTER_TARGET_RANK_AUDIT_001` = `PASS_DIRECTIONAL_SIGNAL_PRESENT`.
 
-For the 50 representable target tokens:
+For 50 representable targets:
 - rank min / median / mean / max `2 / 93.5 / 438.82 / 3510`;
 - top1 `0/50`;
 - top5 `8/50`;
@@ -54,53 +54,56 @@ For the 50 representable target tokens:
 - top50 `19/50`;
 - top100 `26/50`.
 
-The drafter is mismatched at top1 but carries substantial target-directional signal.
+The drafter is mismatched at top1 but carries measurable target-directional signal.
 
-## Temporal alignment audit — partial preregistered range
+## Temporal alignment — CLOSED
+
+Combined result:
+`NO_SYSTEMATIC_TEMPORAL_SHIFT` over the full preregistered valid range `-7..+7`.
+
+Reports:
+- `research/architecture/loom-dflash-corrected-temporal-alignment-audit-001-result.md`;
+- `research/architecture/loom-dflash-temporal-alignment-range-completion-001-result.md`.
+
+Completion evidence:
+`results-local/research/dflash-temporal-alignment-range-completion-001/20260825T101610Z/`
+
+Full-range summary:
+- 441 valid prompt-local comparisons;
+- offset 0: 50 representable, top1/top5/top10/top50/top100 `0/8/11/19/26`, median rank `93.5`;
+- only 5 nonzero-offset proposal-neighbor matches total: +2=2, +3=2, +4=1;
+- no neighbor matches in P3;
+- no nonzero offset materially and consistently dominates offset 0.
+
+Therefore temporal/off-by-N alignment is rejected as the explanation. Do not change positions, anchors, masks, block semantics, mapping, or tap order.
+
+## Next — full 32k MLX/reference logit parity
 
 Checkpoint:
-`LOOM_DFLASH_CORRECTED_TEMPORAL_ALIGNMENT_AUDIT_001`
+`LOOM_DFLASH_FULL_LOGIT_REFERENCE_PARITY_001`
 
-Scientific classification:
-`NO_SYSTEMATIC_TEMPORAL_SHIFT_WITHIN_PM3`.
+Purpose:
+Resolve the remaining highest-level ambiguity: is the current MLX DFlash port numerically reproducing an authoritative publisher/reference implementation, or is there still a subtle implementation divergence hidden beneath matching raw argmax behavior?
 
-Report:
-`research/architecture/loom-dflash-corrected-temporal-alignment-audit-001-result.md`
-
-Executed offsets `-3..+3` show:
-- offset 0 has strongest aggregate top-k placement and best median target rank `93.5`;
-- +2 and +3 each yield 2 descriptive top1 neighbor matches, but both lose to offset 0 on top-k/median rank;
-- gains at +2/+3 occur in P1/P2 but not P3;
-- no systematic temporal shift is supported within ±3.
-
-Methodological note: persistent preregistration in AGENTS v3.4 was `-7..+7`, while the active Pi prompt executed only `-3..+3`. Full-range closure therefore requires a cheap retained-evidence completion for missing offsets only.
-
-## Next — temporal alignment range completion
-
-Checkpoint:
-`LOOM_DFLASH_TEMPORAL_ALIGNMENT_RANGE_COMPLETION_001`
-
-Static only:
-1. compute missing offsets `-7,-6,-5,-4,+4,+5,+6,+7`;
-2. use the exact same retained corrected 32k logits and frozen per-trajectory targets;
-3. never cross trajectory boundaries;
-4. report valid/representable counts, top1, top5/10/50/100, rank min/median/mean/max;
-5. report proposal-neighbor exact matches and per-prompt consistency;
-6. merge with existing `-3..+3` metrics;
-7. determine whether any nonzero offset over full `-7..+7` materially and consistently dominates offset 0.
+Plan:
+1. preregister a small stratified subset of frozen states across P1/P2/P3, covering near-target and poor target-rank cases;
+2. reuse exact frozen taps/input IDs/positions/mask semantics;
+3. run current MLX drafter and authoritative publisher/reference implementation with the same publisher weights;
+4. compare full 32k logits before decode using argmax/top-k parity and vector error/cosine metrics;
+5. separately verify corrected `row + d2t[row]` decode parity;
+6. no target-model forward is needed.
 
 Decision:
-- full-range nonzero dominance -> investigate positional/block alignment before E2E;
-- no full-range dominance -> close temporal shift and run a small stratified full-32k MLX-vs-authoritative-reference logit parity audit;
-- only after numerical port parity is established should remaining mismatch be attributed to candidate/training/interface distribution.
+- strong full-logit parity -> MLX port is not the remaining explanation on tested states; diagnose published-candidate/interface/training-distribution compatibility or make an explicit DFlash salvage-vs-abandon decision;
+- material full-logit divergence -> localize the first numerical divergence before any corrected E2E;
+- only after port parity is established should a corrected bounded E2E be considered.
 
 Restrictions:
-- no model forward;
-- no target/BF16 forward;
-- no downloads;
-- no E2E;
+- no target/BF16 target forward;
+- no E2E yet;
 - no retraining/remapping;
-- no performance work.
+- no performance optimization;
+- no download unless an exact missing authoritative reference dependency is identified and separately justified.
 
 ## Token-efficient workflow
 
