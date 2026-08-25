@@ -1,126 +1,128 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-25
-Current checkpoint: `LOOM_DFLASH_FULL_LOGIT_REFERENCE_PARITY_001_FULL_LOGIT_REFERENCE_PARITY_PASS`
-Strategic next: `LOOM_DFLASH_VERIFIER_PROVENANCE_TAP_INTERFACE_AUDIT_001`
+Current checkpoint: `LOOM_DFLASH_VERIFIER_PROVENANCE_TAP_INTERFACE_AUDIT_001_PROVENANCE_UNPINNED_NO_MATERIAL_MISMATCH_FOUND`
+Strategic next: `LOOM_DFLASH_TAP_TRANSPORT_BF16_SENSITIVITY_001`
 
 ## Mission
 
 Run ~27B/32B-class local AI on Apple M1 / 8 GB with practical speed, exactness and reproducible bounded experiments.
 
-Canonical persistent context: `/AGENTS.md` v3.7.
+Canonical persistent context: `/AGENTS.md` v3.8.
 
 ## Stable DFlash chain
 
 Still valid:
-- target tap interface `[1,12,23,34,45]` under current local semantics;
+- target taps `[1,12,23,34,45]`;
 - exact B7 wavefront verifier;
 - complete 680,813,824-param BF16 drafter port;
-- publisher attention-mask repair;
+- publisher mask repair;
 - deterministic/finite 32k drafter forward;
 - frozen 63-state target continuation;
 - target identity `IDENTITY_MATCH_EXCEPT_QUANTIZATION`.
 
-## Resolved output mapping
+## Mapping / support — resolved
 
-Publisher `d2t` is an offset. Correct decode:
+Correct mapping:
 `target_id = draft_row + d2t[draft_row]`.
 
 True support:
 - 32,000 valid unique target IDs;
-- frozen support `50/63` representable, `13/63` unsupported;
-- corrected exact top1 target matches remain `0/63`.
+- frozen `50/63` representable, `13/63` unsupported;
+- corrected exact top1 remains `0/63`.
 
-Historical first E2E `0/96` remains contaminated by the old decode and must not be treated as current acceptance evidence.
+Historical E2E `0/96` is contaminated by the old decode and is not current acceptance evidence.
 
-## Corrected directional signal
+## Directional compatibility
 
-For 50 representable states:
-- target rank min / median / mean / max `2 / 93.5 / 438.82 / 3510`;
+For 50 representable targets:
+- rank min/median/mean/max `2 / 93.5 / 438.82 / 3510`;
 - top5 `8/50`;
 - top10 `11/50`;
 - top50 `19/50`;
 - top100 `26/50`;
 - top1 `0/50`.
 
-The candidate is not random/unrelated; residual mismatch remains substantial.
+The candidate remains mismatched at top1 but carries non-trivial target-directional signal.
 
-## Temporal alignment — CLOSED
+## Temporal alignment — rejected
 
 Full preregistered `-7..+7` classification:
 `NO_SYSTEMATIC_TEMPORAL_SHIFT`.
 
-Offset 0 remains strongest aggregate alignment. Only 5 nonzero proposal-neighbor matches exist across 441 valid comparisons, none in P3. Do not change positions/anchors/masks/block semantics/mapping/tap order based on off-by-N hypotheses.
+Offset 0 is strongest aggregate alignment; no nonzero offset consistently dominates. Do not modify positions/anchors/masks/block semantics/tap order based on off-by-N hypotheses.
 
-## Completed — full 32k MLX/reference parity
+## MLX drafter port — exonerated
 
-Checkpoint:
-`LOOM_DFLASH_FULL_LOGIT_REFERENCE_PARITY_001`
+`LOOM_DFLASH_FULL_LOGIT_REFERENCE_PARITY_001` = `FULL_LOGIT_REFERENCE_PARITY_PASS`.
 
-Classification:
-`FULL_LOGIT_REFERENCE_PARITY_PASS`
+Six stratified states show exact decision-level parity and extremely close full 32k logits between MLX and authoritative local reference. The current drafter implementation is not the leading explanation for the mismatch.
+
+## Verifier provenance / tap interface — static audit complete
+
+`LOOM_DFLASH_VERIFIER_PROVENANCE_TAP_INTERFACE_AUDIT_001` = `PROVENANCE_UNPINNED_NO_MATERIAL_MISMATCH_FOUND`.
 
 Report:
-`research/architecture/loom-dflash-full-logit-reference-parity-001-result.md`
+`research/architecture/loom-dflash-verifier-provenance-tap-interface-audit-001-result.md`
 
 Evidence:
-`results-local/research/dflash-full-logit-reference-parity-001/20260825T102523Z/`
+`results-local/research/dflash-verifier-provenance-tap-interface-audit-001/20260825T103951Z/`
 
-Stratified 6-state subset: best/worst corrected target-rank example from each P1/P2/P3.
+Static contract `16/16` PASS.
 
-Results:
-- identical input/tap/position/mask hashes `6/6`;
-- exact argmax rows `6/6`;
-- exact ordered top5/top10 `6/6`;
-- identical top50 row sets `6/6`;
-- exact corrected decode `6/6`;
-- rel-L2 range `0.000382..0.001375`;
-- cosine range `0.999999164..0.999999932`;
-- max abs range `0.003529..0.009598`;
-- mean abs range `0.000666..0.002038`.
+Compatible semantics recovered:
+- layer IDs `[1,12,23,34,45]` = ordered 1-based post-block residual outputs;
+- pre-final-norm;
+- local frozen tap transport currently float32;
+- no local cast/copy/fusion/reordering;
+- no demonstrated material target revision/config/tokenizer/tap-interface mismatch.
 
-Non-bitwise differences begin at fusion but are numerically immaterial under established gates and do not change decisions.
+Unpinned historical details:
+- exact Qwen training revision;
+- exact vLLM revision/PR;
+- exact Speculators checkout;
+- publisher tap-transport dtype.
 
-Decision: the current MLX drafter implementation is not the leading explanation for the corrected frozen mismatch. Move upstream to verifier/tap provenance and training-interface compatibility.
+Unpinned provenance alone is not causal evidence.
 
-## BF16 context
+## BF16 target context
 
-Current pinned upstream BF16 target revision:
+Pinned available BF16 revision:
 `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`.
 
-A narrow P1_t01 Q4->BF16 intervention changed target/tap internals materially but did not recover the proposal. This does not establish distribution parity for the 50 representable frozen states.
+Previous P1_t01 Q4->BF16 intervention changed hidden states materially but cannot test exact DFlash recovery because target token `12050` is outside DFlash support. Persistent ~33 GiB BF16 cache remains available.
 
-Persistent ~33 GiB BF16 cache remains available if a later isolated representable-state test is justified.
-
-## External publisher clue
-
-The exact DFlash model card documents verifier `Qwen/Qwen3-30B-A3B` and target-layer IDs `1 12 23 34 45`, but its shown training/vLLM commands do not pin a verifier revision. Thus model-name identity alone does not close historical verifier/tap provenance.
-
-## Next — verifier provenance / tap interface audit
+## Next — tap transport BF16 sensitivity
 
 Checkpoint:
-`LOOM_DFLASH_VERIFIER_PROVENANCE_TAP_INTERFACE_AUDIT_001`
-
-Static audit, no target execution.
+`LOOM_DFLASH_TAP_TRANSPORT_BF16_SENSITIVITY_001`
 
 Purpose:
-Determine whether the frozen target hidden states supplied to an otherwise-correct DFlash drafter are semantically and historically equivalent to the verifier hidden-state stream used during publisher training/validation.
+Resolve the cheapest remaining interface uncertainty before spending more on BF16 target execution.
 
-Required:
-1. recover DFlash checkpoint/config/runtime provenance already present locally;
-2. reconstruct plausible Qwen target revision lineage and distinguish weight/config changes from tokenizer/docs/metadata-only commits;
-3. establish authoritative training-time tap semantics for `[1,12,23,34,45]`: indexing, exact stage, residual/norm, dtype, positions and ordering;
-4. compare against the local frozen tap extraction contract;
-5. identify any runtime/version-dependent semantic difference;
-6. require a material demonstrated difference before classifying mismatch.
+Single intervention:
+- take exact retained float32 frozen taps;
+- round-trip each tap `float32 -> bfloat16 -> float32` immediately before drafter input;
+- leave target state, IDs, positions, masks, ordering, drafter weights/math and corrected mapping frozen.
+
+Measure over all 63 states:
+- baseline replay integrity;
+- 32k-logit movement;
+- proposal-row/token changes.
+
+For 50 representable targets:
+- exact target matches;
+- correct-row rank changes;
+- top5/top10/top50/top100 changes;
+- prompt-level consistency.
 
 Decision:
-- demonstrated target revision/tap mismatch -> stop and preregister a single repair/replay;
-- static match -> next isolate target-state precision/distribution using the smallest representable subset, then decide whether corrected E2E is justified;
-- unresolved provenance -> decide whether the missing historical artifact is worth retrieving before further DFlash investment.
+- broad decision-level improvement -> investigate training-time tap transport dtype as a real compatibility mechanism;
+- no material recovery -> proceed to bounded representable-state Q4-target vs BF16-target hidden-state precision/distribution control;
+- ambiguous isolated movement -> do not rescue; record and proceed only with a separately preregistered discriminator.
 
 Restrictions:
-- no target/BF16 forward;
+- no target/BF16-target forward;
 - no downloads;
 - no E2E;
 - no retraining/remapping;
@@ -128,11 +130,10 @@ Restrictions:
 
 ## Later order
 
-1. `LOOM_DFLASH_VERIFIER_PROVENANCE_TAP_INTERFACE_AUDIT_001`;
-2. if mismatch found, repair/replay only that mechanism;
-3. if static interface matches, isolate representable-state target precision/distribution;
-4. corrected bounded E2E only after a useful compatibility mechanism or acceptance signal exists;
-5. if candidate remains incompatible, explicitly stop DFlash salvage and return to LOOM's 30B-on-8GB serving/I/O path.
+1. `LOOM_DFLASH_TAP_TRANSPORT_BF16_SENSITIVITY_001`;
+2. if no recovery, bounded representable-state Q4-target vs BF16-target control with cache/network preflight;
+3. corrected bounded E2E only after a useful compatibility/acceptance mechanism exists;
+4. if candidate remains incompatible, explicitly terminate DFlash salvage and return to LOOM's high-leverage 30B-on-8GB serving/I/O path.
 
 ## Token-efficient workflow
 
