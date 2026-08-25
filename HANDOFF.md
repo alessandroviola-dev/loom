@@ -1,40 +1,51 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-25
-Status: ACTIVE — pilot 002 BF16 producer for P3 was valid, but DFlash scored the wrong continuation row. P3 can likely be recovered offline without another BF16 run.
+Status: ACTIVE — BF16 precision/distribution mismatch is not sufficient to recover exact DFlash speculation on the preregistered causal set. DFlash is closed as the active recovery path; priority returns to core 30B-on-8GB serving/I/O.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_DFLASH_BF16_PILOT_002_CAUSAL_VALIDITY_AUDIT_001_PILOT_002_CAUSAL_PATH_INVALID_MECHANICAL`
-Next: `LOOM_DFLASH_PILOT_002_SCORING_ROW_REPAIR_OFFLINE_001`
-Pi context: `/AGENTS.md` v3.18.
+Current checkpoint: `LOOM_DFLASH_BF16_CAUSAL_DECISION_001_BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`
+Next: `LOOM_30B_MOE_SERVING_IO_REENTRY_001`
+Pi context: `/AGENTS.md` v3.19.
 
-## Stable
+## Final DFlash causal result
 
-Frozen order: P3 -> P1 -> P2.
-Exact Q4 baselines:
-- P3 target 1620, rank 2, proposal 5416, segmentation `[63,1]`, KV boundary 63;
-- P1 target 326, rank 3, proposal 3100;
-- P2 target 994, rank 3, proposal 4057.
+Report:
+`research/architecture/loom-dflash-bf16-causal-decision-001-result.md`
 
-Pinned BF16 revision: `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`.
-Network guard/cap: PASS; `8 GiB / 1024 requests`, abort before dispatch.
+P3 corrected valid causal state:
+- Q4 target/verifier top1 1620;
+- Q4 DFlash rank 2 / proposal 5416;
+- BF16 verifier top1 1620;
+- BF16 DFlash rank 2 / proposal 350;
+- no exact recovery.
 
-## Pilot 002
+P1 decisive test:
+- exact Q4 gate PASS: target 326 rank 3 / proposal 3100;
+- BF16 verifier top1 326;
+- BF16 DFlash rank 2 / proposal 3100;
+- no exact recovery;
+- network only `87,265,184 B`, 57 requests, 2 retries due persistent cache reuse.
 
-Operational cap abort after P3 completion and partial P1:
-- `8,583,061,312 B`, `1007` requests, `7` retries;
-- P3 BF16 complete; P1 partial; P2 unexecuted;
-- reusable cache: 744 completed P3 experts + 153 completed P1 experts, subject to pinned validation.
+P3 and P1 both fail exact top1 recovery. The frozen preregistered signal required >=2/3 recoveries, so it is mathematically impossible. P2 and corrected E2E were correctly not executed.
 
-Causal audit:
-- `_002.py` SHA-256 `2c1bfdcfbca1da39d867432570037867f25bea65e5b9407ba6e5eaacb8b6352f`;
-- full-taps hazard absent;
-- BF16 P3 producer valid/frozen-equivalent `[63,1]`, KV boundary 63;
-- sole confirmed causal bug: wrong DFlash row. P3 used row 2; correct row is 1;
-- offline Q4 recompute at correct row restores rank 2 / proposal 5416.
+Interpretation: BF16 changes the DFlash distribution and can improve rank, but it does not restore exact speculation. Do not continue DFlash salvage as the active path absent a new independent mechanism.
 
-Therefore original P3 `rank 5 -> 13` and `4330 -> 2790` are invalid. Do not interpret them.
+## Stable 30B runtime facts
+
+- target `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`;
+- 48 MoE layers, 128 experts/layer, top-k 8;
+- payload `16,220,499,968 B`;
+- resident non-routed `819,015,680 B`;
+- routed bank `15,401,484,288 B`;
+- one Q4 expert `2,506,752 B`;
+- external serial-expert full-logit math exact;
+- one routed expert logically live at a time;
+- expert-major contiguous disk preferred;
+- raw 4-GiB global LRU rejected.
 
 ## Exact next step
 
-Strictly offline scoring-row repair using existing P3 arrays. Require Q4 rank 2/proposal 5416, then rescore the existing valid BF16 taps at the same correct row and report target-1620 rank/top-k/proposal plus full 32k drift. Validate generic selector logic P1 row5 and P2 row2. No BF16 forward/network.
+`LOOM_30B_MOE_SERVING_IO_REENTRY_001`
+
+Strictly analysis-first: inspect existing serving/I/O evidence and scripts, identify the dominant measured bottleneck, and propose one minimal experiment with a quantitative success gate. No DFlash reopening and no expensive run until that contract is established.
