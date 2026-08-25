@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.4
+Version: 3.5
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is persistent context for Pi. WP prompts must contain only the active delta.
@@ -46,7 +46,7 @@ Mission: **Big models. Small machines.** Make ~27B/32B-class local AI practical 
 Local target:
 `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
 
-Target anatomy:
+Stable anatomy:
 - 48 MoE layers; 128 experts/layer; top-k 8;
 - stored payload 16,220,499,968 B;
 - resident non-routed backbone 819,015,680 B;
@@ -60,7 +60,7 @@ Stable runtime invariants:
 - expert-major contiguous disk access preferred;
 - 4-GiB raw global LRU rejected due swap/slowdown.
 
-## DFlash validated mechanical chain
+## DFlash stable chain
 
 Drafter: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`
 Target: `Qwen/Qwen3-30B-A3B`
@@ -81,113 +81,92 @@ Still valid:
 Pinned upstream BF16 revision:
 `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`.
 
-Freeze-time P1_t01 runtime: MLX 0.31.2 via `results-local/mlx/venv-mlx-lm-0.31.3`.
-
-`LOOM_DFLASH_UNQUANTIZED_TARGET_P1T01_RANGE_CONTROL_001_PASS`:
-- Q4 replay exact;
-- Q4->BF16 materially changes routing/taps/final logits;
-- final logits rel-L2 `0.336189`, cosine `0.957269`;
-- Q4 and BF16 target top1 both `12050`;
-- result `NOT_CAUSAL`.
+P1_t01 Q4->BF16 control showed material routing/tap/logit drift while Q4 and BF16 target top1 both remained `12050`; result `NOT_CAUSAL`.
 
 Persistent BF16 cache retains ~33 GiB and exact P1_t01 BF16 taps/logits. Later full replay used 0 network bytes.
 
-`LOOM_DFLASH_BF16_TAP_DRAFTER_PROBE_001` showed Q4->BF16 taps materially move the 32k drafter-logit distribution (rel-L2 `0.215100`, cosine `0.977013`) but did not establish recovery.
+Q4->BF16 taps materially move the 32k drafter-logit distribution (rel-L2 `0.215100`, cosine `0.977013`) but did not establish recovery.
 
 ## DFlash mapping semantics — RESOLVED
 
-Authoritative upstream semantics:
-- draft vocab size `32,000`;
-- `d2t` stores offset `selected_target_id - draft_row`;
-- true target ID for draft row `j` is `j + d2t[j]`;
-- `t2d` is BOOL mask of the 32,000 selected target IDs;
-- vLLM reconstructs `arange(32000) + draft_id_to_target_id`.
+Publisher `d2t` is an offset:
+`target_id = draft_row + d2t[draft_row]`.
 
-Upstream references:
-- `vllm-project/speculators` commit `2aec948e43b0313e61aa639c7c8e150a8f1a2929`;
-- `vllm-project/vllm` commit `d9fbe526c0787eb5e6dd1e3e4d9b88848d21bc6b`.
+`t2d` is BOOL support over the 32,000 selected verifier tokens. Current vLLM reconstructs the same `arange(32000) + draft_id_to_target_id` mapping.
 
-The former local direct-`d2t[row]` decode was a mechanical bug.
+The former local direct-`d2t[row]` decode was a mechanical bug and has been repaired in 8 decode/analysis paths.
 
-## Corrected offset decode — COMPLETE
+Correct support invariants:
+- 32,000 rows;
+- 32,000 valid unique target IDs;
+- exact equality with TRUE `t2d` positions;
+- frozen support `50/63` representable, `13/63` unsupported;
+- P1_t01 target `12050` remains unsupported.
 
-`LOOM_DFLASH_D2T_OFFSET_DECODE_REPAIR_001` = `MECHANICAL_DECODE_REPAIR_PASS_COMPATIBILITY_STILL_ZERO`.
-
-Report:
-`research/architecture/loom-dflash-d2t-offset-decode-repair-001-result.md`
-
-Evidence:
-`results-local/research/dflash-d2t-offset-decode-repair-001/20260825T093731Z/`
-
-Facts:
-- 8 decode/analysis scripts repaired;
-- true 32k support contains 32,000 valid unique target IDs and equals `t2d` support exactly;
-- frozen support: `50/63` representable, `13/63` unsupported;
-- P1_t01 target `12050` remains unsupported;
-- raw drafter argmax unchanged 63/63;
-- corrected exact target matches remain `0/63`;
-- P1_t01 corrected proposal `8747`.
-
-Historical first E2E `0/96` remains contaminated until corrected replay; no E2E is authorized yet.
+Corrected top1 matches remain `0/63`. Historical first E2E `0/96` remains contaminated until corrected replay; no E2E is authorized yet.
 
 ## Corrected drafter target-rank audit — COMPLETE
 
 `LOOM_DFLASH_CORRECTED_DRAFTER_TARGET_RANK_AUDIT_001` = `PASS_DIRECTIONAL_SIGNAL_PRESENT`.
 
-Report:
-`research/architecture/loom-dflash-corrected-drafter-target-rank-audit-001-result.md`
-
 Evidence:
 `results-local/research/dflash-corrected-drafter-target-rank-audit-001/20260825T094730Z/`
 
-Retained full 32k drafter logits were reused; no replay required. Raw argmax rows and retained-logit hashes revalidated.
-
-For the 50 representable target tokens:
+For 50 representable targets:
 - rank min / median / mean / max: `2 / 93.5 / 438.82 / 3510`;
-- top-5: `8/50`;
-- top-10: `11/50`;
-- top-50: `19/50`;
-- top-100: `26/50`;
-- rank 1: `0/50`.
+- top5 `8/50`;
+- top10 `11/50`;
+- top50 `19/50`;
+- top100 `26/50`;
+- rank1 `0/50`.
 
-Histogram:
-- 2–5: 8;
-- 6–10: 3;
-- 11–50: 8;
-- 51–100: 7;
-- 101–1000: 17;
-- 1001–10000: 7.
+Conclusion: zero top1 is real, but the drafter carries substantial directional signal.
 
-Best: `P3_t01`, target `1620`, draft row `1423`, rank `2`, probability `0.05192055`.
-Worst: `P2_t01`, target `2464`, draft row `2147`, rank `3510`, probability `4.636e-05`.
+## Temporal alignment audit — PARTIAL RANGE COMPLETE
 
-Interpretation:
-- zero top1 mismatch is real;
-- the drafter distribution nevertheless carries substantial directional target signal;
-- do not jump to retraining/calibration before checking systematic positional/temporal alignment.
+`LOOM_DFLASH_CORRECTED_TEMPORAL_ALIGNMENT_AUDIT_001` executed offsets `-3..+3` using retained evidence only.
+
+Scientific review classification:
+`NO_SYSTEMATIC_TEMPORAL_SHIFT_WITHIN_PM3`.
+
+Report:
+`research/architecture/loom-dflash-corrected-temporal-alignment-audit-001-result.md`
+
+Facts within ±3:
+- offset 0: 50 representable, top1 0, top5/10/50/100 `8/11/19/26`, median rank `93.5`;
+- +2 and +3 each produce 2 descriptive top1 neighbor matches, but do not dominate offset 0 on top-k or median rank;
+- +2/+3 gains occur in P1/P2 only, not P3;
+- offset 0 remains best aggregate alignment;
+- 333 valid prompt-local comparisons; no boundary crossing or model replay.
+
+Methodological note:
+`AGENTS.md` v3.4 preregistered offsets `-7..+7`, while the later active Pi prompt narrowed execution to `-3..+3`. Therefore full temporal-alignment closure requires only a cheap static completion of the missing offsets `-7,-6,-5,-4,+4,+5,+6,+7`.
+
+Do NOT modify positions/anchors/masks based on the current ±3 result.
 
 ## Next checkpoint
 
-`LOOM_DFLASH_CORRECTED_TEMPORAL_ALIGNMENT_AUDIT_001`
+`LOOM_DFLASH_TEMPORAL_ALIGNMENT_RANGE_COMPLETION_001`
 
-Goal: using only frozen target tokens and retained corrected drafter logits/proposals, test whether DFlash is systematically aligned to a neighboring target position rather than the intended exact-next-token position.
+Goal: using the same retained corrected 32k logits and frozen trajectories, compute only missing offsets `±4..±7` and combine them with the existing `-3..+3` evidence.
 
 Required direction:
-1. operate within each frozen prompt/sequence only;
-2. preregister relative target offsets `-7..+7`, with `0` as the intended position and no cross-sequence comparisons;
-3. compare corrected proposal top1 token against the frozen target token at every valid offset;
-4. for representable neighbor tokens, measure their drafter-row ranks from retained 32k logits;
-5. report match count and rank summaries by offset;
-6. explicitly test whether any non-zero offset dominates offset 0;
-7. no model replay unless retained evidence is unexpectedly insufficient.
+1. no model replay;
+2. never cross trajectory boundaries;
+3. same metrics as existing temporal audit: valid/representable counts, top1, top5/10/50/100, target-row rank min/median/mean/max;
+4. proposal-vs-neighbor exact matches;
+5. per-prompt consistency;
+6. compare every nonzero offset across the full `-7..+7` range against offset 0;
+7. classify only after full range is complete.
+
+If no nonzero offset materially and consistently dominates offset 0, next high-leverage checkpoint is a small stratified **full 32k MLX-vs-authoritative-reference logit parity audit** to distinguish port divergence from genuine drafter/target-distribution mismatch.
 
 Restrictions:
-- no target forward;
-- no BF16 forward;
+- no target/BF16/model forward;
 - no downloads;
 - no E2E;
 - no retraining/remapping;
-- no performance/memory work.
+- no performance work.
 
 ## WP contract
 
