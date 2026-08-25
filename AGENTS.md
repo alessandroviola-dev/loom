@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.14
+Version: 3.15
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is persistent context for Pi. WP prompts carry only the active delta.
@@ -22,6 +22,7 @@ Pi must NOT run Git, edit AGENTS/HANDOFF/ROADMAP, push/open/merge PRs, or create
 5. No memory/performance optimization while the active scientific blocker is unresolved unless required for feasibility.
 6. Before expensive network/compute work define retention, resumability and hard cost/stop gates. Network caps must be enforced before dispatch.
 7. Do not relax a preregistered provenance/hash gate post-hoc merely because top1 or top-k agrees.
+8. For continuation-state provenance, producer segmentation and KV-cache boundary are part of the frozen state contract.
 
 Loop: `OBSERVE -> EXECUTE -> VERIFY -> DIAGNOSE -> CORRECT(mechanical only) -> CHECKPOINT`.
 
@@ -66,128 +67,140 @@ Still valid:
 - publisher attention-mask repair;
 - deterministic/finite 32k drafter forward;
 - frozen target continuation 63/63, SHA-256 `0a8eda21e7074e49f6e6c0c01b5e2c20b429935a9029457319b9b7c631946dea`;
-- target identity `IDENTITY_MATCH_EXCEPT_QUANTIZATION`.
-
-Correct publisher decode:
-`target_id = draft_row + d2t[draft_row]`.
-
-Support / corrected compatibility:
-- 32,000 valid unique target IDs;
-- frozen `50/63` representable, `13/63` unsupported;
-- corrected exact DFlash top1 remains `0/63`;
+- target identity `IDENTITY_MATCH_EXCEPT_QUANTIZATION`;
+- correct publisher decode `target_id = draft_row + d2t[draft_row]`;
+- frozen support `50/63` representable, `13/63` unsupported;
+- corrected exact DFlash top1 `0/63`;
 - representable ranks min/median/mean/max `2 / 93.5 / 438.82 / 3510`;
 - top5/top10/top50/top100 `8/11/19/26`.
 
-Historical E2E `0/96` used the old decode and is not current acceptance evidence.
+Historical E2E `0/96` used old decode and is not current acceptance evidence.
 
-## Closed leading hypotheses
-
-- temporal/off-by-N: `NO_SYSTEMATIC_TEMPORAL_SHIFT` over full `-7..+7`;
-- MLX drafter implementation: `FULL_LOGIT_REFERENCE_PARITY_PASS` on 6 stratified states;
-- verifier/tap static interface: `PROVENANCE_UNPINNED_NO_MATERIAL_MISMATCH_FOUND`, contract `16/16` PASS;
-- tap transport float32-vs-BF16: `NO_MATERIAL_TAP_DTYPE_EFFECT`, proposal changes `0/63`, no top-k crossings.
+Closed leading hypotheses:
+- temporal/off-by-N: `NO_SYSTEMATIC_TEMPORAL_SHIFT`;
+- MLX drafter implementation: `FULL_LOGIT_REFERENCE_PARITY_PASS`;
+- verifier/tap static interface: static contract `16/16` PASS, no demonstrated material mismatch;
+- tap transport float32-vs-BF16: `NO_MATERIAL_TAP_DTYPE_EFFECT`.
 
 Do not reopen these without new evidence.
 
-## BF16 network-cap path — COMPLETE
+## BF16 bounded infrastructure — COMPLETE
 
 `LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_001` = `BF16_NETWORK_CAP_GUARD_PASS`.
 
-Validated behavior:
-- synthetic tests `6/6` PASS; compile PASS;
-- exact-boundary allow;
-- byte/request reject occurs before `HTTPSConnection.request`;
-- deterministic `NETWORK_CAP_ABORT`;
-- retries counted and bounded;
-- cache hits charge `0 B / 0 requests`;
-- abort preserves complete/partial cache and resumability;
-- real network dispatches observed `0` during validation.
-
-Remote source parity is also complete:
+Remote source parity:
 `LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_HANDOFF_001` = `BF16_NETWORK_CAP_GUARD_REMOTE_SOURCE_PARITY_PASS`.
 
-Validated remote source identities at user commit `01a5f9b`:
-- range control — SHA-256 `dc0bdb6af282805cdfb623404bcfc778922c28a7b21df750cee08340b365a376`;
-- BF16 tap probe — SHA-256 `7a6119f01c99eb5d0833ff5bc5b6a7e47c540161ac5414aae246adc62bec479f`;
-- guard test — SHA-256 `7b6577076bffd73733f7766ca87638004618a7c4a121ae4f5fc6a5a318e776ae`.
+Validated source SHA-256:
+- range control `dc0bdb6af282805cdfb623404bcfc778922c28a7b21df750cee08340b365a376`;
+- BF16 tap probe `7a6119f01c99eb5d0833ff5bc5b6a7e47c540161ac5414aae246adc62bec479f`;
+- guard test `7b6577076bffd73733f7766ca87638004618a7c4a121ae4f5fc6a5a318e776ae`.
 
-## Representable BF16 pilot preflight — COMPLETE
+Hard ceilings for any future BF16 pilot retry remain frozen:
+- aggregate network `8 GiB`;
+- aggregate requests `1,024`, retries included;
+- `NETWORK_CAP_ABORT` before dispatch;
+- persistent/resumable cache.
+
+## Representable BF16 pilot state set — FROZEN
 
 `LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CONTROL_PREFLIGHT_001` = `BF16_TARGET_PILOT_READY_WITH_BOUNDED_MISSING_CACHE`.
 
 Selected states:
-- P1 `P1_t32:6`, baseline DFlash rank 3, frozen Q4 verifier target 326, 79-token prefix;
-- P2 `P2_t16:3`, baseline DFlash rank 3, frozen Q4 verifier target 994, 74-token prefix;
-- P3 `P3_t01:2`, baseline DFlash rank 2, frozen Q4 verifier target 1620, 64-token prefix.
+- P1 `P1_t32:6`, baseline DFlash rank 3, frozen Q4 verifier target 326, 79-token state prefix;
+- P2 `P2_t16:3`, baseline DFlash rank 3, frozen Q4 verifier target 994, 74-token state prefix;
+- P3 `P3_t01:2`, baseline DFlash rank 2, frozen Q4 verifier target 1620, 64-token state prefix.
 
-BF16 cache audit:
-- 435 dense manifests;
-- 3,470 expert manifests / 10,410 projections SHA-256 verified;
-- failures 0;
-- total BF16 cache `35,837,957,463 B`;
-- external free disk `1,152.25 GiB`;
-- Q4-route planning estimate: 703 combined unique misses / `6,634,340,352 B` missing.
+Fixed eventual pilot order remains P3 -> P1 -> P2. No substitutions.
 
-Pilot hard aggregate ceilings remain frozen for any later re-attempt:
-- network `8 GiB`;
-- requests `1,024`, retries included;
-- `NETWORK_CAP_ABORT` before dispatch;
-- persistent/resumable cache.
+## First causal pilot attempt — INVALID BEFORE BF16
 
-## Representable BF16 causal pilot — INVALID BEFORE INTERVENTION
-
-`LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CAUSAL_PILOT_001` stopped before BF16/network and has administrative outcome:
+`LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CAUSAL_PILOT_001` stopped before BF16/network:
 `INVALID_PILOT_Q4_BASELINE_OR_MECHANICAL_STOP`.
 
 Report:
 `research/architecture/loom-dflash-representable-bf16-target-causal-pilot-001-result.md`
 
+P3 Q4 top1 remained `1620`, but final-logit raw-array SHA mismatched. No BF16 state executed; network remained `0 B / 0 requests / 0 retries`.
+
+No BF16 recovery/non-recovery conclusion is valid from that attempt.
+
+## Q4 baseline provenance reconciliation — COMPLETE
+
+`LOOM_DFLASH_Q4_BASELINE_PROVENANCE_RECONCILIATION_001` = `Q4_BASELINE_MATERIAL_DRIFT_IDENTIFIED`.
+
+Report:
+`research/architecture/loom-dflash-q4-baseline-provenance-reconciliation-001-result.md`
+
 Evidence:
-`results-local/research/dflash-representable-bf16-target-causal-pilot-001/20260825T125526Z/`
+`results-local/research/dflash-q4-baseline-provenance-reconciliation-001/20260825T130903Z/`
 
-Pre-dispatch checks:
-- all three guard SHA-256 values matched;
-- guard tests `6/6` PASS;
-- storage/cache available with `1,152.25 GiB` free;
-- aggregate ledger started at `0 B / 0 requests / 0 retries`.
+P3 expected final-logit SHA-256:
+`58d20d9086cff8d2789bbd0fd686eb2e5d6a9483168781cba04218b820185432`.
 
-First fixed-order state P3 `P3_t01:2`:
-- Q4 verifier top1 matched frozen target `1620`;
-- final-logit provenance SHA did **not** match the frozen expected SHA;
-- reported observed hash abbreviated `97cde5dd...297cd52e`;
-- reported expected hash abbreviated `58d20d90...185432`.
+Invalid-pilot observed SHA-256:
+`97cde5dd60c4c270152b65d5dee734c9f68b80a392a77522b0de0eba297cd52e`.
 
-No BF16 state was executed. Network remained `0 B / 0 requests / 0 retries`.
+Both hashes are contiguous raw `float32` final-logit vector bytes, shape `[151936]`; this is not serialization/hash semantics.
 
-Therefore no BF16 scientific outcome classification is valid. Do not infer recovery or non-recovery.
+Root cause:
+- frozen P3 producer = 63-token prefill + cached one-token decode `[3889]`;
+- invalid-pilot producer = fresh 64-token full-prefix forward.
+
+Inputs/model/config/tokenizer/runtime/source identities match. Both paths are deterministic.
+
+Original segmentation exactly restores the expected SHA; full-prefix replay exactly restores the observed SHA.
+
+Earliest divergence:
+- tap layer 1, anchor position `[0,63]`;
+- positions `0..62` exact;
+- all five taps first differ at the anchor;
+- router logits/weights differ at anchor across all 48 layers;
+- router IDs diverge at layer 1.
+
+Final hidden drift:
+- max abs `0.01266575`;
+- mean abs `0.00067455`;
+- RMSE `0.00098518`;
+- rel-L2 `0.00032064`;
+- cosine `0.9999999505`.
+
+Final-logit drift:
+- max abs `0.00692338`;
+- mean abs `0.00144157`;
+- RMSE `0.00172441`;
+- rel-L2 `0.00037988`;
+- cosine `0.9999999411`;
+- top1 remains `1620`;
+- ordered top10 parity exact.
+
+The frozen expected SHA remains authoritative. The exact P3 provenance contract includes IDs, segmentation `[63,1]`, cached BF16-KV boundary, selector `[0,-1]`, float32 shape `[151936]`, and raw-byte SHA.
 
 ## Next checkpoint
 
-`LOOM_DFLASH_Q4_BASELINE_PROVENANCE_RECONCILIATION_001`
+`LOOM_DFLASH_Q4_BASELINE_SEGMENTATION_REPLAY_REPAIR_001`
 
-Goal: determine exactly why the P3 Q4 baseline replay matches verifier top1 but fails the final-logit provenance SHA gate, before any BF16 intervention is retried.
+Goal: mechanically repair the causal-pilot Q4 baseline producer so it reproduces the original frozen continuation producer segmentation and exact provenance before any BF16/network retry.
 
-Q4-only / P3-only diagnostic. No BF16 and no network.
+Q4-only. No BF16 and no network.
 
 Required direction:
-1. read the invalid-pilot evidence and recover the **full** observed and expected SHA-256 values plus exact source artifact paths;
-2. identify precisely what object the expected hash represents: raw contiguous logit vector bytes vs file/NPZ serialization, dtype, shape, selected position, and any canonicalization;
-3. identify the exact producer/code path that created the frozen expected P3 final logits and the exact code path used by the invalid pilot replay;
-4. freeze and compare input token IDs/prefix length, model/config/tokenizer identities, runtime versions, target code identities, tensor dtype/shape and anchor position;
-5. execute only the minimum local Q4 replay needed to compare original-producer and pilot-producer paths under the same current environment;
-6. locate the earliest divergence across, in order: input IDs -> taps `[1,12,23,34,45]` -> router IDs/weights -> final hidden -> full final-logit vector;
-7. for every differing numerical array report max abs, mean abs, RMSE, rel-L2, cosine, top1 and ordered top-k parity as applicable;
-8. compute explicit canonical raw-array SHA-256 using contiguous bytes with dtype/shape recorded for both expected and observed vectors;
-9. if the mismatch is purely hash/serialization/selector semantics, demonstrate that mechanically and identify the correct provenance gate without silently weakening it;
-10. if true numerical drift exists, identify the earliest material divergence and likely mechanical source. Do not alter model math, quantization, routing, positions, masks, target state, or frozen evidence to make it pass.
+1. change only pilot/shared baseline replay code necessary to reproduce the frozen continuation execution segmentation; no model/math changes;
+2. recover each selected state's original frozen producer segmentation/KV boundary from frozen evidence/code rather than assuming all states use `[prefix-1,1]`;
+3. for P3 explicitly reproduce the known `[63-token prefill, 1-token cached decode]` contract and require exact final-logit SHA `58d20d9086cff8d2789bbd0fd686eb2e5d6a9483168781cba04218b820185432`;
+4. determine and replay the exact original segmentation for P1 `P1_t32:6` and P2 `P2_t16:3` from frozen provenance;
+5. for P1/P2/P3 verify exact token IDs, segment boundaries, cache semantics, anchor selector, dtype/shape and expected raw-array SHA commitments;
+6. require exact final-logit raw-byte SHA equality for all three states; where frozen tap/router/final-hidden commitments exist, verify them too;
+7. rerun unchanged DFlash baseline on the exact restored Q4 taps and verify the preregistered corrected target ranks remain P1=3, P2=3, P3=2 and proposals/labels are consistent with frozen evidence;
+8. prove zero real network/BF16 execution;
+9. instrumentation/mechanical code changes only; do not modify frozen evidence or relax hashes/tolerances.
 
 Classifications:
-- `Q4_BASELINE_EXACT_REPLAY_RESTORED`
-- `Q4_BASELINE_HASH_SEMANTICS_RECONCILED`
-- `Q4_BASELINE_MATERIAL_DRIFT_IDENTIFIED`
-- `Q4_BASELINE_PROVENANCE_AMBIGUOUS`
+- `Q4_BASELINE_SEGMENTATION_REPAIR_PASS`
+- `Q4_BASELINE_SEGMENTATION_REPAIR_FAIL`
+- `Q4_BASELINE_SEGMENTATION_REPAIR_AMBIGUOUS`
 
-Instrumentation-only local code changes are permitted if required to expose evidence; no behavior-changing rescue.
+If PASS, the same preregistered P3 -> P1 -> P2 BF16 causal pilot may be re-authorized under the unchanged `8 GiB / 1,024 request` aggregate cap.
 
 Restrictions:
 - no BF16 target forward;
@@ -195,7 +208,7 @@ Restrictions:
 - no E2E;
 - no retraining/remapping;
 - no state replacement;
-- no post-hoc tolerance relaxation;
+- no tolerance/hash relaxation;
 - no unrelated performance optimization;
 - no Git/docs edits.
 
