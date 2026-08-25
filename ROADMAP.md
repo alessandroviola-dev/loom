@@ -1,14 +1,14 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-25
-Current checkpoint: `LOOM_DFLASH_Q4_BASELINE_SEGMENTATION_REPLAY_REPAIR_001_Q4_BASELINE_SEGMENTATION_REPAIR_PASS`
-Strategic next: `LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CAUSAL_PILOT_002`
+Current checkpoint: `LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CAUSAL_PILOT_002_BF16_TARGET_PILOT_NETWORK_CAP_ABORT_WITH_INTERPRETATION_HELD`
+Strategic next: `LOOM_DFLASH_BF16_PILOT_002_CAUSAL_VALIDITY_AUDIT_001`
 
 ## Mission
 
 Run ~27B/32B-class local AI on Apple M1 / 8 GB with practical speed, exactness and reproducible bounded experiments.
 
-Canonical persistent context: `/AGENTS.md` v3.16.
+Canonical persistent context: `/AGENTS.md` v3.17.
 
 ## Stable DFlash chain
 
@@ -17,127 +17,95 @@ Still valid:
 - exact B7 wavefront verifier;
 - complete `680,813,824`-param BF16 drafter port;
 - publisher mask repair;
-- deterministic/finite 32k drafter forward;
+- deterministic finite 32k drafter forward;
 - frozen 63-state target continuation;
 - target identity `IDENTITY_MATCH_EXCEPT_QUANTIZATION`;
-- correct mapping `target_id = draft_row + d2t[draft_row]`;
-- frozen support `50/63` representable and `13/63` unsupported;
-- corrected DFlash top1 `0/63`;
-- representable ranks min/median/mean/max `2 / 93.5 / 438.82 / 3510`;
+- mapping `target_id = draft_row + d2t[draft_row]`;
+- support `50/63` representable, `13/63` unsupported;
+- corrected DFlash exact top1 `0/63`;
+- representable rank min/median/mean/max `2 / 93.5 / 438.82 / 3510`;
 - top5/top10/top50/top100 `8/11/19/26`.
 
-Historical E2E `0/96` is not current acceptance evidence because it used old decode semantics.
+Closed explanations remain closed: temporal alignment, MLX drafter implementation, static verifier/tap interface, tap-transport dtype.
 
-Closed explanations:
-- temporal alignment: `NO_SYSTEMATIC_TEMPORAL_SHIFT`;
-- MLX drafter port: `FULL_LOGIT_REFERENCE_PARITY_PASS`;
-- verifier/tap interface: `16/16` PASS with no demonstrated material mismatch;
-- tap transport dtype: `NO_MATERIAL_TAP_DTYPE_EFFECT`.
-
-## BF16 infrastructure — COMPLETE
+## BF16 infrastructure
 
 Pinned verifier revision:
 `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`.
 
-Preflight:
-`LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CONTROL_PREFLIGHT_001` = `BF16_TARGET_PILOT_READY_WITH_BOUNDED_MISSING_CACHE`.
-
-Network guard:
-`BF16_NETWORK_CAP_GUARD_PASS` with exact remote source parity.
+Network guard and remote guard-source parity are complete.
 
 Frozen causal states/order:
-1. P3 `P3_t01:2` — target `1620`, baseline rank `2`;
+1. P3 `P3_t01:2` — target `1620`, exact Q4 rank `2`;
 2. P1 `P1_t32:6` — target `326`, rank `3`;
 3. P2 `P2_t16:3` — target `994`, rank `3`.
 
-Hard aggregate limits:
-- `8 GiB` network bytes;
-- `1,024` requests including retries;
-- pre-dispatch `NETWORK_CAP_ABORT`;
-- persistent/resumable cache;
-- no state substitution/reordering.
+No substitutions/reordering.
 
-## First causal attempt — INVALID BEFORE INTERVENTION
-
-`LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CAUSAL_PILOT_001` stopped before any BF16/network execution because the Q4 P3 baseline used a different producer segmentation than the frozen continuation reference.
-
-Administrative outcome:
-`INVALID_PILOT_Q4_BASELINE_OR_MECHANICAL_STOP`.
-
-No BF16 scientific conclusion is valid from attempt 001.
-
-## Q4 provenance diagnosis — COMPLETE
-
-`LOOM_DFLASH_Q4_BASELINE_PROVENANCE_RECONCILIATION_001` = `Q4_BASELINE_MATERIAL_DRIFT_IDENTIFIED`.
-
-The mismatch was deterministic segmentation/KV-boundary drift, not serialization/hash semantics. This established producer segmentation as part of exact continuation-state provenance.
-
-## Q4 segmentation replay repair — COMPLETE
+## Q4 segmentation repair — COMPLETE
 
 `LOOM_DFLASH_Q4_BASELINE_SEGMENTATION_REPLAY_REPAIR_001` = `Q4_BASELINE_SEGMENTATION_REPAIR_PASS`.
 
+Exact segmented producer and final-logit SHA commitments reproduce for all three states. DFlash baselines restore exactly:
+- P3 rank `2`, proposal `5416`;
+- P1 rank `3`, proposal `3100`;
+- P2 rank `3`, proposal `4057`.
+
+The Q4 baseline blocker is closed.
+
+## BF16 causal pilot 002 — OPERATIONAL CAP ABORT
+
+Reported classification:
+`BF16_TARGET_PILOT_NETWORK_CAP_ABORT`.
+
 Report:
-`research/architecture/loom-dflash-q4-baseline-segmentation-replay-repair-001-result.md`
+`research/architecture/loom-dflash-representable-bf16-target-causal-pilot-002-result.md`
 
 Evidence:
-`results-local/research/dflash-q4-baseline-segmentation-replay-repair-001/20260825T132255Z/`
+`results-local/research/dflash-representable-bf16-target-causal-pilot-002/20260825T134150Z/`
 
-Recovered exact segmentation:
-- P3 `[63,1]`, token `3889`, boundary `63`;
-- P1 `[43] + 31x[1]`, branch `[1674,52245,9935,11,1187]`, boundary `74`;
-- P2 `[57] + 15x[1]`, branch `[30130,84]`, boundary `72`.
+Operational outcome:
+- P3 BF16 completed;
+- P1 Q4 baseline passed, then BF16 cap-aborted;
+- P2 unexecuted;
+- network `8,583,061,312 B`, `1,007` requests, `7` retries;
+- next `9,437,184 B` request blocked before dispatch;
+- cache `20,832` hits / `898` misses.
 
-Exact final-logit raw-float32 SHA restoration:
-- P1 `c3d4987ef17e295ea2a396c60e8dfb273100455059d9e829f4ef75637081c202`;
-- P2 `65339a7fd91a8ef7f4cc36a36e897c3fed788cbb57466839b4b8ec3582a50a05`;
-- P3 `58d20d9086cff8d2789bbd0fd686eb2e5d6a9483168781cba04218b820185432`.
+The guard worked and cache growth can be reused later.
 
-All three exact Q4 provenance gates pass. Unchanged DFlash recovers ranks/proposals:
-- P1 rank `3`, proposal `3100`;
-- P2 rank `3`, proposal `4057`;
-- P3 rank `2`, proposal `5416`.
+## Scientific validity hold
 
-Zero BF16/network/E2E occurred during repair.
+Do not yet interpret reported P3 `rank 5 -> 13` as BF16 harm/non-recovery.
 
-Remote-reproducible source commit:
-`8a74c3a2f039a771b4f1a682cc1754e48c76e50e`.
+The exact repaired P3 Q4 condition is rank `2`, proposal `5416`, while pilot 002 reports Q4-tap rank `5`, proposal `4330`. Review of remote predecessor source reveals likely confounders:
+- Q4 paired scoring may receive `full_taps` instead of frozen `base_taps`;
+- DFlash scoring uses a fixed row instead of the selected continuation-position row;
+- BF16 treatment uses fresh full-prefix execution rather than the same segmented/KV-boundary state producer.
 
-## Next — causal BF16 re-attempt
+The exact executed `_002.py` is not yet remote-reproducible, so causal interpretation is withheld pending a byte-exact offline audit.
+
+## Next — pilot 002 causal validity audit
 
 Checkpoint:
-`LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CAUSAL_PILOT_002`
+`LOOM_DFLASH_BF16_PILOT_002_CAUSAL_VALIDITY_AUDIT_001`
 
 Purpose:
-Answer the remaining material question: are the residual DFlash mismatches caused primarily by verifier-state precision/distribution differences between the exact Q4 target and the pinned BF16 target?
+Determine whether the completed P3 evidence from pilot 002 actually isolates Q4-vs-BF16 precision/distribution or is mechanically confounded by tap provenance, DFlash row selection, and/or producer segmentation.
 
-Pilot 002 is not a new scientific treatment. It repeats the preregistered pilot 001 after a mechanical baseline-producer repair, with every scientific degree of freedom frozen:
-- same states;
-- same order;
-- same labels;
-- same DFlash code/mapping;
-- same pinned BF16 verifier;
-- same network cap;
-- same decision thresholds.
+Strictly offline:
+1. hash the exact executed `_002.py` source;
+2. compare `_002` with remote `_001` for causal-relevant differences;
+3. trace exact Q4 and BF16 tap tensors passed to DFlash;
+4. identify the correct DFlash continuation row for P3 position `2` and recompute Q4 scoring from existing arrays only;
+5. require exact frozen Q4 rank `2`/proposal `5416` when correct inputs/selectors are used;
+6. determine whether existing P3 BF16 taps/logits were generated with fresh full-prefix or frozen-equivalent segmented/KV-boundary execution;
+7. use existing artifacts only; no BF16 forward and no network;
+8. classify existing P3 evidence as valid, mechanically invalid, or ambiguous.
 
-Required per state:
-1. exact segmented Q4 baseline provenance PASS;
-2. pinned BF16 teacher-forced verifier at the same logical state;
-3. retain taps `[1,12,23,34,45]`, final verifier logits/top1, routing and network/cache ledger;
-4. run unchanged DFlash on Q4 and BF16 taps;
-5. compare layerwise tap drift and full 32k DFlash drift/proposal;
-6. preserve both frozen-Q4 and BF16 verifier labels and report DFlash ranks/top-k/top1 for each representable label.
+Outcomes:
+- `PILOT_002_CAUSAL_PATH_VALID` -> existing P3 evidence can contribute to later bounded continuation;
+- `PILOT_002_CAUSAL_PATH_INVALID_MECHANICAL` -> repair and validate source offline, then preregister a new attempt using persistent cache;
+- `PILOT_002_CAUSAL_VALIDITY_AMBIGUOUS` -> no new treatment until ambiguity is closed.
 
-Preregistered outcomes:
-- `BF16_TARGET_RECOVERY_SIGNAL`: at least 2 states have BF16-tap DFlash top1 equal to representable BF16 verifier top1 while corresponding Q4-tap condition is not exact;
-- `NO_USEFUL_BF16_TARGET_RECOVERY`: zero exact BF16-label recoveries and no broad decision-level/top-k improvement;
-- `BF16_TARGET_EFFECT_AMBIGUOUS`: exactly one exact recovery, support/label ambiguity, or systematic movement insufficient for the recovery gate;
-- `BF16_TARGET_PILOT_NETWORK_CAP_ABORT`: hard cap stops completion; do not infer unexecuted states.
-
-## Decision after pilot 002
-
-- recovery signal -> continue DFlash salvage only along the isolated BF16-state mechanism;
-- no useful recovery -> explicitly reassess/terminate DFlash salvage before corrected E2E and return to higher-leverage 30B-on-8GB serving/I/O work;
-- ambiguous -> record only, no post-hoc rescue;
-- network-cap abort -> retain partial evidence and reassess feasibility without changing the scientific state set.
-
-No corrected E2E until a real compatibility/acceptance mechanism exists.
+No conclusion on DFlash salvage/termination until causal validity is established.
