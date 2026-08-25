@@ -59,7 +59,4 @@ Do not modify target positions, anchors, masks, or block alignment based on this
 
 The next high-leverage discriminator is to test the full 32k drafter-logit distribution of the MLX port against an authoritative publisher/reference implementation on a small stratified set of frozen states. Top1/raw-row parity alone is insufficient to exclude subtler numerical port divergence.
 
-Evidence:
-`results-local/research/dflash-corrected-temporal-alignment-audit-001/20260825T095?Z/`
-
-Note: the user-returned checkpoint did not include the exact evidence timestamp path. Preserve the local evidence directory produced by Pi as the authoritative source when recording the exact path in a future sync if needed.
+Evidence directory: exact timestamp was not included in the returned checkpoint text; Pi's local `results-local/research/dflash-corrected-temporal-alignment-audit-001/<UTC>/` directory remains authoritative.
