@@ -1,27 +1,46 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-25
-Current: `PILOT_002_CAUSAL_PATH_INVALID_MECHANICAL`
-Strategic next: `LOOM_DFLASH_PILOT_002_SCORING_ROW_REPAIR_OFFLINE_001`
-Canonical context: `/AGENTS.md` v3.18.
+Current: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`
+Strategic next: `LOOM_30B_MOE_SERVING_IO_REENTRY_001`
+Canonical context: `/AGENTS.md` v3.19.
 
-## Stable chain
+## DFlash — active salvage closed
 
-DFlash/verifier/taps/mapping remain frozen. Q4 baseline repair is PASS for P3/P1/P2. Closed hypotheses remain closed.
+Final report:
+`research/architecture/loom-dflash-bf16-causal-decision-001-result.md`
 
-Pinned BF16 revision: `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`.
-Hard network cap remains `8 GiB / 1024 requests`, pre-dispatch abort.
+Validated result:
+- P3: BF16 verifier target 1620, DFlash remains rank 2; no exact recovery;
+- P1: BF16 verifier target 326, DFlash improves rank 3 -> 2 but remains non-top1;
+- preregistered recovery signal required >=2/3 exact recoveries;
+- with P3 and P1 both failing, the signal is impossible;
+- P2 and corrected E2E are not justified.
 
-## Pilot 002 audit
+Conclusion: verifier precision/distribution mismatch affects DFlash but is not sufficient to restore exact speculation. Preserve DFlash/BF16 artifacts and cache, but do not spend further active LOOM budget on this mechanism without a new independent hypothesis.
 
-Pilot 002 hit the cap after valid BF16 P3 production and partial P1 caching. The expensive P3 producer path itself was frozen-equivalent (`[63,1]`, KV boundary 63).
+## Core target
 
-The scientific score is invalid for one confirmed mechanical reason: DFlash used P3 row 2 instead of the predetermined row 1. Correct offline Q4 scoring restores rank 2/proposal 5416.
+Return to practical 30B-on-8GB serving.
 
-Thus the retained P3 BF16 arrays can be rescored offline; no repeat P3 BF16 treatment is justified at this point.
+Stable foundation:
+- exact external serial-expert target runtime;
+- one expert logically live at a time;
+- known model anatomy and resident/routed byte budgets;
+- retained routing/cache traces;
+- retained physical-I/O and cache experiments;
+- expert-major contiguous disk layout preferred;
+- large raw global LRU rejected.
 
 ## Next
 
-Repair generic continuation-row selection (`continuation_position - 1`) and validate strictly offline on existing P3 Q4/BF16 arrays. Recover corrected P3 causal score, validate P1/P2 row logic, and source-sync the repaired runner before any further network treatment.
+`LOOM_30B_MOE_SERVING_IO_REENTRY_001`
 
-Only after this PASS decide whether remaining P1/P2 BF16 execution is needed. Reuse the existing validated cache; do not repeat P3.
+Before new code or expensive execution:
+1. review the latest retained 30B serving/I/O benchmarks and relevant scripts;
+2. identify the dominant measured latency/resource bottleneck;
+3. rank only evidence-supported candidate interventions;
+4. choose one minimal experiment with a quantitative pass/fail gate;
+5. then execute only that experiment.
+
+Priority is practical token latency / throughput under the 8GB constraint, not further DFlash salvage.
