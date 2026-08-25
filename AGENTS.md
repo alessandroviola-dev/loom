@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.11
+Version: 3.12
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 This file is persistent context for Pi. WP prompts carry only the active delta.
@@ -88,24 +88,12 @@ Historical E2E `0/96` used the old decode and is not current acceptance evidence
 
 Do not reopen these without new evidence.
 
-## BF16 target context
+## BF16 representable-state path
 
 Available BF16 verifier revision:
 `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`.
 
-Prior P1_t01 Q4->BF16 materially changed routing/taps/logits but P1_t01 target `12050` is outside DFlash support, so it cannot test representable-target recovery.
-
-Persistent BF16 cache is reusable.
-
-## Representable BF16 target preflight — COMPLETE
-
 `LOOM_DFLASH_REPRESENTABLE_BF16_TARGET_CONTROL_PREFLIGHT_001` = `BF16_TARGET_PILOT_READY_WITH_BOUNDED_MISSING_CACHE`.
-
-Report:
-`research/architecture/loom-dflash-representable-bf16-target-control-preflight-001-result.md`
-
-Evidence:
-`results-local/research/dflash-representable-bf16-target-control-preflight-001/20260825T115402Z/`
 
 Selected states:
 - P1 `P1_t32:6`, rank 3, frozen target 326, 79-token prefix;
@@ -114,76 +102,92 @@ Selected states:
 
 No compute sharing across trajectories.
 
-BF16 cache audit:
+Cache audit:
 - 435 dense manifests;
 - 3,470 expert manifests / 10,410 projections SHA-256 verified;
-- integrity failures 0;
-- dense 3,082,218,423 B;
-- experts 32,755,649,797 B;
-- total 35,837,957,463 B;
-- free external disk 1,152.25 GiB.
+- failures 0;
+- total BF16 cache `35,837,957,463 B`;
+- external free disk `1,152.25 GiB`;
+- Q4-route estimate: 703 combined unique misses / `6,634,340,352 B` missing.
 
-Q4-routing planning estimate only; BF16 routing may diverge:
-- P1 misses 315 / 2,972,712,960 B;
-- P2 misses 507 / 4,784,652,288 B;
-- P3 misses 13 / 122,683,392 B;
-- combined unique misses 703 / 6,634,340,352 B.
+Actual BF16 routing may diverge.
 
-Pilot ceiling: hard `8 GiB` total network and `1,024` requests, with `NETWORK_CAP_ABORT` before dispatch.
+Pilot ceiling after source parity:
+- hard network `8 GiB`;
+- hard requests `1,024`;
+- `NETWORK_CAP_ABORT` before dispatch;
+- persistent/resumable cache.
 
-## BF16 network cap guard — VALIDATED LOCALLY
+## BF16 network-cap guard — VALIDATED LOCALLY
 
 `LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_001` = `BF16_NETWORK_CAP_GUARD_PASS`.
-
-Report:
-`research/architecture/loom-dflash-bf16-network-cap-guard-001-result.md`
 
 Evidence:
 `results-local/research/dflash-bf16-network-cap-guard-001/20260825T121354Z/`
 
-Validated local working-tree files:
+Validated behavior:
+- synthetic tests `6/6` PASS; compile PASS;
+- exact boundary allow;
+- byte/request reject occurs before `HTTPSConnection.request`;
+- deterministic `NETWORK_CAP_ABORT`;
+- retries counted and bounded;
+- cache hits charge `0 B / 0 requests`;
+- abort preserves complete/partial cache and resumability;
+- real network dispatches observed `0`.
+
+Validated local files:
 - `scripts/loom_dflash_unquantized_target_p1t01_range_control_001.py`;
 - `scripts/loom_dflash_bf16_tap_drafter_probe_001.py`;
 - `scripts/test_loom_dflash_bf16_network_cap_guard_001.py`.
 
-Results:
-- synthetic tests `6/6` PASS; compile PASS;
-- exact boundary allow PASS;
-- byte/request rejects occur before `HTTPSConnection.request` and emit deterministic `NETWORK_CAP_ABORT`;
-- retry reservations counted exactly once; 2 attempts = 10 B / 2 requests with one bounded retry;
-- cache hits cost 0 B / 0 requests;
-- abort preserves complete/partial cache and resumability;
-- real network dispatches observed: `0`.
+## Guard source export — COMPLETE
 
-Critical reproducibility state: the validated guard source delta exists in the **local working tree only** and is not yet represented in the GitHub branch. Do not claim remote source parity or run the expensive pilot from a fresh clone until exact source synchronization is complete.
+`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_SYNC_001` = `BF16_NETWORK_CAP_GUARD_SOURCE_EXPORT_PASS`.
+
+Report:
+`research/architecture/loom-dflash-bf16-network-cap-guard-source-sync-001-result.md`
+
+Evidence:
+`results-local/research/dflash-bf16-network-cap-guard-source-sync-001/20260825T122613Z/`
+
+Export method: `FULL_CONTENT` UTF-8 copies under `full-content/scripts/`.
+
+Pinned validated source identities:
+- `scripts/loom_dflash_unquantized_target_p1t01_range_control_001.py` — 74,261 B — SHA-256 `dc0bdb6af282805cdfb623404bcfc778922c28a7b21df750cee08340b365a376`;
+- `scripts/loom_dflash_bf16_tap_drafter_probe_001.py` — 26,443 B — SHA-256 `7a6119f01c99eb5d0833ff5bc5b6a7e47c540161ac5414aae246adc62bec479f`;
+- `scripts/test_loom_dflash_bf16_network_cap_guard_001.py` — 11,741 B — SHA-256 `7b6577076bffd73733f7766ca87638004618a7c4a121ae4f5fc6a5a318e776ae`.
+
+All exported copies byte-match local validated sources and prior hashes.
+
+Critical remaining blocker: the full exported file bytes were saved on the user's local filesystem but were not included in the chat payload. ChatGPT cannot reconstruct source from hashes alone. Remote/fresh-clone source parity is therefore still NOT established.
 
 ## Next checkpoint
 
-`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_SYNC_001`
+`LOOM_DFLASH_BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_HANDOFF_001`
 
-Goal: capture the exact already-validated local guard implementation for the three files above and synchronize it to GitHub without altering behavior.
+Goal: transfer the exact already-exported full source payload into a form ChatGPT can access, without modifying code.
 
 Required direction:
-1. make NO code changes;
+1. make NO source changes;
 2. do NOT run Git;
-3. output exact full UTF-8 contents of the three modified files, or deterministic complete patches against the current branch versions, sufficient for ChatGPT to reproduce them byte-for-byte;
-4. include SHA-256 of each local file;
-5. rerun no expensive tests; at most re-run the existing synthetic guard test if needed to prove the exported files remain the validated state;
-6. no network/target execution.
+3. create one deterministic payload containing the exact three exported UTF-8 files, preferably a single base64-encoded tar/zip or equivalent text artifact;
+4. include payload SHA-256 plus the three pinned per-file SHA-256 values above;
+5. output/present the payload in a way the user can attach or paste into ChatGPT; if attachment creation is possible locally, produce a single compact artifact for upload;
+6. no target/network execution.
 
 Classification:
-- `BF16_NETWORK_CAP_GUARD_SOURCE_EXPORT_PASS`
-- `BF16_NETWORK_CAP_GUARD_SOURCE_EXPORT_AMBIGUOUS`
+- `BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_READY`
+- `BF16_NETWORK_CAP_GUARD_SOURCE_PAYLOAD_AMBIGUOUS`
 
-After ChatGPT applies the exact source delta and verifies remote parity, authorize the preregistered 3-state Q4-vs-BF16 target causal pilot under hard `8 GiB / 1,024 request` limits.
+After ChatGPT receives the actual payload, it must write the exact files to GitHub and verify content hashes before authorizing the expensive BF16 pilot.
 
 ## Later pilot measurement rule
 
-For each selected state, the eventual causal pilot must preserve both labels:
-- frozen Q4 target token for continuity;
+For each selected state preserve both labels:
+- frozen Q4 target token;
 - BF16 verifier top1 token at the same state.
 
-Measure DFlash under Q4 vs BF16 taps against the frozen Q4 target and, when representable, against the BF16 verifier top1. This avoids falsely calling recovery/failure if verifier precision itself changes the target top1.
+Measure DFlash under Q4 vs BF16 taps against the frozen Q4 target and, when representable, against the BF16 verifier top1.
 
 ## WP contract
 
