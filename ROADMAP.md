@@ -2,55 +2,69 @@
 
 Last updated: 2026-08-26
 Current: `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`
-Strategic next: `LOOM_30B_FIRST_TOUCH_NONREUSE_IO_DESIGN_001`
-Canonical context: `/AGENTS.md` v3.28.
+Strategic next: `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_001`
+Canonical context: `/AGENTS.md` v3.29.
 
 ## Core 30B-on-8GB serving
 
-`LOOM_30B_MOE_SERVING_IO_REENTRY_001` identified **external expert data-access** as the dominant measured bottleneck:
+External expert data-access is the dominant measured bottleneck:
 - `0.442087 / 0.926028 s = 47.74%` median wall;
 - expert compute `0.004186 s`;
 - routing `0.019075 s`;
 - physical token-like I/O floor `0.481589 s/token`.
 
-Priority intervention remains lossless expert-major contiguous storage, subject to valid physical-I/O causality.
+Priority candidate remains lossless expert-major contiguous storage.
 
-## Existing I/O evidence
+## What is already established
 
-Expert-major A/B 001 remains INVALID due cache contamination, although exact payload identity and structural read reduction `3456 -> 384` are valid.
+- Expert-major exact payload equality is valid.
+- Structural read reduction `3456 -> 384` on the canonical full trace is valid.
+- A/B 001 timing is INVALID due cache contamination.
+- Accepted physical-I/O timing requires each arm/repetition independently `>=80%` conservative physical coverage.
+- Fresh-inode copy cold preparation is rejected.
+- Instrumentation and `F_GLOBAL_NOCACHE` control semantics are resolved.
+- Same-region global-nocache repetition is rejected: first touch `96.0406%`, then `25.8365%` and `23.9728%`.
 
-Frozen physical-I/O timing rule: every accepted arm/repetition independently `>=80%` conservative physical coverage.
+Therefore stop iterating same-page eviction variants.
 
-Fresh-inode byte-copy cold protocol is rejected. Instrumentation persistence and global-nocache set/reset semantics are resolved.
+## New execution model
 
-## Global-nocache validation 002 — FAIL
+Use preregistered compound funnels to answer strategic questions in one Pi execution. Internal stages do not require Git/pull if all branch logic, gates, workload and bounds were frozen before execution. No post-hoc rescue or threshold changes.
 
-Report: `research/architecture/loom-30b-expert-major-global-nocache-cold-io-validation-002-result.md`.
-Classification: `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`.
+## Next — Expert-major Decision Funnel 001
 
-Repeated reads of the same 160,432,128-B packed region:
-- T1 `96.0406%` coverage;
-- T2 `25.8365%`;
-- T3 `23.9728%`.
+Preregistration: `research/architecture/loom-30b-expert-major-decision-funnel-001-preregistration.md`.
 
-Payload/hash PASS 3/3; control set/reset/restoration PASS 3/3; swap delta 0 B; minimum free memory 56%.
+Final outcomes:
+- `EXPERT_MAJOR_GO`
+- `EXPERT_MAJOR_NO_GO`
+- `EXPERT_MAJOR_INCONCLUSIVE`
 
-Conclusion: first touch can be predominantly physical, but subsequent touches of the same pages are cache-served despite correct controls. Repeated-same-page cold enforcement is rejected. Do not spend more runs on additional eviction/control variants of this method.
+Stage 0:
+1. Construct at least three mutually disjoint matched source/packed first-touch groups.
+2. Prefer 64 experts / `160,432,128 B` per arm/group.
+3. Exact ordered logical payload equality required.
+4. No source or packed payload page reuse across repetitions.
+5. If impossible, stop INCONCLUSIVE.
 
-## Next
+Stage 1, automatic if Stage 0 passes:
+1. Exactly 3 matched pairs with frozen order `SOURCE->PACKED`, `PACKED->SOURCE`, `SOURCE->PACKED`.
+2. Each arm independently requires >=80% conservative physical coverage plus exact payload/hash, complete instrumentation, successful controls, swap delta <=16,000,000 B, free memory >=10%, no unsafe pressure.
+3. Primary metric: paired `packed_wall/source_wall`; decision metric = median of three paired ratios.
+4. GO if valid median <=0.70, packed physical bytes <=1.05x source per pair, no exactness/read-structure regression.
+5. NO-GO if comparison is valid but median >0.70 or a valid physical-byte/read-structure regression makes the layout unattractive.
+6. INCONCLUSIVE if a valid causal comparison cannot be established.
 
-`LOOM_30B_FIRST_TOUCH_NONREUSE_IO_DESIGN_001`
+Bounds: no model forward, network, DFlash, runtime edits, purge/reboot/cache-thrash/RAM-fill/swap eviction/fresh-copy workaround; max 3 matched pairs; timed logical payload <=962,592,768 B total.
 
-1. Inspect packed layout, source ranges, trace/expert identities and determine how many mutually disjoint matched source/packed payload groups exist.
-2. Design repetitions so each uses payload pages not used by prior repetitions.
-3. Within each matched pair, source and packed must represent exactly the same logical expert bytes; only storage layout/read fragmentation may differ.
-4. Quantify overlap, offsets/ranges, unique bytes and expected cache/RAM interaction before execution.
-5. Preserve `>=80%` conservative physical coverage independently for every arm/repetition.
-6. Rank at most two designs; select exactly one bounded validation protocol before any full A/B.
-7. No full A/B, model forward, network, DFlash, runtime integration, purge/reboot dependence, cache-thrash/RAM-fill, swap pressure or fresh-copy workaround during design.
-8. Only after the non-reuse design passes a separately preregistered coverage validation may `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_002` be considered.
-9. Only after a valid A/B 002 PASS integrate expert-major access into the exact runtime and benchmark end-to-end tok/s.
+## After the funnel
+
+If `EXPERT_MAJOR_GO`: run one separately preregistered compound runtime phase bundling minimal integration, exactness parity and bounded end-to-end performance measurement.
+
+If `EXPERT_MAJOR_NO_GO`: stop expert-major integration and return to the next ranked serving bottleneck/intervention.
+
+If `EXPERT_MAJOR_INCONCLUSIVE`: redesign measurement only if a materially different valid method exists; do not return to serial eviction micro-tests.
 
 ## Synchronization rule
 
-Every significant checkpoint must be committed to AGENTS/HANDOFF/ROADMAP/result docs before the next scientific WP; user pulls first.
+Outside a frozen compound funnel, every significant checkpoint must be committed to AGENTS/HANDOFF/ROADMAP/result docs before the next independent WP; user pulls first.
