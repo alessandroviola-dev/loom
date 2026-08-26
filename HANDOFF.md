@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-26
-Status: ACTIVE — core 30B-on-8GB serving/I/O. External expert data-access remains the dominant measured bottleneck. Expert-major packing is still structurally promising, but the fresh-inode cold-read protocol has now failed reproducibly and must be replaced before a valid physical-I/O A/B.
+Status: ACTIVE — core 30B-on-8GB serving/I/O. External expert data-access remains the dominant measured bottleneck. Fresh-inode cold preparation failed; a new direct-existing-packed `F_GLOBAL_NOCACHE` measurement strategy has been selected but is not yet validated.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002_PACKED_COLD_IO_PROTOCOL_FAIL`
-Next: `LOOM_30B_COLD_IO_MEASUREMENT_STRATEGY_REDESIGN_001`
-Pi context: `/AGENTS.md` v3.24.
+Current checkpoint: `LOOM_30B_COLD_IO_MEASUREMENT_STRATEGY_REDESIGN_001_COLD_IO_MEASUREMENT_STRATEGY_SELECTED`
+Next: `LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_001`
+Pi context: `/AGENTS.md` v3.25.
 
 ## Synchronization
 
@@ -27,39 +27,45 @@ Closed as active recovery path. Final report: `research/architecture/loom-dflash
 
 Priority intervention remains lossless expert-major contiguous storage, contingent on valid physical-I/O causality.
 
-## A/B 001 + coverage audit
+## Previous physical-I/O evidence
 
-First physical-I/O A/B was INVALID despite structural read reduction `3456 -> 384` and exact payload equality. Packed aggregate conservative physical coverage was `50.0644%`; first packed repetition reached `94.26%`, later repeats `38.61–40.20%`, consistent with macOS page-cache residency.
+A/B 001 was INVALID despite structural read reduction `3456 -> 384` and exact payload equality because packed coverage was cache-contaminated.
 
-Frozen future timing gate: every accepted repetition must independently show >=80% conservative physical coverage.
+Coverage audit established source conservative physical coverage `99.8761%`, packed aggregate `50.0644%`; first packed repetition `94.26%`, later `38.61–40.20%`. Future timing requires >=80% conservative physical coverage on every accepted repetition.
 
-## Instrumentation repair
+Instrumentation repair is PASS and no longer a blocker.
 
-`LOOM_30B_COLD_IO_INSTRUMENTATION_REPAIR_001` = `COLD_IO_INSTRUMENTATION_PASS`.
-Success/failure persistence and fail-closed missing-field behavior are validated; instrumentation is no longer the blocker.
+Fresh-inode byte-copy protocol validation 002 is `PACKED_COLD_IO_PROTOCOL_FAIL`: three valid 160,432,128-B trials produced `21.7537%`, `21.6914%`, `20.8250%` coverage. Payload/hash PASS 3/3; swap 0 B. Method rejected.
 
-## Cold-I/O protocol validation 002
+## Measurement strategy redesign 001
 
-Classification: `PACKED_COLD_IO_PROTOCOL_FAIL`.
-Report: `research/architecture/loom-30b-expert-major-cold-io-protocol-validation-002-result.md`.
-Evidence: `results-local/research/30b-expert-major-cold-io-protocol-validation-002/20260826T131142Z/`.
+Classification: `COLD_IO_MEASUREMENT_STRATEGY_SELECTED`.
+Report: `research/architecture/loom-30b-cold-io-measurement-strategy-redesign-001-result.md`.
+Evidence: `results-local/research/30b-cold-io-measurement-strategy-redesign-001/20260826T133031Z/`.
 
-Frozen method:
-- fresh non-cloned APFS inode;
-- `O_CREAT|O_EXCL` byte-copy;
-- `fsync`;
-- `F_NOCACHE/F_RDAHEAD` supplementary.
+A permitted 32-MiB mechanism probe showed:
+- `F_GLOBAL_NOCACHE` is accepted locally;
+- global+descriptor coverage `49.35%` vs descriptor-only `57.58%`;
+- hashes PASS;
+- swap increase 0 B.
 
-Three valid `160,432,128 B` trials:
-- T1 coverage `21.7537%`, wall `0.221453 s`, raw physical `37,090,000 B`;
-- T2 `21.6914%`, `0.253920 s`, `37,030,000 B`;
-- T3 `20.8250%`, `0.224689 s`, `37,140,000 B`.
-Payload/hash PASS 3/3; swap delta 0 B 3/3. Zero trials met >=80% coverage.
+This probe establishes availability only, not adequate coldness.
 
-The method is therefore rejected. A plausible but unproven hypothesis is that byte-copy preparation itself leaves the fresh file resident in cache; this is not yet an established causal fact.
+Selected strategy:
+- direct read of existing packed payload, avoiding preparation write/read;
+- fresh read-only FD each trial;
+- `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0` before any payload read;
+- reset global control afterward;
+- physical coverage remains the per-trial validity gate.
+
+`purge(8)` rejected as system-wide/disruptive. Fresh-copy-under-global-nocache deferred because it adds write/copy confounding.
 
 ## Exact next step
 
-`LOOM_30B_COLD_IO_MEASUREMENT_STRATEGY_REDESIGN_001`
+`LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_001`
 
-Analysis-first redesign of how to obtain/measure genuinely physical cold reads on macOS. Inspect retained evidence and local mechanisms, rank at most three safe candidate strategies, reject RAM-thrashing/swap/reboot-dependent approaches, and select one bounded validation experiment with the existing >=80% per-trial conservative physical-coverage gate. No full A/B, model forward, network, DFlash, or runtime integration during redesign.
+Packed-only validation on first 64 packed experts (`160,432,128 B/trial`), exactly three trials maximum. Each trial must use a fresh read-only FD, set global/per-FD nocache controls before first payload read, capture three idle iostat intervals, perform timed 4-MiB-chunk read/hash with repaired instrumentation, then reset global control.
+
+PASS only if 3/3 independently achieve >=80% conservative physical coverage, payload/hash PASS, complete consistent instrumentation, successful control set/reset, swap delta <=16,000,000 B, free memory >=10%, and no unsafe pressure.
+
+No full source-vs-packed A/B, model forward, network, DFlash or runtime integration until this validation passes.
