@@ -1,13 +1,13 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-26
-Current: `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`
-Strategic next: `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_001`
-Canonical context: `/AGENTS.md` v3.29.
+Current: `EXPERT_MAJOR_INCONCLUSIVE` from Decision Funnel 001
+Strategic next: `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002`
+Canonical context: `/AGENTS.md` v3.30.
 
 ## Core 30B-on-8GB serving
 
-External expert data-access is the dominant measured bottleneck:
+External expert data-access remains the dominant measured bottleneck:
 - `0.442087 / 0.926028 s = 47.74%` median wall;
 - expert compute `0.004186 s`;
 - routing `0.019075 s`;
@@ -15,55 +15,59 @@ External expert data-access is the dominant measured bottleneck:
 
 Priority candidate remains lossless expert-major contiguous storage.
 
-## What is already established
+## Established I/O facts
 
-- Expert-major exact payload equality is valid.
-- Structural read reduction `3456 -> 384` on the canonical full trace is valid.
+- Exact expert-major payload equality is valid.
+- Structural read reduction `3456 -> 384` is valid.
 - A/B 001 timing is INVALID due cache contamination.
-- Accepted physical-I/O timing requires each arm/repetition independently `>=80%` conservative physical coverage.
+- Every accepted timed arm requires `>=80%` conservative physical coverage.
 - Fresh-inode copy cold preparation is rejected.
-- Instrumentation and `F_GLOBAL_NOCACHE` control semantics are resolved.
-- Same-region global-nocache repetition is rejected: first touch `96.0406%`, then `25.8365%` and `23.9728%`.
+- Instrumentation and `F_GLOBAL_NOCACHE` semantics are resolved.
+- Same-region repetition is rejected: first touch `96.0406%`, repeats `25.8365%`, `23.9728%`.
 
-Therefore stop iterating same-page eviction variants.
+## Decision Funnel 001 — INCONCLUSIVE
 
-## New execution model
+Result: `research/architecture/loom-30b-expert-major-decision-funnel-001-result.md`.
+Evidence: `results-local/research/30b-expert-major-decision-funnel-001/20260826T143324Z/`.
 
-Use preregistered compound funnels to answer strategic questions in one Pi execution. Internal stages do not require Git/pull if all branch logic, gates, workload and bounds were frozen before execution. No post-hoc rescue or threshold changes.
+Stage 0 found three 64-expert groups with exact retained metadata and zero cross-group overlap, but canonical trace ordering did not produce contiguous packed groups. No performance timing ran. This is a design/preregistration failure only.
 
-## Next — Expert-major Decision Funnel 001
+## Execution model
 
-Preregistration: `research/architecture/loom-30b-expert-major-decision-funnel-001-preregistration.md`.
+Use compound preregistered funnels for strategic yes/no questions. Internal gates do not require Git/pull if all branches, thresholds, deterministic fallback order, workload and bounds were frozen before execution. No post-hoc rescue.
 
-Final outcomes:
-- `EXPERT_MAJOR_GO`
-- `EXPERT_MAJOR_NO_GO`
-- `EXPERT_MAJOR_INCONCLUSIVE`
+## Next — Expert-major Decision Funnel 002
+
+Preregistration: `research/architecture/loom-30b-expert-major-decision-funnel-002-preregistration.md`.
 
 Stage 0:
-1. Construct at least three mutually disjoint matched source/packed first-touch groups.
-2. Prefer 64 experts / `160,432,128 B` per arm/group.
-3. Exact ordered logical payload equality required.
-4. No source or packed payload page reuse across repetitions.
-5. If impossible, stop INCONCLUSIVE.
+1. enumerate packed expert entries by physical offset;
+2. exclude regions explicitly re-touched in recent global-nocache validation;
+3. select the first three disjoint contiguous packed groups;
+4. map the exact same expert IDs/order to source nine-range representation;
+5. validate retained hash/provenance and zero source/packed cross-group overlap;
+6. deterministic group-size order `64 -> 32 -> 16`, use largest size yielding exactly 3 valid groups;
+7. if none works, final `EXPERT_MAJOR_INCONCLUSIVE`.
 
 Stage 1, automatic if Stage 0 passes:
-1. Exactly 3 matched pairs with frozen order `SOURCE->PACKED`, `PACKED->SOURCE`, `SOURCE->PACKED`.
-2. Each arm independently requires >=80% conservative physical coverage plus exact payload/hash, complete instrumentation, successful controls, swap delta <=16,000,000 B, free memory >=10%, no unsafe pressure.
-3. Primary metric: paired `packed_wall/source_wall`; decision metric = median of three paired ratios.
-4. GO if valid median <=0.70, packed physical bytes <=1.05x source per pair, no exactness/read-structure regression.
-5. NO-GO if comparison is valid but median >0.70 or a valid physical-byte/read-structure regression makes the layout unattractive.
-6. INCONCLUSIVE if a valid causal comparison cannot be established.
+- three first-touch matched pairs with frozen order `SOURCE->PACKED`, `PACKED->SOURCE`, `SOURCE->PACKED`;
+- each arm independently >=80% conservative physical coverage plus payload/hash, instrumentation, control, memory/swap and read-structure gates;
+- primary metric `packed_wall/source_wall`; decision metric median of 3 ratios.
 
-Bounds: no model forward, network, DFlash, runtime edits, purge/reboot/cache-thrash/RAM-fill/swap eviction/fresh-copy workaround; max 3 matched pairs; timed logical payload <=962,592,768 B total.
+Final decision:
+- `EXPERT_MAJOR_GO` if valid median <=0.70, packed physical bytes <=1.05x source per pair, no exactness/read regression.
+- `EXPERT_MAJOR_NO_GO` if valid but median >0.70 or valid physical/read regression.
+- `EXPERT_MAJOR_INCONCLUSIVE` only when a valid causal comparison cannot be established.
 
-## After the funnel
+Bounds: no model forward/network/DFlash/runtime edits/purge/reboot/cache-thrash/RAM-fill/swap eviction/fresh-copy workaround; max 3 pairs; max 64 experts/group; total timed logical bytes <=962,592,768 B at size 64.
 
-If `EXPERT_MAJOR_GO`: run one separately preregistered compound runtime phase bundling minimal integration, exactness parity and bounded end-to-end performance measurement.
+## After Funnel 002
 
-If `EXPERT_MAJOR_NO_GO`: stop expert-major integration and return to the next ranked serving bottleneck/intervention.
+If `EXPERT_MAJOR_GO`: one compound runtime funnel should bundle isolated integration, exactness parity, safety and bounded end-to-end tok/s/RSS/swap measurement.
 
-If `EXPERT_MAJOR_INCONCLUSIVE`: redesign measurement only if a materially different valid method exists; do not return to serial eviction micro-tests.
+If `EXPERT_MAJOR_NO_GO`: stop expert-major and return to the next ranked serving intervention.
+
+If `EXPERT_MAJOR_INCONCLUSIVE`: reconsider measurement only if a materially different causal design exists; do not return to serial cache-control micro-tests.
 
 ## Synchronization rule
 
