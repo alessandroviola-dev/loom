@@ -1,13 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-26
-Current: `COLD_IO_MEASUREMENT_STRATEGY_SELECTED`
-Strategic next: `LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_001`
-Canonical context: `/AGENTS.md` v3.25.
-
-## DFlash — closed
-
-Final report: `research/architecture/loom-dflash-bf16-causal-decision-001-result.md`. Preserve artifacts only; do not reopen absent a new independent mechanism.
+Current: `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`
+Strategic next: `LOOM_30B_GLOBAL_NOCACHE_RESET_SEMANTICS_AUDIT_001`
+Canonical context: `/AGENTS.md` v3.26.
 
 ## Core 30B-on-8GB serving
 
@@ -21,47 +17,47 @@ Priority intervention remains lossless expert-major contiguous storage, subject 
 
 ## Existing I/O evidence
 
-Expert-major A/B 001 is INVALID because repeated packed trials were cache-contaminated, although structural read reduction `3456 -> 384` and exact payload identity are valid.
+Expert-major A/B 001 is INVALID because repeated packed trials were cache-contaminated, although structural read reduction `3456 -> 384` and exact payload identity remain valid.
 
-Frozen cold timing rule: every accepted timed repetition must independently show >=80% conservative physical coverage.
+Frozen cold timing rule: every accepted timed repetition independently >=80% conservative physical coverage.
 
-Instrumentation repair is PASS.
+Fresh-inode byte-copy protocol is rejected after three valid ~160-MiB trials around 21% coverage. Instrumentation persistence is repaired and PASS.
 
-Fresh-inode byte-copy cold protocol is FAIL: `21.7537%`, `21.6914%`, `20.8250%` coverage on three valid 160,432,128-B trials; payload/hash PASS; swap 0 B. Do not modify/rerun it post hoc.
+Measurement redesign selected direct existing-packed reads with `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0`.
 
-## Measurement strategy redesign 001 — SELECTED
+## Global-nocache validation 001 — protocol FAIL, coldness signal positive
 
-Report: `research/architecture/loom-30b-cold-io-measurement-strategy-redesign-001-result.md`.
-Classification: `COLD_IO_MEASUREMENT_STRATEGY_SELECTED`.
+Report: `research/architecture/loom-30b-expert-major-global-nocache-cold-io-validation-001-result.md`.
+Classification: `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`.
 
-Tiny permitted 32-MiB probe:
-- `F_GLOBAL_NOCACHE` accepted locally;
-- global+descriptor coverage `49.35%`;
-- descriptor-only `57.58%`;
-- hashes PASS;
-- no swap increase.
+T1 achieved:
+- `95.3113%` conservative physical coverage;
+- `0.246744 s` wall;
+- `153,010,000 B` raw / `152,910,000 B` conservative physical bytes;
+- payload/hash PASS;
+- control set PASS;
+- swap delta 0 B;
+- minimum free memory 59%.
 
-The probe establishes mechanism availability only; it does not establish adequate coldness or performance.
+This is the strongest evidence so far that the selected direct global-nocache approach can produce a genuinely physical packed read.
 
-Selected next strategy: read the existing packed payload directly with `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0` set before any payload read, using a fresh read-only FD and resetting global control after the trial. This removes fresh-copy/write preparation from the measurement path.
+However post-trial reset of `F_GLOBAL_NOCACHE` returned `1` and the runner treated it as failure. The preregistered protocol therefore failed closed and T2/T3 were not run.
 
-`purge(8)` rejected as system-wide/disruptive. Fresh-copy-under-global-nocache is deferred because it adds causal confounding.
+Do not reinterpret the return code post hoc. Do not rerun the large validation until local set/reset semantics and restoration verification are established.
 
 ## Next
 
-`LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_001`
+`LOOM_30B_GLOBAL_NOCACHE_RESET_SEMANTICS_AUDIT_001`
 
-1. Packed-only, first 64 packed experts, `160,432,128 B/trial`.
-2. Exactly 3 trials maximum.
-3. Fresh read-only FD each trial.
-4. Set `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0` before first payload read; fail closed on control failure.
-5. Capture three idle `iostat -Id` intervals and repaired full instrumentation.
-6. Timed 4-MiB-chunk read/hash; persist evidence; reset global control after each trial.
-7. PASS only if all 3/3 trials independently satisfy >=80% conservative physical coverage, payload/hash PASS, complete consistent instrumentation, control set/reset PASS, swap delta <=16,000,000 B, free memory >=10%, and no unsafe pressure.
-8. FAIL if any trial is below 80% or any safety/control/hash/persistence gate fails.
-9. No source arm, model forward, network, DFlash or runtime integration in this validation.
+1. Inspect exact runner/API call path and local constants.
+2. Establish raw set/reset return-value and errno/exception semantics on this system.
+3. Determine whether control state can be queried directly; otherwise define a minimal safe behavioral verification.
+4. Use at most a tiny <=16 MiB probe only if required to resolve semantics.
+5. Persist raw calls, returns, errors and final restoration evidence.
+6. Select exactly one fail-safe control protocol if resolved.
+7. No full 160-MiB validation, source arm, model forward, network, DFlash or performance claim.
 
-Only after `PACKED_GLOBAL_NOCACHE_COLD_IO_PASS` preregister physical-I/O A/B 002. Only after valid A/B 002 PASS integrate expert-major packed access into the exact runtime and measure end-to-end tok/s.
+Only after `GLOBAL_NOCACHE_RESET_SEMANTICS_RESOLVED` may another preregistered global-nocache cold-I/O validation be run. Only after that validation passes may physical-I/O A/B 002 be preregistered. Only after a valid A/B 002 PASS integrate packed access into the exact runtime and measure end-to-end tok/s.
 
 ## Synchronization rule
 
