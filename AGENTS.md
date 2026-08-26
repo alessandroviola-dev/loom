@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.27
+Version: 3.28
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -47,7 +47,6 @@ Stable facts:
 ## DFlash — CLOSED AS ACTIVE PATH
 
 Final: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`.
-Report: `research/architecture/loom-dflash-bf16-causal-decision-001-result.md`.
 Do not reopen absent a new independent mechanism.
 
 ## Core serving/I/O — BOTTLENECK IDENTIFIED
@@ -66,88 +65,64 @@ Priority candidate remains lossless expert-major contiguous storage. No speedup 
 
 A/B 001 is INVALID because repeated packed trials were cache-contaminated, although exact payload equality and structural read reduction `3456 -> 384` are valid.
 
-Frozen cold timing gate: every accepted repetition must independently show `>=80%` conservative physical coverage.
+Frozen cold timing gate: every accepted timed repetition must independently show `>=80%` conservative physical coverage.
 
-Fresh-inode byte-copy cold protocol is rejected: three valid 160,432,128-B trials achieved only `21.7537%`, `21.6914%`, `20.8250%` coverage; payload/hash PASS; zero swap.
+Fresh-inode byte-copy cold protocol is rejected: three valid ~160-MiB trials achieved only ~21% coverage.
 
 Instrumentation persistence repair is PASS.
 
-Measurement redesign selected direct reads of the existing packed payload with `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0`.
+`F_GLOBAL_NOCACHE` set/reset semantics are resolved locally using a fixed-ABI helper:
+- SET 1: raw 0, errno 0;
+- RESET 0: raw 1, errno 0;
+- transactional restoration verification PASS.
 
-## Global-nocache validation 001 — protocol FAIL, coldness positive
+## Global-nocache cold-I/O validation 002 — FAIL
 
-`LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_001` = `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`.
-Report: `research/architecture/loom-30b-expert-major-global-nocache-cold-io-validation-001-result.md`.
-Evidence: `results-local/research/30b-expert-major-global-nocache-cold-io-validation-001/20260826T134143Z/`.
+`LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_002` = `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`.
+Report: `research/architecture/loom-30b-expert-major-global-nocache-cold-io-validation-002-result.md`.
+Evidence: `results-local/research/30b-expert-major-global-nocache-cold-io-validation-002/20260826T141527Z/`.
 
-T1:
-- conservative physical coverage `95.3113%`;
-- wall `0.246744 s`;
-- raw/conservative physical `153,010,000 / 152,910,000 B`;
-- payload/hash PASS;
-- swap delta `0 B`;
-- minimum free memory `59%`.
+Same packed region, three valid trials:
+- T1: `96.0406%`, `0.251112 s`, `154,260,000 / 154,080,000 B` raw/conservative physical;
+- T2: `25.8365%`, `0.226934 s`, `41,810,000 / 41,450,000 B`;
+- T3: `23.9728%`, `0.228232 s`, `39,020,000 / 38,460,000 B`.
 
-Coldness passed strongly. Validation stopped after the runner treated reset raw return `1` as failure; T2/T3 were not run.
+Other gates:
+- payload/hash PASS 3/3;
+- initial set/reset/restoration PASS 3/3;
+- swap delta 0 B 3/3;
+- minimum free memory 56%.
 
-## Global-nocache reset semantics audit 001 — RESOLVED
-
-`LOOM_30B_GLOBAL_NOCACHE_RESET_SEMANTICS_AUDIT_001` = `GLOBAL_NOCACHE_RESET_SEMANTICS_RESOLVED`.
-Report: `research/architecture/loom-30b-global-nocache-reset-semantics-audit-001-result.md`.
-Evidence: `results-local/research/30b-global-nocache-reset-semantics-audit-001/20260826T135941Z/`.
-
-Established locally:
-- `F_GLOBAL_NOCACHE = 55` from `sys/fcntl.h`;
-- SET argument `1`: raw return `0`, `errno=0`, transition `0 -> 1`;
-- RESET argument `0` after SET: raw return `1`, `errno=0`, transition `1 -> 0`;
-- old runner predicate `returned == 0` was wrong for RESET;
-- no passive GET exists locally;
-- reversible transactional verification on empty files produced `[0,1,0,1,0,1]` under native C, Python fcntl, and fixed-ABI C/ctypes; `0 B` payload read.
-
-Frozen future control protocol:
-1. use fixed-ABI native helper with explicit errno capture;
-2. SET 1 must return `0`, errno `0`, no exception;
-3. RESET 0 must return `1`, errno `0`, no exception;
-4. restoration verification: SET 1 -> `0`, then RESET 0 -> `1`, errno `0` throughout;
-5. any deviation fails closed and rejects the repetition.
-
-Validation 001 remains overall FAIL because the preregistered 3/3 sequence was not completed; it is not retroactively reclassified.
+Interpretation:
+- control semantics and instrumentation are no longer blockers;
+- first touch can be strongly physical;
+- repeated touches of the same region remain cache-served;
+- direct global-nocache repeated-same-payload cold enforcement is rejected;
+- do not keep adding eviction/control variants to the same-pages protocol.
 
 ## Current checkpoint
 
-`LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_002`
+`LOOM_30B_FIRST_TOUCH_NONREUSE_IO_DESIGN_001`
 
-Goal: repeat the packed-only 3-trial coldness validation with the same workload/method and only the now-established control-return predicate repaired.
+Goal: design a valid physical-I/O comparison that avoids reusing already-touched pages instead of trying to evict them.
 
-Frozen workload/protocol:
-- first 64 packed experts;
-- `160,432,128 B` logical payload/trial;
-- exactly 3 trials maximum;
-- fresh read-only FD each trial;
-- before payload: fixed-ABI SET `F_GLOBAL_NOCACHE=1` requiring raw `0`, errno `0`; set `F_NOCACHE=1`, `F_RDAHEAD=0`;
-- three idle `iostat -Id` intervals;
-- timed 4-MiB-chunk read/hash;
-- persist complete repaired instrumentation;
-- after payload: RESET `F_GLOBAL_NOCACHE=0` requiring raw `1`, errno `0`;
-- transactional restoration verification SET `1` -> `0`, RESET `0` -> `1`, errno `0` throughout;
-- no retry or strategy modification after results.
+Analysis-first requirements:
+1. no model forward/network/DFlash/runtime integration/full performance A/B;
+2. inspect packed layout, source ranges, retained traces and expert identities to determine how many mutually disjoint matched source/packed payload groups can be constructed;
+3. each candidate repetition must compare exactly the same logical expert payload between source and packed arms while not reusing payload pages from earlier repetitions;
+4. preserve one-factor causality: only storage layout/read fragmentation may differ within a matched pair;
+5. quantify total unique logical bytes, offsets/ranges, overlap between repetitions and expected RAM/cache interaction;
+6. retain per-arm/per-repetition `>=80%` conservative physical-coverage validity authority;
+7. rank at most 2 non-reuse designs and select exactly one;
+8. preregister a minimal packed-only or paired validation before full A/B;
+9. avoid RAM-fill/cache-thrash, swap pressure, purge/reboot dependence, copied fresh files, or unverifiable cache-state assumptions;
+10. do not execute a large validation in this design checkpoint; at most one <=32-MiB metadata/semantics probe if mechanically necessary.
 
-Frozen PASS requires all 3/3 trials:
-- conservative physical coverage `>=80%`;
-- payload/hash PASS;
-- complete arithmetic-consistent instrumentation;
-- all control set/reset/restoration checks PASS;
-- swap delta `<=16,000,000 B`;
-- free memory `>=10%`;
-- no unsafe memory-pressure event.
+Preferred direction to evaluate first:
+- disjoint first-touch expert subsets/regions across repetitions, with source and packed matched on exact payload bytes for each repetition.
 
-FAIL if any completed trial is below 80% or any safety/control/hash/persistence gate fails. UNRESOLVED only for a genuinely new environment/instrumentation ambiguity.
+Classification:
+- `FIRST_TOUCH_NONREUSE_IO_DESIGN_SELECTED`
+- `FIRST_TOUCH_NONREUSE_IO_DESIGN_INSUFFICIENT`
 
-No source arm, model forward, network, DFlash, runtime integration, threshold changes or post-hoc strategy changes.
-
-Classifications:
-- `PACKED_GLOBAL_NOCACHE_COLD_IO_PASS`
-- `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`
-- `PACKED_GLOBAL_NOCACHE_COLD_IO_UNRESOLVED`
-
-Only after PASS may `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_002` be preregistered.
+Only after a selected design passes a separately preregistered physical-coverage validation may `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_002` be considered.
