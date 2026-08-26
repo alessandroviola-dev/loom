@@ -1,55 +1,60 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-26
-Status: ACTIVE — core 30B-on-8GB serving/I/O. External expert data-access remains the dominant measured bottleneck. Repeated same-region cold enforcement is now rejected; first-touch behavior is strongly physical and the next direction is a non-reuse matched-payload design.
+Status: ACTIVE — core 30B-on-8GB serving/I/O. Same-page cold enforcement is rejected. The project is switching from serial micro-tests to one preregistered compound decision funnel for expert-major.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_002_PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`
-Next: `LOOM_30B_FIRST_TOUCH_NONREUSE_IO_DESIGN_001`
-Pi context: `/AGENTS.md` v3.28.
+Current checkpoint: `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_001`
+Pi context: `/AGENTS.md` v3.29.
 
 ## Synchronization
 
-After every significant checkpoint: ChatGPT updates canonical GitHub state, user pulls, then next Pi WP. Failed/invalid/unresolved evidence cannot support performance claims. Failed frozen methods are not silently modified and rerun.
+Normal rule: significant checkpoint -> ChatGPT updates GitHub -> user pulls -> next independent Pi WP.
+
+Exception now frozen: a compound preregistered funnel may traverse multiple internal stages without intermediate Git/pull only when question, outcomes, branch logic, quantitative gates, workload and budget are all fixed before execution. Any scientific rule change terminates the funnel.
 
 ## Core 30B serving/I/O
 
-`LOOM_30B_MOE_SERVING_IO_REENTRY_001` identified external expert data-access as dominant:
-- access `0.442087 / 0.926028 s = 47.74%` median wall;
+External expert data-access is the dominant measured bottleneck:
+- `0.442087 / 0.926028 s = 47.74%` median wall;
 - `962,592,768 B` / 384 expert reads;
 - expert compute `0.004186 s`;
 - routing `0.019075 s`;
 - physical token-like I/O floor `0.481589 s/token`.
 
-Priority intervention remains lossless expert-major contiguous storage, contingent on valid physical-I/O causality.
+Priority intervention remains lossless expert-major contiguous storage.
 
-## Existing physical-I/O evidence
+## Physical-I/O evidence to date
 
-A/B 001 remains INVALID due cache contamination, although exact payload equality and structural read reduction `3456 -> 384` remain valid.
+A/B 001 remains INVALID due cache contamination, while exact payload equality and structural read reduction `3456 -> 384` remain valid.
 
-Frozen validity rule: every accepted timed repetition independently `>=80%` conservative physical coverage.
+Every accepted timed arm/repetition must independently show `>=80%` conservative physical coverage.
 
-Fresh-inode byte-copy cold protocol is rejected (~21% physical coverage across three valid ~160-MiB trials). Instrumentation persistence and `F_GLOBAL_NOCACHE` control semantics are resolved.
+Fresh-inode copy protocol is rejected (~21% coverage). Instrumentation and `F_GLOBAL_NOCACHE` semantics are resolved.
 
-## Global-nocache cold-I/O validation 002
+Global-nocache validation 002 proved the key pattern on the same region:
+- first touch T1 `96.0406%` physical coverage;
+- repeat T2 `25.8365%`;
+- repeat T3 `23.9728%`.
 
-Classification: `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`.
-Report: `research/architecture/loom-30b-expert-major-global-nocache-cold-io-validation-002-result.md`.
-Evidence: `results-local/research/30b-expert-major-global-nocache-cold-io-validation-002/20260826T141527Z/`.
+Payload/hash and controls PASS 3/3; swap 0 B. Conclusion: first touch is usable, repeated same-page cold enforcement is not. Do not spend more runs on eviction/control variants for the same pages.
 
-Three repeated reads of the same first-64-expert packed region:
-- T1 `96.0406%` conservative physical coverage, wall `0.251112 s`;
-- T2 `25.8365%`, `0.226934 s`;
-- T3 `23.9728%`, `0.228232 s`.
+## Exact next step — single decision funnel
 
-Payload/hash PASS 3/3; initial set/reset/restoration PASS 3/3; swap delta 0 B 3/3; minimum free memory 56%.
+`LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_001`
+Preregistration: `research/architecture/loom-30b-expert-major-decision-funnel-001-preregistration.md`.
 
-Interpretation: T1 establishes a strong first-touch physical-read signal, but the same pages become cache-served on T2/T3 despite correct controls. This is now a method failure, not a runner/instrumentation ambiguity. Do not keep iterating same-page eviction flags.
+The funnel answers one strategic question: **should expert-major be integrated into the runtime?**
 
-## Exact next step
+Stage 0, offline: construct >=3 mutually disjoint matched source/packed expert groups, preferably 64 experts / `160,432,128 B` per arm/group, with exact ordered payload identity and no page reuse across repetitions. If impossible -> `EXPERT_MAJOR_INCONCLUSIVE`.
 
-`LOOM_30B_FIRST_TOUCH_NONREUSE_IO_DESIGN_001`
+Stage 1, executed automatically if Stage 0 passes: exactly 3 first-touch matched pairs with frozen order `SOURCE->PACKED`, `PACKED->SOURCE`, `SOURCE->PACKED`. Every arm must independently pass >=80% conservative physical coverage, exact payload/hash, control restoration, instrumentation, memory and swap gates.
 
-Analysis-first design of a measurement scheme that avoids page reuse. Inspect packed/source mappings and retained expert identities to determine whether multiple mutually disjoint matched payload groups can be constructed. Each repetition must compare identical logical expert bytes between source and packed while not touching payload pages used in prior repetitions. Preserve the `>=80%` conservative physical-coverage gate per arm/repetition and one-factor causality.
+Primary statistic: median of three paired `packed_wall/source_wall` ratios.
+- GO if valid median `<=0.70`, packed physical bytes <=1.05x source per pair, no structural/exactness regression.
+- NO-GO if valid but median `>0.70` or valid evidence shows unacceptable physical-byte/read-structure regression.
+- INCONCLUSIVE only if valid measurement cannot be established.
 
-No full A/B, model forward, network, DFlash, runtime integration, purge/reboot/cache-thrash, swap pressure or fresh-copy workaround during design. Select one bounded validation design first.
+No model forward, network, DFlash or runtime edits inside this funnel. No human/Git round-trip between its internal stages.
+
+If GO, the next phase should similarly bundle runtime integration + exactness + bounded end-to-end benchmark into one compound WP.
