@@ -1,9 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-26
-Current: `PACKED_COLD_IO_PROTOCOL_UNRESOLVED`
-Strategic next: `LOOM_30B_COLD_IO_INSTRUMENTATION_REPAIR_001`
-Canonical context: `/AGENTS.md` v3.22.
+Current: `COLD_IO_INSTRUMENTATION_PASS`
+Strategic next: `LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002`
+Canonical context: `/AGENTS.md` v3.23.
 
 ## DFlash — closed
 
@@ -32,27 +32,36 @@ Future cold timing requires >=80% conservative physical coverage independently o
 
 ## Cold-I/O protocol validation 001 — unresolved
 
-Classification: `PACKED_COLD_IO_PROTOCOL_UNRESOLVED`.
-Report: `research/architecture/loom-30b-expert-major-cold-io-protocol-validation-001-result.md`.
+Candidate method: fresh non-cloned APFS inode using `O_CREAT|O_EXCL` byte-copy + `fsync`, with `F_NOCACHE/F_RDAHEAD` supplementary.
 
-Candidate method selected: fresh non-cloned APFS inode using `O_CREAT|O_EXCL` byte-copy + `fsync`, with `F_NOCACHE/F_RDAHEAD` supplementary.
+The first `160,432,128 B` trial could not be classified because instrumentation raised a post-read `KeyError` before required physical-counter and payload-validation evidence was persisted. The method itself remained unclassified.
 
-The first `160,432,128 B` trial was not accepted because instrumentation aborted after the timed read before physical counters and payload/hash validation were persisted. Trials 2–3 were not run. Swap delta was `0 B`; no unsafe memory pressure was observed.
+## Cold-I/O instrumentation repair 001 — PASS
 
-This does not reject the method; it blocks interpretation.
+Report: `research/architecture/loom-30b-cold-io-instrumentation-repair-001-result.md`.
+Classification: `COLD_IO_INSTRUMENTATION_PASS`.
+
+Root cause repaired: `row.update()` referenced `row['payload_validation']` before insertion.
+
+Validation:
+- success-path persistence PASS;
+- intentional failure persistence PASS;
+- fail-closed incomplete-evidence gate PASS;
+- probe `16,777,216 B`;
+- swap delta `0 B`.
+
+This removes the instrumentation blocker only; no cache-state or performance claim follows from this PASS.
 
 ## Next
 
-`LOOM_30B_COLD_IO_INSTRUMENTATION_REPAIR_001`
+`LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002`
 
-Before another cold-read protocol trial:
-1. make all required evidence persistence fail-safe;
-2. validate pre/post physical counters, logical bytes, wall time, read count, payload/hash result and memory/swap state;
-3. use only a <=16 MiB tiny probe;
-4. verify both success and intentional failure/exception paths persist sufficient diagnostic evidence;
-5. no full 160 MiB trial, model forward, network, DFlash or A/B.
-
-Only after `COLD_IO_INSTRUMENTATION_PASS` run `LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002`. Only after cold protocol PASS preregister physical-I/O A/B 002. Only after a valid A/B PASS integrate packed access into the exact runtime and measure end-to-end tok/s.
+1. Retest the unchanged fresh-inode method with repaired fail-safe instrumentation.
+2. At most three independent fresh-inode trials using the same representative packed subset scale (`160,432,128 B`, unless an exact bounded mechanical adjustment is required).
+3. Every accepted trial must independently satisfy >=80% conservative physical coverage, payload/hash PASS, complete instrumentation and safe memory/swap behavior.
+4. Do not run a full source-vs-packed A/B, model forward, network, DFlash or runtime optimization.
+5. Only `PACKED_COLD_IO_PROTOCOL_PASS` allows preregistration of `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_002`.
+6. Only after a valid A/B 002 PASS integrate packed access into the exact runtime and measure end-to-end tok/s.
 
 ## Synchronization rule
 
