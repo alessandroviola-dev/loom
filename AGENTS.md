@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.20
+Version: 3.21
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -11,16 +11,16 @@ Pi: local inspection/execution, minimum authorized changes, bounded tests, `resu
 ChatGPT: scientific direction, Git/GitHub, result docs, HANDOFF/ROADMAP.
 Pi must not Git/push/PR/edit project docs unless explicitly authorized.
 
-After every **significant scientific checkpoint**, ChatGPT must update canonical project state on GitHub and the user must pull before the next Pi WP. Significant checkpoints include: a classification change, accepted/invalid experiment, frozen baseline change, branch-direction change, or selection of a new next checkpoint. Tiny diagnostic substeps may be grouped only while the canonical next checkpoint remains unchanged.
+After every **significant scientific checkpoint**, ChatGPT updates canonical project state on GitHub and the user pulls before the next Pi WP. Significant checkpoints include: classification change, accepted/invalid experiment, frozen baseline change, branch-direction change, or selection of a new next checkpoint. Tiny diagnostics may be grouped only while the canonical next checkpoint remains unchanged.
 
 Rules:
 1. one-factor experiments; deterministic inputs; exact provenance;
 2. no silent scientific rescue or post-hoc gate relaxation;
-3. treatment comparison is invalid if more than the intended factor changes;
-4. expensive/network work requires retained/resumable artifacts and pre-dispatch hard caps;
-5. fail closed offline before expensive execution;
+3. treatment comparison invalid if more than intended factor changes;
+4. expensive/network work requires retained/resumable artifacts and pre-dispatch caps;
+5. fail closed before expensive execution;
 6. no performance claim from an INVALID benchmark;
-7. do not advance to a new scientific WP from stale AGENTS/HANDOFF/ROADMAP.
+7. do not advance from stale AGENTS/HANDOFF/ROADMAP.
 
 External root: `<external-archive>/`
 BF16 cache: `<external-archive>/bf16-cache/`
@@ -41,65 +41,76 @@ Stable facts:
 - one routed expert logically live at a time;
 - raw 4-GiB global LRU rejected.
 
-## DFlash branch — CLOSED AS ACTIVE RECOVERY PATH
+## DFlash — CLOSED AS ACTIVE PATH
 
-Final decision: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`.
+Final: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`.
 Report: `research/architecture/loom-dflash-bf16-causal-decision-001-result.md`.
+P3 and P1 both failed exact BF16 recovery, making preregistered >=2/3 impossible. Do not reopen absent a new independent mechanism.
 
-P3: Q4 DFlash rank 2 / 5416; BF16 rank 2 / 350; no exact recovery.
-P1: Q4 rank 3 / 3100; BF16 rank 2 / 3100; no exact recovery.
-P3 + P1 make preregistered >=2/3 exact recovery impossible; P2/E2E not executed.
-Do not reopen DFlash without a new independent mechanism.
-
-## Core serving/I/O re-entry — BOTTLENECK IDENTIFIED
+## Core serving/I/O — BOTTLENECK IDENTIFIED
 
 `LOOM_30B_MOE_SERVING_IO_REENTRY_001` = `SERVING_IO_BOTTLENECK_IDENTIFIED`.
 Report: `research/architecture/loom-30b-moe-serving-io-reentry-001-result.md`.
-Local evidence: `results-local/research/30b-moe-serving-io-reentry-001/20260826T122316Z/analysis.json`.
+Evidence: `results-local/research/30b-moe-serving-io-reentry-001/20260826T122316Z/analysis.json`.
 
 Dominant measured bottleneck: **external expert data-access**.
-Exact packed 48-layer decode-equivalent evidence:
-- data-access `0.442087 s / 0.926028 s = 47.74%` median wall;
-- 384 reads, `962,592,768 B` expert payload;
+- data access `0.442087 s / 0.926028 s = 47.74%` median wall;
+- 384 reads, `962,592,768 B` payload;
 - expert compute `0.004186 s`;
 - routing `0.019075 s`;
 - physical token-like I/O floor `0.481589 s/token`.
 
-Priority candidate: lossless expert-major contiguous storage. Cache/materialization work remains secondary until physical-I/O causality is established.
+Priority candidate: lossless expert-major contiguous storage.
 
 ## Expert-major physical-I/O A/B 001 — INVALID
 
 `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_001` = `EXPERT_MAJOR_PHYSICAL_IO_INVALID`.
 Report: `research/architecture/loom-30b-expert-major-physical-io-ab-001-result.md`.
-Local evidence: `results-local/research/30b-expert-major-physical-io-ab-001/20260826T122942Z/`.
 
-Observed but NOT scientifically accepted:
-- source p50/p95 `1.097739 / 1.116585 s`;
-- packed p50/p95 `0.382613 / 0.552228 s`;
-- apparent wall ratio `0.348547`;
+Observed but not accepted as cold-I/O performance:
+- source p50 `1.097739 s`;
+- packed p50 `0.382613 s`;
+- apparent ratio `0.348547`;
 - reads/pass `3456 -> 384`;
-- throughput `874.539 -> 2275.084 MB/s`;
-- byte/hash equality PASS.
+- exact byte/hash equality PASS.
 
-Invalidity: packed physical coverage only `50.06%`; physical/counter validity FAIL. Do not interpret the apparent ~65% wall reduction as a layout speedup yet.
+## Coverage audit — CACHE CONTAMINATION IDENTIFIED
+
+`LOOM_30B_EXPERT_MAJOR_IO_COVERAGE_AUDIT_001` = `PACKED_COVERAGE_CACHE_CONTAMINATION_IDENTIFIED`.
+Report: `research/architecture/loom-30b-expert-major-io-coverage-audit-001-result.md`.
+Evidence: `results-local/research/30b-expert-major-physical-io-ab-001/20260826T122942Z/`.
+
+Exact accounting:
+- logical bytes/pass both arms: `962,592,768 B`;
+- source conservative physical coverage: `99.8761%`;
+- packed conservative physical coverage: `50.0644%`;
+- packed first valid-like pass: `94.26%` physical coverage;
+- subsequent packed repetitions: only `38.61–40.20%`.
+
+Root cause: packed-file macOS OS/page-cache residency surviving accepted `F_NOCACHE/F_RDAHEAD` hints. Not duplicates, overlap, sparse file, clone construction, counter units or payload mismatch.
+
+Previous packed wall timing is not reusable as a cold physical-I/O speedup claim. Structural facts remain valid: exact payload equality and logical read-count reduction `3456 -> 384`.
+
+Frozen validity gate for any future cold A/B:
+- every timed repetition in each arm must show **>=80% conservative physical coverage**;
+- repetitions below 80% are invalid and cannot enter latency aggregates.
 
 ## Current checkpoint
 
-`LOOM_30B_EXPERT_MAJOR_IO_COVERAGE_AUDIT_001`
+`LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_001`
 
-Diagnostic only. Goal: explain packed ~50% physical coverage before repeating any full A/B.
+Goal: validate a reproducible packed cold-read protocol before repeating the full A/B.
 
-Required:
-1. reconstruct logical bytes, unique ranges, files, physical counters and coverage formula per arm;
-2. distinguish counter semantics from genuine cache/readahead contamination, APFS behavior, overlap/duplicates, or sampling error;
-3. verify identical payload for all 384 experts;
-4. only if retained evidence is insufficient, allow a tiny <=3-expert / <=100 MiB physical-I/O probe;
-5. decide whether previous timing is reusable, invalid-coldness, or unresolved;
-6. state the minimal correction for a valid A/B.
+Requirements:
+1. no model forward/network/DFlash/runtime optimization;
+2. use bounded diagnostic I/O only;
+3. test a minimal cache-state method that does not rely on `F_NOCACHE/F_RDAHEAD` alone;
+4. every accepted packed trial must independently demonstrate >=80% conservative physical coverage;
+5. retain exact logical/physical byte accounting and payload validation;
+6. PASS only if the method yields reproducible >=80% physical coverage without unsafe memory/swap pressure;
+7. only after PASS preregister `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_002`.
 
 Classifications:
-- `PACKED_COVERAGE_COUNTER_SEMANTICS_EXPLAINED`
-- `PACKED_COVERAGE_CACHE_CONTAMINATION_IDENTIFIED`
-- `PACKED_COVERAGE_UNRESOLVED`
-
-No full benchmark, model forward, network, DFlash, or runtime optimization during this checkpoint.
+- `PACKED_COLD_IO_PROTOCOL_PASS`
+- `PACKED_COLD_IO_PROTOCOL_FAIL`
+- `PACKED_COLD_IO_PROTOCOL_UNRESOLVED`
