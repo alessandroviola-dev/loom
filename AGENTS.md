@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.30
+Version: 3.31
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -69,12 +69,10 @@ External expert data-access is dominant:
 - routing `0.019075 s`;
 - physical token-like I/O floor `0.481589 s/token`.
 
-Priority candidate remains lossless expert-major contiguous storage. No speedup claim until physical-I/O causality is valid.
-
 ## Physical-I/O history
 
 - A/B 001: INVALID due cache contamination; exact payload equality and structural read reduction `3456 -> 384` remain valid.
-- Every accepted timed arm/repetition requires `>=80%` conservative physical coverage.
+- Every accepted timed physical-I/O arm requires `>=80%` conservative physical coverage.
 - Fresh-inode byte-copy cold protocol rejected (~21% coverage).
 - Instrumentation persistence repaired and PASS.
 - `F_GLOBAL_NOCACHE` semantics resolved locally: SET 1 => raw 0/errno 0; RESET 0 => raw 1/errno 0.
@@ -84,74 +82,119 @@ Priority candidate remains lossless expert-major contiguous storage. No speedup 
 
 `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_001` = `EXPERT_MAJOR_INCONCLUSIVE`.
 Result: `research/architecture/loom-30b-expert-major-decision-funnel-001-result.md`.
-Evidence: `results-local/research/30b-expert-major-decision-funnel-001/20260826T143324Z/`.
+Reason: trace-order groups were not contiguous in packed physical order; no timing ran.
 
-Stage 0 found three 64-expert groups (`160,432,128 B/arm`) with zero source/packed cross-group overlap and retained metadata PASS, but the groups were selected in canonical trace order and were not contiguous in packed physical order. No timing ran.
+## Decision Funnel 002 — EXPERT_MAJOR_GO
 
-Interpretation: measurement-design failure only. No evidence for or against expert-major performance.
+`LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002` = `EXPERT_MAJOR_GO`.
+Result: `research/architecture/loom-30b-expert-major-decision-funnel-002-result.md`.
+Evidence: `results-local/research/30b-expert-major-decision-funnel-002/20260826T144530Z/`.
 
-## Current checkpoint — COMPOUND DECISION FUNNEL 002
+Stage 0 PASS:
+- 3 x 64-expert groups;
+- `160,432,128 B/arm/group`;
+- exact matched logical payload;
+- zero SOURCE/PACKED cross-group overlap.
 
-`LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002`
+Valid paired first-touch physical-I/O results:
+- Pair 1 ratio `0.602456` (`0.425011 s` SOURCE vs `0.256050 s` PACKED);
+- Pair 2 ratio `0.595950` (`0.423898 s` vs `0.252622 s`);
+- Pair 3 ratio `0.581170` (`0.425366 s` vs `0.247210 s`).
 
-Preregistration: `research/architecture/loom-30b-expert-major-decision-funnel-002-preregistration.md`.
+Median paired wall ratio: `0.595950` = `40.405%` lower access wall.
 
-Decision question: **Does expert-major contiguous storage provide enough causally valid physical-I/O improvement to justify runtime integration?**
+All six arms PASS:
+- physical coverage ~`95.37–100.87%`;
+- whole-group payload/hash exactness;
+- read structure `576 -> 64` per group;
+- packed/source conservative physical-byte ratios `0.947801`, `0.952811`, `0.945495`;
+- control validity;
+- zero swap delta;
+- minimum free memory `55%`.
+
+Interpretation: expert-major contiguous storage is now causally validated for raw external-expert physical I/O and is accepted for isolated runtime integration testing.
+
+## Current checkpoint — COMPOUND RUNTIME FUNNEL 001
+
+`LOOM_30B_EXPERT_MAJOR_RUNTIME_FUNNEL_001`
+
+Preregistration: `research/architecture/loom-30b-expert-major-runtime-funnel-001-preregistration.md`.
+
+Decision question: **Does replacing only the external expert data-access backend with expert-major preserve exact runtime semantics and improve practical end-to-end decode enough to justify canonical adoption on M1/8GB?**
 
 Final outcomes only:
-- `EXPERT_MAJOR_GO`
-- `EXPERT_MAJOR_NO_GO`
-- `EXPERT_MAJOR_INCONCLUSIVE`
+- `EXPERT_MAJOR_RUNTIME_GO`
+- `EXPERT_MAJOR_RUNTIME_NO_GO`
+- `EXPERT_MAJOR_RUNTIME_INCONCLUSIVE`
 
-### Stage 0 — deterministic packed-first construction
+### Stage 0 — isolated integration
 
-Use retained metadata only; no payload read before timing.
+- inspect current exact external serial-expert runtime and retained pack/manifest;
+- deterministically select the most recent existing canonical exact-runtime workload supporting final-logit capture and decode timing;
+- create only an isolated experimental adapter/workspace under `results-local/`;
+- SOURCE baseline remains unchanged;
+- PACKED changes only expert data-access layout/backend;
+- routing, expert math, quantization, dtypes, KV, non-routed weights, input tokens, scheduling/synchronization and output computation remain unchanged;
+- no persistent expert cache; one routed expert logically live at a time;
+- validate mapping/manifest coverage before model forward.
 
-1. enumerate packed expert entries by ascending physical offset;
-2. exclude regions recently re-touched by global-nocache validation;
-3. choose first three disjoint contiguous packed blocks of 64 entries;
-4. map those exact expert IDs/order to SOURCE nine-range representation;
-5. validate exact retained payload/hash provenance and zero cross-group overlaps;
-6. if 64 fails, frozen fallback sizes are 32 then 16 experts/group; use the largest size yielding exactly 3 valid groups;
-7. if none of `{64,32,16}` works: `EXPERT_MAJOR_INCONCLUSIVE` and STOP.
+If one-factor isolation cannot be established: `EXPERT_MAJOR_RUNTIME_INCONCLUSIVE`.
 
-Expected reads/group for N experts: SOURCE `9*N`, PACKED `N`.
+### Stage 1 — exactness
 
-### Stage 1 — decisive paired first-touch A/B
+Same forced/frozen token sequence for SOURCE and PACKED at three consecutive full 48-layer decode positions.
+Require:
+- identical routed expert IDs/order;
+- expert payload mapping/hash PASS;
+- identical raw final-logit float32 SHA at all 3 positions;
+- no PACKED fallback to SOURCE;
+- no persistent expert cache;
+- no unsafe memory pressure.
 
-Exactly 3 matched groups, used once only. Frozen arm order:
+Valid exactness failure => `EXPERT_MAJOR_RUNTIME_NO_GO`.
+Measurement ambiguity => `EXPERT_MAJOR_RUNTIME_INCONCLUSIVE`.
+
+### Stage 2 — practical end-to-end performance/safety
+
+No artificial cache-state manipulation. Exactly 3 process-level matched pairs, frozen order:
 - Pair 1 `SOURCE->PACKED`
 - Pair 2 `PACKED->SOURCE`
 - Pair 3 `SOURCE->PACKED`
 
-Every arm independently requires:
-- conservative physical coverage `>=80%`;
-- payload/hash PASS;
-- complete arithmetic-consistent evidence;
-- established fixed-ABI control set/reset/restoration PASS;
-- swap delta `<=16,000,000 B`;
-- free memory `>=10%`;
-- no unsafe memory pressure;
-- matched logical bytes;
-- observed read structure SOURCE `9*N`, PACKED `N`.
+Per arm:
+- fresh runtime process;
+- same frozen model/input/token sequence/settings;
+- one unmeasured decode warmup token after prefill;
+- exactly three measured decode tokens;
+- record measured decode wall, peak RSS, memory pressure, swap, routing/backend status;
+- close process before next arm.
 
-Any invalid arm => `EXPERT_MAJOR_INCONCLUSIVE` and STOP.
+Safety gates:
+- no persistent expert cache;
+- median PACKED peak RSS <= median SOURCE peak RSS + `128 MiB`;
+- PACKED swap delta <= matched SOURCE swap delta + `64 MiB` in every pair;
+- no unsafe memory pressure.
 
-Primary statistic: paired `packed_wall/source_wall`; decision statistic = median of 3 paired ratios.
+Primary runtime ratio per pair: `packed_measured_decode_wall/source_measured_decode_wall`.
+Decision statistic: median of three ratios.
 
-`EXPERT_MAJOR_GO` only if valid and:
-- median paired ratio `<=0.70`;
-- packed conservative physical bytes `<=1.05x` source in every pair;
-- no exactness/read-structure regression.
+`EXPERT_MAJOR_RUNTIME_GO` only if exactness and safety PASS and median runtime ratio `<=0.90` (>=10% practical decode-wall improvement).
 
-`EXPERT_MAJOR_NO_GO` if valid but median ratio `>0.70`, or valid evidence shows unacceptable physical-byte/read-structure regression.
+`EXPERT_MAJOR_RUNTIME_NO_GO` if evidence is valid but exactness/safety fails or median runtime ratio `>0.90`.
+
+`EXPERT_MAJOR_RUNTIME_INCONCLUSIVE` only for genuine integration/environment/instrumentation ambiguity.
 
 Bounds:
-- no model forward/network/DFlash/runtime edits;
-- no purge/reboot/cache-thrash/RAM-fill/swap eviction/fresh-copy workaround;
-- max 3 pairs;
-- max group size 64 experts;
-- total timed logical payload <= `962,592,768 B` for 64-expert groups, proportionally lower for fallback sizes;
-- no intermediate human/Git sync inside the frozen funnel.
+- no network/model download;
+- no DFlash;
+- no cache/eviction experiments;
+- no project docs/Git edits by Pi;
+- isolated experimental integration only;
+- 3 exactness decode positions max;
+- exactly 3 performance pairs;
+- one warmup + 3 measured decode tokens/arm;
+- no rescue repetitions;
+- total runtime wall cap `360 s`;
+- stop on unsafe memory pressure.
 
-If GO, next phase should be one compound runtime funnel bundling isolated integration + exactness + safety + bounded end-to-end benchmark.
+If GO, expert-major becomes the accepted runtime direction and can be productionized/canonicalized using this evidence.
