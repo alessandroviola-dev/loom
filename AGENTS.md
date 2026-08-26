@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.28
+Version: 3.29
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -11,19 +11,31 @@ Pi: local inspection/execution, minimum authorized changes, bounded tests, `resu
 ChatGPT: scientific direction, Git/GitHub, result docs, HANDOFF/ROADMAP.
 Pi must not Git/push/PR/edit project docs unless explicitly authorized.
 
-After every **significant scientific checkpoint**, ChatGPT updates canonical project state on GitHub and the user pulls before the next Pi WP. Significant checkpoints include classification change, accepted/invalid/unresolved experiment, frozen baseline change, branch-direction change, or selection of a new next checkpoint.
+After every **significant scientific checkpoint**, ChatGPT updates canonical project state on GitHub and the user pulls before the next independent Pi WP.
+
+### Compound preregistered funnel exception
+
+A single Pi WP may contain multiple internal stages/gates and advance through them automatically **without intermediate Git/pull cycles** only when all of the following are frozen before execution:
+- scientific question and final outcomes;
+- stage order and branch logic;
+- quantitative PASS/FAIL/INCONCLUSIVE gates;
+- workload/provenance;
+- cost/traffic/runtime bounds;
+- fail-closed behavior.
+
+No threshold, causal factor, workload, rescue, or branch may be changed after results begin arriving. Any such change ends the funnel and requires a new checkpoint.
 
 Rules:
-1. one-factor experiments; deterministic inputs; exact provenance;
+1. one-factor comparisons; deterministic inputs; exact provenance;
 2. no silent scientific rescue or post-hoc gate relaxation;
 3. treatment comparison invalid if more than intended factor changes;
 4. expensive/network work requires retained/resumable artifacts and pre-dispatch caps;
 5. fail closed before expensive execution;
-6. no performance claim from INVALID or UNRESOLVED evidence;
-7. do not advance from stale AGENTS/HANDOFF/ROADMAP;
+6. no performance claim from INVALID/UNRESOLVED/INCONCLUSIVE evidence;
+7. do not advance from stale AGENTS/HANDOFF/ROADMAP except inside a fully preregistered compound funnel as defined above;
 8. instrumentation required by a gate must persist successfully before a timed result can be accepted;
-9. a failed frozen method must not be silently modified and rerun under the same checkpoint;
-10. control/API return values that affect scientific validity must be established locally, not inferred from convention.
+9. failed frozen methods must not be silently modified and rerun under the same checkpoint;
+10. control/API return values affecting scientific validity must be established locally, not inferred from convention.
 
 External root: `<external-archive>/`
 BF16 cache: `<external-archive>/bf16-cache/`
@@ -46,8 +58,7 @@ Stable facts:
 
 ## DFlash — CLOSED AS ACTIVE PATH
 
-Final: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`.
-Do not reopen absent a new independent mechanism.
+Final: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`. Do not reopen absent a new independent mechanism.
 
 ## Core serving/I/O — BOTTLENECK IDENTIFIED
 
@@ -65,64 +76,76 @@ Priority candidate remains lossless expert-major contiguous storage. No speedup 
 
 A/B 001 is INVALID because repeated packed trials were cache-contaminated, although exact payload equality and structural read reduction `3456 -> 384` are valid.
 
-Frozen cold timing gate: every accepted timed repetition must independently show `>=80%` conservative physical coverage.
+Frozen physical-I/O validity authority: every accepted timed arm/repetition independently `>=80%` conservative physical coverage.
 
-Fresh-inode byte-copy cold protocol is rejected: three valid ~160-MiB trials achieved only ~21% coverage.
+Fresh-inode byte-copy cold protocol is rejected (~21% coverage across three valid ~160-MiB trials).
+Instrumentation persistence is repaired and PASS.
+`F_GLOBAL_NOCACHE` semantics are resolved locally with fixed-ABI helper: SET 1 => raw 0/errno 0; RESET 0 => raw 1/errno 0.
 
-Instrumentation persistence repair is PASS.
-
-`F_GLOBAL_NOCACHE` set/reset semantics are resolved locally using a fixed-ABI helper:
-- SET 1: raw 0, errno 0;
-- RESET 0: raw 1, errno 0;
-- transactional restoration verification PASS.
-
-## Global-nocache cold-I/O validation 002 — FAIL
+### Global-nocache validation 002 — FAIL
 
 `LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_002` = `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`.
-Report: `research/architecture/loom-30b-expert-major-global-nocache-cold-io-validation-002-result.md`.
 Evidence: `results-local/research/30b-expert-major-global-nocache-cold-io-validation-002/20260826T141527Z/`.
 
 Same packed region, three valid trials:
-- T1: `96.0406%`, `0.251112 s`, `154,260,000 / 154,080,000 B` raw/conservative physical;
-- T2: `25.8365%`, `0.226934 s`, `41,810,000 / 41,450,000 B`;
-- T3: `23.9728%`, `0.228232 s`, `39,020,000 / 38,460,000 B`.
+- T1 `96.0406%`, `0.251112 s`;
+- T2 `25.8365%`, `0.226934 s`;
+- T3 `23.9728%`, `0.228232 s`.
 
-Other gates:
-- payload/hash PASS 3/3;
-- initial set/reset/restoration PASS 3/3;
-- swap delta 0 B 3/3;
-- minimum free memory 56%.
+Payload/hash PASS 3/3; set/reset/restoration PASS 3/3; swap delta 0 B; minimum free memory 56%.
+Conclusion: first touch can be strongly physical, but same-page repeated cold enforcement is rejected. Do not spend more runs on eviction/control variants for the same pages.
 
-Interpretation:
-- control semantics and instrumentation are no longer blockers;
-- first touch can be strongly physical;
-- repeated touches of the same region remain cache-served;
-- direct global-nocache repeated-same-payload cold enforcement is rejected;
-- do not keep adding eviction/control variants to the same-pages protocol.
+## Current checkpoint — COMPOUND DECISION FUNNEL
 
-## Current checkpoint
+`LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_001`
 
-`LOOM_30B_FIRST_TOUCH_NONREUSE_IO_DESIGN_001`
+Preregistration: `research/architecture/loom-30b-expert-major-decision-funnel-001-preregistration.md`.
 
-Goal: design a valid physical-I/O comparison that avoids reusing already-touched pages instead of trying to evict them.
+Decision question: **Does expert-major contiguous storage provide enough causally valid physical-I/O improvement to justify runtime integration?**
 
-Analysis-first requirements:
-1. no model forward/network/DFlash/runtime integration/full performance A/B;
-2. inspect packed layout, source ranges, retained traces and expert identities to determine how many mutually disjoint matched source/packed payload groups can be constructed;
-3. each candidate repetition must compare exactly the same logical expert payload between source and packed arms while not reusing payload pages from earlier repetitions;
-4. preserve one-factor causality: only storage layout/read fragmentation may differ within a matched pair;
-5. quantify total unique logical bytes, offsets/ranges, overlap between repetitions and expected RAM/cache interaction;
-6. retain per-arm/per-repetition `>=80%` conservative physical-coverage validity authority;
-7. rank at most 2 non-reuse designs and select exactly one;
-8. preregister a minimal packed-only or paired validation before full A/B;
-9. avoid RAM-fill/cache-thrash, swap pressure, purge/reboot dependence, copied fresh files, or unverifiable cache-state assumptions;
-10. do not execute a large validation in this design checkpoint; at most one <=32-MiB metadata/semantics probe if mechanically necessary.
+Final outcomes:
+- `EXPERT_MAJOR_GO`
+- `EXPERT_MAJOR_NO_GO`
+- `EXPERT_MAJOR_INCONCLUSIVE`
 
-Preferred direction to evaluate first:
-- disjoint first-touch expert subsets/regions across repetitions, with source and packed matched on exact payload bytes for each repetition.
+### Stage 0 — offline construction
 
-Classification:
-- `FIRST_TOUCH_NONREUSE_IO_DESIGN_SELECTED`
-- `FIRST_TOUCH_NONREUSE_IO_DESIGN_INSUFFICIENT`
+Construct at least 3 mutually disjoint matched source/packed groups, preferably 64 expert payloads each (`160,432,128 B` per arm/group).
+Every group must contain exactly the same ordered logical expert payload in both arms and must not reuse source or packed payload pages used by another repetition.
+If 3 valid non-reuse groups cannot be constructed: `EXPERT_MAJOR_INCONCLUSIVE` and STOP.
 
-Only after a selected design passes a separately preregistered physical-coverage validation may `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_002` be considered.
+### Stage 1 — decisive paired first-touch A/B
+
+Exactly 3 matched pairs; frozen arm order: `SOURCE->PACKED`, `PACKED->SOURCE`, `SOURCE->PACKED`.
+Each group is touched once only.
+Use established fixed-ABI global-nocache controls and complete repaired instrumentation.
+
+Every arm/repetition must PASS:
+- conservative physical coverage `>=80%`;
+- exact payload/hash equality;
+- complete arithmetic-consistent evidence;
+- control set/reset/restoration;
+- swap delta `<=16,000,000 B`;
+- free memory `>=10%`;
+- no unsafe memory pressure;
+- matched logical bytes and expected read-count structure.
+
+Any invalid arm => `EXPERT_MAJOR_INCONCLUSIVE`.
+
+Primary statistic: paired ratio `packed_wall/source_wall`; decision statistic = median of 3 paired ratios.
+
+`EXPERT_MAJOR_GO` only if valid and:
+- median paired ratio `<=0.70`;
+- packed conservative physical bytes `<=1.05x` source in every pair;
+- no exactness/read-structure regression.
+
+`EXPERT_MAJOR_NO_GO` if comparison is valid but median paired ratio `>0.70`, or valid evidence shows unacceptable physical-byte/read-structure regression.
+
+Bounds:
+- no model forward/network/DFlash/runtime edits;
+- no purge/reboot/cache-thrash/RAM-fill/swap eviction/fresh-copy workaround;
+- max 3 matched pairs;
+- timed logical payload <= `962,592,768 B` total across both arms;
+- no intermediate human/Git synchronization inside the frozen funnel.
+
+If final outcome is GO, the next phase should likewise bundle runtime integration + exactness + bounded end-to-end benchmark into one preregistered compound WP rather than returning to micro-test iteration.
