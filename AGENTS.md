@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.24
+Version: 3.25
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -77,60 +77,73 @@ Reason: packed conservative physical coverage only `50.0644%`.
 Cause: macOS page-cache residency surviving `F_NOCACHE/F_RDAHEAD` hints.
 Future cold timing validity requires **>=80% conservative physical coverage on every accepted repetition**.
 
-## Cold-I/O protocol validation 001 — UNRESOLVED
-
-`LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_001` = `PACKED_COLD_IO_PROTOCOL_UNRESOLVED`.
-The selected fresh-inode method could not be classified because instrumentation failed after the timed read.
-
-## Cold-I/O instrumentation repair 001 — PASS
-
-`LOOM_30B_COLD_IO_INSTRUMENTATION_REPAIR_001` = `COLD_IO_INSTRUMENTATION_PASS`.
-Report: `research/architecture/loom-30b-cold-io-instrumentation-repair-001-result.md`.
-Evidence: `results-local/research/30b-cold-io-instrumentation-repair-001/20260826T130155Z/`.
-
-Root cause fixed: `row.update()` referenced `row['payload_validation']` before insertion.
-Success persistence PASS; intentional fail persistence PASS; fail-closed gate PASS; probe `16,777,216 B`; swap delta `0 B`.
-
 ## Cold-I/O protocol validation 002 — FAIL
 
 `LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002` = `PACKED_COLD_IO_PROTOCOL_FAIL`.
 Report: `research/architecture/loom-30b-expert-major-cold-io-protocol-validation-002-result.md`.
-Evidence: `results-local/research/30b-expert-major-cold-io-protocol-validation-002/20260826T131142Z/`.
 
-Frozen method tested unchanged:
-- fresh non-cloned APFS inode via `O_CREAT|O_EXCL`;
-- byte-copy selected packed payload;
-- `fsync` before timed read;
-- `F_NOCACHE/F_RDAHEAD` supplementary.
+Fresh non-cloned inode + byte-copy + fsync + descriptor hints produced only `21.7537%`, `21.6914%`, `20.8250%` conservative physical coverage on three valid 160,432,128-B trials. Payload/hash PASS 3/3; swap delta 0 B. Method rejected.
 
-Three valid `160,432,128 B` trials:
-- T1 coverage `21.7537%`, wall `0.221453 s`, raw physical `37,090,000 B`;
-- T2 `21.6914%`, `0.253920 s`, `37,030,000 B`;
-- T3 `20.8250%`, `0.224689 s`, `37,140,000 B`.
-Payload/hash PASS 3/3; swap delta 0 B 3/3; 0/3 met frozen >=80% gate.
+Working hypothesis only: preparation by ordinary byte-copy may populate macOS page cache for the new inode. Not proven as sole cause.
 
-Therefore the fresh-inode byte-copy method is rejected. A plausible but unproven mechanism is that preparation itself leaves written pages resident in cache. Treat this only as a working hypothesis until measured.
+## Cold-I/O measurement strategy redesign 001 — SELECTED
 
-Do not modify this failed method post hoc and call it the same experiment. Do not preregister A/B 002 yet.
+`LOOM_30B_COLD_IO_MEASUREMENT_STRATEGY_REDESIGN_001` = `COLD_IO_MEASUREMENT_STRATEGY_SELECTED`.
+Report: `research/architecture/loom-30b-cold-io-measurement-strategy-redesign-001-result.md`.
+Evidence: `results-local/research/30b-cold-io-measurement-strategy-redesign-001/20260826T133031Z/`.
+
+Bounded 32-MiB mechanism probe:
+- `F_GLOBAL_NOCACHE` accepted locally;
+- global+descriptor conservative physical coverage `49.35%`;
+- descriptor-only `57.58%`;
+- hashes PASS; swap increase 0 B.
+
+Interpretation: mechanism availability is demonstrated, but the tiny probe does NOT establish coldness and is not a performance result.
+
+Selected strategy:
+- direct read of the existing packed payload;
+- no preparation copy/write;
+- fresh read-only FD per trial;
+- set `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0` before any payload read;
+- reset global control after each trial;
+- per-trial conservative physical coverage remains the validity authority.
+
+Rejected alternatives for now:
+- fresh copy written under global nocache: additional write/copy causal confounding;
+- `purge(8)`: system-wide and operationally disruptive.
 
 ## Current checkpoint
 
-`LOOM_30B_COLD_IO_MEASUREMENT_STRATEGY_REDESIGN_001`
+`LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_001`
 
-Goal: redesign the cold physical-I/O measurement strategy before another performance A/B.
+Goal: validate the selected direct-existing-packed `F_GLOBAL_NOCACHE` strategy before any source-vs-packed A/B.
 
-Analysis-first requirements:
-1. inspect retained I/O evidence, failed fresh-inode protocol, and locally available macOS file/cache mechanisms;
-2. distinguish established facts from hypotheses about write-side cache population;
-3. rank at most 3 safe candidate measurement/preparation strategies;
-4. reject RAM-filling/cache-thrashing, swap-induced eviction, uncontrolled reboot dependence, or methods that cannot validate per-trial physical coverage;
-5. choose exactly one minimal bounded validation experiment with the same frozen >=80% conservative physical-coverage criterion;
-6. prefer <=256 MiB/trial, <=3 trials, no model forward/network/DFlash/full source-vs-packed A/B;
-7. define quantitative PASS/FAIL and instrumentation before execution;
-8. do not execute the selected validation experiment in this checkpoint unless only a tiny <=32 MiB probe is necessary to resolve mechanism availability/semantics.
+Frozen workload/protocol:
+1. packed-only validation; first 64 packed experts; `160,432,128 B` logical payload/trial;
+2. exactly 3 trials maximum;
+3. fresh read-only FD each trial;
+4. before first payload read set `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0`;
+5. collect three idle `iostat -Id` intervals for conservative background subtraction;
+6. timed 4-MiB-chunk read/hash;
+7. persist repaired instrumentation, payload/hash, raw and conservative physical counters, memory/swap and control status;
+8. reset global control after each trial; fail closed if set/reset fails.
+
+Frozen PASS requires all 3/3 trials:
+- conservative physical coverage `>=80%`;
+- payload/hash PASS;
+- complete arithmetic-consistent persisted instrumentation;
+- successful global/per-FD control set and reset;
+- swap delta `<=16,000,000 B`;
+- free memory `>=10%`;
+- no unsafe memory-pressure event.
+
+FAIL if any trial is below 80% or any safety/control/hash/persistence gate fails.
+
+No source arm, model forward, network, DFlash, runtime integration, threshold changes or post-hoc strategy modification in this checkpoint.
+
+Only after `PACKED_GLOBAL_NOCACHE_COLD_IO_PASS` may physical-I/O A/B 002 be preregistered.
 
 Classifications:
-- `COLD_IO_MEASUREMENT_STRATEGY_SELECTED`
-- `COLD_IO_MEASUREMENT_STRATEGY_INSUFFICIENT`
-
-Only after strategy selection and a separately preregistered validation PASS may `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_002` be considered.
+- `PACKED_GLOBAL_NOCACHE_COLD_IO_PASS`
+- `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`
+- `PACKED_GLOBAL_NOCACHE_COLD_IO_UNRESOLVED`
