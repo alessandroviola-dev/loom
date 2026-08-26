@@ -1,16 +1,16 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-26
-Status: ACTIVE — core 30B-on-8GB serving/I/O. Direct existing-packed `F_GLOBAL_NOCACHE` produced a strong cold-read signal (`95.3113%`). The prior reset failure was a runner interpretation bug; local set/reset semantics are now resolved.
+Status: ACTIVE — core 30B-on-8GB serving/I/O. External expert data-access remains the dominant measured bottleneck. Repeated same-region cold enforcement is now rejected; first-touch behavior is strongly physical and the next direction is a non-reuse matched-payload design.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_GLOBAL_NOCACHE_RESET_SEMANTICS_AUDIT_001_GLOBAL_NOCACHE_RESET_SEMANTICS_RESOLVED`
-Next: `LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_002`
-Pi context: `/AGENTS.md` v3.27.
+Current checkpoint: `LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_002_PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`
+Next: `LOOM_30B_FIRST_TOUCH_NONREUSE_IO_DESIGN_001`
+Pi context: `/AGENTS.md` v3.28.
 
 ## Synchronization
 
-After every significant checkpoint: ChatGPT updates canonical GitHub state, user pulls, then next Pi WP. Failed/invalid/unresolved evidence cannot support performance claims. Control/API semantics affecting scientific gates must be established explicitly.
+After every significant checkpoint: ChatGPT updates canonical GitHub state, user pulls, then next Pi WP. Failed/invalid/unresolved evidence cannot support performance claims. Failed frozen methods are not silently modified and rerun.
 
 ## Core 30B serving/I/O
 
@@ -25,48 +25,31 @@ Priority intervention remains lossless expert-major contiguous storage, continge
 
 ## Existing physical-I/O evidence
 
-A/B 001 is INVALID due cache contamination, although exact payload equality and structural read reduction `3456 -> 384` remain valid.
+A/B 001 remains INVALID due cache contamination, although exact payload equality and structural read reduction `3456 -> 384` remain valid.
 
-Frozen cold timing rule: every accepted timed repetition independently `>=80%` conservative physical coverage.
+Frozen validity rule: every accepted timed repetition independently `>=80%` conservative physical coverage.
 
-Fresh-inode byte-copy protocol is rejected (~21% physical coverage across three valid ~160-MiB trials). Instrumentation persistence is repaired and PASS.
+Fresh-inode byte-copy cold protocol is rejected (~21% physical coverage across three valid ~160-MiB trials). Instrumentation persistence and `F_GLOBAL_NOCACHE` control semantics are resolved.
 
-## Global-nocache validation 001
+## Global-nocache cold-I/O validation 002
 
-Classification remains `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL` because the preregistered 3/3 sequence terminated after T1.
+Classification: `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`.
+Report: `research/architecture/loom-30b-expert-major-global-nocache-cold-io-validation-002-result.md`.
+Evidence: `results-local/research/30b-expert-major-global-nocache-cold-io-validation-002/20260826T141527Z/`.
 
-T1 itself achieved:
-- conservative physical coverage `95.3113%`;
-- wall `0.246744 s`;
-- raw/conservative physical `153,010,000 / 152,910,000 B`;
-- payload/hash PASS;
-- swap delta `0 B`;
-- minimum free memory `59%`.
+Three repeated reads of the same first-64-expert packed region:
+- T1 `96.0406%` conservative physical coverage, wall `0.251112 s`;
+- T2 `25.8365%`, `0.226934 s`;
+- T3 `23.9728%`, `0.228232 s`.
 
-The runner stopped because RESET returned raw `1` and was incorrectly treated as failure.
+Payload/hash PASS 3/3; initial set/reset/restoration PASS 3/3; swap delta 0 B 3/3; minimum free memory 56%.
 
-## Reset semantics audit 001
-
-Classification: `GLOBAL_NOCACHE_RESET_SEMANTICS_RESOLVED`.
-Report: `research/architecture/loom-30b-global-nocache-reset-semantics-audit-001-result.md`.
-Evidence: `results-local/research/30b-global-nocache-reset-semantics-audit-001/20260826T135941Z/`.
-
-Exact local semantics:
-- `F_GLOBAL_NOCACHE=55`;
-- SET argument `1`: raw `0`, errno `0`, state `0 -> 1`;
-- RESET argument `0`: raw `1`, errno `0`, state `1 -> 0`;
-- therefore old `returned == 0` RESET predicate was wrong.
-
-No passive GET exists locally. Reversible transactional checks on empty files produced `[0,1,0,1,0,1]` under native C, Python fcntl, and fixed-ABI C/ctypes, with no payload read.
-
-Frozen future control protocol uses a fixed-ABI native helper with explicit errno capture: SET 1 requires raw 0; RESET 0 requires raw 1; then verify restoration transactionally with another SET 1 -> 0 / RESET 0 -> 1 pair. Any deviation fails closed.
+Interpretation: T1 establishes a strong first-touch physical-read signal, but the same pages become cache-served on T2/T3 despite correct controls. This is now a method failure, not a runner/instrumentation ambiguity. Do not keep iterating same-page eviction flags.
 
 ## Exact next step
 
-`LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_002`
+`LOOM_30B_FIRST_TOUCH_NONREUSE_IO_DESIGN_001`
 
-Repeat the same packed-only 3-trial validation on the first 64 experts (`160,432,128 B/trial`) with unchanged coldness/safety thresholds. The only repaired factor is correct global-nocache control semantics using the fixed-ABI helper.
+Analysis-first design of a measurement scheme that avoids page reuse. Inspect packed/source mappings and retained expert identities to determine whether multiple mutually disjoint matched payload groups can be constructed. Each repetition must compare identical logical expert bytes between source and packed while not touching payload pages used in prior repetitions. Preserve the `>=80%` conservative physical-coverage gate per arm/repetition and one-factor causality.
 
-PASS requires all 3/3 trials >=80% conservative physical coverage, payload/hash PASS, complete instrumentation, control set/reset/restoration PASS, swap delta <=16,000,000 B, free memory >=10%, and no unsafe pressure.
-
-Only after PASS may physical-I/O A/B 002 be preregistered.
+No full A/B, model forward, network, DFlash, runtime integration, purge/reboot/cache-thrash, swap pressure or fresh-copy workaround during design. Select one bounded validation design first.
