@@ -1,9 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-26
-Current: `EXPERT_MAJOR_INCONCLUSIVE` from Decision Funnel 001
-Strategic next: `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002`
-Canonical context: `/AGENTS.md` v3.30.
+Current: `EXPERT_MAJOR_GO` from Decision Funnel 002
+Strategic next: `LOOM_30B_EXPERT_MAJOR_RUNTIME_FUNNEL_001`
+Canonical context: `/AGENTS.md` v3.31.
 
 ## Core 30B-on-8GB serving
 
@@ -13,61 +13,78 @@ External expert data-access remains the dominant measured bottleneck:
 - routing `0.019075 s`;
 - physical token-like I/O floor `0.481589 s/token`.
 
-Priority candidate remains lossless expert-major contiguous storage.
+## Expert-major — physical-I/O decision accepted
 
-## Established I/O facts
+`LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002` = `EXPERT_MAJOR_GO`.
+Result: `research/architecture/loom-30b-expert-major-decision-funnel-002-result.md`.
+Evidence: `results-local/research/30b-expert-major-decision-funnel-002/20260826T144530Z/`.
 
-- Exact expert-major payload equality is valid.
-- Structural read reduction `3456 -> 384` is valid.
-- A/B 001 timing is INVALID due cache contamination.
-- Every accepted timed arm requires `>=80%` conservative physical coverage.
-- Fresh-inode copy cold preparation is rejected.
-- Instrumentation and `F_GLOBAL_NOCACHE` semantics are resolved.
-- Same-region repetition is rejected: first touch `96.0406%`, repeats `25.8365%`, `23.9728%`.
+Three disjoint 64-expert matched groups passed all physical-I/O validity gates.
 
-## Decision Funnel 001 — INCONCLUSIVE
+Paired PACKED/SOURCE access-wall ratios:
+- `0.602456`;
+- `0.595950`;
+- `0.581170`;
+- median `0.595950` = `40.405%` lower access wall.
 
-Result: `research/architecture/loom-30b-expert-major-decision-funnel-001-result.md`.
-Evidence: `results-local/research/30b-expert-major-decision-funnel-001/20260826T143324Z/`.
+Read calls were reduced `576 -> 64` per group while conservative physical-byte ratios remained `0.947801`, `0.952811`, `0.945495`; all payload/hash, control, instrumentation, memory and swap gates passed.
 
-Stage 0 found three 64-expert groups with exact retained metadata and zero cross-group overlap, but canonical trace ordering did not produce contiguous packed groups. No performance timing ran. This is a design/preregistration failure only.
+Therefore raw expert-major data access is no longer speculative. It is the selected serving intervention for runtime validation.
 
 ## Execution model
 
-Use compound preregistered funnels for strategic yes/no questions. Internal gates do not require Git/pull if all branches, thresholds, deterministic fallback order, workload and bounds were frozen before execution. No post-hoc rescue.
+Continue using compound preregistered funnels for strategic yes/no questions. Internal stages do not require Git/pull if outcomes, branch logic, thresholds, deterministic workload selection/fallback and bounds are frozen before execution.
 
-## Next — Expert-major Decision Funnel 002
+## Next — Expert-major Runtime Funnel 001
 
-Preregistration: `research/architecture/loom-30b-expert-major-decision-funnel-002-preregistration.md`.
+Preregistration: `research/architecture/loom-30b-expert-major-runtime-funnel-001-preregistration.md`.
 
-Stage 0:
-1. enumerate packed expert entries by physical offset;
-2. exclude regions explicitly re-touched in recent global-nocache validation;
-3. select the first three disjoint contiguous packed groups;
-4. map the exact same expert IDs/order to source nine-range representation;
-5. validate retained hash/provenance and zero source/packed cross-group overlap;
-6. deterministic group-size order `64 -> 32 -> 16`, use largest size yielding exactly 3 valid groups;
-7. if none works, final `EXPERT_MAJOR_INCONCLUSIVE`.
+Question: does replacing only the external expert data-access backend with expert-major preserve exact runtime semantics and deliver enough practical end-to-end decode improvement on M1/8GB to justify canonical adoption?
 
-Stage 1, automatic if Stage 0 passes:
-- three first-touch matched pairs with frozen order `SOURCE->PACKED`, `PACKED->SOURCE`, `SOURCE->PACKED`;
-- each arm independently >=80% conservative physical coverage plus payload/hash, instrumentation, control, memory/swap and read-structure gates;
-- primary metric `packed_wall/source_wall`; decision metric median of 3 ratios.
+Stage 0 — isolated integration:
+1. inspect the current exact external serial-expert runtime and retained pack manifest;
+2. select the most recent existing deterministic canonical exact-runtime workload supporting final-logit capture and decode timing;
+3. build an isolated experimental adapter under `results-local/`;
+4. SOURCE remains unchanged; PACKED changes only expert data-access backend/layout;
+5. no persistent expert cache; one routed expert logically live at a time;
+6. validate complete expert mapping before model forward.
 
-Final decision:
-- `EXPERT_MAJOR_GO` if valid median <=0.70, packed physical bytes <=1.05x source per pair, no exactness/read regression.
-- `EXPERT_MAJOR_NO_GO` if valid but median >0.70 or valid physical/read regression.
-- `EXPERT_MAJOR_INCONCLUSIVE` only when a valid causal comparison cannot be established.
+Stage 1 — exactness:
+- same forced/frozen token sequence;
+- three full 48-layer decode positions;
+- identical routed expert IDs/order;
+- identical raw final-logit float32 SHA SOURCE vs PACKED;
+- no fallback/cache/safety regression.
 
-Bounds: no model forward/network/DFlash/runtime edits/purge/reboot/cache-thrash/RAM-fill/swap eviction/fresh-copy workaround; max 3 pairs; max 64 experts/group; total timed logical bytes <=962,592,768 B at size 64.
+Valid exactness failure => `EXPERT_MAJOR_RUNTIME_NO_GO`; measurement ambiguity => INCONCLUSIVE.
 
-## After Funnel 002
+Stage 2 — practical end-to-end decode:
+- no artificial cold-cache manipulation;
+- exactly 3 fresh-process pairs: `SOURCE->PACKED`, `PACKED->SOURCE`, `SOURCE->PACKED`;
+- one unmeasured warmup decode token then exactly three measured decode tokens per arm;
+- record measured decode wall, peak RSS, swap/memory pressure and routing/backend state.
 
-If `EXPERT_MAJOR_GO`: one compound runtime funnel should bundle isolated integration, exactness parity, safety and bounded end-to-end tok/s/RSS/swap measurement.
+Runtime GO gates:
+- Stage 1 exactness PASS;
+- median `PACKED/SOURCE measured decode wall <=0.90` (>=10% improvement);
+- median PACKED peak RSS <= median SOURCE +128 MiB;
+- PACKED swap delta <= matched SOURCE +64 MiB in every pair;
+- no unsafe pressure, persistent expert cache, fallback or incomplete evidence.
 
-If `EXPERT_MAJOR_NO_GO`: stop expert-major and return to the next ranked serving intervention.
+Final outcomes:
+- `EXPERT_MAJOR_RUNTIME_GO`
+- `EXPERT_MAJOR_RUNTIME_NO_GO`
+- `EXPERT_MAJOR_RUNTIME_INCONCLUSIVE`
 
-If `EXPERT_MAJOR_INCONCLUSIVE`: reconsider measurement only if a materially different causal design exists; do not return to serial cache-control micro-tests.
+Hard bounds: no network/model download, no DFlash/cache-eviction experiments, no rescue repetitions, 3 exactness positions max, exactly 3 performance pairs, total runtime execution <=360 s.
+
+## After Runtime Funnel 001
+
+If `EXPERT_MAJOR_RUNTIME_GO`: productionize/canonicalize the expert-major backend in the repository, preserving exact acceptance evidence and then return to the next serving bottleneck.
+
+If `EXPERT_MAJOR_RUNTIME_NO_GO`: retain expert-major physical-I/O evidence but do not adopt it in the runtime; diagnose only the measured runtime-level reason for rejection.
+
+If `EXPERT_MAJOR_RUNTIME_INCONCLUSIVE`: repair only the specific integration/instrumentation ambiguity if a bounded one-factor remedy exists; do not reopen the already-settled physical-I/O question.
 
 ## Synchronization rule
 
