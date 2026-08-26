@@ -1,12 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-26
-Status: ACTIVE — core 30B-on-8GB serving/I/O. External expert data-access is the dominant measured bottleneck. Expert-major packing remains promising, but cold-I/O validation is currently blocked by instrumentation reliability rather than by a negative storage-layout result.
+Status: ACTIVE — core 30B-on-8GB serving/I/O. External expert data-access remains the dominant measured bottleneck. Expert-major packing remains promising; the prior cold-I/O blocker was instrumentation reliability and is now repaired/validated.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_001_PACKED_COLD_IO_PROTOCOL_UNRESOLVED`
-Next: `LOOM_30B_COLD_IO_INSTRUMENTATION_REPAIR_001`
-Pi context: `/AGENTS.md` v3.22.
+Current checkpoint: `LOOM_30B_COLD_IO_INSTRUMENTATION_REPAIR_001_COLD_IO_INSTRUMENTATION_PASS`
+Next: `LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002`
+Pi context: `/AGENTS.md` v3.23.
 
 ## Synchronization
 
@@ -36,22 +36,34 @@ Frozen future validity gate: every accepted timed repetition must independently 
 ## Cold-I/O protocol validation 001
 
 Classification: `PACKED_COLD_IO_PROTOCOL_UNRESOLVED`.
-Report: `research/architecture/loom-30b-expert-major-cold-io-protocol-validation-001-result.md`.
-Evidence: `results-local/research/30b-expert-major-cold-io-protocol-validation-001/20260826T125114Z/`.
-
-Selected candidate cache-state method:
+Candidate cache-state method remains unchanged:
 - fresh non-cloned APFS inode;
 - `O_CREAT|O_EXCL` byte-copy + `fsync`;
 - `F_NOCACHE/F_RDAHEAD` supplementary.
 
-Trial 1 attempted `160,432,128 B`, but instrumentation aborted after the timed read before physical counter bytes and payload/hash validation were persisted. Trial therefore not accepted; trials 2–3 were correctly not run fail-closed. Memory remained safe (`59% -> 60%` free); swap delta `0 B`.
+The first `160,432,128 B` trial was not accepted because instrumentation failed after the timed read before required physical-counter and payload-validation evidence was persisted. This did not reject the cache-state method.
 
-This is not evidence against the fresh-inode method. It is an instrumentation failure.
+## Cold-I/O instrumentation repair 001
+
+Classification: `COLD_IO_INSTRUMENTATION_PASS`.
+Report: `research/architecture/loom-30b-cold-io-instrumentation-repair-001-result.md`.
+Evidence: `results-local/research/30b-cold-io-instrumentation-repair-001/20260826T130155Z/`.
+
+Root cause: `row.update()` indexed `row['payload_validation']` before the update inserted it, raising `KeyError` post-read/pre-persistence.
+
+Validated repair:
+- success-path persistence PASS;
+- intentional fail-path persistence PASS;
+- fail-closed missing-field gate PASS;
+- probe bytes `16,777,216 B`;
+- swap delta `0 B`.
+
+This validates evidence capture only; it does not establish cache coldness or any performance claim.
 
 ## Exact next step
 
-`LOOM_30B_COLD_IO_INSTRUMENTATION_REPAIR_001`
+`LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002`
 
-Repair evidence persistence and validate it end-to-end with only a <=16 MiB tiny probe. Required fields: pre/post device counters, derived physical bytes, logical bytes, wall time, read count, payload/hash result, memory/swap state. Validate both normal completion and intentional failure/exception persistence. No full cold trial, model forward, network, DFlash or A/B.
+Retest the unchanged fresh-inode method with repaired instrumentation. Use at most three independent bounded fresh-inode trials around the same `160,432,128 B` representative packed subset. Every accepted trial must independently show >=80% conservative physical coverage, payload/hash PASS, complete internally consistent instrumentation, and safe memory/swap behavior.
 
-Only after `COLD_IO_INSTRUMENTATION_PASS` may a new `LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002` retest the fresh-inode cache-state method.
+No full source-vs-packed A/B, model forward, network, DFlash or runtime optimization. Only after `PACKED_COLD_IO_PROTOCOL_PASS` may physical-I/O A/B 002 be preregistered.
