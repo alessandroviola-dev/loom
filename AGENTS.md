@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.25
+Version: 3.26
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -22,7 +22,8 @@ Rules:
 6. no performance claim from INVALID or UNRESOLVED evidence;
 7. do not advance from stale AGENTS/HANDOFF/ROADMAP;
 8. instrumentation required by a gate must persist successfully before a timed result can be accepted;
-9. a failed frozen method must not be silently modified and rerun under the same checkpoint.
+9. a failed frozen method must not be silently modified and rerun under the same checkpoint;
+10. control/API return values must not be inferred from convention when scientific validity depends on them; establish local semantics explicitly.
 
 External root: `<external-archive>/`
 BF16 cache: `<external-archive>/bf16-cache/`
@@ -47,7 +48,7 @@ Stable facts:
 
 Final: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`.
 Report: `research/architecture/loom-dflash-bf16-causal-decision-001-result.md`.
-P3 and P1 failed exact BF16 recovery, making preregistered >=2/3 impossible. Do not reopen absent a new independent mechanism.
+Do not reopen absent a new independent mechanism.
 
 ## Core serving/I/O — BOTTLENECK IDENTIFIED
 
@@ -67,83 +68,60 @@ Priority candidate remains lossless expert-major contiguous storage, but no spee
 Observed but not accepted: source p50 `1.097739 s`, packed p50 `0.382613 s`, apparent ratio `0.348547`, reads/pass `3456 -> 384`, exact payload equality PASS.
 Reason: packed conservative physical coverage only `50.0644%`.
 
-## Coverage audit — CACHE CONTAMINATION IDENTIFIED
+## Coverage/cold-protocol history
 
-`LOOM_30B_EXPERT_MAJOR_IO_COVERAGE_AUDIT_001` = `PACKED_COVERAGE_CACHE_CONTAMINATION_IDENTIFIED`.
-- logical bytes/pass both arms `962,592,768 B`;
-- source conservative physical coverage `99.8761%`;
-- packed aggregate `50.0644%`;
-- first packed repetition `94.26%`, later `38.61–40.20%`.
-Cause: macOS page-cache residency surviving `F_NOCACHE/F_RDAHEAD` hints.
-Future cold timing validity requires **>=80% conservative physical coverage on every accepted repetition**.
+Coverage audit identified macOS page-cache contamination. Frozen cold timing rule: every accepted timed repetition must independently show `>=80%` conservative physical coverage.
 
-## Cold-I/O protocol validation 002 — FAIL
+Fresh-inode byte-copy protocol is rejected: three valid 160,432,128-B trials produced only `21.7537%`, `21.6914%`, `20.8250%` coverage with payload/hash PASS and zero swap.
 
-`LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002` = `PACKED_COLD_IO_PROTOCOL_FAIL`.
-Report: `research/architecture/loom-30b-expert-major-cold-io-protocol-validation-002-result.md`.
+Instrumentation persistence repair is PASS and no longer a blocker.
 
-Fresh non-cloned inode + byte-copy + fsync + descriptor hints produced only `21.7537%`, `21.6914%`, `20.8250%` conservative physical coverage on three valid 160,432,128-B trials. Payload/hash PASS 3/3; swap delta 0 B. Method rejected.
+Measurement strategy redesign selected direct existing-packed reads using `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0`, with per-trial physical coverage as validity authority.
 
-Working hypothesis only: preparation by ordinary byte-copy may populate macOS page cache for the new inode. Not proven as sole cause.
+## Global-nocache cold-I/O validation 001 — FAIL, WITH POSITIVE COLDNESS SIGNAL
 
-## Cold-I/O measurement strategy redesign 001 — SELECTED
+`LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_001` = `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`.
+Report: `research/architecture/loom-30b-expert-major-global-nocache-cold-io-validation-001-result.md`.
+Evidence: `results-local/research/30b-expert-major-global-nocache-cold-io-validation-001/20260826T134143Z/`.
 
-`LOOM_30B_COLD_IO_MEASUREMENT_STRATEGY_REDESIGN_001` = `COLD_IO_MEASUREMENT_STRATEGY_SELECTED`.
-Report: `research/architecture/loom-30b-cold-io-measurement-strategy-redesign-001-result.md`.
-Evidence: `results-local/research/30b-cold-io-measurement-strategy-redesign-001/20260826T133031Z/`.
+T1 only:
+- conservative physical coverage `95.3113%`;
+- wall `0.246744 s`;
+- raw physical `153,010,000 B`;
+- conservative physical `152,910,000 B`;
+- payload/hash PASS;
+- control set PASS;
+- swap delta `0 B`;
+- minimum free memory `59%`.
 
-Bounded 32-MiB mechanism probe:
-- `F_GLOBAL_NOCACHE` accepted locally;
-- global+descriptor conservative physical coverage `49.35%`;
-- descriptor-only `57.58%`;
-- hashes PASS; swap increase 0 B.
+The coldness sub-gate passed strongly (`95.3113% >= 80%`). However the post-trial `F_GLOBAL_NOCACHE` reset returned `1` and the runner classified reset as failure. The frozen protocol therefore failed closed; T2/T3 were not run.
 
-Interpretation: mechanism availability is demonstrated, but the tiny probe does NOT establish coldness and is not a performance result.
-
-Selected strategy:
-- direct read of the existing packed payload;
-- no preparation copy/write;
-- fresh read-only FD per trial;
-- set `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0` before any payload read;
-- reset global control after each trial;
-- per-trial conservative physical coverage remains the validity authority.
-
-Rejected alternatives for now:
-- fresh copy written under global nocache: additional write/copy causal confounding;
-- `purge(8)`: system-wide and operationally disruptive.
+Interpretation:
+- this does **not** reject the direct global-nocache cold-read mechanism;
+- it provides the strongest cold-read evidence so far;
+- the current blocker is exact set/reset API/runner semantics, not physical coverage;
+- do not reinterpret return value `1` without explicit local semantics evidence;
+- do not rerun the 160-MiB validation until reset semantics are resolved.
 
 ## Current checkpoint
 
-`LOOM_30B_EXPERT_MAJOR_GLOBAL_NOCACHE_COLD_IO_VALIDATION_001`
+`LOOM_30B_GLOBAL_NOCACHE_RESET_SEMANTICS_AUDIT_001`
 
-Goal: validate the selected direct-existing-packed `F_GLOBAL_NOCACHE` strategy before any source-vs-packed A/B.
+Goal: establish exact local semantics and safe restoration behavior for `F_GLOBAL_NOCACHE` before another cold-I/O trial.
 
-Frozen workload/protocol:
-1. packed-only validation; first 64 packed experts; `160,432,128 B` logical payload/trial;
-2. exactly 3 trials maximum;
-3. fresh read-only FD each trial;
-4. before first payload read set `F_GLOBAL_NOCACHE=1`, `F_NOCACHE=1`, `F_RDAHEAD=0`;
-5. collect three idle `iostat -Id` intervals for conservative background subtraction;
-6. timed 4-MiB-chunk read/hash;
-7. persist repaired instrumentation, payload/hash, raw and conservative physical counters, memory/swap and control status;
-8. reset global control after each trial; fail closed if set/reset fails.
-
-Frozen PASS requires all 3/3 trials:
-- conservative physical coverage `>=80%`;
-- payload/hash PASS;
-- complete arithmetic-consistent persisted instrumentation;
-- successful global/per-FD control set and reset;
-- swap delta `<=16,000,000 B`;
-- free memory `>=10%`;
-- no unsafe memory-pressure event.
-
-FAIL if any trial is below 80% or any safety/control/hash/persistence gate fails.
-
-No source arm, model forward, network, DFlash, runtime integration, threshold changes or post-hoc strategy modification in this checkpoint.
-
-Only after `PACKED_GLOBAL_NOCACHE_COLD_IO_PASS` may physical-I/O A/B 002 be preregistered.
+Requirements:
+1. no model forward/network/DFlash/source-vs-packed A/B/full 160-MiB read;
+2. inspect the exact runner call path, constants, return-value handling and any available local/system interface semantics;
+3. determine what set return values and reset return values mean on this Mac/runtime;
+4. capture errno/exception information where applicable;
+5. determine whether post-call control state can be queried or verified directly; if not, define the smallest safe behavioral verification;
+6. a tiny <=16 MiB read probe is allowed only if needed to distinguish reset semantics/state;
+7. persist all set/reset call inputs, raw returns, errors, verification evidence and final restoration status;
+8. do not change the coldness threshold or claim performance;
+9. select exactly one fail-safe control protocol for the next validation if semantics are resolved.
 
 Classifications:
-- `PACKED_GLOBAL_NOCACHE_COLD_IO_PASS`
-- `PACKED_GLOBAL_NOCACHE_COLD_IO_FAIL`
-- `PACKED_GLOBAL_NOCACHE_COLD_IO_UNRESOLVED`
+- `GLOBAL_NOCACHE_RESET_SEMANTICS_RESOLVED`
+- `GLOBAL_NOCACHE_RESET_SEMANTICS_UNRESOLVED`
+
+Only after `GLOBAL_NOCACHE_RESET_SEMANTICS_RESOLVED` may a separately preregistered global-nocache cold-I/O validation retry be considered.
