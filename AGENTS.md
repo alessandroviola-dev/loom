@@ -1,32 +1,36 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.19
+Version: 3.20
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
 
-## Rules
+## Roles / synchronization protocol
 
 Pi: local inspection/execution, minimum authorized changes, bounded tests, `results-local/` evidence, mechanical self-repair only.
 ChatGPT: scientific direction, Git/GitHub, result docs, HANDOFF/ROADMAP.
 Pi must not Git/push/PR/edit project docs unless explicitly authorized.
 
+After every **significant scientific checkpoint**, ChatGPT must update canonical project state on GitHub and the user must pull before the next Pi WP. Significant checkpoints include: a classification change, accepted/invalid experiment, frozen baseline change, branch-direction change, or selection of a new next checkpoint. Tiny diagnostic substeps may be grouped only while the canonical next checkpoint remains unchanged.
+
+Rules:
 1. one-factor experiments; deterministic inputs; exact provenance;
 2. no silent scientific rescue or post-hoc gate relaxation;
-3. continuation provenance includes IDs, segmentation, KV boundary, selector, DFlash anchor and scoring row;
-4. treatment comparison is invalid if more than the intended factor changes;
-5. expensive/network work requires retained/resumable artifacts and pre-dispatch hard caps;
-6. fail closed offline before expensive execution.
+3. treatment comparison is invalid if more than the intended factor changes;
+4. expensive/network work requires retained/resumable artifacts and pre-dispatch hard caps;
+5. fail closed offline before expensive execution;
+6. no performance claim from an INVALID benchmark;
+7. do not advance to a new scientific WP from stale AGENTS/HANDOFF/ROADMAP.
 
 External root: `<external-archive>/`
 BF16 cache: `<external-archive>/bf16-cache/`
 
-## Mission / stable target
+## Mission / stable 30B target
 
 Mission: **Big models. Small machines.** Practical ~27B/32B local AI on Apple M1/8GB.
 Q4 target: `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
 
-Stable 30B target facts:
+Stable facts:
 - 48 MoE layers, 128 experts/layer, top-k 8;
 - payload `16,220,499,968 B`;
 - resident non-routed `819,015,680 B`;
@@ -35,65 +39,67 @@ Stable 30B target facts:
 - BF16 KV `98,304 B/token`;
 - external serial-expert math/full final logits exact;
 - one routed expert logically live at a time;
-- expert-major contiguous disk preferred;
 - raw 4-GiB global LRU rejected.
 
 ## DFlash branch — CLOSED AS ACTIVE RECOVERY PATH
 
-Drafter: `RedHatAI/Qwen3-30B-A3B-speculator.dflash`
-Verifier: `Qwen/Qwen3-30B-A3B`
-Taps `[1,12,23,34,45]`.
-Correct mapping: `target_id = draft_row + d2t[draft_row]`.
-Support `50/63` representable, `13/63` unsupported; corrected exact top1 `0/63`.
-
-Closed explanations: temporal shift, MLX drafter implementation, static verifier/tap interface, tap transport dtype.
-
-Pinned BF16 revision: `ad44e777bcd18fa416d9da3bd8f70d33ebb85d39`.
-Network guard: PASS, remote source parity PASS.
-
-Exact Q4 frozen baselines:
-- P3 target 1620, rank 2, proposal 5416;
-- P1 target 326, rank 3, proposal 3100;
-- P2 target 994, rank 3, proposal 4057.
-
-Final BF16 causal decision:
-`BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`.
+Final decision: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`.
 Report: `research/architecture/loom-dflash-bf16-causal-decision-001-result.md`.
 
-Validated causal coordinates:
-- P3 anchor 271, position/raw-row 2;
-- P1 anchor 13, position/raw-row 6;
-- P2 anchor 11, position/raw-row 3.
+P3: Q4 DFlash rank 2 / 5416; BF16 rank 2 / 350; no exact recovery.
+P1: Q4 rank 3 / 3100; BF16 rank 2 / 3100; no exact recovery.
+P3 + P1 make preregistered >=2/3 exact recovery impossible; P2/E2E not executed.
+Do not reopen DFlash without a new independent mechanism.
 
-P3 valid corrected evidence:
-- BF16 verifier top1 1620;
-- Q4 DFlash rank 2 / proposal 5416;
-- BF16 DFlash rank 2 / proposal 350;
-- no exact recovery.
+## Core serving/I/O re-entry — BOTTLENECK IDENTIFIED
 
-P1 decisive test:
-- Q4 gate rank 3 / proposal 3100 PASS;
-- BF16 verifier top1 326;
-- BF16 DFlash rank 2 / proposal 3100;
-- no exact recovery;
-- network `87,265,184 B`, 57 requests, 2 retries.
+`LOOM_30B_MOE_SERVING_IO_REENTRY_001` = `SERVING_IO_BOTTLENECK_IDENTIFIED`.
+Report: `research/architecture/loom-30b-moe-serving-io-reentry-001-result.md`.
+Local evidence: `results-local/research/30b-moe-serving-io-reentry-001/20260826T122316Z/analysis.json`.
 
-P3 + P1 both fail exact recovery, so the preregistered >=2/3 signal is impossible. P2 and corrected E2E are not justified for this mechanism.
+Dominant measured bottleneck: **external expert data-access**.
+Exact packed 48-layer decode-equivalent evidence:
+- data-access `0.442087 s / 0.926028 s = 47.74%` median wall;
+- 384 reads, `962,592,768 B` expert payload;
+- expert compute `0.004186 s`;
+- routing `0.019075 s`;
+- physical token-like I/O floor `0.481589 s/token`.
 
-Interpretation: BF16 materially changes DFlash distributions and can improve rank, but precision/distribution mismatch alone is not sufficient to restore exact speculation.
+Priority candidate: lossless expert-major contiguous storage. Cache/materialization work remains secondary until physical-I/O causality is established.
 
-Do not continue DFlash salvage as the active LOOM path absent a new independent mechanism. Preserve artifacts/cache for diagnostics.
+## Expert-major physical-I/O A/B 001 — INVALID
 
-## Next checkpoint
+`LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_001` = `EXPERT_MAJOR_PHYSICAL_IO_INVALID`.
+Report: `research/architecture/loom-30b-expert-major-physical-io-ab-001-result.md`.
+Local evidence: `results-local/research/30b-expert-major-physical-io-ab-001/20260826T122942Z/`.
 
-`LOOM_30B_MOE_SERVING_IO_REENTRY_001`
+Observed but NOT scientifically accepted:
+- source p50/p95 `1.097739 / 1.116585 s`;
+- packed p50/p95 `0.382613 / 0.552228 s`;
+- apparent wall ratio `0.348547`;
+- reads/pass `3456 -> 384`;
+- throughput `874.539 -> 2275.084 MB/s`;
+- byte/hash equality PASS.
 
-Goal: return to the core 30B-on-8GB path and choose the highest-leverage serving/I/O experiment from the already established exact external-MoE runtime, routing/cache traces and physical-I/O evidence.
+Invalidity: packed physical coverage only `50.06%`; physical/counter validity FAIL. Do not interpret the apparent ~65% wall reduction as a layout speedup yet.
 
-Before changing code:
-1. inspect current retained 30B serving/I/O evidence and latest relevant scripts/results;
-2. identify the dominant measured latency/resource bottleneck, not a speculative one;
-3. propose one minimal experiment with a quantitative success gate;
-4. do not reopen DFlash or start unrelated optimization.
+## Current checkpoint
 
-No expensive run until the re-entry analysis identifies the next measured bottleneck and an offline-valid experiment contract.
+`LOOM_30B_EXPERT_MAJOR_IO_COVERAGE_AUDIT_001`
+
+Diagnostic only. Goal: explain packed ~50% physical coverage before repeating any full A/B.
+
+Required:
+1. reconstruct logical bytes, unique ranges, files, physical counters and coverage formula per arm;
+2. distinguish counter semantics from genuine cache/readahead contamination, APFS behavior, overlap/duplicates, or sampling error;
+3. verify identical payload for all 384 experts;
+4. only if retained evidence is insufficient, allow a tiny <=3-expert / <=100 MiB physical-I/O probe;
+5. decide whether previous timing is reusable, invalid-coldness, or unresolved;
+6. state the minimal correction for a valid A/B.
+
+Classifications:
+- `PACKED_COVERAGE_COUNTER_SEMANTICS_EXPLAINED`
+- `PACKED_COVERAGE_CACHE_CONTAMINATION_IDENTIFIED`
+- `PACKED_COVERAGE_UNRESOLVED`
+
+No full benchmark, model forward, network, DFlash, or runtime optimization during this checkpoint.
