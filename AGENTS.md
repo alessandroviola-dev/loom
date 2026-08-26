@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.22
+Version: 3.23
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -80,33 +80,59 @@ Future cold timing validity requires **>=80% conservative physical coverage on e
 
 `LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_001` = `PACKED_COLD_IO_PROTOCOL_UNRESOLVED`.
 Report: `research/architecture/loom-30b-expert-major-cold-io-protocol-validation-001-result.md`.
-Evidence: `results-local/research/30b-expert-major-cold-io-protocol-validation-001/20260826T125114Z/`.
-
-Candidate method:
+Candidate method remains:
 - fresh non-cloned APFS inode via `O_CREAT|O_EXCL` byte-copy + `fsync`;
 - `F_NOCACHE/F_RDAHEAD` supplementary.
+The first 160,432,128-B trial was not accepted because instrumentation failed post-read before physical counters and payload validation were persisted.
 
-Trial 1 attempted `160,432,128 B`, but instrumentation aborted after the timed read before physical bytes and payload validation were persisted. Trial not accepted; trials 2–3 correctly not run. Free memory `59% -> 60%`; swap delta `0 B`.
+## Cold-I/O instrumentation repair 001 — PASS
 
-Interpretation: instrumentation failure only. The fresh-inode method is neither accepted nor rejected.
+`LOOM_30B_COLD_IO_INSTRUMENTATION_REPAIR_001` = `COLD_IO_INSTRUMENTATION_PASS`.
+Report: `research/architecture/loom-30b-cold-io-instrumentation-repair-001-result.md`.
+Evidence: `results-local/research/30b-cold-io-instrumentation-repair-001/20260826T130155Z/`.
+
+Root cause fixed:
+`row.update()` indexed `row['payload_validation']` before the update inserted that key, causing a post-read/pre-persistence `KeyError`.
+
+Validation:
+- success-path evidence persistence PASS;
+- intentional fail-path persistence PASS;
+- fail-closed missing-field gate PASS;
+- probe bytes `16,777,216 B`;
+- swap delta `0 B`.
+
+This checkpoint validates instrumentation only. It does NOT validate coldness and does NOT rehabilitate the INVALID A/B 001.
 
 ## Current checkpoint
 
-`LOOM_30B_COLD_IO_INSTRUMENTATION_REPAIR_001`
+`LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002`
 
-Goal: make cold-I/O evidence capture fail-safe before another protocol trial.
+Goal: retest the unchanged fresh-inode cache-state method with repaired fail-safe instrumentation.
 
-Requirements:
-1. no model forward/network/DFlash/full A/B;
-2. no full 160 MiB cold trial;
-3. repair persistence of pre/post physical device counters, logical bytes, wall time, read count, payload/hash validation, memory and swap state;
-4. use only a tiny <=16 MiB synthetic/representative read probe to validate instrumentation end-to-end;
-5. test both success-path and intentional fail-path persistence;
-6. PASS only if required fields survive process exit/exception and are internally consistent;
-7. do not claim cache-state validity from this instrumentation checkpoint.
+Frozen method under test:
+- create a fresh non-cloned APFS inode with `O_CREAT|O_EXCL`;
+- byte-copy the selected packed payload into it;
+- `fsync` before timed read;
+- use `F_NOCACHE/F_RDAHEAD` only as supplementary hints.
+
+Frozen validity gate:
+- every accepted timed trial must independently show `>=80%` conservative physical coverage;
+- payload/hash validation PASS;
+- required instrumentation complete and internally consistent;
+- no material swap increase or unsafe memory pressure.
+
+Bounded protocol:
+1. no model forward/network/DFlash/runtime optimization/full source-vs-packed A/B;
+2. use the same representative packed subset scale as protocol validation 001 (`160,432,128 B`, unless an exact mechanical reason requires a smaller bounded equivalent); do not silently expand workload;
+3. at most 3 independent fresh-inode trials;
+4. persist logical/physical byte accounting, wall time, read count, payload/hash, memory/swap and protocol metadata for every trial, including failures;
+5. PASS only if 3/3 trials satisfy the frozen >=80% conservative physical-coverage gate and safety/validation gates;
+6. FAIL if the method demonstrably cannot satisfy the frozen gate under the bounded protocol;
+7. UNRESOLVED only for a new instrumentation/environment ambiguity that prevents scientific classification.
 
 Classifications:
-- `COLD_IO_INSTRUMENTATION_PASS`
-- `COLD_IO_INSTRUMENTATION_FAIL`
+- `PACKED_COLD_IO_PROTOCOL_PASS`
+- `PACKED_COLD_IO_PROTOCOL_FAIL`
+- `PACKED_COLD_IO_PROTOCOL_UNRESOLVED`
 
-Only after PASS may `LOOM_30B_EXPERT_MAJOR_COLD_IO_PROTOCOL_VALIDATION_002` retest the fresh-inode cache-state method.
+Only after PASS may `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_002` be preregistered.
