@@ -1,51 +1,59 @@
 # LOOM — Active Handoff
 
-Last updated: 2026-08-25
-Status: ACTIVE — BF16 precision/distribution mismatch is not sufficient to recover exact DFlash speculation on the preregistered causal set. DFlash is closed as the active recovery path; priority returns to core 30B-on-8GB serving/I/O.
+Last updated: 2026-08-26
+Status: ACTIVE — core 30B-on-8GB path resumed. External expert data-access is the dominant measured bottleneck. First expert-major physical-I/O A/B showed a strong timing signal but is scientifically INVALID because packed physical coverage was only 50.06%.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_DFLASH_BF16_CAUSAL_DECISION_001_BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`
-Next: `LOOM_30B_MOE_SERVING_IO_REENTRY_001`
-Pi context: `/AGENTS.md` v3.19.
+Current checkpoint: `LOOM_30B_EXPERT_MAJOR_PHYSICAL_IO_AB_001_EXPERT_MAJOR_PHYSICAL_IO_INVALID`
+Next: `LOOM_30B_EXPERT_MAJOR_IO_COVERAGE_AUDIT_001`
+Pi context: `/AGENTS.md` v3.20.
 
-## Final DFlash causal result
+## Protocol state
 
-Report:
-`research/architecture/loom-dflash-bf16-causal-decision-001-result.md`
+Canonical synchronization discipline is restored: after every significant scientific checkpoint, ChatGPT updates GitHub state and the user pulls before the next Pi WP. Do not advance from stale AGENTS/HANDOFF/ROADMAP.
 
-P3 corrected valid causal state:
-- Q4 target/verifier top1 1620;
-- Q4 DFlash rank 2 / proposal 5416;
-- BF16 verifier top1 1620;
-- BF16 DFlash rank 2 / proposal 350;
-- no exact recovery.
+## DFlash
 
-P1 decisive test:
-- exact Q4 gate PASS: target 326 rank 3 / proposal 3100;
-- BF16 verifier top1 326;
-- BF16 DFlash rank 2 / proposal 3100;
-- no exact recovery;
-- network only `87,265,184 B`, 57 requests, 2 retries due persistent cache reuse.
+Closed as active recovery path.
+Final report: `research/architecture/loom-dflash-bf16-causal-decision-001-result.md`.
+BF16 changes DFlash distributions but failed exact recovery on P3 and P1; preregistered >=2/3 signal became impossible, so P2/E2E were not run.
 
-P3 and P1 both fail exact top1 recovery. The frozen preregistered signal required >=2/3 recoveries, so it is mathematically impossible. P2 and corrected E2E were correctly not executed.
+## 30B serving/I/O re-entry
 
-Interpretation: BF16 changes the DFlash distribution and can improve rank, but it does not restore exact speculation. Do not continue DFlash salvage as the active path absent a new independent mechanism.
+Report: `research/architecture/loom-30b-moe-serving-io-reentry-001-result.md`.
+Classification: `SERVING_IO_BOTTLENECK_IDENTIFIED`.
 
-## Stable 30B runtime facts
+Dominant measured bottleneck: external expert data-access.
+- data-access `0.442087 s` of `0.926028 s` median wall = `47.74%`;
+- 384 reads, `962,592,768 B` expert payload;
+- expert compute `0.004186 s`;
+- routing `0.019075 s`;
+- physical token-like I/O floor `0.481589 s/token`.
 
-- target `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`;
-- 48 MoE layers, 128 experts/layer, top-k 8;
-- payload `16,220,499,968 B`;
-- resident non-routed `819,015,680 B`;
-- routed bank `15,401,484,288 B`;
-- one Q4 expert `2,506,752 B`;
-- external serial-expert full-logit math exact;
-- one routed expert logically live at a time;
-- expert-major contiguous disk preferred;
-- raw 4-GiB global LRU rejected.
+Priority intervention: lossless expert-major contiguous storage, subject to valid physical-I/O causality.
+
+## Expert-major physical-I/O A/B 001
+
+Report: `research/architecture/loom-30b-expert-major-physical-io-ab-001-result.md`.
+Classification: `EXPERT_MAJOR_PHYSICAL_IO_INVALID`.
+Evidence: `results-local/research/30b-expert-major-physical-io-ab-001/20260826T122942Z/`.
+
+Observed:
+- source p50/p95 `1.097739 / 1.116585 s`;
+- packed p50/p95 `0.382613 / 0.552228 s`;
+- apparent wall ratio `0.348547`;
+- read count `3456 -> 384` per pass;
+- effective throughput `874.539 -> 2275.084 MB/s`;
+- byte/hash equality PASS.
+
+Invalidity:
+- packed physical coverage `50.06%`;
+- physical/counter validity FAIL.
+
+Therefore the apparent timing gain is not accepted yet. Read-count reduction and payload identity are valid structural facts only.
 
 ## Exact next step
 
-`LOOM_30B_MOE_SERVING_IO_REENTRY_001`
+`LOOM_30B_EXPERT_MAJOR_IO_COVERAGE_AUDIT_001`
 
-Strictly analysis-first: inspect existing serving/I/O evidence and scripts, identify the dominant measured bottleneck, and propose one minimal experiment with a quantitative success gate. No DFlash reopening and no expensive run until that contract is established.
+Diagnostic-only audit of the ~50% packed physical coverage. Reconstruct logical/physical byte accounting and counter semantics; distinguish cache/readahead/APFS/counter-scope causes; verify all 384 payloads. Only if retained evidence is insufficient, permit a <=3-expert / <=100 MiB probe. No full A/B, model forward, network, DFlash, or runtime optimization.
