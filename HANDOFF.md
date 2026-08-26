@@ -1,67 +1,81 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-26
-Status: ACTIVE — expert-major physical-I/O causality is now validated with `EXPERT_MAJOR_GO`; next is one compound isolated runtime integration/exactness/performance funnel.
+Status: ACTIVE — expert-major physical-I/O is accepted; Runtime Funnel 001 stopped before model forward because a trace-scoped 384-expert pack was incorrectly treated as a runtime-capable provider artifact. Integration Readiness Protocol v1 is now mandatory.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002_EXPERT_MAJOR_GO`
-Next: `LOOM_30B_EXPERT_MAJOR_RUNTIME_FUNNEL_001`
-Pi context: `/AGENTS.md` v3.31.
+Current checkpoint: `LOOM_30B_EXPERT_MAJOR_RUNTIME_FUNNEL_001_EXPERT_MAJOR_RUNTIME_INCONCLUSIVE`
+Next: `LOOM_30B_EXPERT_MAJOR_FULLBANK_RUNTIME_FUNNEL_002`
+Pi context: `/AGENTS.md` v3.32.
 
-## Synchronization
+## Core decision already settled
 
-Normal rule: significant checkpoint -> ChatGPT updates GitHub -> user pulls -> next independent Pi WP.
+External expert data-access is the dominant measured bottleneck (`47.74%` of prior decode-equivalent wall).
 
-A fully preregistered compound funnel may traverse internal stages without intermediate Git/pull when all outcomes, branches, thresholds, workload selection/fallback and hard bounds are frozen before execution.
+`LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002` = `EXPERT_MAJOR_GO`:
+- three valid paired physical-I/O ratios `0.602456`, `0.595950`, `0.581170`;
+- median `0.595950` = `40.405%` lower access wall;
+- exact payload/hash PASS;
+- reads `576 -> 64` per 64-expert group;
+- safe memory/swap.
 
-## Core 30B serving/I/O
+Do not reopen raw physical-I/O causality.
 
-External expert data-access is the dominant measured bottleneck:
-- access `0.442087 / 0.926028 s = 47.74%` median wall;
-- `962,592,768 B` / 384 expert reads;
-- expert compute `0.004186 s`;
-- routing `0.019075 s`;
-- physical token-like I/O floor `0.481589 s/token`.
+## Runtime Funnel 001 result
 
-## Expert-major physical-I/O decision
+Classification: `EXPERT_MAJOR_RUNTIME_INCONCLUSIVE`.
+Result: `research/architecture/loom-30b-expert-major-runtime-funnel-001-result.md`.
+Evidence: `results-local/research/30b-expert-major-runtime-funnel-001/20260826T150012Z/`.
 
-`LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002` = `EXPERT_MAJOR_GO`.
-Result: `research/architecture/loom-30b-expert-major-decision-funnel-002-result.md`.
-Evidence: `results-local/research/30b-expert-major-decision-funnel-002/20260826T144530Z/`.
+Selected workload: `LOOM_30B_MOE_REAL_RAW_CACHE_001` SOURCE control, P1 canonical sequence (`20260824T092553Z`).
 
-Stage 0 constructed 3 disjoint matched 64-expert groups (`160,432,128 B/arm/group`) with exact SOURCE/PACKED logical payload identity and zero cross-group overlap.
+Stage 0 manifest precheck failed:
+- provider pack = 384 experts from a different single decode position;
+- consumer runtime requires prefill + consecutive decode accesses;
+- no-fallback coverage impossible.
 
-All six first-touch physical-I/O arms were valid. Paired PACKED/SOURCE wall ratios:
-- Pair 1 `0.602456`;
-- Pair 2 `0.595950`;
-- Pair 3 `0.581170`;
-- median `0.595950` = `40.405%` lower access wall.
+No model forward, exactness, timing, RSS or swap benchmark ran.
 
-Physical-byte ratios were `0.947801`, `0.952811`, `0.945495`; read calls were `576 SOURCE -> 64 PACKED` per group. Payload/hash, controls, instrumentation and safety all PASS; zero swap delta; minimum free memory 55%.
+Root cause: artifact scope mismatch. A benchmark/trace-scoped artifact was implicitly promoted toward runtime use without a producer/consumer compatibility contract.
 
-Conclusion: expert-major raw external-expert I/O is causally validated and worth runtime integration testing. Do not reopen physical cold-cache methodology unless a new independent issue appears.
+## New mandatory programming/integration discipline
 
-## Exact next step — Runtime Funnel 001
+Protocol: `research/architecture/loom-integration-readiness-protocol-v1.md`.
 
-Preregistration: `research/architecture/loom-30b-expert-major-runtime-funnel-001-preregistration.md`.
+Before integration coding/model forward:
+1. producer artifact contract must declare scope, coverage, model revision, format/ABI, dtype/quantization, mapping and hashes;
+2. consumer runtime contract must declare workload/phases/required accesses/exactness/fallback/memory expectations;
+3. deterministic checker must prove `consumer_required_coverage ⊆ provider_available_coverage`;
+4. static adapter dry-run must resolve every frozen access exactly once with zero forbidden fallback;
+5. only then may adapter coding/model forward begin;
+6. Pi must use deterministic scripts/JSON for these checks rather than broad repo reasoning.
 
-One compound funnel answers whether expert-major should become the canonical runtime backend.
+Benchmark/trace-scoped packs cannot be treated as general runtime artifacts.
 
-Stage 0: build an isolated one-factor expert-major data-access adapter under `results-local/`, preserving the SOURCE baseline and every non-I/O runtime factor.
+## Exact next step — Full-Bank Runtime Funnel 002
 
-Stage 1: full 48-layer exactness on three frozen decode positions. Require identical routed experts and raw final-logit float32 SHA SOURCE vs PACKED, no fallback/cache/safety regression.
+Preregistration: `research/architecture/loom-30b-expert-major-fullbank-runtime-funnel-002-preregistration.md`.
 
-Stage 2: practical runtime benchmark, not artificial coldness. Three fresh-process matched pairs with frozen order `SOURCE->PACKED`, `PACKED->SOURCE`, `SOURCE->PACKED`; each arm has one unmeasured warmup decode token then three measured decode tokens.
+This remains one compound run rather than serial micro-tests.
 
-Runtime GO requires:
-- Stage 1 exactness PASS;
-- all validity/safety gates PASS;
-- median `packed measured decode wall / source measured decode wall <=0.90`;
-- median PACKED peak RSS no more than 128 MiB above SOURCE;
-- PACKED swap delta no more than matched SOURCE +64 MiB in every pair;
-- no persistent expert cache or backend fallback.
+Stage 0: compile-time provider/consumer contract, prove all source experts available and >=20 GiB destination free space.
 
-Hard cap: 360 s total runtime execution, no network/download, no DFlash, no rescue repetitions.
+Stage 1: build/reuse a runtime-complete full routed-bank pack:
+- `6144/6144` experts;
+- `2,506,752 B` each;
+- total `15,401,484,288 B`;
+- deterministic `(layer, expert)` mapping;
+- per-entry offset/size/hash/provenance;
+- resumable build;
+- complete integrity verification.
+
+Stage 2: static compatibility + access replay; zero missing mappings/fallback before model forward.
+
+Stage 3: exactness on 3 forced decode positions; identical routed order and raw float32 final-logit SHA SOURCE vs PACKED.
+
+Stage 4: exactly 3 practical fresh-process A/B pairs; one warmup + 3 measured decode tokens/arm; no artificial cold-cache controls.
+
+Runtime GO requires exactness/safety PASS and median PACKED/SOURCE measured decode wall <=0.90, median PACKED RSS <= SOURCE +128 MiB, matched swap delta <= SOURCE +64 MiB, no fallback/cache/unsafe pressure.
 
 Final outcomes only:
 - `EXPERT_MAJOR_RUNTIME_GO`
