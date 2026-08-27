@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.40
+Version: 3.41
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -41,120 +41,135 @@ A fully preregistered compound funnel may traverse internal stages without inter
 External root: `<external-archive>/`
 BF16 cache: `<external-archive>/bf16-cache/`
 
-## Mission / stable current target
+## Mission / stable target
 
 Mission: **Big models. Small machines.** Practical large open-weight AI on Apple M1/8GB.
-Current Q4 target: `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
+Current target: `Qwen3-30B-A3B` MLX Q4.
 
-Stable current facts:
-- Qwen3-30B-A3B: 48 MoE layers, 128 experts/layer, top-k 8;
-- routed identities `48 × 128 = 6144`;
-- routed bank `15,401,484,288 B`;
+Stable facts:
+- 48 MoE layers, 128 experts/layer, top-k 8;
+- routed identities `6144`;
+- Q4 routed bank `15,401,484,288 B`;
 - Q4 expert `2,506,752 B`;
-- routed expert payload/token at top-8 = `384 × 2,506,752 = 962,592,768 B`;
+- full top-8 expert traffic/token `962,592,768 B`;
 - external serial-expert math/full final logits exact;
 - one routed expert logically live at a time;
-- DFlash path closed;
-- raw 4-GiB global LRU rejected.
+- DFlash closed;
+- raw 4-GiB LRU rejected.
 
-## Expert-major — ACCEPTED, CANONICAL, CLOSED
+## Expert-major — ACCEPTED / CANONICAL / CLOSED
 
-Physical-I/O: `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002 = EXPERT_MAJOR_GO`.
-Median first-touch PACKED/SOURCE ratio `0.595950` = `40.405%` lower expert-access wall.
+Physical-I/O: `EXPERT_MAJOR_GO`.
+Accepted full-bank runtime: `EXPERT_MAJOR_RUNTIME_GO`.
+Canonicalization: `EXPERT_MAJOR_CANONICALIZATION_GO` with `FORMULAIC_RESOLVER`.
 
-Full-bank runtime: `LOOM_30B_EXPERT_MAJOR_FULLBANK_RUNTIME_FUNNEL_002 = EXPERT_MAJOR_RUNTIME_GO`.
-Accepted three-pair runtime ratios `0.794284`, `0.846718`, `0.768208`; median `0.794284` = `20.5716%` lower decode wall. Exactness/RSS/swap/fallback/cache gates PASS.
-
-Canonicalization Runtime Contract 002: `EXPERT_MAJOR_CANONICALIZATION_GO` with `FORMULAIC_RESOLVER`.
-Static `6144/6144`, `18,048` replay, hot-manifest-open=0, 3-position exactness, RSS/swap/safety PASS.
-
-Canonical implementation:
+Canonical backend:
 `scripts/loom_30b_moe_expert_major_backend_001.py`
+
 Base canonicalization commit: `36414d7`.
+Current exact-Q4 speed baseline commit: `96958de` (`perf: keep packed expert file descriptor open`).
+Validated file SHA-256: `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
 
-Do not reopen expert-major validation absent regression or a new model/runtime.
+Do not reopen expert-major validation absent regression/new target.
 
-## Post-Canonical Speed Frontier 001 — ADVANCED AND PERSISTED
+## Exact-Q4 Speed Frontier 001 — ADVANCED / PERSISTED
 
 `LOOM_30B_POST_CANONICAL_SPEED_FRONTIER_001 = SPEED_FRONTIER_ADVANCED`.
 
 Result:
 `research/architecture/loom-30b-post-canonical-speed-frontier-001-result.md`
+
 Evidence:
 `results-local/research/30b-post-canonical-speed-frontier-001/20260827T131329Z/`
 
-Stage-0 exact sustained baseline: `1.063941 tok/s`.
-Ranked wall attribution:
+Stage-0 sustained baseline: `1.063941 tok/s`.
+Final exact 3×32-token throughput: `1.115874`, `1.229233`, `1.254611`; median `1.229233 tok/s`.
+
+Ranked Stage-0 wall:
 - expert file I/O `44.61%`;
 - expert compute `26.50%`;
 - non-expert/backbone `14.74%`;
 - materialization/synchronization `11.51%`;
 - routing `2.64%`.
 
-Treatment results:
-- persistent process-lifetime PACKED fd: `+8.65%`, exact/safe, RETAINED;
-- synchronization collapse: `-30.38%`, reverted;
-- allocation/copy reduction: `+3.60%` signal but RSS +151,879,680 B > +32 MiB, reverted;
-- one-ahead overlap: `+8.45%` signal but RSS +162,676,736 B > +32 MiB, reverted.
+Only process-lifetime PACKED fd was retained (`+8.65%`, exact/safe). Sync collapse, copy reduction, and one-ahead variants were reverted.
 
-Final 3×32-token exact throughput:
-`1.115874`, `1.229233`, `1.254611 tok/s`; median `1.229233 tok/s`.
-p50 `0.825660 s`; p95 `1.217692 s`; peak RSS `404,340,736 B`; swap `0`; exactness PASS.
+The exact-Q4 baseline is I/O-bound; `5 tok/s` at top-8 Q4 implies ~`4.81 GB/s` expert payload traffic before other work.
 
-Persistent-FD implementation reviewed and persisted:
-- file: `scripts/loom_30b_moe_expert_major_backend_001.py`;
-- validated file SHA-256: `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`;
-- Git commit: `96958de` (`perf: keep packed expert file descriptor open`).
+## Routing Sparsity Frontier 001 — CLOSED / NO ACCEPTABLE GAIN
 
-This commit is the exact-Q4 speed baseline for subsequent work.
+`LOOM_30B_ROUTING_SPARSITY_SPEED_QUALITY_FRONTIER_001 = SPARSITY_FRONTIER_NO_ACCEPTABLE_GAIN`.
 
-Remaining dominant bottleneck: expert file I/O. At top-8 Q4, `5 tok/s` would require about `4.81 GB/s` expert payload traffic alone, before compute/backbone/materialization. Exact-Q4 micro-optimization is therefore not expected to reach 5 tok/s by itself.
+Result:
+`research/architecture/loom-30b-routing-sparsity-speed-quality-frontier-001-result.md`
 
-## Current checkpoint — ROUTING SPARSITY SPEED/QUALITY FRONTIER 001
+Evidence:
+`results-local/research/30b-routing-sparsity-speed-quality-frontier-001/20260827T135848Z/`
 
-`LOOM_30B_ROUTING_SPARSITY_SPEED_QUALITY_FRONTIER_001`
+Frozen Q4 teacher oracle: 8 prompts ×16 positions = 128 positions.
+
+Measured:
+- `tau=.95`: STRICT, 7.8757 experts/layer, `947,630,592 B/token`, `1.216703 tok/s`, `-1.02%`;
+- `tau=.90`: STRICT, 6.9440 experts/layer, `835,531,776 B/token`, `1.223280 tok/s`, `-0.48%`;
+- `tau=.80`: fidelity FAIL, mean KL `0.113882`;
+- `tau=.70`: fidelity FAIL, top1 `87.5%`, mean KL `0.331111`.
+
+No tau selected; no tracked runtime code changed. Residual expert I/O at quality-valid tau=.90 remained `38.23%`.
+
+Interpretation: routing mass is too distributed across top-8. Quality-valid truncation removes too little work; aggressive truncation loses fidelity first. Do not retry adjacent tau/fixed-top-k variants without a materially new hypothesis.
+
+## Current checkpoint — LOWER-BIT EXPERT SPEED/QUALITY FRONTIER 001
+
+`LOOM_30B_LOWER_BIT_EXPERT_SPEED_QUALITY_FRONTIER_001`
 
 Preregistration:
-`research/architecture/loom-30b-routing-sparsity-speed-quality-frontier-001-preregistration.md`
+`research/architecture/loom-30b-lower-bit-expert-speed-quality-frontier-001-preregistration.md`
 
-Purpose: reduce expert bytes/compute per token by dynamically executing the smallest subset of the original top-8 experts that covers a frozen fraction of router mass, under fidelity gates frozen before candidate results.
+Goal: lower bytes/compute per executed expert while keeping full top-8 routing.
 
 Frozen baseline:
-- code commit `96958de`;
-- exact-Q4 sustained median `1.229233 tok/s`;
-- top-8 routed expert semantics are the teacher/reference.
+- commit `96958de`;
+- exact-Q4 median `1.229233 tok/s`;
+- same 128-position Q4 teacher oracle.
 
-Frozen routing-mass variants only:
-- `tau=0.95`;
-- `tau=0.90`;
-- `tau=0.80`;
-- `tau=0.70`.
-No other threshold/fixed-top-k rescue is allowed.
+Candidate set is capability-gated locally:
+- `Q3` only if installed MLX natively supports bits=3 with the current group-size/shape contract;
+- `Q2` only if installed MLX natively supports bits=2 with the current group-size/shape contract.
 
-Quality oracle: 8 fixed prompts ×16 teacher-forced continuation positions = 128 positions, frozen from the exact Q4 teacher before candidate results.
+No group-size search, mixed precision, custom kernel, BF16 substitution, routing sparsity, or speculative decoding in this checkpoint.
 
-USABLE fidelity requires all:
-- reference top-1 agreement >=90%;
-- reference top-1 in candidate top-3 >=97%;
-- mean KL(reference||candidate) <=0.10 nats;
-- no NaN/Inf.
+Source for target requantization is the deployed Q4 expert representation. Full accepted Q4 artifacts are immutable.
 
-STRICT requires >=95% top1, >=99% top3 inclusion, KL <=0.05.
+For supported candidates:
+1. local capability/round-trip pilot;
+2. resumable full `6144/6144` lower-bit expert-major bank;
+3. static integrity + `18,048` replay, zero fallback/cache;
+4. same 128-position fidelity oracle;
+5. 32-token sustained speed only if fidelity >=USABLE;
+6. fastest eligible candidate selected;
+7. final `3×32` sustained decision.
 
-Only quality-valid variants with >=10% speed gain and safety PASS are eligible. Select the fastest eligible variant; tie within 2% favors fidelity/higher tau.
+USABLE fidelity unchanged:
+- top1 >=90%;
+- teacher top1 in candidate top3 >=97%;
+- mean KL <=0.10;
+- finite logits.
 
-After selecting sparsity, one bounded raw-payload one-ahead overlap repair is allowed only if residual expert I/O remains >=20%, with one raw expert maximum extra residency and +32 MiB RSS bound.
+STRICT unchanged:
+- top1 >=95%;
+- top3 >=99%;
+- KL <=0.05.
 
-Final 3×32-token decision classes:
-- `SPARSITY_5TPS_REACHED_QUALITY_GATED`;
-- `SPARSITY_FRONTIER_ADVANCED`;
-- `SPARSITY_FRONTIER_NO_ACCEPTABLE_GAIN`;
-- `SPARSITY_FRONTIER_INCONCLUSIVE`.
+Eligible also requires >=10% speed gain over `1.229233 tok/s` and RSS/swap/safety PASS.
 
-No expert quantization change, model download, full-bank rebuild, DFlash, or threshold rescue in this checkpoint.
+Final classes:
+- `EXPERT_QUANT_5TPS_REACHED_QUALITY_GATED`;
+- `EXPERT_QUANT_FRONTIER_ADVANCED`;
+- `EXPERT_QUANT_FRONTIER_NO_ACCEPTABLE_GAIN`;
+- `EXPERT_QUANT_FRONTIER_INCONCLUSIVE`.
 
-## Strategic next after sparsity frontier
+## Strategic next
 
-If still materially below 5 tok/s, next high-leverage frontier is lower-bit expert payload quantization (Q3/Q2 or mixed precision) under a separate frozen quality gate, optionally combined only with the selected sparsity point.
+If lower-bit experts advance speed but remain materially below `5 tok/s`, freeze the best quality-valid lower-bit verifier and then test an independent speculative-decoding frontier. The path to 5 tok/s is expected to be cumulative: fewer bytes/compute per verifier token plus more accepted output tokens per verifier step.
 
-After the current 30B speed frontier is frozen, run the planned same-hardware bake-off against Qwen3.8-27B and Qwen3.8-Flash-Next using matched speed/memory/quality/steerability evaluation.
+After the current Qwen3-30B-A3B speed frontier is frozen, execute the planned same-hardware bake-off against Qwen3.8-27B and Qwen3.8-Flash-Next on speed, memory, intelligence/quality and steerability/refusal behavior.
