@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.34
+Version: 3.35
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -33,7 +33,8 @@ A fully preregistered compound funnel may traverse internal stages without inter
 14. benchmark/trace-scoped artifacts must not be promoted implicitly to general runtime artifacts;
 15. metadata/coverage/provenance checks should use deterministic scripts/JSON rather than broad Pi reasoning;
 16. once a mechanism is accepted by causal + runtime funnels, do not reopen settled validation during productionization unless a canonicalization regression appears;
-17. canonicalization regressions may be repaired only in a new preregistered checkpoint with the original acceptance thresholds unchanged and only the demonstrated production regression in scope.
+17. canonicalization regressions may be repaired only in a new preregistered checkpoint with original acceptance thresholds unchanged and only the demonstrated production regression in scope;
+18. validation-only metadata/provenance must not remain in the hot runtime process when it can be proven offline and represented by a smaller runtime contract.
 
 External root: `<external-archive>/`
 BF16 cache: `<external-archive>/bf16-cache/`
@@ -92,44 +93,50 @@ Result: `research/architecture/loom-30b-expert-major-canonicalization-001-result
 Evidence: `results-local/research/30b-expert-major-canonicalization-001/20260827T084858Z/`
 Working-tree file: `scripts/loom_30b_moe_expert_major_backend_001.py`.
 
-Passed:
-- recovery/integration/static gates;
-- manifest `6144/6144`;
-- `18,048` access replay, zero unresolved/fallback/cache;
-- 3-position routing + raw float32-logit SHA exactness;
-- performance smoke: SOURCE `4.463661583 s`, PACKED `4.187744208 s`, ratio `0.938185866 <=0.95`;
-- swap `0 MiB`, no unsafe pressure/fallback/cache.
+Passed static/exactness/performance; failed only RSS: SOURCE `191,348,736 B`, PACKED `402,259,968 B`, delta `+201.14 MiB` > frozen `+128 MiB` gate.
 
-Failed only:
-- SOURCE peak RSS `191,348,736 B`;
-- PACKED peak RSS `402,259,968 B`;
-- delta `+201.14 MiB` > frozen `+128 MiB` gate.
+## Canonicalization RSS Repair 001 — INCONCLUSIVE
 
-Interpretation: canonicalization allocation/lifetime regression only. It does not revoke accepted expert-major science/runtime direction.
+`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_RSS_REPAIR_001 = EXPERT_MAJOR_CANONICALIZATION_INCONCLUSIVE`.
 
-## Current checkpoint — CANONICALIZATION RSS REPAIR 001
+Result: `research/architecture/loom-30b-expert-major-canonicalization-rss-repair-001-result.md`
+Evidence: `results-local/research/30b-expert-major-canonicalization-rss-repair-001/20260827T104738Z/`
 
-`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_RSS_REPAIR_001`
+Concrete finding:
+- PACKED alone parsed the full `6144 × 9` validation manifest in the runtime process;
+- compacting resolver metadata removed `41,066,169 B` of live Python objects, but allocator high-water RSS remained;
+- SOURCE and PACKED therefore had non-equivalent allocator histories and the one-pair RSS/performance comparison was inadmissible.
+
+Still PASS:
+- artifact integrity/provenance;
+- `6144/6144`;
+- `18,048` replay, zero unresolved/fallback/cache;
+- 3-position exactness;
+- swap `0 MiB`, no unsafe pressure.
+
+Informative only, not accepted as decision evidence: smoke ratio `0.869104911`; post-prefill/decode RSS was lower for PACKED, but peak comparison was contaminated by startup allocator history.
+
+## Current checkpoint — CANONICALIZATION RUNTIME CONTRACT 002
+
+`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_RUNTIME_CONTRACT_002`
 
 Preregistration:
-`research/architecture/loom-30b-expert-major-canonicalization-rss-repair-001-preregistration.md`
+`research/architecture/loom-30b-expert-major-canonicalization-runtime-contract-002-preregistration.md`
 
-Purpose: compare the accepted experimental backend against the failed canonical script, identify a concrete canonicalization-only allocation/lifetime delta, apply the smallest memory-behavior correction, then re-run only the necessary production gates.
+Purpose: move full manifest/provenance validation completely out of the hot runtime process and give PACKED only a minimal prevalidated resolver contract.
 
-Frozen scope:
-- no mechanism/layout/routing/math/dtype/KV/scheduling changes;
-- no multi-expert/persistent payload cache;
-- no SOURCE fallback;
-- no full-bank rebuild;
-- no threshold relaxation;
-- reuse accepted full-bank artifact.
+Frozen resolver selection:
+1. offline validate full accepted artifact/manifest;
+2. if the manifest proves fixed-size contiguous lexicographic `(layer,expert)` placement, use `FORMULAIC_RESOLVER` with deterministic offset computation and a tiny provenance contract;
+3. otherwise use `COMPACT_INDEX_RESOLVER` with only runtime-required per-expert fields;
+4. no other representation or threshold change.
 
-Stages:
-1. deterministic allocation/lifetime delta attribution, no model forward initially;
-2. minimal memory-behavior repair matching accepted experimental behavior;
-3. static production re-gate: compile, `6144/6144`, `18,048` replay, zero unresolved/fallback/cache;
-4. exactness regression: same 3 accepted decode positions, identical routing + raw float32 final-logit SHA;
-5. exactly one detailed `SOURCE -> PACKED` smoke pair with RSS milestones.
+Then:
+- minimally repair the existing canonical working-tree backend;
+- static `6144/6144` + `18,048` replay, zero unresolved/fallback/cache;
+- prove hot PACKED child does not parse full validation manifest/provenance trees;
+- same 3-position exactness;
+- exactly one fresh-process SOURCE->PACKED RSS/performance smoke after offline preflight validator has exited.
 
 Unchanged GO gates:
 - PACKED/SOURCE decode wall `<=0.95`;
@@ -138,9 +145,4 @@ Unchanged GO gates:
 - exactness PASS;
 - no fallback/cache/unsafe pressure.
 
-Final outcomes:
-- `EXPERT_MAJOR_CANONICALIZATION_GO`
-- `EXPERT_MAJOR_CANONICALIZATION_NO_GO`
-- `EXPERT_MAJOR_CANONICALIZATION_INCONCLUSIVE`.
-
-Pi may edit the existing working-tree canonical script and directly related runtime code only. Pi must not commit/push or edit project decision docs.
+Pi may edit the existing canonical script and directly related reusable helper code only. Pi must not commit/push or edit project decision docs.
