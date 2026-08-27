@@ -1,91 +1,78 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-27
-Current: `EXPERT_MAJOR_CANONICALIZATION_GO` from Runtime Contract 002
-Strategic next: final local backend review/commit, then return to the next measured 30B serving bottleneck
-Canonical context: `/AGENTS.md` v3.36.
+Current: expert-major canonical backend committed (`36414d7`)
+Strategic next: `LOOM_30B_POST_CANONICAL_SPEED_FRONTIER_001`
+Canonical context: `/AGENTS.md` v3.38.
 
 ## Settled 30B expert-major direction
 
-Raw physical-I/O:
+Physical-I/O:
 `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002 = EXPERT_MAJOR_GO`.
-Median PACKED/SOURCE access-wall ratio `0.595950`, or `40.405%` lower expert-access wall.
+Median PACKED/SOURCE access ratio `0.595950` = `40.405%` lower expert-access wall.
 
 Full-bank runtime:
 `LOOM_30B_EXPERT_MAJOR_FULLBANK_RUNTIME_FUNNEL_002 = EXPERT_MAJOR_RUNTIME_GO`.
+Accepted runtime ratios `0.794284`, `0.846718`, `0.768208`; median `0.794284` = `20.5716%` lower decode wall.
 
-Accepted runtime evidence:
-- full bank `6144/6144`, `15,401,484,288 B`;
-- full hash/provenance PASS;
-- static replay `18,048` accesses, zero unresolved/fallback/cache;
-- 3-position exactness PASS;
-- runtime ratios `0.794284`, `0.846718`, `0.768208`, median `0.794284` = `20.5716%` lower measured decode wall;
-- RSS PASS, swap `0 MiB`, no unsafe pressure/fallback/persistent expert cache.
+Canonicalization Runtime Contract 002:
+`EXPERT_MAJOR_CANONICALIZATION_GO` with `FORMULAIC_RESOLVER`.
+`6144/6144`, `18,048` replay, hot full-manifest parse/open `0`, 3-position exactness, RSS/swap/safety PASS.
 
-Expert-major is accepted. Do not repeat physical-I/O/full-runtime acceptance absent a materially different runtime or regression.
+Canonical code:
+`scripts/loom_30b_moe_expert_major_backend_001.py`
+Commit `36414d7`.
 
-## Productionization path
+The expert-major phase is closed. Do not reconfirm it without regression/new target.
 
-Canonicalization 001:
-- static/exactness/performance PASS;
-- RSS NO-GO because hot PACKED process carried validation-manifest allocation history.
+## Current — Post-Canonical Speed Frontier 001
 
-RSS Repair 001:
-- identified full `6144 × 9` manifest parsing as the production-only RSS contaminant;
-- live resolver metadata reduced by `41,066,169 B`;
-- result INCONCLUSIVE because allocator histories still differed.
+Preregistration:
+`research/architecture/loom-30b-post-canonical-speed-frontier-001-preregistration.md`.
 
-Runtime Contract 002 moved full validation entirely out of the hot process.
+Engineering objective: maximize sustained Qwen3-30B-A3B Q4 decode on M1/8GB while preserving exact outputs first. Aspirational target `>=5.0 tok/s`.
 
-## Canonicalization Runtime Contract 002 — GO
+Frozen compound progression:
+1. 32-token sustained canonical baseline + exclusive bottleneck attribution;
+2. process-lifetime PACKED fd if current per-expert open/close is confirmed;
+3. remove/restructure redundant per-expert materialization synchronization if preregistered precondition is met;
+4. bounded single-expert read/allocation reduction if still material;
+5. bounded one-ahead overlap if external I/O remains >=20%;
+6. final 3 × 32-token sustained throughput measurement.
 
-Result:
-`research/architecture/loom-30b-expert-major-canonicalization-runtime-contract-002-result.md`.
+Each intervention must independently preserve the frozen 3-position exactness oracle, zero fallback/cache, and bounded RSS/swap. It is retained only if its minimum preregistered speed gain passes; otherwise it is reverted.
 
-Evidence:
-`results-local/research/30b-expert-major-canonicalization-runtime-contract-002/20260827T115816Z/`.
+Final outcomes:
+- `SPEED_5TPS_REACHED`
+- `SPEED_FRONTIER_ADVANCED`
+- `SPEED_FRONTIER_NO_EXACT_GAIN`
+- `SPEED_FRONTIER_INCONCLUSIVE`
 
-Selected `FORMULAIC_RESOLVER` because the accepted bank proves:
-- 6144 lexicographically ordered expert records;
-- constant `2,506,752 B` expert size;
-- contiguous affine placement;
-- exact total `15,401,484,288 B`.
+No quantization/quality tradeoff or speculative decoding is authorized inside this checkpoint.
 
-Runtime contract SHA-256:
-`ee43eaa935e957d40856898c73fe238ff626c880514a8deb9b73491567657aba`.
+## Speed Frontier 002 — only if needed
 
-Production gates:
-- offline full validation PASS (`6144` payloads / `55,296` source components);
-- runtime resolver `6144/6144` PASS;
-- `18,048` access replay PASS;
-- zero unresolved/ambiguous/invalid/fallback/cache;
-- hot runtime full-manifest opens/parses `0`;
-- 3-position routing/raw float32-logit exactness PASS.
+If exactness-preserving engineering remains below the desired practical speed, separately investigate:
+- lower-bit expert quantization (Q3/Q2 or mixed precision) with explicit quality loss gates;
+- independent speculative decoding distinct from the closed DFlash path;
+- retain only options with measured quality/safety/memory benefit.
 
-One-pair production-regression smoke:
-- SOURCE `4.379309374 s`;
-- PACKED `1.924031958 s`;
-- ratio `0.439345978 <=0.95` PASS;
-- SOURCE peak RSS `432,537,600 B`;
-- PACKED peak RSS `305,020,928 B`;
-- PACKED delta `-127,516,672 B` PASS;
-- matched swap gate PASS;
-- zero fallback/cache/unsafe pressure.
+Target `5 tok/s` is aspirational, not a justification for relaxing validity.
 
-Do not treat `0.439345978` as a new effect estimate. The accepted performance estimate remains the three-pair runtime-funnel median `0.794284`.
+## Next-model LOOM bake-off
 
-## Immediate next — persist accepted production code
+After freezing the fastest accepted current 30B runtime, test whether LOOM techniques can support newer Qwen releases on the same M1/8GB.
 
-Local working-tree implementation:
-`scripts/loom_30b_moe_expert_major_backend_001.py`.
+Candidates:
+1. current `Qwen3-30B-A3B` — 30B total / 3B activated MoE baseline;
+2. `Qwen3.8-27B` — dense 27B, requires a different streaming/readiness strategy because all 27B parameters participate in each token;
+3. `Qwen3.8-Flash-Next` — ultra-sparse architecture with large expert bank, 6B activated main parameters, N-gram embedding, and MTP; requires a new LOOM artifact/runtime contract.
 
-It is accepted by the canonicalization gates but not yet stored in Git.
+Required bake-off outputs on identical local constraints:
+- sustained tok/s and latency;
+- RAM/swap/disk footprint;
+- fixed intelligence/quality score across reasoning, coding, knowledge and instruction following;
+- controllability/refusal/steerability profile;
+- practical winner by speed, intelligence and combined utility.
 
-Next actions:
-1. review exact final file/diff and file hash;
-2. reject accidental scope expansion, hidden fallback/cache, ephemeral hard-coded paths, unsafe offset/range behavior, or maintainability defects;
-3. if review PASS, commit/push the production backend;
-4. update AGENTS/HANDOFF/ROADMAP to mark implementation persisted;
-5. profile the post-expert-major runtime and select the next dominant serving bottleneck from measured evidence.
-
-No additional expert-major benchmark should be run merely to reconfirm already accepted results.
+Do not infer the local winner from vendor benchmarks alone; measure all feasible candidates locally under a matched quality/quantization budget.
