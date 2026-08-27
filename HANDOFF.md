@@ -1,72 +1,79 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-27
-Status: ACTIVE — full-bank expert-major is accepted end-to-end for the current Qwen3-30B-A3B Q4 M1/8GB path. Physical-I/O causality and runtime adoption are settled; next is productionization/canonicalization only.
+Status: ACTIVE — full-bank expert-major runtime remains ACCEPTED; first canonical production implementation failed only the frozen RSS gate. A bounded canonicalization RSS-repair checkpoint is preregistered.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_EXPERT_MAJOR_FULLBANK_RUNTIME_FUNNEL_002_EXPERT_MAJOR_RUNTIME_GO`
-Next: `LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_001`
-Pi context: `/AGENTS.md` v3.33.
+Current checkpoint: `LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_RSS_REPAIR_001`
+Pi context: `/AGENTS.md` v3.34.
 
 ## Settled expert-major evidence
 
-Physical-I/O decision:
+Physical-I/O:
 `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002 = EXPERT_MAJOR_GO`.
+Median first-touch PACKED/SOURCE access ratio `0.595950` = `40.405%` lower expert-access wall. Exactness/read-structure/physical-byte/memory/swap gates PASS.
 
-Valid PACKED/SOURCE first-touch ratios:
-- `0.602456`;
-- `0.595950`;
-- `0.581170`;
-- median `0.595950` = `40.405%` lower expert-access wall.
-
-Runtime decision:
+Runtime:
 `LOOM_30B_EXPERT_MAJOR_FULLBANK_RUNTIME_FUNNEL_002 = EXPERT_MAJOR_RUNTIME_GO`.
+Evidence: `results-local/research/30b-expert-major-fullbank-runtime-funnel-002/20260826T152602Z/`.
 
-Result:
-`research/architecture/loom-30b-expert-major-fullbank-runtime-funnel-002-result.md`
+Accepted full-bank/runtime facts:
+- `6144/6144` experts;
+- `15,401,484,288 B` full bank;
+- full hash/provenance PASS;
+- `18,048` static accesses, zero unresolved/fallback/cache;
+- 3-position full-runtime exactness PASS;
+- A/B ratios `0.794284`, `0.846718`, `0.768208`; median `0.794284` = `20.5716%` lower measured decode wall;
+- RSS PASS, swap `0 MiB`, no unsafe pressure/fallback/persistent cache.
 
-Evidence:
-`results-local/research/30b-expert-major-fullbank-runtime-funnel-002/20260826T152602Z/`
+Do not reopen physical-I/O/runtime acceptance.
 
-Full-bank/runtime acceptance:
-- readiness PASS, source `6144/6144`;
-- full routed bank `6144` entries / `15,401,484,288 B`, complete hash/provenance PASS;
-- static dry-run `18,048` accesses, zero unresolved/fallback/cache;
-- three-position full 48-layer exactness PASS, identical routing and raw final-logit float32 SHA;
-- process-level A/B ratios `0.794284`, `0.846718`, `0.768208`;
-- median `0.794284` = `20.5716%` lower measured decode wall;
-- RSS gate PASS;
-- swap delta `0 MiB`;
-- no unsafe pressure, SOURCE fallback or persistent expert cache.
+## Canonicalization 001 result
 
-Conclusion: expert-major is no longer an experimental candidate. It is the accepted runtime direction for this target. Do not re-run the physical-I/O or full runtime acceptance campaigns unless a regression or materially different runtime/model target appears.
+`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_001 = EXPERT_MAJOR_CANONICALIZATION_NO_GO`.
+Result: `research/architecture/loom-30b-expert-major-canonicalization-001-result.md`.
+Evidence: `results-local/research/30b-expert-major-canonicalization-001/20260827T084858Z/`.
 
-## Integration discipline
+Working-tree code:
+`scripts/loom_30b_moe_expert_major_backend_001.py` — new, 214 lines.
 
-`research/architecture/loom-integration-readiness-protocol-v1.md` remains mandatory.
+PASS:
+- accepted artifact recovery/reuse;
+- canonical code integration;
+- manifest `6144/6144`;
+- `18,048` access replay, zero unresolved/ambiguous/invalid/fallback/cache;
+- 3-position routing and raw float32-logit SHA exactness;
+- smoke SOURCE `4.463661583 s`, PACKED `4.187744208 s`, ratio `0.938185866 <=0.95`;
+- swap `0 MiB`, no unsafe pressure/fallback/persistent cache.
 
-Before future integrations:
-- explicit producer/consumer contracts;
-- mechanical coverage proof;
-- static access dry-run;
-- only then model forward/integration;
-- deterministic scripts/JSON for manifest/provenance rather than broad Pi reasoning.
+FAIL only:
+- SOURCE RSS `191,348,736 B`;
+- PACKED RSS `402,259,968 B`;
+- delta `+201.14 MiB` > frozen `+128 MiB` gate.
 
-## Exact next step — Canonicalization 001
+Interpretation: productionization allocation/lifetime regression. Accepted mechanism/runtime direction remains intact.
+
+## Exact next step — Canonicalization RSS Repair 001
 
 Preregistration:
-`research/architecture/loom-30b-expert-major-canonicalization-001-preregistration.md`
+`research/architecture/loom-30b-expert-major-canonicalization-rss-repair-001-preregistration.md`.
 
-This is productionization, not a new scientific experiment.
+One bounded repair funnel:
+1. compare accepted experimental PACKED backend/runner against the failed canonical script and emit a concrete allocation/lifetime delta report;
+2. apply only the smallest demonstrated canonicalization memory-behavior correction;
+3. static re-gate: compile, `6144/6144`, `18,048` accesses, zero unresolved/fallback/cache;
+4. same 3-position exactness regression;
+5. one detailed fresh-process `SOURCE -> PACKED` smoke pair with RSS milestones.
 
-Pi should:
-1. recover the exact accepted builder/manifest/backend from the retained Runtime Funnel 002 evidence;
-2. verify the retained full-bank artifact still passes integrity/provenance;
-3. add minimal reusable expert-major builder/validator/backend code to the local working tree while preserving SOURCE and every non-I/O runtime semantic;
-4. run static production checks: compile/syntax, `6144/6144`, complete mapping, retained `18,048`-access replay, zero unresolved/fallback/cache;
-5. rerun only the three-position exactness regression gate;
-6. run one bounded SOURCE->PACKED three-token performance/safety smoke, not another full A/B campaign.
+Allowed repair classes are only demonstrated productionization differences: retained validation metadata, file-access/mapping lifetime, temporary payload-buffer allocation/lifetime, treatment-only retained instrumentation, or another directly evidenced canonicalization-only memory delta.
 
-Canonicalization GO requires exactness + static gates PASS and smoke PACKED/SOURCE wall <=`0.95`, safe RSS/swap, zero fallback/cache/unsafe pressure.
+Forbidden: expert-major layout/mechanism changes, routing/math/dtype/KV/scheduling changes, multi-expert cache, SOURCE fallback, full-bank rebuild, threshold relaxation.
 
-Pi may edit runtime/source code but must not commit/push or edit AGENTS/HANDOFF/ROADMAP. On GO, Pi returns changed files + concise evidence so the code can be reviewed and committed separately.
+Frozen GO thresholds remain:
+- runtime smoke ratio `<=0.95`;
+- PACKED peak RSS `<= SOURCE +128 MiB`;
+- PACKED swap delta `<= SOURCE +64 MiB`;
+- exactness PASS;
+- no unsafe pressure/fallback/persistent cache.
+
+Pi may edit the existing uncommitted canonical script and directly related runtime code only. Pi must not commit/push or edit decision docs.
