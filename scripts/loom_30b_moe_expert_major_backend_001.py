@@ -323,6 +323,8 @@ class PackedExpertBackend:
             self.entries = entries
         self.mx, self.dtype_map, self.clock_ns = mx_module, dtype_map, clock_ns
         self.requests = self.fallback_count = 0
+        # SPEED_FRONTIER_001 Stage 1: one process-lifetime descriptor; no payload retention.
+        self._packed_fd: int | None = os.open(self.binary, os.O_RDONLY)
 
     def resolve_expert(self, layer_id: int, expert_id: int) -> dict[str, int]:
         layer, expert = int(layer_id), int(expert_id)
@@ -342,11 +344,9 @@ class PackedExpertBackend:
     def load_weights(self, layer_id: int, expert_id: int, specs: Any) -> tuple[dict[str, Any], float, int]:
         started = self.clock_ns()
         row = self.resolve_expert(layer_id, expert_id)
-        fd = os.open(self.binary, os.O_RDONLY)
-        try:
-            raw = os.pread(fd, row["size"], row["offset"])
-        finally:
-            os.close(fd)
+        if self._packed_fd is None:
+            raise ExpertBackendError("packed backend used after deterministic close")
+        raw = os.pread(self._packed_fd, row["size"], row["offset"])
         if len(raw) != row["size"]:
             raise ExpertBackendError(f"truncated packed payload {(layer_id, expert_id)}")
         host: dict[str, Any] = {}
@@ -363,3 +363,12 @@ class PackedExpertBackend:
         self.mx.eval(*weights.values())
         self.requests += 1
         return weights, (self.clock_ns() - started) / 1e9, 1
+
+    def close(self) -> None:
+        """Deterministic process-lifetime PACKED descriptor teardown."""
+        if self._packed_fd is not None:
+            os.close(self._packed_fd)
+            self._packed_fd = None
+
+    def __del__(self) -> None:
+        self.close()
