@@ -1,10 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-27
-Current: `SPEED_FRONTIER_ADVANCED` from Post-Canonical Speed Frontier 001
-Immediate next: review/commit accepted persistent-FD delta
-Strategic next: `LOOM_30B_ROUTING_SPARSITY_SPEED_QUALITY_FRONTIER_001`
-Canonical context: `/AGENTS.md` v3.39.
+Current: `SPEED_FRONTIER_ADVANCED` from Post-Canonical Speed Frontier 001; persistent-FD baseline persisted in commit `96958de`
+Immediate next: `LOOM_30B_ROUTING_SPARSITY_SPEED_QUALITY_FRONTIER_001`
+Canonical context: `/AGENTS.md` v3.40.
 
 ## Settled expert-major direction
 
@@ -19,9 +18,9 @@ Accepted median ratio `0.794284` = `20.5716%` lower decode wall.
 Canonicalization Runtime Contract 002:
 `EXPERT_MAJOR_CANONICALIZATION_GO` with `FORMULAIC_RESOLVER`.
 
-Canonical code before current speed delta:
-`scripts/loom_30b_moe_expert_major_backend_001.py`
-commit `36414d7`.
+Canonical code:
+`scripts/loom_30b_moe_expert_major_backend_001.py`.
+Base commit `36414d7`; current exact-Q4 speed baseline commit `96958de`.
 
 Expert-major validation is closed absent regression/new target.
 
@@ -53,7 +52,11 @@ Final exact 3×32-token throughput:
 
 p50 `0.825660 s`; p95 `1.217692 s`; peak RSS `404,340,736 B`; swap `0`; exactness/safety PASS.
 
-The accepted Stage-1 persistent-FD change remains local/uncommitted and must be reviewed/persisted before the next independent funnel.
+Persistent-FD delta review PASS and persisted:
+- validated file SHA-256 `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`;
+- commit `96958de` — `perf: keep packed expert file descriptor open`.
+
+This is now the frozen exact-Q4 baseline for later speed/quality work.
 
 ## Why exact Q4 is unlikely to reach 5 tok/s alone
 
@@ -62,16 +65,19 @@ Top-8 Q4 routed expert traffic is:
 
 At `5 tok/s`, expert payload traffic alone would be about `4.81 GB/s`, before expert compute, backbone, materialization and routing.
 
-Therefore the next high-leverage speed work should reduce expert work/bytes per token rather than continue small exact-Q4 hot-path changes.
+Therefore the next high-leverage speed work reduces expert work/bytes per token rather than continuing small exact-Q4 hot-path changes.
 
-## Next — Routing Sparsity Speed/Quality Frontier 001
+## Current — Routing Sparsity Speed/Quality Frontier 001
 
 Preregistration:
 `research/architecture/loom-30b-routing-sparsity-speed-quality-frontier-001-preregistration.md`.
 
-Execute only after persistent-FD code is reviewed and committed.
+Frozen baseline:
+- commit `96958de`;
+- exact sustained median `1.229233 tok/s`;
+- original top-8 Q4 model is the teacher/reference.
 
-Treatment: retain the original top-8 router decision, but execute only the smallest subset covering a frozen cumulative routing-mass threshold, then renormalize retained weights while preserving original retained expert accumulation order.
+Treatment: retain the original top-8 router ranking, but execute only the smallest prefix covering a frozen cumulative routing-mass threshold, then renormalize retained weights while preserving original retained expert accumulation order.
 
 Authorized thresholds only:
 - `tau=0.95`;
