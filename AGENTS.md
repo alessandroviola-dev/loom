@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.33
+Version: 3.34
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -32,7 +32,8 @@ A fully preregistered compound funnel may traverse internal stages without inter
 13. static adapter dry-run with zero unresolved accesses and zero forbidden fallback must PASS before model forward;
 14. benchmark/trace-scoped artifacts must not be promoted implicitly to general runtime artifacts;
 15. metadata/coverage/provenance checks should use deterministic scripts/JSON rather than broad Pi reasoning;
-16. once a mechanism is accepted by causal + runtime funnels, do not reopen settled validation during productionization unless a canonicalization regression appears.
+16. once a mechanism is accepted by causal + runtime funnels, do not reopen settled validation during productionization unless a canonicalization regression appears;
+17. canonicalization regressions may be repaired only in a new preregistered checkpoint with the original acceptance thresholds unchanged and only the demonstrated production regression in scope.
 
 External root: `<external-archive>/`
 BF16 cache: `<external-archive>/bf16-cache/`
@@ -66,55 +67,80 @@ Valid first-touch PACKED/SOURCE ratios: `0.602456`, `0.595950`, `0.581170`; medi
 
 All payload/hash, physical-byte, read-structure, memory and swap gates PASS. Raw expert-major physical-I/O causality is settled.
 
-## Runtime Funnel 001 — readiness failure only
-
-`LOOM_30B_EXPERT_MAJOR_RUNTIME_FUNNEL_001 = EXPERT_MAJOR_RUNTIME_INCONCLUSIVE`.
-
-A 384-expert trace/position-scoped pack could not cover the selected runtime workload. No model forward ran. This produced Integration Readiness Protocol v1; it is not evidence against expert-major.
-
 ## Full-Bank Runtime Funnel 002 — ACCEPTED
 
 `LOOM_30B_EXPERT_MAJOR_FULLBANK_RUNTIME_FUNNEL_002 = EXPERT_MAJOR_RUNTIME_GO`.
 
-Result:
-`research/architecture/loom-30b-expert-major-fullbank-runtime-funnel-002-result.md`
-
-Evidence:
-`results-local/research/30b-expert-major-fullbank-runtime-funnel-002/20260826T152602Z/`
+Result: `research/architecture/loom-30b-expert-major-fullbank-runtime-funnel-002-result.md`
+Evidence: `results-local/research/30b-expert-major-fullbank-runtime-funnel-002/20260826T152602Z/`
 
 Accepted evidence:
-- Stage 0 readiness PASS: source `6144/6144`, disk gate PASS;
-- Stage 1 full bank PASS: `6144` entries, `15,401,484,288 B`, full hash/provenance PASS;
-- Stage 2 static dry-run PASS: `18,048` accesses, `0` unresolved/fallback/cache;
-- Stage 3 exactness PASS: 3 full 48-layer decode positions, identical routing and raw final-logit float32 SHA;
-- Stage 4 A/B PASS: runtime ratios `0.794284`, `0.846718`, `0.768208`; median `0.794284` = `20.5716%` lower measured decode wall;
-- RSS gate PASS;
-- swap delta `0 MiB`;
-- no unsafe pressure, fallback or persistent expert cache.
+- readiness PASS: source `6144/6144`, disk gate PASS;
+- full bank PASS: `6144` entries, `15,401,484,288 B`, full hash/provenance PASS;
+- static dry-run PASS: `18,048` accesses, `0` unresolved/fallback/cache;
+- exactness PASS: 3 full 48-layer decode positions, identical routing and raw final-logit float32 SHA;
+- runtime ratios `0.794284`, `0.846718`, `0.768208`; median `0.794284` = `20.5716%` lower measured decode wall;
+- RSS gate PASS; swap delta `0 MiB`; no unsafe pressure/fallback/persistent expert cache.
 
-Decision: the full-bank expert-major backend is the accepted runtime direction for the current M1/8GB 30B path. Do not re-run full physical-I/O or runtime acceptance testing absent a regression or materially different target/runtime.
+Decision: full-bank expert-major remains the accepted runtime direction. Do not re-run full physical-I/O or runtime acceptance testing absent a materially different target/runtime.
 
-## Current checkpoint — CANONICALIZATION 001
+## Canonicalization 001 — NO-GO, RSS ONLY
 
-`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_001`
+`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_001 = EXPERT_MAJOR_CANONICALIZATION_NO_GO`.
+
+Result: `research/architecture/loom-30b-expert-major-canonicalization-001-result.md`
+Evidence: `results-local/research/30b-expert-major-canonicalization-001/20260827T084858Z/`
+Working-tree file: `scripts/loom_30b_moe_expert_major_backend_001.py`.
+
+Passed:
+- recovery/integration/static gates;
+- manifest `6144/6144`;
+- `18,048` access replay, zero unresolved/fallback/cache;
+- 3-position routing + raw float32-logit SHA exactness;
+- performance smoke: SOURCE `4.463661583 s`, PACKED `4.187744208 s`, ratio `0.938185866 <=0.95`;
+- swap `0 MiB`, no unsafe pressure/fallback/cache.
+
+Failed only:
+- SOURCE peak RSS `191,348,736 B`;
+- PACKED peak RSS `402,259,968 B`;
+- delta `+201.14 MiB` > frozen `+128 MiB` gate.
+
+Interpretation: canonicalization allocation/lifetime regression only. It does not revoke accepted expert-major science/runtime direction.
+
+## Current checkpoint — CANONICALIZATION RSS REPAIR 001
+
+`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_RSS_REPAIR_001`
 
 Preregistration:
-`research/architecture/loom-30b-expert-major-canonicalization-001-preregistration.md`
+`research/architecture/loom-30b-expert-major-canonicalization-rss-repair-001-preregistration.md`
 
-Purpose: productionize the already accepted experimental full-bank backend into reusable canonical repo code without reopening settled science.
+Purpose: compare the accepted experimental backend against the failed canonical script, identify a concrete canonicalization-only allocation/lifetime delta, apply the smallest memory-behavior correction, then re-run only the necessary production gates.
+
+Frozen scope:
+- no mechanism/layout/routing/math/dtype/KV/scheduling changes;
+- no multi-expert/persistent payload cache;
+- no SOURCE fallback;
+- no full-bank rebuild;
+- no threshold relaxation;
+- reuse accepted full-bank artifact.
 
 Stages:
-1. recover exact accepted builder/manifest/backend implementation and validate retained artifact integrity;
-2. integrate minimal reusable SOURCE/PACKED backend code into working tree, preserving SOURCE and all non-I/O semantics;
-3. static production gate: compile/syntax, `6144/6144` manifest, `18,048`-access replay, zero unresolved/fallback/cache;
-4. exactness regression gate: same 3 accepted decode positions, identical routing + raw float32 final-logit SHA;
-5. one bounded process-level SOURCE->PACKED performance/safety smoke only.
+1. deterministic allocation/lifetime delta attribution, no model forward initially;
+2. minimal memory-behavior repair matching accepted experimental behavior;
+3. static production re-gate: compile, `6144/6144`, `18,048` replay, zero unresolved/fallback/cache;
+4. exactness regression: same 3 accepted decode positions, identical routing + raw float32 final-logit SHA;
+5. exactly one detailed `SOURCE -> PACKED` smoke pair with RSS milestones.
 
-Canonicalization GO requires all gates PASS and smoke PACKED/SOURCE decode wall `<=0.95`, RSS <= SOURCE +128 MiB, swap <= SOURCE +64 MiB, no fallback/cache/unsafe pressure.
-
-Pi may edit runtime/source code in the local working tree during this checkpoint but must not commit/push or edit project decision docs.
+Unchanged GO gates:
+- PACKED/SOURCE decode wall `<=0.95`;
+- PACKED peak RSS `<= SOURCE +128 MiB`;
+- PACKED swap delta `<= SOURCE +64 MiB`;
+- exactness PASS;
+- no fallback/cache/unsafe pressure.
 
 Final outcomes:
 - `EXPERT_MAJOR_CANONICALIZATION_GO`
 - `EXPERT_MAJOR_CANONICALIZATION_NO_GO`
-- `EXPERT_MAJOR_CANONICALIZATION_INCONCLUSIVE`
+- `EXPERT_MAJOR_CANONICALIZATION_INCONCLUSIVE`.
+
+Pi may edit the existing working-tree canonical script and directly related runtime code only. Pi must not commit/push or edit project decision docs.
