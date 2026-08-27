@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.39
+Version: 3.40
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -70,12 +70,11 @@ Static `6144/6144`, `18,048` replay, hot-manifest-open=0, 3-position exactness, 
 
 Canonical implementation:
 `scripts/loom_30b_moe_expert_major_backend_001.py`
-Commit: `36414d7`.
-Reviewed SHA-256 before Speed Frontier 001: `b3d198308c8471832d04c79433d1c67643f30f1b1d9e2b7df0cc542b668c9ea2`.
+Base canonicalization commit: `36414d7`.
 
 Do not reopen expert-major validation absent regression or a new model/runtime.
 
-## Post-Canonical Speed Frontier 001 — ADVANCED
+## Post-Canonical Speed Frontier 001 — ADVANCED AND PERSISTED
 
 `LOOM_30B_POST_CANONICAL_SPEED_FRONTIER_001 = SPEED_FRONTIER_ADVANCED`.
 
@@ -101,24 +100,31 @@ Treatment results:
 Final 3×32-token exact throughput:
 `1.115874`, `1.229233`, `1.254611 tok/s`; median `1.229233 tok/s`.
 p50 `0.825660 s`; p95 `1.217692 s`; peak RSS `404,340,736 B`; swap `0`; exactness PASS.
-Final local backend SHA-256: `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
 
-The remaining dominant bottleneck is expert file I/O. At top-8 Q4, `5 tok/s` would require about `4.81 GB/s` of expert payload traffic alone, before compute/backbone/materialization. Exact-Q4 micro-optimization is therefore not expected to reach 5 tok/s by itself.
+Persistent-FD implementation reviewed and persisted:
+- file: `scripts/loom_30b_moe_expert_major_backend_001.py`;
+- validated file SHA-256: `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`;
+- Git commit: `96958de` (`perf: keep packed expert file descriptor open`).
 
-IMPORTANT repository state: the accepted persistent-FD delta is currently local/uncommitted and MUST be reviewed/committed before the next independent speed checkpoint executes.
+This commit is the exact-Q4 speed baseline for subsequent work.
 
-## Next checkpoint — ROUTING SPARSITY SPEED/QUALITY FRONTIER 001
+Remaining dominant bottleneck: expert file I/O. At top-8 Q4, `5 tok/s` would require about `4.81 GB/s` expert payload traffic alone, before compute/backbone/materialization. Exact-Q4 micro-optimization is therefore not expected to reach 5 tok/s by itself.
+
+## Current checkpoint — ROUTING SPARSITY SPEED/QUALITY FRONTIER 001
 
 `LOOM_30B_ROUTING_SPARSITY_SPEED_QUALITY_FRONTIER_001`
 
 Preregistration:
 `research/architecture/loom-30b-routing-sparsity-speed-quality-frontier-001-preregistration.md`
 
-Execute only after the persistent-FD delta from Speed Frontier 001 is reviewed and committed.
+Purpose: reduce expert bytes/compute per token by dynamically executing the smallest subset of the original top-8 experts that covers a frozen fraction of router mass, under fidelity gates frozen before candidate results.
 
-Purpose: reduce expert bytes/compute per token by dynamically executing the smallest subset of the original top-8 experts that covers a frozen fraction of router mass, under a fidelity gate fixed before variants are observed.
+Frozen baseline:
+- code commit `96958de`;
+- exact-Q4 sustained median `1.229233 tok/s`;
+- top-8 routed expert semantics are the teacher/reference.
 
-Frozen routing-mass variants:
+Frozen routing-mass variants only:
 - `tau=0.95`;
 - `tau=0.90`;
 - `tau=0.80`;
@@ -135,7 +141,7 @@ USABLE fidelity requires all:
 
 STRICT requires >=95% top1, >=99% top3 inclusion, KL <=0.05.
 
-Only quality-valid variants with >=10% speed gain and safety PASS are eligible. Pick the fastest eligible variant; tie within 2% favors fidelity/higher tau.
+Only quality-valid variants with >=10% speed gain and safety PASS are eligible. Select the fastest eligible variant; tie within 2% favors fidelity/higher tau.
 
 After selecting sparsity, one bounded raw-payload one-ahead overlap repair is allowed only if residual expert I/O remains >=20%, with one raw expert maximum extra residency and +32 MiB RSS bound.
 
