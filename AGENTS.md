@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.37
+Version: 3.38
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -28,77 +28,88 @@ A fully preregistered compound funnel may traverse internal stages without inter
 9. failed frozen methods are not silently modified/rerun under the same checkpoint;
 10. control/API semantics affecting validity must be established locally;
 11. Integration Readiness Protocol v1 is mandatory before integration coding/model forward: `research/architecture/loom-integration-readiness-protocol-v1.md`;
-12. producer/consumer compatibility must be proven mechanically before adapter coding: `consumer_required_coverage ⊆ provider_available_coverage`;
+12. producer/consumer compatibility must be proven mechanically before adapter coding;
 13. static adapter dry-run with zero unresolved accesses and zero forbidden fallback must PASS before model forward;
 14. benchmark/trace-scoped artifacts must not be promoted implicitly to general runtime artifacts;
 15. metadata/coverage/provenance checks should use deterministic scripts/JSON rather than broad Pi reasoning;
-16. once a mechanism is accepted by causal + runtime funnels, do not reopen settled validation during productionization unless a canonicalization regression appears;
-17. canonicalization regressions may be repaired only in a new preregistered checkpoint with original acceptance thresholds unchanged and only the demonstrated production regression in scope;
-18. validation-only metadata/provenance must not remain in the hot runtime process when it can be proven offline and represented by a smaller runtime contract;
-19. accepted production code is canonical only after final diff review and Git persistence.
+16. settled mechanisms are not reopened absent regression or materially different target/runtime;
+17. production regressions require a new bounded preregistered repair with original thresholds unchanged;
+18. validation-only metadata/provenance stays out of the hot runtime when representable by a smaller runtime contract;
+19. accepted production code is canonical only after review and Git persistence.
 
 External root: `<external-archive>/`
 BF16 cache: `<external-archive>/bf16-cache/`
 
-## Mission / stable 30B target
+## Mission / stable current target
 
-Mission: **Big models. Small machines.** Practical ~27B/32B local AI on Apple M1/8GB.
-Q4 target: `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
+Mission: **Big models. Small machines.** Practical large open-weight AI on Apple M1/8GB.
+Current Q4 target: `results-local/moe/models/Qwen3-30B-A3B-MLX-4bit`
 
-Stable facts:
-- 48 MoE layers, 128 experts/layer, top-k 8;
+Stable current facts:
+- Qwen3-30B-A3B: 48 MoE layers, 128 experts/layer, top-k 8;
 - routed identities `48 × 128 = 6144`;
-- payload `16,220,499,968 B`;
-- resident non-routed `819,015,680 B`;
 - routed bank `15,401,484,288 B`;
 - Q4 expert `2,506,752 B`;
-- BF16 KV `98,304 B/token`;
 - external serial-expert math/full final logits exact;
 - one routed expert logically live at a time;
+- DFlash path closed;
 - raw 4-GiB global LRU rejected.
 
-## DFlash — CLOSED
-
-Final: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`. Do not reopen absent a new independent mechanism.
-
-## Expert-major — ACCEPTED AND CANONICAL
+## Expert-major — ACCEPTED, CANONICAL, CLOSED
 
 Physical-I/O: `LOOM_30B_EXPERT_MAJOR_DECISION_FUNNEL_002 = EXPERT_MAJOR_GO`.
 Median first-touch PACKED/SOURCE ratio `0.595950` = `40.405%` lower expert-access wall.
 
 Full-bank runtime: `LOOM_30B_EXPERT_MAJOR_FULLBANK_RUNTIME_FUNNEL_002 = EXPERT_MAJOR_RUNTIME_GO`.
-Accepted three-pair runtime ratios: `0.794284`, `0.846718`, `0.768208`; median `0.794284` = `20.5716%` lower measured decode wall. Exactness/RSS/swap/fallback/cache gates PASS.
+Accepted three-pair runtime ratios `0.794284`, `0.846718`, `0.768208`; median `0.794284` = `20.5716%` lower decode wall. Exactness/RSS/swap/fallback/cache gates PASS.
 
-Canonicalization Runtime Contract 002: `EXPERT_MAJOR_CANONICALIZATION_GO`.
-Result: `research/architecture/loom-30b-expert-major-canonicalization-runtime-contract-002-result.md`.
-Evidence: `results-local/research/30b-expert-major-canonicalization-runtime-contract-002/20260827T115816Z/`.
-Selected runtime resolver: `FORMULAIC_RESOLVER` after fixed-layout PASS (`6144`, lexicographic `48×128`, constant `2,506,752 B`, affine contiguous offsets, exact `15,401,484,288 B`).
-Runtime-contract SHA-256: `ee43eaa935e957d40856898c73fe238ff626c880514a8deb9b73491567657aba`.
-Static `6144/6144`, `18,048` replay, hot-manifest-open=0, 3-position exactness, RSS/swap/safety all PASS.
-The one-pair canonicalization smoke ratio `0.439345978` is regression evidence only; the accepted effect estimate remains median `0.794284` from the three-pair runtime funnel.
+Canonicalization Runtime Contract 002: `EXPERT_MAJOR_CANONICALIZATION_GO` with `FORMULAIC_RESOLVER`.
+Static `6144/6144`, `18,048` replay, hot-manifest-open=0, 3-position exactness, RSS/swap/safety PASS.
 
 Canonical implementation:
 `scripts/loom_30b_moe_expert_major_backend_001.py`
 Commit: `36414d7` (`feat: canonicalize 30B expert-major backend`).
-Final reviewed local SHA-256 before commit: `b3d198308c8471832d04c79433d1c67643f30f1b1d9e2b7df0cc542b668c9ea2`.
+Reviewed SHA-256: `b3d198308c8471832d04c79433d1c67643f30f1b1d9e2b7df0cc542b668c9ea2`.
 
-Do not reopen expert-major physical-I/O, runtime acceptance, RSS repair, or canonicalization absent a material regression or different target/runtime.
+Do not reopen expert-major validation absent regression or a new model/runtime.
 
-## Current checkpoint — POST-EXPERT-MAJOR BOTTLENECK SELECTION
+## Current checkpoint — POST-CANONICAL SPEED FRONTIER 001
 
-The expert-major phase is CLOSED.
+`LOOM_30B_POST_CANONICAL_SPEED_FRONTIER_001`
 
-Next scientific action: measure the canonical post-expert-major decode path and identify the new dominant serving bottleneck before selecting another intervention.
+Preregistration:
+`research/architecture/loom-30b-post-canonical-speed-frontier-001-preregistration.md`
 
-Use the canonical expert-major backend as the baseline. Do not optimize based only on the pre-expert-major decomposition because relative bottleneck shares have changed.
+Goal: maximize sustained decode throughput of the canonical Qwen3-30B-A3B Q4 runtime while preserving exact semantics first. Aspirational target: `>=5.0 tok/s`.
 
-Preferred next categories to distinguish from measured evidence include:
-- external expert access residual;
-- expert payload materialization / host-to-MLX conversion;
-- MLX evaluation/synchronization barriers;
-- routing / dispatch;
-- non-routed backbone compute;
-- KV / attention / output head;
-- other directly measured exclusive residual.
+Compound stages:
+1. sustained 32-token canonical baseline + bounded attribution;
+2. persistent PACKED fd if per-expert open/close remains in the hot path;
+3. materialization/synchronization collapse if preregistered precondition is met;
+4. bounded single-expert allocation/copy reduction if still justified;
+5. bounded one-ahead overlap if residual external I/O remains >=20%;
+6. final 3 × 32-token sustained measurement.
 
-The next profile must be bounded, attribution-first, non-invasive, and must not reopen already-settled expert-major comparisons.
+Each treatment is retained only if it passes exactness/safety and its frozen minimum speed-gain gate; otherwise it is reverted before the next stage.
+
+Final outcomes:
+- `SPEED_5TPS_REACHED`
+- `SPEED_FRONTIER_ADVANCED`
+- `SPEED_FRONTIER_NO_EXACT_GAIN`
+- `SPEED_FRONTIER_INCONCLUSIVE`
+
+No quantization change, model-quality tradeoff, DFlash, full-bank rebuild, cache/eviction work, or threshold rescue in this checkpoint.
+
+## Strategic next after speed frontier — next-model bake-off
+
+After freezing the fastest accepted Qwen3-30B-A3B runtime, evaluate whether LOOM can adapt to newer open-weight candidates:
+- Qwen3.8-27B (dense 27B);
+- Qwen3.8-Flash-Next (ultra-sparse MoE with N-gram embedding and MTP).
+
+The later bake-off must compare on the same local hardware and quantization-quality budget:
+- sustained tok/s;
+- practical memory/swap;
+- intelligence/quality on a fixed LOOM eval set;
+- instruction-following/refusal/steerability characteristics.
+
+Do not assume architecture portability: the dense 27B and Flash-Next require separate readiness contracts before model execution.
