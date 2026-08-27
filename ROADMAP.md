@@ -1,117 +1,116 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-27
-Current: `SPARSITY_FRONTIER_NO_ACCEPTABLE_GAIN`
-Immediate next: `LOOM_30B_LOWER_BIT_EXPERT_SPEED_QUALITY_FRONTIER_001`
-Canonical context: `/AGENTS.md` v3.41.
+Current: `EXPERT_QUANT_FRONTIER_NO_ACCEPTABLE_GAIN`
+Immediate next: `LOOM_30B_LOSSLESS_SPECULATIVE_VERIFICATION_CEILING_001`
+Canonical context: `/AGENTS.md` v3.42.
 
 ## Settled current 30B runtime
 
-Canonical expert-major backend:
+Canonical backend:
 `scripts/loom_30b_moe_expert_major_backend_001.py`
 
-Current exact-Q4 speed baseline:
+Exact-Q4 speed baseline:
 - commit `96958de`;
-- 3×32-token throughput `1.115874`, `1.229233`, `1.254611 tok/s`;
+- sustained 3×32 values `1.115874`, `1.229233`, `1.254611 tok/s`;
 - median `1.229233 tok/s`;
-- exactness/safety PASS;
-- persistent PACKED fd retained and committed.
+- exactness/safety PASS.
 
+Full top-8 Q4 expert traffic is `962,592,768 B/token`.
 Expert-major I/O/runtime/canonicalization are closed absent regression/new target.
 
-## Why 5 tok/s needs larger levers
+## Closed speed paths
 
-Top-8 Q4 traffic is `962,592,768 B/token`.
-At `5 tok/s`, expert payload traffic alone would be about `4.81 GB/s` before expert compute, backbone, materialization and routing.
+### Routing sparsity
 
-The exact-Q4 profile showed expert I/O `44.61%` and expert compute `26.50%` of wall before the persistent-fd improvement. Small hot-path changes therefore do not have enough headroom to reach the target alone.
+`SPARSITY_FRONTIER_NO_ACCEPTABLE_GAIN`.
+Quality-valid pruning removed too little work; aggressive pruning failed fidelity. No routing variant selected.
 
-## Routing Sparsity Frontier 001 — CLOSED
+### Q2/Q3 lower-bit experts
 
+`EXPERT_QUANT_FRONTIER_NO_ACCEPTABLE_GAIN`.
 Result:
-`research/architecture/loom-30b-routing-sparsity-speed-quality-frontier-001-result.md`.
+`research/architecture/loom-30b-lower-bit-expert-speed-quality-frontier-001-result.md`.
 
-Evidence:
-`results-local/research/30b-routing-sparsity-speed-quality-frontier-001/20260827T135848Z/`.
+Q2:
+- bank `8,153,726,976 B`;
+- traffic `509,607,936 B/token`;
+- top1 `84.375%`, top3 `96.094%`, KL `0.426378` => FAIL.
 
-Quality-valid points:
-- tau `.95`: STRICT, `7.8757` experts/layer, `947,630,592 B/token`, `1.216703 tok/s`, `-1.02%`;
-- tau `.90`: STRICT, `6.9440` experts/layer, `835,531,776 B/token`, `1.223280 tok/s`, `-0.48%`.
+Q3:
+- bank `11,777,605,632 B`;
+- traffic `736,100,352 B/token`;
+- top1 `87.500%`, top3 `100%`, KL `0.150060` => FAIL.
 
-Aggressive points:
-- tau `.80`: KL `0.113882` => fidelity FAIL;
-- tau `.70`: top1 `87.5%`, KL `0.331111` => fidelity FAIL.
+Both are technically supported on MLX `0.32.0`, pass complete static `6144/6144` + `18,048` replay, but neither meets frozen USABLE fidelity. No speed benchmark was allowed and no runtime code changed.
 
-No eligible point met the frozen >=10% speed-gain gate. No sparsity variant was selected and no canonical code changed.
+Conclusion: do not relax quality thresholds or search adjacent bit/group-size settings post hoc.
 
-Conclusion: top-8 routing mass is too distributed for useful pruning under current quality gates. Do not spend more time on adjacent tau/fixed-top-k variants.
+## Why speculative verification is the next question
 
-## Current — Lower-Bit Expert Speed/Quality Frontier 001
+The remaining practical baseline is still Q4 top-8 at `1.229233 tok/s`.
+Further approximate byte reduction has failed quality gates, and exact hot-path work lacks enough headroom for `5 tok/s`.
+
+The next potential multiplicative lever is producing/verifying multiple output tokens per expensive target step.
+
+Before investing in a drafter, first measure whether the verifier itself has enough multi-token headroom under perfect proposals.
+
+## Current — Lossless Speculative Verification Ceiling 001
 
 Preregistration:
-`research/architecture/loom-30b-lower-bit-expert-speed-quality-frontier-001-preregistration.md`.
+`research/architecture/loom-30b-lossless-speculative-verification-ceiling-001-preregistration.md`.
 
-Objective: keep full top-8 routing and reduce byte/compute cost per expert using locally native lower-bit representations.
+This is a verifier-only ceiling experiment, not production speculative decoding.
 
-Frozen baseline:
-- commit `96958de`;
-- exact-Q4 median `1.229233 tok/s`;
-- same retained 128-position Q4 teacher oracle.
+Frozen chunk sizes:
+- K=2;
+- K=4;
+- K=8.
 
-Stage progression:
-1. local MLX capability/readiness audit, no network/model forward/full build;
-2. authorize only Q3 and/or Q2 if native local APIs support current group size/expert shapes;
-3. fixed representative round-trip pilot;
-4. sequential resumable full lower-bit banks, Q2 then Q3 where supported;
-5. `6144/6144` + artifact integrity + `18,048` replay;
-6. same 128-position fidelity oracle;
-7. sustained 32-token test only for fidelity-valid candidates;
-8. eligible candidate requires >=10% gain, USABLE fidelity and safety;
-9. fastest eligible candidate gets final 3×32 + final oracle.
+Oracle proposals are exact greedy Q4 continuation tokens, giving deliberately perfect acceptance so only verifier throughput is measured.
 
-Candidate source is the deployed Q4 expert representation; no BF16 substitution in this checkpoint.
+Required:
+- sequential-equivalent causal/KV semantics;
+- identical routed identities/order and raw float32 final-logit SHA;
+- same full top-8 Q4 bank;
+- zero SOURCE fallback/persistent multi-expert cache;
+- no Q2/Q3, routing sparsity, DFlash, real drafter or network download.
 
-No routing sparsity, group-size search, mixed precision, custom kernel, speculative decoding, DFlash, Q4 rebuild or threshold rescue.
+Within a chunk/layer, one expert payload may be reused across multiple positions only when those positions route to the same expert; it must be applied independently to each row and not retained as a persistent cache.
 
-USABLE fidelity:
-- top1 >=90%;
-- teacher top1 in candidate top3 >=97%;
-- KL <=0.10;
-- finite logits.
+Per K measure 32 verified output tokens and:
+- tok/s;
+- p50/p95;
+- target chunk count;
+- unique expert loads / reuse rate;
+- expert bytes/output-token;
+- wall attribution;
+- RSS/swap/safety.
 
-STRICT:
-- top1 >=95%;
-- top3 >=99%;
-- KL <=0.05.
+Best exact/safe K gets `3×32` confirmation.
 
-Final classes:
-- `EXPERT_QUANT_5TPS_REACHED_QUALITY_GATED`;
-- `EXPERT_QUANT_FRONTIER_ADVANCED`;
-- `EXPERT_QUANT_FRONTIER_NO_ACCEPTABLE_GAIN`;
-- `EXPERT_QUANT_FRONTIER_INCONCLUSIVE`.
+Decision:
+- median >=5 => `SPEC_VERIFY_5TPS_CEILING_REACHED`;
+- median >=2.458466 but <5 => `SPEC_VERIFY_FRONTIER_PROMISING`;
+- median <2.458466 => `SPEC_VERIFY_FRONTIER_NOT_PROMISING`;
+- genuine execution ambiguity => INCONCLUSIVE.
 
-## Likely route after lower-bit compression
+Do not report oracle-ceiling tok/s as real user generation speed.
 
-Even a 2× reduction in expert bytes is unlikely by itself to guarantee 5 tok/s because non-I/O work remains material. If Q2/Q3 produce an acceptable faster verifier, freeze the best point and then test an independent speculative-decoding mechanism.
+## If verifier ceiling is promising
 
-The intended cumulative route is:
+Preregister a real lossless drafter frontier.
+Candidate order:
+1. zero-download n-gram/prompt-lookup where applicable;
+2. if ceiling leaves enough margin, one small tokenizer-compatible Qwen-family drafter under explicit RAM/latency/download gates.
 
-`expert-major + persistent fd + lower-bit experts + speculative/multi-token acceptance`
+A real path must preserve canonical Q4 greedy output exactly and account for drafter overhead + actual acceptance.
 
-not repeated routing pruning.
+## If verifier ceiling is not promising
 
-## Next-model LOOM bake-off
+Stop current-Qwen3 speculative work. Freeze the best 30B runtime at `1.229233 tok/s` and proceed to the planned same-hardware model bake-off:
+1. Qwen3-30B-A3B;
+2. Qwen3.8-27B;
+3. Qwen3.8-Flash-Next.
 
-After the current Qwen3-30B-A3B speed frontier is frozen, evaluate on the same M1/8GB:
-1. current Qwen3-30B-A3B;
-2. Qwen3.8-27B dense;
-3. Qwen3.8-Flash-Next ultra-sparse MoE + N-gram embedding + MTP.
-
-Compare:
-- sustained tok/s and latency;
-- RAM/swap/disk;
-- intelligence/quality on a fixed LOOM eval set;
-- instruction/refusal/steerability characteristics;
-- best model for speed, intelligence and combined practical utility.
-
-Each new architecture requires its own readiness contract and local measurement; do not infer the winner from vendor benchmarks alone.
+Compare sustained tok/s, RAM/swap/disk, intelligence/quality, and instruction/refusal/steerability characteristics.
