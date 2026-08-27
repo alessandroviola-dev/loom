@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.35
+Version: 3.36
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -34,7 +34,8 @@ A fully preregistered compound funnel may traverse internal stages without inter
 15. metadata/coverage/provenance checks should use deterministic scripts/JSON rather than broad Pi reasoning;
 16. once a mechanism is accepted by causal + runtime funnels, do not reopen settled validation during productionization unless a canonicalization regression appears;
 17. canonicalization regressions may be repaired only in a new preregistered checkpoint with original acceptance thresholds unchanged and only the demonstrated production regression in scope;
-18. validation-only metadata/provenance must not remain in the hot runtime process when it can be proven offline and represented by a smaller runtime contract.
+18. validation-only metadata/provenance must not remain in the hot runtime process when it can be proven offline and represented by a smaller runtime contract;
+19. accepted production code is not canonical in Git until its final working-tree diff is reviewed and committed; do not confuse scientific/productionization GO with repository persistence.
 
 External root: `<external-archive>/`
 BF16 cache: `<external-archive>/bf16-cache/`
@@ -66,7 +67,7 @@ Final: `BF16_TARGET_RECOVERY_SIGNAL_NOT_MET_EARLY_STOP`. Do not reopen absent a 
 
 Valid first-touch PACKED/SOURCE ratios: `0.602456`, `0.595950`, `0.581170`; median `0.595950` = `40.405%` lower expert-access wall.
 
-All payload/hash, physical-byte, read-structure, memory and swap gates PASS. Raw expert-major physical-I/O causality is settled.
+Raw expert-major physical-I/O causality is settled.
 
 ## Full-Bank Runtime Funnel 002 — ACCEPTED
 
@@ -75,74 +76,78 @@ All payload/hash, physical-byte, read-structure, memory and swap gates PASS. Raw
 Result: `research/architecture/loom-30b-expert-major-fullbank-runtime-funnel-002-result.md`
 Evidence: `results-local/research/30b-expert-major-fullbank-runtime-funnel-002/20260826T152602Z/`
 
-Accepted evidence:
-- readiness PASS: source `6144/6144`, disk gate PASS;
-- full bank PASS: `6144` entries, `15,401,484,288 B`, full hash/provenance PASS;
-- static dry-run PASS: `18,048` accesses, `0` unresolved/fallback/cache;
-- exactness PASS: 3 full 48-layer decode positions, identical routing and raw final-logit float32 SHA;
+Accepted runtime evidence:
+- full bank `6144/6144`, `15,401,484,288 B`;
+- full hash/provenance PASS;
+- `18,048` static accesses, zero unresolved/fallback/cache;
+- 3-position full-runtime exactness PASS;
 - runtime ratios `0.794284`, `0.846718`, `0.768208`; median `0.794284` = `20.5716%` lower measured decode wall;
-- RSS gate PASS; swap delta `0 MiB`; no unsafe pressure/fallback/persistent expert cache.
+- RSS PASS; swap `0 MiB`; no unsafe pressure/fallback/persistent expert cache.
 
-Decision: full-bank expert-major remains the accepted runtime direction. Do not re-run full physical-I/O or runtime acceptance testing absent a materially different target/runtime.
+This remains the accepted practical performance estimate.
 
-## Canonicalization 001 — NO-GO, RSS ONLY
+## Canonicalization history
 
-`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_001 = EXPERT_MAJOR_CANONICALIZATION_NO_GO`.
+Canonicalization 001: `EXPERT_MAJOR_CANONICALIZATION_NO_GO` on RSS only.
+RSS Repair 001: `EXPERT_MAJOR_CANONICALIZATION_INCONCLUSIVE` because PACKED alone parsed the full `6144 × 9` validation manifest in-process, contaminating allocator high-water.
 
-Result: `research/architecture/loom-30b-expert-major-canonicalization-001-result.md`
-Evidence: `results-local/research/30b-expert-major-canonicalization-001/20260827T084858Z/`
-Working-tree file: `scripts/loom_30b_moe_expert_major_backend_001.py`.
+These did not revoke the accepted mechanism/runtime direction.
 
-Passed static/exactness/performance; failed only RSS: SOURCE `191,348,736 B`, PACKED `402,259,968 B`, delta `+201.14 MiB` > frozen `+128 MiB` gate.
+## Canonicalization Runtime Contract 002 — ACCEPTED
 
-## Canonicalization RSS Repair 001 — INCONCLUSIVE
+`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_RUNTIME_CONTRACT_002 = EXPERT_MAJOR_CANONICALIZATION_GO`.
 
-`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_RSS_REPAIR_001 = EXPERT_MAJOR_CANONICALIZATION_INCONCLUSIVE`.
+Result:
+`research/architecture/loom-30b-expert-major-canonicalization-runtime-contract-002-result.md`
 
-Result: `research/architecture/loom-30b-expert-major-canonicalization-rss-repair-001-result.md`
-Evidence: `results-local/research/30b-expert-major-canonicalization-rss-repair-001/20260827T104738Z/`
+Evidence:
+`results-local/research/30b-expert-major-canonicalization-runtime-contract-002/20260827T115816Z/`
 
-Concrete finding:
-- PACKED alone parsed the full `6144 × 9` validation manifest in the runtime process;
-- compacting resolver metadata removed `41,066,169 B` of live Python objects, but allocator high-water RSS remained;
-- SOURCE and PACKED therefore had non-equivalent allocator histories and the one-pair RSS/performance comparison was inadmissible.
+Selected resolver: `FORMULAIC_RESOLVER`.
 
-Still PASS:
-- artifact integrity/provenance;
-- `6144/6144`;
-- `18,048` replay, zero unresolved/fallback/cache;
-- 3-position exactness;
-- swap `0 MiB`, no unsafe pressure.
+Fixed-layout contract PASS:
+- 6144 records;
+- lexicographic `48 × 128` order;
+- constant `2,506,752 B` expert size;
+- contiguous affine offsets;
+- total bank `15,401,484,288 B`.
 
-Informative only, not accepted as decision evidence: smoke ratio `0.869104911`; post-prefill/decode RSS was lower for PACKED, but peak comparison was contaminated by startup allocator history.
+Runtime contract:
+`results-local/research/30b-expert-major-canonicalization-runtime-contract-002/20260827T115816Z/runtime-contract.json`
+SHA-256: `ee43eaa935e957d40856898c73fe238ff626c880514a8deb9b73491567657aba`.
 
-## Current checkpoint — CANONICALIZATION RUNTIME CONTRACT 002
+Static production gate PASS:
+- offline full validation `6144` payloads / `55,296` source components;
+- resolver `6144/6144`;
+- `18,048` replay;
+- zero unresolved/ambiguous/invalid/fallback/cache;
+- hot PACKED process opens/parses full validation manifest `0` times.
 
-`LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_RUNTIME_CONTRACT_002`
+Exactness PASS at all 3 frozen positions with identical routing and raw float32 final-logit SHA.
 
-Preregistration:
-`research/architecture/loom-30b-expert-major-canonicalization-runtime-contract-002-preregistration.md`
+Bounded canonicalization smoke PASS:
+- SOURCE `4.379309374 s`;
+- PACKED `1.924031958 s`;
+- ratio `0.439345978 <=0.95`;
+- SOURCE peak RSS `432,537,600 B`;
+- PACKED peak RSS `305,020,928 B`;
+- PACKED delta `-127,516,672 B`;
+- swap SOURCE `+987.37 MiB`, PACKED `-8.00 MiB`, frozen matched gate PASS;
+- zero fallback/cache/unsafe pressure.
 
-Purpose: move full manifest/provenance validation completely out of the hot runtime process and give PACKED only a minimal prevalidated resolver contract.
+The single smoke is only a production-regression check; do not replace the accepted three-pair runtime estimate with it.
 
-Frozen resolver selection:
-1. offline validate full accepted artifact/manifest;
-2. if the manifest proves fixed-size contiguous lexicographic `(layer,expert)` placement, use `FORMULAIC_RESOLVER` with deterministic offset computation and a tiny provenance contract;
-3. otherwise use `COMPACT_INDEX_RESOLVER` with only runtime-required per-expert fields;
-4. no other representation or threshold change.
+## Current checkpoint — FINAL CODE REVIEW / COMMIT
 
-Then:
-- minimally repair the existing canonical working-tree backend;
-- static `6144/6144` + `18,048` replay, zero unresolved/fallback/cache;
-- prove hot PACKED child does not parse full validation manifest/provenance trees;
-- same 3-position exactness;
-- exactly one fresh-process SOURCE->PACKED RSS/performance smoke after offline preflight validator has exited.
+The canonical implementation currently exists only in the local working tree:
+`scripts/loom_30b_moe_expert_major_backend_001.py`.
 
-Unchanged GO gates:
-- PACKED/SOURCE decode wall `<=0.95`;
-- PACKED peak RSS `<= SOURCE +128 MiB`;
-- PACKED swap delta `<= SOURCE +64 MiB`;
-- exactness PASS;
-- no fallback/cache/unsafe pressure.
+It has productionization GO but is not yet persisted in Git.
 
-Pi may edit the existing canonical script and directly related reusable helper code only. Pi must not commit/push or edit project decision docs.
+Next exact action:
+1. inspect the final local file/diff without modifying it;
+2. review for accidental scope expansion, hidden fallback/cache, unsafe paths, hard-coded ephemeral evidence paths, and maintainability;
+3. if review PASS, commit/push this implementation with canonical docs;
+4. only then move to the next serving bottleneck.
+
+Do not run another scientific/runtime funnel unless code review exposes a material implementation defect requiring a new bounded checkpoint.
