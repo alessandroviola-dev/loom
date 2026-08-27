@@ -1,11 +1,11 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-27
-Status: ACTIVE — expert-major is accepted/canonical. Exact-Q4 speed frontier advanced to median `1.229233 tok/s`; remaining dominant bottleneck is expert file I/O. Persistent-FD delta is accepted locally and awaits review/commit before routing-sparsity work.
+Status: ACTIVE — expert-major is accepted/canonical. Exact-Q4 speed frontier advanced to median `1.229233 tok/s`; persistent-FD optimization is reviewed, committed and is now the canonical speed baseline. Current work is routing-sparsity speed/quality frontier.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_POST_CANONICAL_SPEED_FRONTIER_001_SPEED_FRONTIER_ADVANCED_AWAITING_CODE_REVIEW`
-Pi context: `/AGENTS.md` v3.39.
+Current checkpoint: `LOOM_30B_ROUTING_SPARSITY_SPEED_QUALITY_FRONTIER_001`
+Pi context: `/AGENTS.md` v3.40.
 
 ## Settled expert-major phase
 
@@ -20,21 +20,20 @@ Accepted three-pair median ratio `0.794284` = `20.5716%` lower decode wall. Exac
 Canonicalization:
 `LOOM_30B_EXPERT_MAJOR_CANONICALIZATION_RUNTIME_CONTRACT_002 = EXPERT_MAJOR_CANONICALIZATION_GO` with `FORMULAIC_RESOLVER`.
 
-Canonical code committed before speed frontier:
-`scripts/loom_30b_moe_expert_major_backend_001.py`
-Commit `36414d7`.
+Canonical code:
+`scripts/loom_30b_moe_expert_major_backend_001.py`.
+Base canonicalization commit `36414d7`.
 
 Do not reopen expert-major validation absent regression/new target.
 
-## Post-Canonical Speed Frontier 001 — ADVANCED
+## Post-Canonical Speed Frontier 001 — ADVANCED, CODE PERSISTED
 
 Result:
 `research/architecture/loom-30b-post-canonical-speed-frontier-001-result.md`
 Evidence:
 `results-local/research/30b-post-canonical-speed-frontier-001/20260827T131329Z/`
 
-Stage-0 exact sustained baseline:
-`1.063941 tok/s`.
+Stage-0 exact sustained baseline: `1.063941 tok/s`.
 
 Wall attribution:
 1. expert file I/O `13.415820 s` / `44.61%`;
@@ -58,28 +57,27 @@ median `1.229233 tok/s`.
 p50 token wall `0.825660 s`; p95 `1.217692 s`.
 Peak RSS `404,340,736 B`; swap delta `0`; safety PASS.
 Final three-position exactness PASS.
-Final local backend SHA-256 `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
 
-Interpretation: exact-Q4 speed is now I/O-limited. Each top-8 token reads `962,592,768 B` of routed expert payload; `5 tok/s` would imply roughly `4.81 GB/s` expert payload bandwidth before other work.
+Persistent-FD code review PASS:
+- only process-lifetime fd + deterministic close retained;
+- no Stage 2–4 residue;
+- no payload cache/fallback;
+- validated file SHA-256 `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
 
-## Immediate action — persist accepted persistent-FD delta
+Persisted commit:
+`96958de` — `perf: keep packed expert file descriptor open`.
 
-The retained Stage-1 modification is currently local/uncommitted in:
-`scripts/loom_30b_moe_expert_major_backend_001.py`.
+Interpretation: exact-Q4 speed is I/O-limited. Each top-8 token reads `962,592,768 B` of routed expert payload; `5 tok/s` implies roughly `4.81 GB/s` expert payload bandwidth before other work.
 
-Before next independent Pi run:
-1. capture/review exact diff and file SHA;
-2. verify only process-lifetime PACKED fd + deterministic close was retained;
-3. reject hidden cache/fallback/fd leak or accidental extra Stage 2–4 code;
-4. if review PASS, commit/push;
-5. pull canonical docs afterward.
-
-Do not execute Routing Sparsity Frontier 001 until this persistence step is complete.
-
-## Next — Routing Sparsity Speed/Quality Frontier 001
+## Current — Routing Sparsity Speed/Quality Frontier 001
 
 Preregistration:
 `research/architecture/loom-30b-routing-sparsity-speed-quality-frontier-001-preregistration.md`.
+
+Frozen baseline:
+- code commit `96958de`;
+- exact-Q4 sustained median `1.229233 tok/s`;
+- original top-8 semantics are teacher/reference.
 
 Goal: trade only a frozen bounded amount of model fidelity for speed by reducing the number of top-8 routed experts actually executed according to cumulative routing mass.
 
@@ -102,6 +100,12 @@ Only quality-valid/safe variants >=10% faster than exact median `1.229233 tok/s`
 
 After selection, one raw-payload one-ahead overlap repair is allowed only if residual I/O >=20% and it stays within +32 MiB RSS.
 
-If still materially below 5 tok/s afterward, next frontier is lower-bit expert payload quantization (Q3/Q2/mixed) with a separate quality gate.
+Final classes:
+- `SPARSITY_5TPS_REACHED_QUALITY_GATED`;
+- `SPARSITY_FRONTIER_ADVANCED`;
+- `SPARSITY_FRONTIER_NO_ACCEPTABLE_GAIN`;
+- `SPARSITY_FRONTIER_INCONCLUSIVE`.
+
+If still materially below 5 tok/s afterward, next frontier is lower-bit expert payload quantization (Q3/Q2/mixed) with a separate frozen quality gate.
 
 After current 30B speed work is frozen: run Qwen3-30B-A3B vs Qwen3.8-27B vs Qwen3.8-Flash-Next bake-off on speed, memory, quality/intelligence and steerability/refusal behavior.
