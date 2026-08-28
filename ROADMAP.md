@@ -1,9 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: Auto Capability Dispatch FIX1 completed with valid evidence and scientific NO_GO. Selector-first/static-protocol dispatch improved utility but did not generalize sufficiently and produced only 2/9 fully correct AUTO8 outputs.
-Immediate next: validate a fail-closed post-generation Output Validator v0 on fresh RAW8 tasks before any 30B escalation work.
-Canonical context: `/AGENTS.md` v3.61.
+Current: Output Validator v0 completed GO with zero false PASS on mechanically verifiable tasks and correct UNCERTAIN abstention on open-ended tasks.
+Immediate next: validator-guided selective rescue using safe fence-only deterministic repair and 30B DEEP only on residual FAIL.
+Canonical context: `/AGENTS.md` v3.62.
 
 ## 1. Product direction — validator-first LOOM AUTO
 
@@ -11,11 +11,9 @@ Near-term active tiers:
 - `loom-balanced` -> optimized 8B, provisional default;
 - `loom-deep` -> 30B selective escalation;
 - future `loom-fast` -> reintroduce later through a clean runtime;
-- `loom-auto` -> 8B generation, task/contract validation, then selective repair or DEEP escalation when verification fails or remains uncertain.
+- `loom-auto` -> 8B generation, deterministic/task-specific validation, safe repair when provably semantics-preserving, then DEEP only when validation still fails.
 
-Pre-inference deterministic capability selector v0 is not the current production path. Do not tune it on exposed dispatch prompts.
-
-Do not freeze 30B escalation thresholds yet.
+Open-ended semantic uncertainty remains separate. Do not convert UNCERTAIN into automatic DEEP calls until a semantic-verifier path is measured.
 
 ## 2. LOOM Heretic — fundamental
 
@@ -23,111 +21,95 @@ Do not freeze 30B escalation thresholds yet.
 
 ## 3. Runtime/product evidence
 
-Compact 8B vs 30B:
-- 8B utility `4/10`, wall `35.325 s`;
-- 30B utility `7/10`, wall `468.867 s`;
-- 30B +3 utility at +`433.541 s` waiting (~12.27x wall).
+8B BALANCED remains roughly 13 tok/s and is the latency-efficient base.
+30B DEEP remains roughly 1.4 tok/s on compact tasks with ~50 s median TTFT; it must be called only when validation evidence justifies the cost.
+Historical 8B 4-bit remains closed by resource evidence; legacy 4B FAST remains parked.
 
-8B remains ~13 tok/s and is the latency-efficient base. 30B remains expensive and must be called only when evidence justifies it.
+## 4. Selector/capability evidence
 
-Historical 8B 4-bit is not reopened: the exact continuous profile resource-failed after controlled high-free-memory launch, and its KV8 rescue branch has no canonical quality result.
+Strict-output and verification-first remain branch-level accepted mechanisms, but selector-first end-to-end dispatch is closed as a current architecture path:
+- isolated selector 15/15;
+- end-to-end selector 7/9 with one NORMAL false activation;
+- AUTO8 utility 8 vs RAW8 6 but only 2/9 fully correct.
 
-Legacy 4B FAST remains parked.
+Do not tune on exposed dispatch prompts.
 
-## 4. Capability evidence
-
-8B capability funnel:
-- strict-output ACCEPTED branch-level;
-- verification-first ACCEPTED branch-level;
-- calculator REJECTED.
-
-Capability Candidate v1:
-- NO_GO under frozen +2 improvement gate;
-- CAP8 `7/8`, RAW8 `6/8`, 30B `7/8`;
-- zero regressions;
-- targeted mechanisms remain evidence, not an always-on bundle.
-
-Capability Selector v0 isolated validation:
-- GO `15/15`;
-- zero NORMAL false activations;
-- microsecond overhead.
-
-## 5. Auto Capability Dispatch FIX1 — NO_GO
+## 5. Output Validator v0 — GO
 
 Result:
-`research/architecture/loom-8b-auto-capability-dispatch-001-fix1-result.md`.
-
-All 18 frozen conditions valid.
+`research/architecture/loom-8b-output-validator-v0-001-result.md`.
 
 Observed:
-- selector `7/9` -> gate FAIL;
-- NORMAL false activations `1/3` -> gate FAIL;
-- AUTO8 utility `8` vs RAW8 `6` -> +2 PASS;
-- zero per-task utility regressions -> PASS;
-- AUTO8 fully CORRECT `2/9` -> gate FAIL.
+- 11/11 synthetic fixtures PASS;
+- 12/12 valid records;
+- PASS/FAIL/UNCERTAIN 3/6/3;
+- T01–T09 quality 3/3/3 CORRECT/PARTIAL/INCORRECT;
+- false PASS 0;
+- open-ended abstention 3/3;
+- validator p95 0.758321 ms;
+- 8B generation 12.986417 tok/s.
 
-AUTO8 wall `58.924179 s` vs RAW8 `45.979878 s`.
+This validates fail-closed post-generation checks when validator kind/spec is already known. It does not validate automatic validator selection or general semantic correctness.
 
-Conclusion: targeted capability prompts can rescue individual contract failures, but selector-first dispatch does not generalize and does not solve semantic/incomplete outputs. Do not build DEEP escalation on this graph.
-
-## 6. Current — 8B Output Validator v0
+## 6. Current — Validator-Guided Selective Rescue 001
 
 Preregistration:
-`research/architecture/loom-8b-output-validator-v0-001-preregistration.md`.
+`research/architecture/loom-validator-guided-selective-rescue-001-preregistration.md`.
 
-Test:
-`prompt -> RAW8 -> PASS / FAIL / UNCERTAIN`.
+Fresh eight-task verifiable suite.
 
-12 fresh tasks:
-- exact JSON/CSV/restricted key:value contracts;
-- three verification-rule tasks;
-- three open-ended tasks that validator v0 must mark UNCERTAIN.
+Graph:
+`8B -> validator -> PASS accept; FAIL -> fence-only safe repair if eligible -> revalidate -> residual FAIL -> one 30B -> revalidate`.
 
-Validator kind/spec is supplied by benchmark metadata in v0. This isolates validator fidelity; automatic validator selection is later work.
-
-Before inference, synthetic PASS/FAIL/UNCERTAIN fixtures must pass.
-
-Primary gate: zero false PASS on mechanically invalid outputs. T10–T12 must all abstain as UNCERTAIN. Validator p95 must remain <5 ms.
-
-No 30B, retries, repair, selector tuning, capability injection, memory/RAG, fine-tuning, Heretic or provider/UI.
-
-## 7. Selective repair / 30B escalation
-
-Only after Output Validator v0 GO, freeze a fresh end-to-end experiment:
-`8B -> validator -> if PASS accept; if FAIL/UNCERTAIN use a preregistered cheap repair when applicable or call 30B`.
+Safe repair only removes one outer Markdown code fence and must leave payload bytes untouched. No value/type/order coercion or semantic rewriting.
 
 Measure:
-- fraction of 30B calls avoided;
-- final correctness/utility;
+- raw8 vs final quality;
 - false accepts;
-- extra waiting time;
-- whether 30B actually repairs validator-detected failures.
+- safe-repair success;
+- DEEP call rate and calls avoided;
+- added 30B wall;
+- final correctness and time per correct task.
 
-The validator should run again after any repair/30B response when a deterministic contract exists.
+GO requires zero false accepts, final >=6/8 CORRECT, >=+2 CORRECT vs raw8, >=2/8 DEEP calls avoided, and no unnecessary DEEP calls after PASS/successful repair.
 
-## 8. Further intelligence amplification
+## 7. Semantic verifier for open-ended tasks
+
+After bounded selective rescue, separately research validation for tasks where deterministic contracts do not exist. Candidates may include:
+- independent rubric/checklist generation;
+- constrained self-verification with observable claims;
+- small verifier model or cross-tier judge only if evidence justifies latency;
+- retrieval/tool-grounded verification when external facts are involved.
+
+Do not treat generic model confidence as sufficient.
+
+## 8. Automatic validator/contract selection
+
+Only after validator behavior and rescue value are established, test deriving validator kind/spec from the user request rather than benchmark metadata. This must be independent of the failed selector-v0 exposed prompt set.
+
+## 9. Further intelligence amplification
 
 Later candidates:
-- completion-aware continuation for length-stopped answers;
-- structured-output repair driven by deterministic validators;
+- completion-aware continuation;
+- deterministic structured-output repair;
 - memory/RAG;
-- skills/protocol retrieval rather than static stuffing;
-- tools with semantic/task-specific validators;
+- skills/protocol retrieval;
+- tools with semantic validators;
 - planner/executor/verifier;
-- domain adaptation/distillation only after system-layer gains are measured.
+- domain adaptation/distillation after system-layer gains are measured.
 
-## 9. FAST tier
+## 10. FAST tier
 
-Legacy 4B llama.cpp path remains parked. Reintroduce only through a clean runtime aligned with final architecture.
+Legacy 4B remains parked; reintroduce only through a clean runtime.
 
-## 10. Provider/UI
+## 11. Provider/UI
 
 After execution graph validation, expose LOOM through a local OpenAI-compatible provider usable by Pi and a proper chat UI.
 
-## 11. Mandatory Heretic integration
+## 12. Mandatory Heretic integration
 
 After initial runtime/capability optimization, execute the Heretic-inspired behavioral/steerability track with preservation gates and decide per-tier application from evidence.
 
-## 12. Separate R&D
+## 13. Separate R&D
 
 Qwen3.8 and materially new 30B speed work remain separate and must not block validator-first product progress.
