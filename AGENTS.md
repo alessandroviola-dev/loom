@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.60
+Version: 3.61
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -41,7 +41,7 @@ Do not mix relative artifacts across roots.
 - **BALANCED / 8B** — provisional default/primary tier;
 - **DEEP / 30B** — selective escalation tier;
 - **FAST** — architecturally retained, legacy 4B path parked;
-- **LOOM AUTO** — capability selector -> conditional protocol -> 8B -> validation -> 30B only when unresolved.
+- **LOOM AUTO** — move toward `8B -> post-generation validator -> accept / repair / 30B escalation`, rather than trusting a pre-inference prompt classifier.
 
 Do not freeze 30B escalation thresholds yet.
 
@@ -57,9 +57,12 @@ Historical long-form TTFT `47.832 s`, decode `1.116 tok/s`, end-to-end `0.921 to
 Compact-suite pooled generation `1.402 tok/s`, median TTFT `50.671 s`.
 
 ### 8B BALANCED
-Qwen3-8B 3-bit/group64 Direct MLX, real M1 built-in `qmv_fast`, BF16 KV, greedy, thinking OFF.
+`mlx-community/Qwen3-8B-3bit@619ded3`, 3-bit/group64, Direct MLX, M1 built-in `qmv_fast`, BF16 KV, greedy, thinking OFF.
 Historical REALGEN ~`13.18 tok/s`.
 Compact-suite pooled generation `12.931 tok/s`, median TTFT `2.006 s`.
+
+### 8B 4-bit — CLOSED HISTORICAL BRANCH
+Historical Direct MLX 4-bit continuous profile resource-failed even after controlled 72–74% free-memory launch. The later KV8 rescue branch has no canonical quality classification. Do not reopen from current evidence; there is no valid quality result showing 4-bit solves the present correctness issue.
 
 ### 4B FAST — PARKED
 Final closure `LOOM_4B_FINAL_ATTEMPT_ABORTED`; no inference in final attempt. Mechanical availability only, not capability evidence. Do not reopen legacy 4B recovery in current phase.
@@ -73,77 +76,87 @@ Compact 8B-vs-30B suite:
 
 8B capability funnel:
 - calculator: **REJECTED**;
-- strict-output: **ACCEPTED**;
-- verification-first: **ACCEPTED**.
+- strict-output: **ACCEPTED branch-level**;
+- verification-first: **ACCEPTED branch-level**.
 
 Capability Candidate v1:
-- **`LOOM_8B_CAPABILITY_CANDIDATE_V1_NO_GO`** because CAP8 improved only `+1` vs required `+2`;
-- CAP8 still matched 30B `7/8` on that fresh set with `26.311 s` vs `284.591 s` wall;
-- retain strict-output and verification-first as targeted capabilities, not an always-on bundle.
+- `LOOM_8B_CAPABILITY_CANDIDATE_V1_NO_GO` because CAP8 improved only `+1` vs frozen required `+2`;
+- CAP8 nevertheless matched 30B `7/8` on that fresh set with `26.311 s` vs `284.591 s` wall;
+- do not promote an always-on bundle.
 
-## Capability Selector v0 — COMPLETE / GO
+Capability Selector v0 isolated test:
+- `LOOM_CAPABILITY_SELECTOR_V0_GO` on its 15-item selector-only set;
+- 15/15, zero NORMAL false activations, microsecond overhead.
 
-Result: `research/architecture/loom-capability-selector-v0-001-result.md`.
-Evidence: `results-local/research/capability-selector-v0-001/20260828T163136Z/evidence.json`.
-Classification: **`LOOM_CAPABILITY_SELECTOR_V0_GO`**.
+This isolated GO did not generalize sufficiently in the end-to-end mixed suite.
 
-Observed:
-- accuracy `15/15`;
-- per-label precision/recall/F1 all `1.0000`;
-- NORMAL false activations `0/7`;
-- selector p50/p95 `8 us / 218 us`;
-- no model inference/network/external packages.
+## Auto Capability Dispatch 001 — original mechanical invalid
 
-## 8B Auto Capability Dispatch 001 — CLOSED / MECHANICAL INVALID
+Original result:
+`research/architecture/loom-8b-auto-capability-dispatch-001-result.md`.
+Classification `LOOM_8B_AUTO_CAPABILITY_DISPATCH_NO_GO` because post-inference cleanup-evidence instrumentation failed; valid scientific conditions `0/18`.
+Original remains permanently closed.
+
+## Auto Capability Dispatch 001 FIX1 — COMPLETE / SCIENTIFIC NO_GO
 
 Result:
-`research/architecture/loom-8b-auto-capability-dispatch-001-result.md`.
+`research/architecture/loom-8b-auto-capability-dispatch-001-fix1-result.md`.
 Evidence:
-`results-local/research/8b-auto-capability-dispatch-001/20260828T164106Z/`.
-Classification: **`LOOM_8B_AUTO_CAPABILITY_DISPATCH_NO_GO`**.
+`results-local/research/8b-auto-capability-dispatch-001-fix1/20260828T165528Z/`.
+Classification: **`LOOM_8B_AUTO_CAPABILITY_DISPATCH_FIX1_NO_GO`**.
 
-All `18/18` child conditions reached inference but then ended `MECHANICAL_FAILURE` while cleanup evidence was being built:
-`TypeError: object of type 'int' has no len()`.
+All 18 frozen conditions valid after the separately preregistered cleanup-only FIX1.
 
-Because generated outputs/selector decisions/timings were not persisted, valid scientific conditions = `0/18`. No answer-quality, selector or performance conclusion is supported.
+Frozen gate:
+- all 18 valid: PASS;
+- selector >=8/9: FAIL — `7/9`;
+- NORMAL false activations 0/3: FAIL — `1/3`;
+- AUTO8 >=RAW8 +2 utility: PASS — `8 vs 6`;
+- zero per-task utility regressions: PASS;
+- AUTO8 >=7/9 CORRECT: FAIL — `2/9`.
 
-Pre-inference provenance did pass:
-- exact 8B model/runtime;
-- selector SHA `5ccaae77862ceb60700115487ea4db5e5bdcae330d8dcb7583d3186e6521887d`;
-- failed harness SHA `a0346835bd927add1309ac800a9ae5c1fbffff25cb0f2307737186b526f9c460`.
+RAW8 aggregate: utility `6`, C/P/I `1/4/4`, median TTFT `1.517422 s`, pooled generation `12.865656 tok/s`, E2E wall `45.979878 s`.
+AUTO8 aggregate: utility `8`, C/P/I `2/4/3`, median TTFT `2.091046 s`, pooled generation `13.167506 tok/s`, E2E wall `58.924179 s`.
 
-The original checkpoint remains permanently closed. Do not repair/reclassify it.
+Material selector errors:
+- T03 VERIFY_FIRST -> STRICT_OUTPUT;
+- T07 expected NORMAL -> VERIFY_FIRST false activation.
 
-## Current checkpoint — 8B Auto Capability Dispatch 001 FIX1
+Interpretation:
+- targeted protocol dispatch can rescue some formatting failures;
+- pre-inference deterministic selector v0 does not generalize enough to mixed cues;
+- static capability prompts do not solve semantic/incomplete answers; AUTO8 only 2/9 CORRECT;
+- do not tune selector/protocols on the exposed T01–T09 set;
+- do not build 30B escalation on this selector-first graph.
+
+## Current checkpoint — 8B Output Validator v0 001
 
 Preregistration:
-`research/architecture/loom-8b-auto-capability-dispatch-001-fix1-preregistration.md`.
+`research/architecture/loom-8b-output-validator-v0-001-preregistration.md`.
 
-FIX1 is mechanical only. Keep the failed harness untouched and create:
-`scripts/loom_8b_auto_capability_dispatch_001_fix1.py`.
+Goal: validate a cheap fail-closed post-generation layer:
+`prompt -> RAW8 -> PASS / FAIL / UNCERTAIN`.
 
-Only authorized semantic source change: normalize cleanup-evidence count safely when runtime supplies an integer count versus a collection. No model invocation, prompt, selector, protocol, scoring, execution-order or metric-formula changes.
+Validator kind/spec is benchmark-supplied in v0 to isolate validation fidelity. It does not infer task class and does not use a model judge.
 
-Before inference:
-- verify original harness SHA;
-- persist exact failed-vs-fix1 unified diff;
-- synthetic no-model tests for integer and collection cleanup values;
-- verify selector/model/runtime provenance;
-- zero network/package/model mutation.
+Fresh 12-task set:
+- exact JSON/CSV/restricted key-value contracts;
+- three verification-rule tasks;
+- three deliberately open-ended tasks that must return `UNCERTAIN`.
 
-Then execute the exact original 18 scientific conditions once. No per-condition retry.
+Create only:
+`scripts/loom_8b_output_validator_v0_001.py`.
 
-If a second independent harness defect prevents valid evidence, classify mechanical NO_GO and stop rather than patching again inside FIX1.
+Before model inference run synthetic no-model PASS/FAIL/UNCERTAIN fixtures for every validator kind.
 
-Original scientific GO gate remains unchanged:
-- all 18 valid;
-- selector >=8/9;
-- NORMAL false activations 0/3;
-- AUTO8 >= RAW8 +2 utility;
-- zero per-task regressions;
-- AUTO8 >=7/9 CORRECT;
-- unchanged selector/protocol definitions.
+Frozen GO requires:
+- 12/12 valid inference/evidence records;
+- all synthetic fixtures pass;
+- zero false PASS on mechanically invalid T01–T09 outputs;
+- T10–T12 all `UNCERTAIN`;
+- validator p95 <5 ms;
+- exact frozen validator definitions and zero network/package/model/runtime mutation.
 
-No 30B inference, calculator, 4B, network/downloads, runtime changes, selector tuning, capability rewriting, retries, memory/RAG, tools, fine-tuning, Heretic, provider/UI or production integration.
+No 30B, selector tuning, capability injection, calculator, 4B, retries/repair, memory/RAG, fine-tuning, Heretic, provider/UI or production integration.
 
-If FIX1 GO, next checkpoint is output validation plus selective 30B escalation. Heretic remains mandatory after initial runtime/capability optimization.
+If validator v0 GO, next checkpoint may test selective repair and/or 30B escalation only on FAIL/UNCERTAIN results. Heretic remains mandatory after initial runtime/capability optimization.
