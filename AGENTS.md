@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.51
+Version: 3.52
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -31,13 +31,13 @@ After every significant scientific checkpoint, ChatGPT updates canonical GitHub 
 
 ## Local-root clarification
 
-GitHub is canonical. The currently active local clone used for validated 30B and historical 8B `results-local` artifacts is:
+GitHub is canonical. Active local clone with validated 30B and historical 8B `results-local` artifacts:
 `<repository-root>`.
 
-A second archive/clone tree also exists at:
+Separate archive/clone tree:
 `<external-archive>`.
 
-Do not mix relative paths/artifacts across the two roots inside one experiment. External archived model artifacts may be inspected explicitly by absolute path only.
+Do not mix relative paths/artifacts across roots in one experiment. External archived model artifacts may be inspected only through explicit absolute paths.
 
 ## Mission
 
@@ -50,71 +50,53 @@ Do not mix relative paths/artifacts across the two roots inside one experiment. 
 - **LOOM DEEP / 30B** — slow large-model tier for difficult tasks where measured capability gain justifies latency.
 - **LOOM AUTO** — router chooses the cheapest tier likely to solve the task and may escalate 4B -> 8B -> 30B when confidence/verification is insufficient.
 
-All tiers should eventually share compatible LOOM-level memory/retrieval, skills/protocols, tools, verification, context handling and provider/API layer.
 Do not freeze router thresholds before matched evidence exists.
 
 ## LOOM Heretic — FUNDAMENTAL / NON-OPTIONAL TRACK
 
-`LOOM_HERETIC_TECHNICAL_PAPER.md` is a fundamental design input to final LOOM, not an optional side experiment.
-Execution remains after runtime-role selection so edits target the tiers that matter. Freeze refusal/steerability and capability-preservation gates before edits. Do not claim unmeasured absolute `guardrail-free` status.
+`LOOM_HERETIC_TECHNICAL_PAPER.md` is a fundamental design input to final LOOM, not an optional side experiment. Execute after runtime-role selection/initial optimization. Freeze refusal/steerability and capability-preservation gates before edits. Do not claim unmeasured absolute `guardrail-free` status.
 
-## Frozen Qwen3-30B-A3B comparator
+## LOOM 30B DEEP baseline
 
-Canonical backend: `scripts/loom_30b_moe_expert_major_backend_001.py`.
-Backend commit `96958de`; SHA `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
-Exact-Q4/top-8 sustained 3x32 median `1.229233 tok/s`.
+Canonical production commit `d3691b765004849abb01a7675e5a6e7c5d0edd4c`.
+Historical long-form: TTFT `47.832 s`; decode `1.116 tok/s`; end-to-end `0.921 tok/s`.
+Manual LRUCache task under 384 output tokens: correct O(1) strategy and `get()->-1`, but output stopped during `put()`; task INCOMPLETE and subjective latency minutes.
 
-Closed current-verifier paths: routing sparsity no acceptable gain; Q2/Q3 from deployed Q4 fidelity fail; DFlash closed; exact K4 oracle verifier ceiling `1.792925 tok/s`, so real drafter is not justified.
+## LOOM 8B BALANCED matched result
 
-## Qwen3.8 — parked
+Historical runtime remains Qwen3-8B 3-bit/group64 Direct MLX, real M1 built-in `qmv_fast`, BF16 KV, greedy, thinking OFF, cleanup every 10 committed tokens.
 
-`QWEN38_BOTH_PORTABLE`; large downloads/execution remain parked until after practical tier comparison unless explicitly reactivated.
+Matched result:
+`research/architecture/loom-8b-practical-bakeoff-runner-001-result.md`
+Evidence:
+`results-local/research/8b-practical-bakeoff-runner-001/20260828T144423Z/summary.json`
 
-## LOOM 30B v1 — CANONICAL / FUNCTIONAL_SLOW
+Classification: `LOOM_8B_BAKEOFF_RUNNER_PASS`.
+Task status: `INCOMPLETE` because 384-token limit stopped inside `put()` before a complete program/test.
 
-Canonical production commit:
-`d3691b765004849abb01a7675e5a6e7c5d0edd4c`.
+Metrics:
+- TTFT `2.992 s`;
+- 384 output tokens;
+- generation `13.357 tok/s`;
+- end-to-end output `12.275 tok/s`;
+- end-to-end wall `31.284 s`;
+- p50/p95 forward `68.932 / 71.667 ms`;
+- MLX active `3,583,928,328 B`, peak `3,912,428,412 B`;
+- swap `2363.69 -> 2498.62 MB`, observed peak `2498.62 MB`;
+- 38 cleanups, `2.140 s` total cleanup.
 
-Files:
-- `scripts/loom_30b_runtime_core_v1_001.py` SHA `75da01c85d3b0d4c1aae9c10cf5bb19723ef39ec6ef8b0149707a977afc4befc`;
-- `scripts/loom_30b_interactive_v1_001.py` SHA `44b89ba34d597a3c9798c7ad1c081aa0eeff865cc5320e27213b3c6ebe4a5322`.
+Visible partial output chose the correct dictionary + doubly-linked-list O(1) architecture and correct `get()->-1`, but contains an unnecessary `self.key_to` assignment and is visibly unfinished. Do not call this a coding-quality PASS.
 
-Historical long-form: TTFT `47.832 s`; decode `1.116 tok/s`; end-to-end `0.921 tok/s`; peak RSS `1,447,067,648 B`.
-Manual LRUCache task: correct O(1) strategy and correct `get()->-1`, but 384-token output budget ended during `put()`, so requested complete executable solution was not delivered; subjective latency was minutes.
+Historical REALGEN remains `13.184615 tok/s` generation / `12.046861 tok/s` end-to-end. Current performance is close/slightly higher, confirming the old runtime remains reproducible. Longer prompt TTFT is not by itself a runtime regression claim.
 
-## Recovered LOOM 8B baseline
+The one-shot 8B runner is local experimental source and not canonical production code unless separately reviewed/persisted.
 
-Historical REALGEN source:
-`scripts/loom_real_generation_baseline_001.py`.
+## Current checkpoint — LOOM 4B FAST matched condition
 
-Model/runtime:
-- `results-local/mlx/models/Qwen3-8B-3bit` exists in active local clone;
-- upstream `mlx-community/Qwen3-8B-3bit`, revision `619ded3`;
-- weight SHA `b9694bdb1f737223836235c0427b424ace11d566eeab0ac91ff8050143bd20a1`;
-- 3-bit affine/group64;
-- `results-local/mlx/venv-mlx-lm-0.31.3` exists;
-- MLX/mlx-metal `0.31.2`, mlx-lm `0.31.3`, transformers `5.12.1`;
-- real M1 autoregressive built-in MLX `qmv_fast`, BF16 KV, greedy, thinking OFF;
-- cleanup after each 10 committed tokens.
+Next recover/port the existing 4B artifact into the same LOOM-style matched one-shot protocol before adding skills, memory, tools, RAG, prompt optimization or behavioral editing.
 
-REALGEN 001 measured 722 real generated tokens:
-- pooled generation `13.184615 tok/s`;
-- pooled end-to-end output `12.046861 tok/s`;
-- per-prompt TTFT ~`0.94 s`;
-- peak MLX `3,826,575,836 B`;
-- peak swap `1591.19 MB`.
+Use the same exact LRUCache prompt and 384-token output budget, with comparable measurements: completion, TTFT, generation/end-to-end throughput, wall, p50/p95, cleanup, memory/swap and provenance.
 
-Stretch-037 custom `S1_R8` achieved an M5 oracle-path improvement but is M5-only and MUST NOT be injected into real M1 chat generation.
+Do not use bare Ollama output as the primary matched result. If the available 4B artifact is only GGUF or Ollama-hosted, first determine the closest LOOM runtime path and preserve a clear runtime-factor distinction.
 
-## Current checkpoint — LOOM 8B matched practical bake-off runner
-
-Preregistration:
-`research/architecture/loom-8b-practical-bakeoff-runner-001-preregistration.md`.
-
-Build one new bounded one-shot runner derived from REALGEN with NO runtime-semantic changes. Frozen task is the exact LRUCache prompt used on 30B, max generated tokens 384.
-
-Required outputs: full text, completion reason/count, TTFT, prefill, generation/end-to-end tok/s, p50/p95, cleanup, memory/swap and provenance.
-
-Do not build a full new CLI/UI yet. The purpose is a matched LOOM-vs-LOOM practical comparison.
-
-After 8B evidence, recover/port the 4B LOOM tier under an analogous matched protocol, then choose initial FAST/BALANCED/DEEP roles. After tier selection/initial optimization, open mandatory LOOM Heretic integration.
+After the 4B matched result, expand to a compact multi-task 4B/8B/30B bake-off before freezing routing thresholds. Heretic remains mandatory after tier role selection.
