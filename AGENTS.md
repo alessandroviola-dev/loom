@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.61
+Version: 3.62
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -41,9 +41,9 @@ Do not mix relative artifacts across roots.
 - **BALANCED / 8B** — provisional default/primary tier;
 - **DEEP / 30B** — selective escalation tier;
 - **FAST** — architecturally retained, legacy 4B path parked;
-- **LOOM AUTO** — move toward `8B -> post-generation validator -> accept / repair / 30B escalation`, rather than trusting a pre-inference prompt classifier.
+- **LOOM AUTO** — validator-first: `8B -> validate -> safe deterministic repair when provably semantics-preserving -> selective 30B -> validate again` for mechanically verifiable tasks.
 
-Do not freeze 30B escalation thresholds yet.
+Open-ended semantic uncertainty remains a separate unresolved track. Do not freeze general 30B escalation thresholds yet.
 
 ## LOOM Heretic — FUNDAMENTAL / NON-OPTIONAL
 
@@ -62,101 +62,70 @@ Historical REALGEN ~`13.18 tok/s`.
 Compact-suite pooled generation `12.931 tok/s`, median TTFT `2.006 s`.
 
 ### 8B 4-bit — CLOSED HISTORICAL BRANCH
-Historical Direct MLX 4-bit continuous profile resource-failed even after controlled 72–74% free-memory launch. The later KV8 rescue branch has no canonical quality classification. Do not reopen from current evidence; there is no valid quality result showing 4-bit solves the present correctness issue.
+Historical Direct MLX 4-bit continuous profile resource-failed even after controlled 72–74% free-memory launch. KV8 rescue has no canonical quality classification. Do not reopen from current evidence.
 
 ### 4B FAST — PARKED
-Final closure `LOOM_4B_FINAL_ATTEMPT_ABORTED`; no inference in final attempt. Mechanical availability only, not capability evidence. Do not reopen legacy 4B recovery in current phase.
+Final closure `LOOM_4B_FINAL_ATTEMPT_ABORTED`. Do not reopen legacy recovery in current phase.
 
-## Key capability evidence
+## Prior capability evidence
 
-Compact 8B-vs-30B suite:
-- 8B utility `4/10`, wall `35.325 s`;
-- 30B utility `7/10`, wall `468.867 s`;
-- +3 utility cost +`433.541 s` (~12.27x wall).
+- compact 8B-vs-30B: 8B utility `4/10`, 30B `7/10`, +`433.541 s` waiting for +3 utility;
+- calculator flow: REJECTED;
+- strict-output and verification-first: ACCEPTED branch-level only;
+- Capability Candidate v1: NO_GO;
+- selector v0 isolated: GO `15/15`, but end-to-end dispatch FIX1: scientific NO_GO (`7/9` selector, `1/3` NORMAL false activation, AUTO8 only `2/9` CORRECT).
 
-8B capability funnel:
-- calculator: **REJECTED**;
-- strict-output: **ACCEPTED branch-level**;
-- verification-first: **ACCEPTED branch-level**.
+Do not tune selector/protocols on exposed dispatch tasks and do not use selector-first graph as production basis.
 
-Capability Candidate v1:
-- `LOOM_8B_CAPABILITY_CANDIDATE_V1_NO_GO` because CAP8 improved only `+1` vs frozen required `+2`;
-- CAP8 nevertheless matched 30B `7/8` on that fresh set with `26.311 s` vs `284.591 s` wall;
-- do not promote an always-on bundle.
-
-Capability Selector v0 isolated test:
-- `LOOM_CAPABILITY_SELECTOR_V0_GO` on its 15-item selector-only set;
-- 15/15, zero NORMAL false activations, microsecond overhead.
-
-This isolated GO did not generalize sufficiently in the end-to-end mixed suite.
-
-## Auto Capability Dispatch 001 — original mechanical invalid
-
-Original result:
-`research/architecture/loom-8b-auto-capability-dispatch-001-result.md`.
-Classification `LOOM_8B_AUTO_CAPABILITY_DISPATCH_NO_GO` because post-inference cleanup-evidence instrumentation failed; valid scientific conditions `0/18`.
-Original remains permanently closed.
-
-## Auto Capability Dispatch 001 FIX1 — COMPLETE / SCIENTIFIC NO_GO
+## Output Validator v0 — COMPLETE / GO
 
 Result:
-`research/architecture/loom-8b-auto-capability-dispatch-001-fix1-result.md`.
+`research/architecture/loom-8b-output-validator-v0-001-result.md`.
 Evidence:
-`results-local/research/8b-auto-capability-dispatch-001-fix1/20260828T165528Z/`.
-Classification: **`LOOM_8B_AUTO_CAPABILITY_DISPATCH_FIX1_NO_GO`**.
+`results-local/research/8b-output-validator-v0-001/20260828T174056Z/`.
+Classification: **`LOOM_8B_OUTPUT_VALIDATOR_V0_GO`**.
 
-All 18 frozen conditions valid after the separately preregistered cleanup-only FIX1.
+Frozen provenance unchanged. Harness SHA:
+`c67aed70998ee2cac23827e486b0cdfeaf3b8c1264bd84a84e4c24e8443fdc25`.
 
-Frozen gate:
-- all 18 valid: PASS;
-- selector >=8/9: FAIL — `7/9`;
-- NORMAL false activations 0/3: FAIL — `1/3`;
-- AUTO8 >=RAW8 +2 utility: PASS — `8 vs 6`;
-- zero per-task utility regressions: PASS;
-- AUTO8 >=7/9 CORRECT: FAIL — `2/9`.
+Observed:
+- synthetic preflight `11/11` PASS;
+- 12/12 valid records;
+- validator PASS/FAIL/UNCERTAIN `3/6/3`;
+- T01–T09 model C/P/I `3/3/3`;
+- **false PASS = 0**;
+- T10–T12 `UNCERTAIN = 3/3`;
+- validator p50/p95 `0.066355 / 0.758321 ms`;
+- median 8B TTFT `1.499425 s`;
+- pooled generation `12.986417 tok/s`.
 
-RAW8 aggregate: utility `6`, C/P/I `1/4/4`, median TTFT `1.517422 s`, pooled generation `12.865656 tok/s`, E2E wall `45.979878 s`.
-AUTO8 aggregate: utility `8`, C/P/I `2/4/3`, median TTFT `2.091046 s`, pooled generation `13.167506 tok/s`, E2E wall `58.924179 s`.
+Supported conclusion: benchmark-supplied deterministic validators can fail closed on these mechanically verifiable classes and abstain on open-ended tasks. This does not prove general semantic validation or automatic validator selection.
 
-Material selector errors:
-- T03 VERIFY_FIRST -> STRICT_OUTPUT;
-- T07 expected NORMAL -> VERIFY_FIRST false activation.
-
-Interpretation:
-- targeted protocol dispatch can rescue some formatting failures;
-- pre-inference deterministic selector v0 does not generalize enough to mixed cues;
-- static capability prompts do not solve semantic/incomplete answers; AUTO8 only 2/9 CORRECT;
-- do not tune selector/protocols on the exposed T01–T09 set;
-- do not build 30B escalation on this selector-first graph.
-
-## Current checkpoint — 8B Output Validator v0 001
+## Current checkpoint — Validator-Guided Selective Rescue 001
 
 Preregistration:
-`research/architecture/loom-8b-output-validator-v0-001-preregistration.md`.
+`research/architecture/loom-validator-guided-selective-rescue-001-preregistration.md`.
 
-Goal: validate a cheap fail-closed post-generation layer:
-`prompt -> RAW8 -> PASS / FAIL / UNCERTAIN`.
+Fresh 8-task mechanically verifiable suite.
 
-Validator kind/spec is benchmark-supplied in v0 to isolate validation fidelity. It does not infer task class and does not use a model judge.
+Frozen graph:
+`RAW8 -> validator -> PASS accept; FAIL -> safe fence-only deterministic repair if eligible -> revalidate -> residual FAIL -> one canonical 30B DEEP call -> revalidate`.
 
-Fresh 12-task set:
-- exact JSON/CSV/restricted key-value contracts;
-- three verification-rule tasks;
-- three deliberately open-ended tasks that must return `UNCERTAIN`.
+Safe repair may only remove one outer Markdown code fence while leaving interior payload bytes unchanged. No coercion or semantic repair.
+
+Open-ended UNCERTAIN tasks are excluded from this checkpoint and require a separate semantic-verifier track.
 
 Create only:
-`scripts/loom_8b_output_validator_v0_001.py`.
-
-Before model inference run synthetic no-model PASS/FAIL/UNCERTAIN fixtures for every validator kind.
+`scripts/loom_validator_guided_selective_rescue_001.py`.
 
 Frozen GO requires:
-- 12/12 valid inference/evidence records;
-- all synthetic fixtures pass;
-- zero false PASS on mechanically invalid T01–T09 outputs;
-- T10–T12 all `UNCERTAIN`;
-- validator p95 <5 ms;
-- exact frozen validator definitions and zero network/package/model/runtime mutation.
+- all initial 8B and every triggered 30B condition valid;
+- zero false acceptance at every stage;
+- only frozen fence-removal repair;
+- final CORRECT >=6/8 and >=RAW8 +2;
+- at least 2/8 30B calls avoided;
+- no DEEP call after initial PASS/successful repair;
+- validator and repair p95 <5 ms;
+- no network/download/package/model/runtime mutation.
 
-No 30B, selector tuning, capability injection, calculator, 4B, retries/repair, memory/RAG, fine-tuning, Heretic, provider/UI or production integration.
-
-If validator v0 GO, next checkpoint may test selective repair and/or 30B escalation only on FAIL/UNCERTAIN results. Heretic remains mandatory after initial runtime/capability optimization.
+No selector tuning, capability injection, calculator, 4B, memory/RAG, fine-tuning, Heretic, provider/UI or production integration.
