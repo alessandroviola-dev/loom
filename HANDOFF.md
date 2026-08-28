@@ -1,11 +1,11 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-28
-Status: ACTIVE — compact 8B-vs-30B suite completed. Evidence supports 8B BALANCED as provisional default and 30B DEEP as selective escalation. Legacy 4B FAST remains parked. Current checkpoint tests whether cheap LOOM capabilities can close observed 8B gaps before 30B escalation.
+Status: ACTIVE — compact 8B-vs-30B suite completed; 8B capability amplification funnel completed. Strict-output and verification-first mechanisms are accepted candidate capabilities; current calculator flow is rejected. Current checkpoint validates an integrated 8B capability candidate on fresh tasks against RAW 8B and canonical 30B.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_8B_CAPABILITY_AMPLIFICATION_FUNNEL_001`
-Pi context: `/AGENTS.md` v3.56.
+Current checkpoint: `LOOM_8B_CAPABILITY_CANDIDATE_V1_001`
+Pi context: `/AGENTS.md` v3.57.
 
 ## Provisional product architecture
 
@@ -14,7 +14,7 @@ Pi context: `/AGENTS.md` v3.56.
 - FAST — retained conceptually, legacy 4B implementation parked;
 - LOOM AUTO — capability-first execution and verification-driven escalation.
 
-Do not freeze router thresholds yet.
+Do not freeze routing thresholds yet.
 
 ## LOOM Heretic
 
@@ -22,59 +22,85 @@ Do not freeze router thresholds yet.
 
 ## Compact 8B vs 30B result
 
+Result: `research/architecture/loom-8b-30b-compact-practical-suite-001-result.md`.
+Classification `LOOM_8B_30B_COMPACT_SUITE_PASS`.
+
+8B: utility `4/10`, total wall `35.325 s`, median TTFT `2.006 s`, pooled generation `12.931 tok/s`.
+30B: utility `7/10`, total wall `468.867 s`, median TTFT `50.671 s`, pooled generation `1.402 tok/s`.
+30B gained +3 utility/+2 correct tasks for +`433.541 s` waiting (~`12.27x`).
+
+Interpretation:
+- arithmetic both failed -> 30B escalation is not a universal correctness rescue;
+- strict machine-readable output exposed an 8B protocol failure;
+- supplied-context reasoning showed 8B parity;
+- verification-driven design showed a real 30B advantage.
+
+## 8B capability amplification funnel result
+
 Result:
-`research/architecture/loom-8b-30b-compact-practical-suite-001-result.md`
+`research/architecture/loom-8b-capability-amplification-funnel-001-result.md`
 Evidence:
-`results-local/research/8b-30b-compact-practical-suite-001/20260828T152617Z/`
-Classification: `LOOM_8B_30B_COMPACT_SUITE_PASS`.
+`results-local/research/8b-capability-amplification-funnel-001/20260828T154910Z/`
+Classification: `LOOM_8B_CAPABILITY_AMPLIFICATION_FUNNEL_PASS`.
 
-8B:
-- utility `4/10`;
-- correct/partial/incorrect `2/1/2`;
-- total task wall `35.325 s`;
-- median TTFT `2.006 s`;
-- pooled generation `12.931 tok/s`;
-- time/correct task `17.663 s`.
+Frozen 8B remains `mlx-community/Qwen3-8B-3bit@619ded3`, 3-bit/group64, MLX/mlx-metal 0.31.2, mlx-lm 0.31.3, transformers 5.12.1, M1 `qmv_fast`, BF16 KV, greedy, thinking OFF.
 
-30B:
-- utility `7/10`;
-- correct/partial/incorrect `4/0/1`;
-- total task wall `468.867 s`;
-- median TTFT `50.671 s`;
-- pooled generation `1.402 tok/s`;
-- time/correct task `117.217 s`.
+### A calculator tool — REJECTED
 
-30B gained +3 utility points and +2 correct tasks, but cost +`433.541 s` waiting time (~`12.27x` task wall).
+- A1 no improvement, A2 improved to PARTIAL, A3 improved to CORRECT;
+- only 1/3 treatment items fully CORRECT;
+- calculator arithmetic was mechanically correct but model-selected expression/semantics could be wrong;
+- do not integrate current calculator flow.
 
-Failure/win decomposition:
-- arithmetic T01: both wrong -> deterministic tool candidate;
-- debugging T02: 8B safe fix but partial diagnosis; 30B core better but instruction-length fail;
-- strict JSON T03: 8B semantic content right but fenced -> protocol/structured-output candidate;
-- supplied context T04: 8B matches 30B;
-- verification-driven design T05: clear 30B advantage.
+### B strict-output protocol — ACCEPTED
 
-Therefore do not use 30B as a generic correctness rescue for every task. Prefer cheap capability fixes where failure class is deterministic/protocol-level.
+- 2 paired improvements;
+- treatment 3/3 CORRECT;
+- zero regressions;
+- removes markdown/extra-format failures for strict machine-readable contracts.
 
-## Current checkpoint
+### C verification-first protocol — ACCEPTED
+
+- 2 paired improvements;
+- treatment 2/3 CORRECT;
+- zero regressions;
+- improves deterministic/observable validation and escalation reasoning.
+
+Treatments kept generation in roughly the same 8B regime (~11–13 tok/s). Strict-output overhead was small; verification-first responses were somewhat longer but still far cheaper than 30B latency.
+
+## Exact next action — 8B Capability Candidate v1
 
 Preregistration:
-`research/architecture/loom-8b-capability-amplification-funnel-001-preregistration.md`.
-
-Frozen 8B-only paired funnel on fresh prompts:
-A. RAW vs deterministic calculator-tool flow;
-B. RAW vs reusable strict-output protocol;
-C. RAW vs reusable verification-first protocol.
+`research/architecture/loom-8b-capability-candidate-v1-001-preregistration.md`.
 
 Create only:
-`scripts/loom_8b_capability_amplification_funnel_001.py`.
+`scripts/loom_8b_capability_candidate_v1_001.py`.
 
-No 30B/4B inference, downloads, model/runtime changes, memory/RAG, Heretic, fine-tuning, production integration or unregistered retries.
+Run four fresh tasks under all three conditions:
+1. RAW 8B;
+2. CAPABILITY 8B using only the already-accepted frozen protocol for the preregistered task label;
+3. canonical 30B DEEP.
 
-Each branch is scored independently against frozen acceptance rules. A successful branch becomes a candidate LOOM capability, not automatically production behavior.
+Tasks:
+- 2 strict-output;
+- 2 verification-first.
 
-## Next after funnel
+Automatic task/capability recognition is explicitly NOT part of this checkpoint. Applicability is supplied by frozen task label to isolate capability value.
 
-Use accepted mechanisms to design the first capability-first LOOM execution graph, likely:
-`task -> deterministic capability/protocol when applicable -> 8B -> validation -> 30B only on unresolved failure/uncertainty`.
+CAP8 promotion gate:
+- >=`6/8` utility;
+- >=`+2` vs RAW8;
+- zero task regressions;
+- >=`3/4` CORRECT;
+- valid provenance/evidence.
 
-Then validate architecture before provider/UI integration. Mandatory Heretic track remains after initial runtime/capability optimization.
+30B does not control GO/NO_GO; it is a practical comparator to measure residual quality gap and waiting cost.
+
+No calculator, auto dispatcher, 4B, downloads, runtime changes, retries, tools, memory/RAG, fine-tuning, Heretic, provider/UI or router thresholds.
+
+## After candidate result
+
+If CAP8 GO: next validate automatic capability selection/dispatch on unseen mixed tasks, then build the first capability-first LOOM execution graph.
+If CAP8 NO_GO: diagnose accepted mechanism integration without changing frozen evidence before deciding whether to retain them separately.
+
+Provider/UI follows validated execution architecture. Mandatory Heretic track remains after initial runtime/capability optimization.
