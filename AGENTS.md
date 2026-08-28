@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.47
+Version: 3.48
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -38,10 +38,10 @@ After every significant scientific checkpoint, ChatGPT updates canonical GitHub 
 21. oracle verifier ceilings are upper bounds only and never production speed;
 22. large new-model downloads require metadata-only readiness first;
 23. environment conflicts are reconciled against the exact accepted interpreter/venv before package changes;
-24. user-facing runtime claims require real end-to-end generation evidence, not only token-like microbenchmarks;
+24. user-facing runtime claims require real end-to-end generation evidence;
 25. a local candidate proven by evidence remains non-canonical until exact source review and commit/push;
 26. production/user-facing Python must not depend on untracked research helper modules;
-27. token streaming must use tokenizer-compatible stateful detokenization and stop/control tokens must not be emitted to the user.
+27. token streaming must use tokenizer-compatible stateful detokenization and stop/control tokens must not be emitted.
 
 External root: `<external-archive>/`
 
@@ -79,73 +79,77 @@ Both large executions remain parked until after practical 30B/8B/4B comparison u
 Result: `research/architecture/loom-30b-interactive-runtime-v1-001-result.md`.
 Evidence: `results-local/research/30b-interactive-runtime-v1-001/20260828T122908Z/summary.json`.
 
-Validated environment:
-- `.venvs/stretch030-mlx0320-fix1/bin/python`;
-- Python `3.13.0`;
-- MLX `0.32.0`;
-- mlx-lm `0.31.3`.
+Validated environment: `.venvs/stretch030-mlx0320-fix1/bin/python`, Python `3.13.0`, MLX `0.32.0`, mlx-lm `0.31.3`.
 
 Functional evidence:
 - 16-position semantic parity PASS;
-- live streaming PASS;
-- exact incremental KV/recurrent reuse PASS;
-- 3-turn memory smoke PASS (`7319`);
-- 5-turn stability PASS (`ALFA-482` recovered);
-- peak RSS `1,447,067,648 B`;
-- swap safe;
-- zero SOURCE fallback/persistent expert cache.
+- exact incremental state reuse PASS;
+- 3-turn/5-turn memory stability PASS;
+- zero SOURCE fallback/persistent expert cache;
+- long-form TTFT `47.832 s`;
+- decode `1.116 tok/s`;
+- end-to-end `0.921 tok/s`;
+- peak RSS `1,447,067,648 B`.
 
-Long-form: TTFT `47.832 s`, decode `1.116 tok/s`, end-to-end `0.921 tok/s`, p50/p95 `0.869 / 1.276 s`.
-Only frozen READY miss: TTFT >30 s.
+Only frozen READY miss: TTFT >30 s. Do not relax this historical threshold.
 
-## Exact code review — candidate not yet canonical
+## Canonicalization Repair 001 — GO
 
-Reviewed uploaded candidate:
-`scripts/loom_30b_interactive_v1_001.py`
+`LOOM_30B_INTERACTIVE_V1_CANONICALIZATION_REPAIR_001 = LOOM_30B_INTERACTIVE_V1_CANONICALIZATION_GO`.
 
-Reviewed SHA-256:
+Result:
+`research/architecture/loom-30b-interactive-v1-canonicalization-repair-001-result.md`
+Evidence:
+`results-local/research/30b-interactive-v1-canonicalization-repair-001/20260828T131045Z/`
+
+Frozen original reviewed candidate SHA verified:
 `25607adf29b8bd045a938b6bd32afa2322d95ebaa5e156da5f86010a4101bcfa`.
 
-Material findings:
-1. imports `loom_30b_moe_first_greedy_generation_001` and `loom_30b_moe_shared_backbone_residency_001`, which are local research helpers not tracked on the current branch; committing only the CLI would not reproduce on a clean checkout;
-2. streaming calls standalone `tokenizer.decode([token])` per generated token instead of mlx-lm's stateful streaming detokenizer, risking incomplete multi-token UTF-8/BPE rendering;
-3. stop/EOS is decoded/emitted before the stop check, so a special stop marker can become visible;
-4. next-turn boundary extraction scans the full re-tokenized transcript for the second-last hard-coded EOS and is fragile to special-token-looking content.
+Repair produced only two intended local files:
+- `scripts/loom_30b_runtime_core_v1_001.py` SHA-256 `75da01c85d3b0d4c1aae9c10cf5bb19723ef39ec6ef8b0149707a977afc4befc`;
+- `scripts/loom_30b_interactive_v1_001.py` SHA-256 `08e84d1b19afdd4bad757db29d0d804783a35ee41db17696c14c56c8913488cb`.
 
-These findings do not invalidate the functional evidence; they block production canonicalization only.
+Gates PASS:
+- production dependency audit;
+- canonical backend unchanged at SHA `6bb4...`;
+- 16-position IDs/routing/float32-logit SHA parity;
+- exact incremental state reuse/no full re-prefill;
+- Unicode stateful streaming equivalence;
+- EOS/control marker suppressed before emission;
+- literal `<|im_end|>` user-content boundary smoke;
+- frozen `7319` memory smoke;
+- PACKED-only, SOURCE fallback 0, no persistent expert cache, deterministic fd close.
 
-## Current checkpoint — INTERACTIVE V1 CANONICALIZATION REPAIR 001
+Bounded regression generation: `1.449028 tok/s`, TTFT `18.288247 s`, 5 output tokens under a 32-token bound. This does not replace the historical long-form metrics.
 
-`LOOM_30B_INTERACTIVE_V1_CANONICALIZATION_REPAIR_001`
+Observed system swap during the bounded repair run was `1471.06 MiB`; no critical memory pressure. The repair preregistration imposed no new swap threshold, so this does not override historical v1 safety evidence.
 
-Preregistration:
-`research/architecture/loom-30b-interactive-v1-canonicalization-repair-001-preregistration.md`
+## Current checkpoint — FINAL SOURCE REVIEW / PERSISTENCE
 
-Required repair:
-- promote one minimal tracked runtime core containing only the exact validated helper functionality needed by the CLI;
-- remove imports of untracked research helpers from production runtime;
-- preserve canonical expert-major backend unchanged;
-- use frozen mlx-lm `tokenizer.detokenizer` stateful streaming;
-- test EOS before emission and never print stop/control markers;
-- robustly derive canonical assistant-close/new-user/generation suffix without full-transcript EOS scanning;
-- preserve original generated token IDs in KV history;
-- startup-validate expected chat terminator against tokenizer stop semantics;
-- re-run exact semantic parity/state reuse;
-- add Unicode streaming equivalence and literal `<|im_end|>` boundary smoke;
-- recursively prove all production Python imports are tracked/runtime-safe.
+The repair GO authorizes review, not automatic canonical status.
 
-Expected intended production files after GO:
-- `scripts/loom_30b_runtime_core_v1_001.py`;
-- `scripts/loom_30b_interactive_v1_001.py`.
+Before commit:
+1. inspect the exact local contents of both reported files;
+2. verify both SHAs exactly;
+3. verify canonical backend has zero diff;
+4. verify no unintended tracked/staged files;
+5. stage only the two approved runtime files;
+6. `git diff --cached --check`;
+7. commit/push;
+8. verify remote commit/content.
 
-Pi must not commit/push. After GO, ChatGPT reviews exact diffs/SHAs and the user commits only approved files.
+Pi must not do Git operations. User/ChatGPT own persistence.
 
-## Strategic sequence after GO
+After persistence:
+- user launches committed CLI and conducts a real free-form multi-turn conversation;
+- if acceptable, freeze **LOOM 30B v1 FUNCTIONAL_SLOW** as the large practical comparator;
+- then run matched Qwen-family 30B vs 8B vs 4B bake-off.
 
-1. Manual real terminal conversation with canonical LOOM 30B v1.
-2. Matched practical 30B vs Qwen-family 8B vs 4B bake-off: quality, TTFT, tok/s, RAM/swap, time-to-correct-task.
-3. Decide roles: 30B deep/primary, small fast primary + 30B escalation, or skill/tool/protocol-centric small model.
-4. Heretic-paper-informed behavioral/refusal editing only after runtime roles are selected, with quality-preservation gates.
-5. Separate 30B speed R&D: higher-precision mixed-bit quantization, fused Metal expert kernels, vectored expert I/O, trace-driven bounded cache simulation, and later TTFT/prefill work if justified by manual use.
+## Strategic sequence after manual v1
+
+1. Practical 30B vs 8B vs 4B: TTFT, tok/s, RAM/swap, time-to-correct-task, fixed intelligence tasks.
+2. Decide 30B deep/primary vs small fast primary + 30B escalation vs skill/tool/protocol-centric small model.
+3. Use `LOOM_HERETIC_TECHNICAL_PAPER.md` only after role selection, with frozen refusal/steerability and capability-preservation gates.
+4. Separate R&D may study higher-precision mixed-bit quantization, fused Metal expert kernels, vectored expert I/O, trace-driven bounded caches and later TTFT/prefill optimization.
 
 Project priority remains practical utility.
