@@ -1,114 +1,128 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: canonical LOOM 30B v1 code persisted at `d3691b7`; historical runtime class `FUNCTIONAL_SLOW`
-Immediate next: real manual terminal conversation
-Canonical context: `/AGENTS.md` v3.49.
+Current: canonical LOOM 30B v1 exists and is manually usable but practically slow; target system architecture is now routed 4B FAST / 8B BALANCED / 30B DEEP.
+Immediate next: matched 30B/8B/4B practical bake-off using already-downloaded small models.
+Canonical context: `/AGENTS.md` v3.50.
 
-## 1. Frozen 30B research baseline
+## 1. Product direction — LOOM AUTO
+
+LOOM is a multi-tier inference system, not a single-model runtime.
+
+Target modes:
+- `loom-fast` -> optimized ~4B;
+- `loom-balanced` -> optimized ~8B;
+- `loom-deep` -> optimized 30B;
+- `loom-auto` -> router selects the cheapest tier likely to solve the task and may escalate 4B -> 8B -> 30B when verification/confidence is insufficient.
+
+All tiers should share LOOM-level memory/retrieval, skills/protocols, tools, verification and provider/API integration where compatible.
+
+Do not freeze routing thresholds before matched evidence exists.
+
+## 2. LOOM Heretic — fundamental
+
+`LOOM_HERETIC_TECHNICAL_PAPER.md` is a core, non-optional project track.
+
+It remains scheduled after runtime role selection so refusal/steerability editing targets the tiers that matter. Freeze behavioral and capability-preservation gates before edits. Report measured refusal suppression/steerability, not absolute unmeasured `guardrail-free` claims.
+
+## 3. Frozen 30B research baseline
 
 Qwen3-30B-A3B exact-Q4/top-8:
-- backend commit `96958de`;
-- sustained 3×32 `1.115874`, `1.229233`, `1.254611 tok/s`;
-- research median `1.229233 tok/s`;
-- exactness/safety PASS.
+- canonical backend commit `96958de`;
+- backend SHA `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`;
+- sustained 3x32 median `1.229233 tok/s`.
 
-Closed current-verifier speed paths:
+Closed current-verifier paths:
 - routing sparsity: no acceptable gain;
 - Q2/Q3 from deployed Q4: fidelity fail;
 - DFlash: closed;
-- real speculative drafter: not justified because perfect-oracle K=4 verifier ceiling is only `1.792925 tok/s` median.
+- perfect-oracle K=4 verifier ceiling `1.792925 tok/s`, so real speculative drafter is not justified.
 
-## 2. Qwen3.8 — parked
-
-Metadata-only readiness: `QWEN38_BOTH_PORTABLE`.
-Qwen3.8-27B dense projected external traffic: `13.702 GB/token`.
-Qwen3.8-Flash-Next projected external baseline: `3.858 GB/token`.
-Do not spend large downloads now; revisit after practical model-size/architecture bake-off or a materially new mechanism.
-
-## 3. LOOM 30B Interactive Runtime v1 — canonical code
-
-Historical functional result:
-`LOOM_30B_INTERACTIVE_V1_FUNCTIONAL_SLOW`.
-
-Long-form:
-- TTFT `47.832 s`;
-- decode `1.116 tok/s`;
-- end-to-end `0.921 tok/s`.
-
-Functional validation PASS:
-- semantic parity;
-- exact incremental multi-turn state reuse;
-- streaming;
-- 3-turn/5-turn memory and stability;
-- zero SOURCE fallback/cache.
-
-Canonicalization repair: GO.
-EOS-finalize repair: GO.
+## 4. Canonical LOOM 30B v1 — FUNCTIONAL_SLOW
 
 Production commit:
 `d3691b765004849abb01a7675e5a6e7c5d0edd4c`.
 
-Canonical runtime files:
+Runtime files:
 - `scripts/loom_30b_runtime_core_v1_001.py` SHA `75da01c85d3b0d4c1aae9c10cf5bb19723ef39ec6ef8b0149707a977afc4befc`;
 - `scripts/loom_30b_interactive_v1_001.py` SHA `44b89ba34d597a3c9798c7ad1c081aa0eeff865cc5320e27213b3c6ebe4a5322`.
 
-Remote compare proves the commit adds only those two files.
+Historical long-form:
+- TTFT `47.832 s`;
+- decode `1.116 tok/s`;
+- end-to-end `0.921 tok/s`;
+- peak RSS `1,447,067,648 B`.
 
-## 4. Current — manual LOOM 30B v1 session
+Canonicalization GO and EOS-finalize GO are complete. Historical class remains `FUNCTIONAL_SLOW` because frozen TTFT READY gate failed.
 
-Launch committed runtime from project root using validated environment:
+## 5. Manual-use evidence
 
-`.venvs/stretch030-mlx0320-fix1/bin/python scripts/loom_30b_interactive_v1_001.py`
+Temporary CLI limitation: one-line `input()` means pasted multiline prompts are consumed as multiple turns. Treat this as harness UX, not a model-semantic defect; final product should use an OpenAI-compatible provider/service consumed by Pi and/or a proper chat UI rather than growing a custom terminal frontend.
 
-Manual checklist:
-- ask normal free-form questions;
-- ask a follow-up requiring prior-turn context;
-- observe practical TTFT and streaming quality;
-- `/reset` and verify conversational state clears;
-- `/exit` and verify clean termination.
+First real coding task requested an O(1) LRU cache:
+- 30B chose the correct dictionary + doubly-linked-list architecture;
+- `get()` behavior was correct;
+- the response exhausted the configured output budget during `put()` and remained incomplete;
+- user observed the task taking minutes and judged the latency difficult to tolerate.
 
-No model/runtime modifications during this session. Manual impressions supplement but do not replace objective benchmark numbers.
+Practical implication: completion and waiting time must be scored alongside raw reasoning quality.
 
-If acceptable, freeze **LOOM 30B v1 FUNCTIONAL_SLOW** as the large practical comparator.
+## 6. Immediate scientific decision — matched 30B vs 8B vs 4B
 
-## 5. Next scientific decision — 30B vs 8B vs 4B
+Use the already-downloaded small-model artifacts before any more 30B product polish.
 
-Run one matched Qwen-family 8B and one 4B baseline on the same M1/8GB.
+Freeze a compact matched task set and output budget. Measure:
+- task correctness and completion;
+- TTFT;
+- total wall time;
+- sustained decode tok/s;
+- RAM/swap;
+- disk footprint;
+- subjective usability.
+
+Task classes:
+- coding from specification;
+- debugging;
+- reasoning/math;
+- structured instruction following;
+- Italian technical explanation;
+- supplied-context/document reasoning;
+- planning/tool-use decisions.
 
 Primary question:
 **How much correct/useful work is produced per unit of waiting time and memory?**
 
-Measure:
-- TTFT;
-- sustained decode tok/s;
-- RAM/swap;
-- disk footprint;
-- end-to-end task time;
-- fixed practical intelligence across reasoning/math, coding, debugging, Italian technical explanation, structured instruction following, supplied-context reasoning and planning/tool-use decisions.
+## 7. Tier optimization after bake-off
 
-Possible decisions:
-- 30B primary/deep;
-- 8B fast primary + 30B escalation;
-- 4B/8B skill/tool/protocol-centric primary, 30B only where measured benefit justifies latency.
+### 4B FAST
+Prioritize minimal TTFT, high decode speed and low memory. Add skills/protocol retrieval, memory, tools, verification and domain specialization only when measured gains justify overhead.
 
-## 6. Small-model intelligence amplification
+### 8B BALANCED
+Optimize for best middle-tier quality/latency ratio. It may become the most frequently selected tier if 4B fails too often and 30B is too slow.
 
-After size bake-off:
-- dynamically retrieved skills/protocols;
-- planner -> executor -> verifier workflows;
-- Python/calculator/filesystem/Git/web/RAG tools;
-- persistent/retrieved memory;
-- test-time retries/candidate verification;
-- task-specific LoRA/distillation with frozen eval gates;
-- optional routing from fast small model to 30B deep mode.
+### 30B DEEP
+Reserve for difficult tasks where measured quality gain justifies latency. Continue separate work on TTFT/prefill and materially new expert-runtime speed mechanisms.
 
-## 7. Behavioral/refusal editing
+## 8. LOOM AUTO router/escalation
 
-Use `LOOM_HERETIC_TECHNICAL_PAPER.md` only after runtime roles are selected. Freeze refusal/steerability and capability-preservation gates; do not make unmeasured absolute guardrail-free claims.
+After tier evidence exists:
+- deterministic rules handle obvious routing cases;
+- small-model classifier/router may handle ambiguous cases;
+- verification/confidence can trigger escalation 4B -> 8B -> 30B;
+- expose forced modes (`loom-fast`, `loom-balanced`, `loom-deep`) plus `loom-auto`.
 
-## 8. Separate 30B speed R&D
+Evaluate router by total task success, latency and escalation cost rather than routing-label accuracy alone.
 
-Do not block product work. Materially new hypotheses include direct higher-precision -> mixed-bit expert quantization, fused Metal packed-Q4 expert kernel, vectored/grouped expert reads, trace-driven bounded cache simulation, and TTFT/prefill optimization if manual use justifies it.
+## 9. Provider/UI integration
 
-Final project architecture is chosen from measured practical utility.
+After runtime roles are selected, expose LOOM through a standard local API/provider layer rather than maintaining a bespoke CLI. Preferred direction: OpenAI-compatible local API usable by Pi and a full chat UI such as Open WebUI or equivalent.
+
+## 10. Heretic behavioral/steerability integration
+
+Mandatory after tier selection/initial optimization. Use the Heretic technical paper as design input for clean-room measured edits with capability-preservation gates. Determine whether editing should apply independently to each tier or only selected tiers based on measured behavior.
+
+## 11. Qwen3.8 later
+
+Qwen3.8-27B and Flash-Next remain statically portable but execution/downloads are parked until the tiered architecture decision or a materially new mechanism makes them compelling.
+
+Final architecture is chosen from measured practical utility, not nominal parameter count.
