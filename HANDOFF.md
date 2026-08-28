@@ -1,94 +1,63 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-28
-Status: ACTIVE — Output Validator v0 remains GO. Validator-Guided Selective Rescue 001 was mechanically valid but scientific NO_GO: final quality improved from RAW8 `2/8` CORRECT to `5/8`, zero false accepts and 4/8 DEEP calls avoided, but frozen gate required `>=6/8`. Current checkpoint isolates one cheap validator-guided 8B repair before any further DEEP escalation.
+Status: ACTIVE — Output Validator v0 remains GO. Validator-Guided Selective Rescue 001 was scientific NO_GO at 5/8 CORRECT. The next cheap guided-repair experiment became MECHANICAL_NO_GO because hidden expected-payload/spec metadata leaked into repair input. A separate pre-guided false acceptance on `V_VERIFY_RULE` also surfaced. Current checkpoint hardens only `V_VERIFY_RULE` with model-free adversarial fixtures before any guided-repair rerun.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_8B_VALIDATOR_GUIDED_REPAIR_001`
-Pi context: `/AGENTS.md` v3.63.
+Current checkpoint: `LOOM_VERIFY_RULE_VALIDATOR_HARDENING_001`
+Pi context: `/AGENTS.md` v3.64.
 
-## Product architecture direction
+## Product direction
 
-- 8B BALANCED — provisional default/primary tier;
-- 30B DEEP — selective expensive tier, not assumed to solve every residual failure;
-- FAST — concept retained; legacy 4B parked;
-- LOOM AUTO — validator-first for mechanically verifiable tasks: `8B -> validate -> safe deterministic repair -> cheap guided repair -> DEEP only if still unresolved`.
+- 8B BALANCED — provisional primary tier;
+- 30B DEEP — expensive selective tier;
+- FAST — concept retained, legacy 4B parked;
+- LOOM AUTO — validator-first: validated acceptance, cheap repair when independently proven, DEEP only after cheaper verified paths fail.
 
-Open-ended semantic uncertainty and automatic validator selection remain separate future tracks.
+Open-ended semantic verification and automatic validator selection remain separate unresolved tracks. LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
 
-## LOOM Heretic
+## Key evidence
 
-`LOOM_HERETIC_TECHNICAL_PAPER.md` remains fundamental/non-optional after initial runtime/capability optimization, with frozen refusal/steerability and capability-preservation gates.
+### Output Validator v0 — GO
+- zero false PASS on its preregistered set;
+- open-ended UNCERTAIN abstention correct;
+- sub-ms overhead.
 
-## Runtime evidence
+### Selective Rescue 001 — NO_GO
+- RAW8 2/8 CORRECT -> final 5/8;
+- zero false accepts;
+- fence repair 2/2;
+- DEEP calls 4/8, avoided 4/8;
+- only one DEEP call repaired a residual failure;
+- failed only final >=6/8 gate.
 
-8B BALANCED: Qwen3-8B 3-bit/group64 Direct MLX, roughly 13 tok/s real generation.
-30B DEEP: roughly 1.4 tok/s compact generation, very high TTFT/wall cost.
-Historical 8B 4-bit remains closed by resource evidence; legacy 4B FAST remains parked.
+### 8B Validator-Guided Repair 001 — MECHANICAL_NO_GO
+Result: `research/architecture/loom-8b-validator-guided-repair-001-result.md`
+Evidence: `results-local/research/8b-validator-guided-repair-001/20260828T204632Z/`
 
-## Output Validator v0 — GO
+The harness passed validator spec metadata containing hidden expected-payload information into guided-repair feedback. Therefore guided-repair outputs and aggregates are invalid scientific evidence. No rerun was performed.
 
-Result:
-`research/architecture/loom-8b-output-validator-v0-001-result.md`
-Evidence:
-`results-local/research/8b-output-validator-v0-001/20260828T174056Z/`
+Independent diagnostic: T08 was accepted by `V_VERIFY_RULE` while the frozen scorer marked it PARTIAL, and that acceptance happened before guided repair. Therefore leakage does not explain it. Do not merely sanitize feedback and rerun the exposed suite.
 
-Key result:
-- false PASS `0`;
-- deterministic verifiable classes fail closed;
-- open-ended tasks abstain `UNCERTAIN`;
-- validator p95 <1 ms.
-
-## Selective Rescue 001 — NO_GO
-
-Result:
-`research/architecture/loom-validator-guided-selective-rescue-001-result.md`
-Evidence:
-`results-local/research/validator-guided-selective-rescue-001/20260828T175816Z/`
-Classification: `LOOM_VALIDATOR_GUIDED_SELECTIVE_RESCUE_NO_GO`.
-
-Observed:
-- RAW8 C/P/I `2/3/3`;
-- final C/P/I `5/0/3`;
-- improvement `+3 CORRECT`;
-- false acceptance `0`;
-- safe fence repairs `2/2` successful;
-- 30B calls `4/8`, avoided `4/8`;
-- only one of four DEEP calls produced a validator-PASS/CORRECT rescue;
-- 8B wall `38.656 s`; added DEEP wall `246.346 s`.
-
-Why gate failed:
-- final CORRECT `5/8` < frozen `6/8`.
-
-Unresolved residuals were genuine under the frozen contracts: one exact boolean-format failure and two incomplete verification-rule answers. Do not rescore, relax gate, or retry these exposed tasks.
-
-## Exact next action — 8B Validator-Guided Repair 001
+## Exact next action — VERIFY_RULE Validator Hardening 001
 
 Preregistration:
-`research/architecture/loom-8b-validator-guided-repair-001-preregistration.md`.
-
-Fresh eight-task mechanically verifiable suite.
-
-Per task:
-1. RAW8 once;
-2. frozen validator;
-3. if PASS: accept;
-4. if FAIL and frozen outer-fence safe repair succeeds: accept repaired payload;
-5. residual FAIL triggers exactly one additional 8B repair call using original prompt + raw failed answer + exact deterministic validator failure report;
-6. revalidate;
-7. remaining FAIL becomes UNRESOLVED; no retry and no 30B.
+`research/architecture/loom-verify-rule-validator-hardening-001-preregistration.md`
 
 Create only:
-`scripts/loom_8b_validator_guided_repair_001.py`.
+`scripts/loom_verify_rule_validator_hardening_001.py`
 
-Frozen GO:
-- all required calls valid;
-- zero false accepts;
-- final CORRECT >=6/8 and >=RAW8 +2;
-- guided repair fixes at least 2 residual FAIL tasks to validator PASS + ground-truth CORRECT;
-- no repair after initial PASS/successful safe repair;
-- exact repair prompt/template unchanged;
-- validator/deterministic repair p95 <5 ms;
-- no network/package/model/runtime mutation.
+No model inference.
 
-If GO: integrate this cheap stage into a later selective-DEEP graph on a new fresh suite. If NO_GO: do not tune on exposed repair tasks; move to a different mechanism/semantic verifier track.
+Run exactly 24 fresh model-free fixtures: 8 expected PASS and 16 adversarial expected FAIL across cheap-first, named checks, accept polarity, escalation polarity, forbidden heuristics and contradiction cases.
+
+GO requires:
+- 24/24 valid records;
+- false PASS 0/16;
+- PASS recall >=7/8;
+- contradiction rejection 2/2;
+- forbidden-heuristic rejection 2/2;
+- p95 <5 ms;
+- standard library only, zero network/package/model mutation.
+
+If GO, next checkpoint will be a fresh guided-repair suite with sanitized allowlisted failure reports. Do not reuse the exposed T01–T08 tasks or any hidden validator-spec payload.
