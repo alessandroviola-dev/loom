@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.44
+Version: 3.45
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -27,44 +27,51 @@ A fully preregistered compound funnel may traverse internal stages without inter
 8. required gate instrumentation must persist before evidence is accepted;
 9. failed frozen methods are not silently modified/rerun under the same checkpoint;
 10. control/API semantics affecting validity must be established locally;
-11. Integration Readiness Protocol v1 is mandatory before integration coding/model forward: `research/architecture/loom-integration-readiness-protocol-v1.md`;
+11. Integration Readiness Protocol v1 is mandatory before integration coding/model forward;
 12. producer/consumer compatibility must be proven mechanically before adapter coding;
 13. static adapter dry-run with zero unresolved accesses and forbidden fallback must PASS before model forward;
-14. benchmark/trace-scoped artifacts are not promoted implicitly to runtime artifacts;
-15. metadata/coverage/provenance checks use deterministic scripts/JSON where possible;
-16. settled mechanisms are not reopened absent regression/materially different target;
-17. production regressions require a new bounded preregistered repair;
+14. benchmark artifacts are not implicitly promoted to production runtime artifacts;
+15. metadata/provenance checks use deterministic scripts/JSON where possible;
+16. settled mechanisms are not reopened absent regression/materially different hypothesis;
+17. production regressions require a bounded preregistered repair;
 18. validation-only metadata stays out of hot runtime when representable by a smaller contract;
 19. accepted production code is canonical only after review and Git persistence;
-20. quality-trading speed work freezes fidelity metrics/thresholds before candidate results;
-21. verifier-ceiling experiments using oracle proposals are upper bounds only and never production speed;
-22. large new-model downloads require a metadata-only portability/readiness gate first;
-23. if environment discovery conflicts with an accepted execution stack, reconcile the exact interpreter/venv before package installs or large downloads;
-24. first-token/new-model checkpoints must early-stop when measured performance already makes a full campaign decision-irrelevant.
+20. quality-trading work freezes fidelity gates before candidate results;
+21. oracle verifier ceilings are upper bounds only and never production speed;
+22. large new-model downloads require metadata-only readiness first;
+23. environment conflicts are reconciled against the exact accepted interpreter/venv before package changes;
+24. user-facing runtime claims require real end-to-end generation evidence, not only token-like microbenchmarks.
 
 External root: `<external-archive>/`
 
-## Frozen Qwen3-30B-A3B comparison baseline
+## Mission
+
+**Big models. Small machines.** Build a practical local AI system on Apple M1/8GB, measuring not only whether large models can execute but whether they are useful relative to smaller local models and tool/skill-enhanced systems.
+
+## Frozen Qwen3-30B-A3B production comparator
 
 Canonical backend:
 `scripts/loom_30b_moe_expert_major_backend_001.py`
 
 Production baseline commit:
-`96958de`.
+`96958de` — persistent PACKED fd.
 
-Exact-Q4/top-8 sustained throughput:
+Exact-Q4/top-8 sustained benchmark:
 `1.115874`, `1.229233`, `1.254611 tok/s`; median `1.229233 tok/s`.
 
-Closed speed paths:
-- expert-major accepted/canonical;
-- routing sparsity no acceptable gain;
-- Q2/Q3 expert requantization fidelity fail;
-- DFlash closed;
-- lossless oracle speculative ceiling K=4 median `1.792925 tok/s`, NOT PROMISING for a real drafter.
+Validated backend SHA-256:
+`6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
 
-This 30B runtime is now the frozen production comparator. Do not reopen its speed frontier absent a materially new verifier architecture.
+Settled mechanisms:
+- expert-major physical I/O/runtime/canonicalization: ACCEPTED;
+- routing sparsity: NO ACCEPTABLE GAIN;
+- Q2/Q3 from deployed Q4: fidelity FAIL;
+- DFlash: CLOSED;
+- oracle K=4 speculative verifier ceiling: `1.792925 tok/s` median, NOT PROMISING for a real drafter.
 
-## Qwen3.8 Portability Readiness 001 — BOTH PORTABLE
+Do not reopen these exact mechanisms absent a materially new hypothesis.
+
+## Qwen3.8 readiness — BOTH PORTABLE, EXECUTION PARKED
 
 `LOOM_QWEN38_PORTABILITY_READINESS_001 = QWEN38_BOTH_PORTABLE`.
 
@@ -73,77 +80,67 @@ Result:
 Evidence:
 `results-local/research/qwen38-portability-readiness-001/20260828T112000Z/`
 
-### Candidate A — Qwen3.8-27B
+Qwen3.8-27B static dense streaming:
+- 64 layers;
+- projected external weight traffic `13,702,468,608 B/token`;
+- resident `1,587,312,640 B`;
+- static portability PASS but naive decode is structurally much more bandwidth-heavy than current sparse 30B.
 
-Fixed identities:
-- upstream `Qwen/Qwen3.8-27B@1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0`;
-- Q4 reference `mlx-community/Qwen3.8-27B-4bit@3e6447f082e89cc7f0bc6e5441afd38dfce760ff`.
-
-Static classification: `PORTABLE_DENSE_STREAMING`.
-
-Facts:
-- 64 language layers: 48 Gated DeltaNet + 16 full-attention;
-- largest layer `215,665,088 B`;
-- projected resident `1,587,312,640 B`;
-- naive one-token streamed external weight traffic `13,702,468,608 B/output-token`;
-- bandwidth at 1/2/5 tok/s: `13.702 / 27.405 / 68.512 GB/s`.
-
-Interpretation: simplest/cheapest candidate to acquire and highest probability of first-token success, but naive dense streaming is structurally bandwidth-heavy and is not expected to beat the sparse 30B without a later multi-token mechanism. Official architecture includes multi-step MTP, but MTP is not part of the first baseline execution checkpoint.
-
-### Candidate B — Qwen3.8-Flash-Next
-
-Fixed identities:
-- upstream `Qwen/Qwen3.8-Flash-Next@de4b8e4d43b917e7706784d8bb445c9af86a3540`;
-- reference `Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP@327c8a604de613b42f84ba5e6b796c0931e8aa3b`.
-
-Static classification: `PORTABLE_FLASH_STREAMING`.
-
-Facts:
+Qwen3.8-Flash-Next static streaming:
 - 48 layers;
-- 512 routed experts/layer, top-10 routed + one shared;
-- routed expert size `3,072,000 B`;
-- routed expert traffic `1,474,560,000 B/token`;
-- shared expert traffic `147,532,800 B/token`;
-- bounded n-gram lookup estimate `1,600 B/token`;
-- projected resident `991,928,320 B`;
-- transient `154,032,152 B`;
-- projected total external `3,858,155,864 B/token`;
-- bandwidth at 1/2/5 tok/s: `3.858 / 7.716 / 19.291 GB/s`;
-- native MTP metadata ABI covered but runtime adapter not ready.
+- 512 routed experts, top-10 + shared;
+- routed expert `3,072,000 B`;
+- projected external `3,858,155,864 B/token` baseline;
+- native MTP metadata covered, runtime adapter not ready;
+- ~105.434 GiB payload needs external storage.
 
-Interpretation: much larger download and harder adapter, but architecture aligns more strongly with LOOM through expert-major storage, deterministic n-gram offload and native MTP.
+Both remain research candidates, but large downloads/execution are PARKED until the current 30B is productized and compared against smaller local baselines. Do not execute the previously preregistered 27B first-token checkpoint unless ChatGPT/user explicitly reactivates it.
 
-Readiness consumed only `2,024,970 B` network and zero safetensor payload bytes.
+## Current checkpoint — LOOM 30B INTERACTIVE RUNTIME V1 001
 
-## Environment discrepancy to resolve
-
-The metadata readiness probe reported MLX-family packages absent in its interpreter, while accepted Qwen3 experiments used MLX `0.32.0` / mlx-lm `0.31.3`.
-
-This is presumed interpreter/environment mismatch until disproven. The next checkpoint MUST locate/freeze the previously accepted Python environment before any large download. Do not blindly upgrade/install into the project environment.
-
-## Current checkpoint — Qwen3.8-27B Dense Streaming First-Token 001
-
-`LOOM_QWEN38_27B_DENSE_STREAMING_FIRST_TOKEN_001`
+`LOOM_30B_INTERACTIVE_RUNTIME_V1_001`
 
 Preregistration:
-`research/architecture/loom-qwen38-27b-dense-streaming-first-token-001-preregistration.md`
+`research/architecture/loom-30b-interactive-runtime-v1-001-preregistration.md`
 
-Purpose:
-1. reconcile/freeze execution environment;
-2. acquire only fixed Q4 Candidate A, preferably to healthy external storage;
-3. build minimum 64-layer text-only dense streaming adapter;
-4. static dry-run and representative layer parity;
-5. deterministic first full text token under bounded memory;
-6. run a 4-token normal autoregressive speed probe;
-7. early-stop if throughput `<0.6146165 tok/s`;
-8. only if justified, confirm with 3×8 or 3×16 tokens.
+Purpose: convert the canonical benchmark/runtime into a real local text-chat CLI without changing model semantics.
 
-MTP is disabled for this checkpoint. It may be studied independently only after baseline dense streaming works and measured performance justifies further investment.
+Required v1 capabilities:
+- terminal chat;
+- canonical Qwen chat-template semantics;
+- greedy output streaming token-by-token;
+- configurable max tokens;
+- canonical EOS/stop;
+- multi-turn conversation;
+- exact KV/recurrent state reuse when current architecture permits it;
+- `/reset` and `/exit`;
+- clean teardown and persistent PACKED fd close;
+- zero SOURCE fallback and zero persistent expert payload cache.
 
-Final outcomes:
-- `QWEN38_27B_DENSE_COMPETITIVE`;
-- `QWEN38_27B_DENSE_WORKS_SLOW`;
-- `QWEN38_27B_DENSE_FIRST_TOKEN_ONLY`;
-- `QWEN38_27B_DENSE_INCONCLUSIVE`.
+Frozen validation:
+1. recover exact accepted Python/MLX environment;
+2. implement local candidate `scripts/loom_30b_interactive_v1_001.py` without Git operations;
+3. first-16-position semantic parity vs canonical greedy path;
+4. streaming + state-reuse mechanics;
+5. fixed 3-turn memory smoke ending with `7319`;
+6. real ~180-word Italian MoE answer with live streaming and usability metrics;
+7. five-turn stability/context-memory session.
 
-After Candidate A classification, proceed to a separate Flash-Next external-storage/Qwen4Exp/N-gram/MTP adaptation checkpoint. Only after both real candidates produce local text should the matched three-model speed/intelligence/steerability bake-off run.
+`READY` requires semantic parity, incremental state reuse, safe multi-turn execution, long-form decode >=`1.00 tok/s`, TTFT <=30s, peak RSS <=6.5 GiB and cumulative swap <=512 MiB.
+
+A fully correct runtime that must re-prefill history or falls below the usability thresholds may be `FUNCTIONAL_SLOW` rather than silently optimized.
+
+No network, model changes, Qwen3.8, Heretic/refusal editing, 8B/4B bake-off, speculative decoding, or new speed experiments inside this checkpoint.
+
+## Strategic sequence after Interactive v1
+
+1. Review/persist accepted **LOOM 30B v1** and perform manual real use.
+2. Run a matched practical **30B vs Qwen-family 8B vs 4B** bake-off on the same M1/8GB: quality, TTFT, tok/s, RAM/swap and time-to-correct-task.
+3. Decide architecture role:
+   - 30B primary/deep mode;
+   - 8B/4B fast primary + 30B deep mode;
+   - skill/tool/protocol-centric small-model system.
+4. Apply the existing Heretic technical paper as input to a separate preregistered behavioral/refusal-direction editing checkpoint on the selected runtime(s), with quality-preservation gates. Do not call the result absolutely `guardrail-free`; measure refusal rate and steerability.
+5. Maintain a separate 30B R&D branch for materially new speed mechanisms: direct-from-higher-precision mixed-bit quantization, fused Metal expert kernels, vectored expert I/O, and trace-driven bounded cache simulation.
+
+The project priority is now practical utility, not pursuing `5 tok/s` on the current verifier at any cost.
