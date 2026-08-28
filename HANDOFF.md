@@ -1,93 +1,97 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-28
-Status: ACTIVE — Qwen3-30B-A3B speed frontier frozen at exact production median `1.229233 tok/s`. Oracle speculative verification reached only `1.792925 tok/s` median at exact K=4 and is NOT PROMISING for a real drafter. Current work is Qwen3.8 portability readiness before large downloads.
+Status: ACTIVE — Qwen3-30B-A3B speed frontier is frozen at production median `1.229233 tok/s`; its oracle speculative ceiling is NOT PROMISING. Qwen3.8 metadata readiness says both 27B dense and Flash-Next are statically portable. Current work is actual Candidate-A dense-streaming first-token/speed feasibility.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_QWEN38_PORTABILITY_READINESS_001`
-Pi context: `/AGENTS.md` v3.43.
+Current checkpoint: `LOOM_QWEN38_27B_DENSE_STREAMING_FIRST_TOKEN_001`
+Pi context: `/AGENTS.md` v3.44.
 
-## Frozen Qwen3-30B-A3B baseline
+## Frozen Qwen3-30B-A3B comparator
 
-Backend:
-`scripts/loom_30b_moe_expert_major_backend_001.py`
+Backend commit `96958de`.
+Exact Q4/top-8 sustained 3×32: `1.115874`, `1.229233`, `1.254611 tok/s`; median `1.229233 tok/s`.
 
-Commit:
-`96958de`.
-
-Production exact-Q4/top-8 throughput:
-`1.115874`, `1.229233`, `1.254611 tok/s`; median `1.229233 tok/s`.
-
-Do not substitute oracle ceiling results for production speed.
-
-Closed unsuccessful speed paths:
+Closed paths:
 - routing sparsity: no acceptable gain;
-- Q2/Q3 expert requantization from deployed Q4: fidelity fail;
+- Q2/Q3 expert requantization: fidelity fail;
 - DFlash: closed;
-- real speculative drafter: not justified by verifier ceiling.
+- oracle lossless speculative K=4 ceiling: final median `1.792925 tok/s`, only `1.458572×` baseline and below promising gate; real drafter not justified.
 
-## Lossless Speculative Verification Ceiling 001 — CLOSED
+Do not reopen current-30B speed work absent a materially new verifier architecture.
+
+## Qwen3.8 Portability Readiness 001 — BOTH PORTABLE
 
 Result:
-`research/architecture/loom-30b-lossless-speculative-verification-ceiling-001-result.md`
-
+`research/architecture/loom-qwen38-portability-readiness-001-result.md`
 Evidence:
-`results-local/research/30b-lossless-speculative-verification-ceiling-001/20260828T101836Z/`
+`results-local/research/qwen38-portability-readiness-001/20260828T112000Z/`
 
-K=2 exact:
-- `1.548806 tok/s`;
-- 22.36% expert reuse;
-- `747,325,440 B/output-token`.
+### A — Qwen3.8-27B
 
-K=4 exact:
-- selected;
-- final 3×32 `1.792925`, `1.807852`, `1.785392 tok/s`;
-- median `1.792925 tok/s`;
-- p50/p95 `0.557813 / 0.596685 s`;
-- 40.93% reuse;
-- `568,641,024 B/output-token`;
-- final exactness/SHA and safety PASS.
+Upstream `Qwen/Qwen3.8-27B@1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0`.
+Q4 reference `mlx-community/Qwen3.8-27B-4bit@3e6447f082e89cc7f0bc6e5441afd38dfce760ff`.
 
-K=8 INVALID exactness and was not performance tested.
+Static class: `PORTABLE_DENSE_STREAMING`.
 
-Final classification:
-`SPEC_VERIFY_FRONTIER_NOT_PROMISING`.
+- 64 layers: 48 Gated DeltaNet + 16 full-attention;
+- largest layer `215,665,088 B`;
+- projected resident `1,587,312,640 B`;
+- naive one-token streamed traffic `13,702,468,608 B/token`;
+- bandwidth at 1/2/5 tok/s: `13.702 / 27.405 / 68.512 GB/s`.
 
-Interpretation: even perfect proposals and zero drafter overhead leave insufficient verifier headroom for the 5 tok/s target. Freeze current verifier speed work unless a materially different verifier architecture appears.
+A is first acquisition priority because it is smaller and adapter work is bounded, not because it is expected to be fastest.
 
-## Current — Qwen3.8 Portability Readiness 001
+### B — Qwen3.8-Flash-Next
+
+Upstream `Qwen/Qwen3.8-Flash-Next@de4b8e4d43b917e7706784d8bb445c9af86a3540`.
+Reference `Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP@327c8a604de613b42f84ba5e6b796c0931e8aa3b`.
+
+Static class: `PORTABLE_FLASH_STREAMING`.
+
+- 48 layers;
+- 512 routed experts, top-10 + one shared;
+- routed expert size `3,072,000 B`;
+- routed traffic `1,474,560,000 B/token`;
+- shared expert traffic `147,532,800 B/token`;
+- bounded n-gram lookup estimate `1,600 B/token`;
+- resident `991,928,320 B`;
+- transient `154,032,152 B`;
+- total projected external `3,858,155,864 B/token`;
+- bandwidth at 1/2/5 tok/s: `3.858 / 7.716 / 19.291 GB/s`;
+- native MTP metadata ABI covered but runtime integration not ready;
+- current local disk is insufficient for the `105.434 GiB` weight payload; use external storage later.
+
+Flash-Next is harder to integrate but more aligned with LOOM architecture and remains the stronger speed-interest candidate after A is measured.
+
+## Environment discrepancy
+
+Metadata readiness reported MLX/mlx-lm/mlx-vlm/oMLX absent in its probed interpreter, while accepted LOOM runs used MLX `0.32.0` and mlx-lm `0.31.3`.
+
+Treat as environment mismatch until mechanically reconciled. No blind package upgrade/install before large download.
+
+## Exact next step — Qwen3.8-27B Dense Streaming First-Token 001
 
 Preregistration:
-`research/architecture/loom-qwen38-portability-readiness-001-preregistration.md`.
+`research/architecture/loom-qwen38-27b-dense-streaming-first-token-001-preregistration.md`.
 
-Candidates:
-1. `Qwen/Qwen3.8-27B`, reference MLX `mlx-community/Qwen3.8-27B-4bit`, published payload ~16.1 GB;
-2. `Qwen/Qwen3.8-Flash-Next`, reference MLX `Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP`, published payload ~113.209 GB / 105.434 GiB.
+Sequence:
+1. locate/freeze exact previously validated MLX Python environment;
+2. storage gate and resumable fixed-revision Q4 download, <=20 GiB network;
+3. static text-only 64-layer streaming adapter/dry-run;
+4. representative Gated DeltaNet/full-attention layer parity;
+5. deterministic first full text token with RSS <=6.5 GiB and bounded swap;
+6. one 4-token normal autoregressive speed probe, MTP disabled;
+7. early stop if `<0.6146165 tok/s`;
+8. if justified, 3×8 or 3×16 confirmation.
 
-Flash-Next architecture to revalidate mechanically:
-- `qwen4_exp`;
-- 48 layers;
-- 125B main / 6B active per token;
-- +51B n-gram embedding;
-- +4B native MTP;
-- 512 routed experts, 10 active +1 shared.
+A is `COMPETITIVE` only if confirmed median >=`1.1063097 tok/s` (within 10% of the current 30B comparator), otherwise a working but slower result is still useful and closes the dense candidate baseline.
 
-This checkpoint is metadata/static readiness only:
-- network <=100 MiB per candidate;
-- no safetensor shard download;
-- no package upgrade;
-- no model forward.
+After A: design/execute separate Flash-Next acquisition + Qwen4Exp/expert-major + n-gram offload baseline, then native MTP if baseline correctness is established.
 
-For dense 27B, derive layer-streaming working set and bytes/token.
-For Flash-Next, derive expert-major + deterministic n-gram offload + shared/backbone/state + optional MTP contracts.
-
-Portable gate requires bounded active working set <=5.5 GiB, resolved tensor/identity ABI, no full-model residency requirement, no hidden remote runtime dependency.
-
-Final outcome decides which model(s) deserve actual weight acquisition and execution next.
-
-After actual local execution, final bake-off dimensions are:
-- sustained tok/s and TTFT;
+Final bake-off only after both feasible Qwen3.8 candidates generate locally:
+- speed/TTFT;
 - RAM/swap/disk;
 - frozen intelligence/quality set;
-- instruction following/refusal/steerability;
-- practical winner by speed, intelligence and combined utility.
+- instruction/refusal/steerability;
+- speed winner, intelligence winner, combined practical winner.
