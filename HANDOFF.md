@@ -1,13 +1,13 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-28
-Status: ACTIVE — Qwen3-30B-A3B research runtime is frozen at exact-Q4 benchmark median `1.229233 tok/s`; Qwen3.8 metadata readiness says both newer candidates are statically portable but their execution is parked. Current work is converting the accepted 30B into a real interactive local runtime.
+Status: ACTIVE — Qwen3-30B-A3B now has a validated end-to-end interactive local runtime candidate. Classification is `LOOM_30B_INTERACTIVE_V1_FUNCTIONAL_SLOW`: all correctness/streaming/state/stability gates pass, but long-form TTFT `47.832 s` exceeds the frozen READY limit. Candidate source is still local/untracked and awaits exact code review + Git persistence.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_INTERACTIVE_RUNTIME_V1_001`
-Pi context: `/AGENTS.md` v3.45.
+Current checkpoint: `LOOM_30B_INTERACTIVE_V1_CODE_REVIEW_PERSISTENCE`
+Pi context: `/AGENTS.md` v3.46.
 
-## Frozen current 30B baseline
+## Frozen 30B research comparator
 
 Canonical backend:
 `scripts/loom_30b_moe_expert_major_backend_001.py`
@@ -24,99 +24,119 @@ median `1.229233 tok/s`.
 Validated backend SHA-256:
 `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
 
-Settled/closed current-verifier speed paths:
+Closed current-verifier speed paths:
 - expert-major accepted/canonical;
 - persistent PACKED fd retained;
 - routing sparsity no acceptable gain;
 - Q2/Q3 from Q4 fidelity fail;
 - DFlash closed;
-- perfect-oracle K=4 verifier ceiling only `1.792925 tok/s`, therefore real speculative drafter not justified.
+- perfect-oracle K=4 verifier ceiling only `1.792925 tok/s`, so real speculative drafter is not justified.
 
-These numbers are research evidence. The current checkpoint must establish actual end-to-end chat usability before the runtime is called LOOM 30B v1.
-
-## Qwen3.8 status — readiness complete, execution parked
+## Qwen3.8 status — both statically portable, execution parked
 
 `QWEN38_BOTH_PORTABLE` from metadata-only readiness.
 
-Qwen3.8-27B:
-- dense 64-layer streaming feasible;
-- projected `13,702,468,608 B/token` external weights;
-- resident `1,587,312,640 B`;
-- likely poor naive decode economics relative to sparse 30B.
+Qwen3.8-27B projected external streaming traffic:
+`13,702,468,608 B/token`.
 
-Qwen3.8-Flash-Next:
-- streaming/expert-major architecture feasible;
-- 512 routed experts, top-10 + shared;
-- projected `3,858,155,864 B/token` external baseline;
-- native MTP metadata covered but runtime adapter pending;
-- ~105.434 GiB artifact needs external storage.
+Qwen3.8-Flash-Next projected external baseline:
+`3,858,155,864 B/token`.
 
-Do not download/execute either candidate now. Revisit after the 30B-vs-8B-vs-4B practical comparison or if a materially new architecture hypothesis justifies it.
+Do not download/execute either now. Revisit after practical 30B-vs-8B-vs-4B comparison unless explicitly reactivated.
 
-## Current — LOOM 30B Interactive Runtime v1 001
+## Interactive Runtime v1 001 — FUNCTIONAL_SLOW
 
-Preregistration:
-`research/architecture/loom-30b-interactive-runtime-v1-001-preregistration.md`.
+Result:
+`research/architecture/loom-30b-interactive-runtime-v1-001-result.md`
+Evidence:
+`results-local/research/30b-interactive-runtime-v1-001/20260828T122908Z/summary.json`
 
-Goal: produce a real terminal chat runtime on the existing canonical 30B without changing its model semantics.
+Environment:
+- `.venvs/stretch030-mlx0320-fix1/bin/python`;
+- Python `3.13.0`;
+- MLX `0.32.0`;
+- mlx-lm `0.31.3`.
 
-Required flow:
-1. recover/freeze the exact accepted Python/MLX execution environment;
-2. create local candidate `scripts/loom_30b_interactive_v1_001.py`;
-3. require 16-position greedy semantic parity against canonical runtime;
-4. prove token-by-token stdout streaming and measure TTFT/flush overhead;
-5. prove exact incremental conversation-state reuse where supported;
-6. fixed 3-turn conversation state smoke, final answer `7319`;
-7. real long-form Italian MoE explanation (~180 words target) with live streaming and end-to-end metrics;
-8. five-turn stability/memory test.
+Local candidate:
+`scripts/loom_30b_interactive_v1_001.py`
 
-READY gates:
-- semantic parity PASS;
-- streaming PASS;
-- incremental KV/recurrent reuse PASS;
-- 3-turn and 5-turn sessions PASS;
-- long-form decode >=`1.00 tok/s`;
-- TTFT <=30 s;
-- peak RSS <=6.5 GiB;
-- cumulative swap <=512 MiB;
-- zero SOURCE fallback/persistent expert cache.
+Current source status:
+- untracked/local;
+- not yet reviewed by ChatGPT;
+- not yet committed/pushed;
+- therefore not canonical yet.
 
-If multi-turn only works through deterministic full re-prefill or performance misses the user-facing thresholds, classification may be `LOOM_30B_INTERACTIVE_V1_FUNCTIONAL_SLOW`; do not hide this with post-hoc optimization.
+Validated gates:
+- semantic parity: PASS, 16/16 positions;
+- streaming: PASS; flush p95 `0.000075 s`;
+- exact incremental state reuse: PASS;
+- 3-turn memory test: PASS (`7319` recovered);
+- 5-turn stability/memory: PASS (`ALFA-482` recovered);
+- no model reload between turns;
+- SOURCE fallback `0`;
+- persistent expert cache `false`;
+- peak RSS `1,447,067,648 B`;
+- swap safety PASS.
 
-Pi may create/edit the interactive script locally but must not commit/push or edit project decision docs. If the canonical backend itself appears to require modification, Pi must record the defect and stop for review before acceptance.
+Real long-form metrics:
+- TTFT `47.832 s`;
+- decode-only `1.116 tok/s`;
+- end-to-end `0.921 tok/s`;
+- p50/p95 token wall `0.869 / 1.276 s`.
 
-## Planned sequence after v1
+Five-turn TTFT / decode:
+- T1 `29.013 s` / `0.789 tok/s`;
+- T2 `48.049 s` / `1.226 tok/s`;
+- T3 `21.830 s` / `1.426 tok/s`;
+- T4 `20.699 s` / `1.305 tok/s`;
+- T5 `26.003 s` / `1.331 tok/s`.
 
-### A. Practical model-size bake-off
+Final classification:
+`LOOM_30B_INTERACTIVE_V1_FUNCTIONAL_SLOW`.
 
-Compare the accepted 30B v1 against one matched Qwen-family 8B and one 4B on identical M1/8GB constraints.
+Only frozen READY-gate failure: long-form TTFT >30 s. Do not modify the threshold after the result.
 
-Measure per model:
+## Immediate action
+
+Review exact local source before any commit.
+
+Need from local machine:
+- SHA-256 of `scripts/loom_30b_interactive_v1_001.py`;
+- complete source or exact new-file diff;
+- `git status --short` to verify no accidental tracked changes.
+
+Review goals:
+- canonical backend remains imported/used without hidden mutation;
+- PACKED only / zero SOURCE fallback;
+- no payload cache;
+- deterministic state/KV semantics;
+- chat template and EOS handling correct;
+- `/reset`, `/exit`, Ctrl-C/EOF teardown correct;
+- persistent fd always closes;
+- no test-only shortcuts leaking into CLI;
+- no unrelated code.
+
+If review PASS:
+1. stage only interactive script;
+2. `git diff --cached --check`;
+3. commit/push;
+4. pull canonical docs if updated;
+5. user launches committed CLI for a real manual conversation.
+
+Only after the manual session should this be frozen as **LOOM 30B v1 FUNCTIONAL_SLOW** practical comparator.
+
+## After manual v1
+
+Run matched practical 30B vs Qwen-family 8B vs 4B comparison measuring:
 - TTFT;
-- sustained tok/s;
+- decode tok/s;
 - RAM/swap;
-- time to complete fixed tasks;
-- fixed practical intelligence set: reasoning/math, coding/debugging, Italian explanation, structured instructions, document/context use and simple agent/tool-oriented planning.
+- end-to-end time-to-correct-task;
+- fixed practical intelligence across reasoning/math, coding/debugging, Italian explanation, structured instructions, supplied-context reasoning and planning/tool-use decisions.
 
-Primary question: how much practical correctness does the 30B buy for its latency?
+Then decide between:
+- 30B primary/deep;
+- 8B/4B fast primary + 30B deep;
+- skill/tool/protocol-centric small-model architecture.
 
-### B. Architecture decision
-
-Depending on bake-off:
-- 30B primary/deep mode;
-- smaller fast primary + 30B deep escalation;
-- small-model-first system enhanced by skills/tools/protocols/verifiers.
-
-### C. Behavioral/refusal editing
-
-Use `LOOM_HERETIC_TECHNICAL_PAPER.md` as design input only after selecting runtime roles. Build a separate frozen behavioral-editing checkpoint measuring refusal/steerability and quality preservation. Avoid unmeasured claims of absolute `no guardrails`.
-
-### D. 30B R&D speed branch
-
-Separate from productization:
-- direct higher-precision -> mixed-bit expert quantization;
-- fused Metal expert kernel;
-- vectored/grouped expert I/O;
-- trace-driven bounded cache simulation before runtime implementation.
-
-Current priority: finish a model the user can actually chat with, then determine whether 30B, 8B or 4B gives the best practical system.
+Only after role selection open the Heretic-inspired refusal/steerability editing checkpoint. Separate R&D can later study TTFT/prefill optimization and materially new 30B speed mechanisms.
