@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.54
+Version: 3.55
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -35,13 +35,15 @@ Active clone: `<repository-root>`.
 Archive/second clone: `<external-archive>`.
 Do not mix relative artifacts across roots. Archive artifacts require explicit absolute paths.
 
-## Mission / target architecture
+## Mission / architecture
 
 **Big models. Small machines.** Target one adaptive LOOM system:
-- **4B FAST** — easy/cheap tasks, optimized latency/memory + skills/protocols/tools/memory later;
-- **8B BALANCED** — middle tier;
-- **30B DEEP** — hard tasks where quality gain justifies latency;
-- **LOOM AUTO** — cheapest likely-successful tier with verification-driven escalation 4B -> 8B -> 30B.
+- **FAST** — lightweight tier for easy/cheap tasks;
+- **BALANCED / 8B** — default candidate for most work;
+- **DEEP / 30B** — expensive tier for tasks where measured quality gain justifies latency;
+- **LOOM AUTO** — cheapest likely-successful tier with verification-driven escalation.
+
+The original ~4B FAST concept remains architecturally useful, but the legacy llama.cpp 4B path is parked for current tier selection. A future FAST tier may be reintroduced through a cleaner runtime such as MLX after higher-value 8B/30B work.
 
 Do not freeze router thresholds before matched multi-task evidence.
 
@@ -53,52 +55,53 @@ Do not freeze router thresholds before matched multi-task evidence.
 
 Production commit `d3691b765004849abb01a7675e5a6e7c5d0edd4c`.
 Historical long-form TTFT `47.832 s`; decode `1.116 tok/s`; end-to-end `0.921 tok/s`.
-Matched/manual LRUCache under 384 output tokens: correct O(1) design and `get()->-1`, task INCOMPLETE during `put()`, latency minutes.
+Manual LRUCache under 384 output tokens: correct O(1) design and `get()->-1`, task INCOMPLETE during `put()`, latency minutes.
 
 ## 8B BALANCED
 
-Result: `research/architecture/loom-8b-practical-bakeoff-runner-001-result.md`.
+Matched result: `research/architecture/loom-8b-practical-bakeoff-runner-001-result.md`.
 Classification `LOOM_8B_BAKEOFF_RUNNER_PASS`; task INCOMPLETE at 384 tokens.
 TTFT `2.992 s`; generation `13.357 tok/s`; end-to-end `12.275 tok/s`; E2E wall `31.284 s`; p50/p95 `68.932/71.667 ms`; MLX peak `3,912,428,412 B`; swap peak `2498.62 MB`.
 Output chose correct O(1) architecture but remained unfinished. Not a coding-quality PASS.
 
-## 4B FAST — recovered condition
+Runtime remains Qwen3-8B 3-bit/group64 Direct MLX, real M1 built-in `qmv_fast`, BF16 KV, greedy, thinking OFF.
 
-Historical canonical control: Qwen3-4B Q4_K_M on pinned llama.cpp/Metal.
-- model SHA `7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5`;
-- pinned llama.cpp `60addddf3c567c43ec3caf70fc953fba3572d96f`;
-- historical text generation `22.33 tok/s ±0.02`;
-- exact model artifact verified at `<external-archive>/models/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf`.
+## 4B FAST — PARKED FOR CURRENT PHASE
 
-First matched attempt: `LOOM_4B_BAKEOFF_RUNTIME_NOT_READY`; no inference.
+Historical condition existed: Qwen3-4B Q4_K_M on pinned llama.cpp/Metal, historical text generation `22.33 tok/s ±0.02`.
 
-Runtime restoration result:
-`research/architecture/loom-4b-llama-runtime-restoration-001-result.md`.
-Classification remains `LOOM_4B_LLAMA_RUNTIME_RESTORATION_NO_GO` because the server-target build unexpectedly downloaded a UI asset outside the preregistered network boundary. Do not retroactively relax this gate.
+Final closure:
+`research/architecture/loom-4b-final-bakeoff-attempt-001-result.md`.
+Classification: **`LOOM_4B_FINAL_ATTEMPT_ABORTED`**.
+Evidence: `results-local/research/4b-final-bakeoff-attempt-001/20260828T151352Z/`.
 
-Mechanically, the restored runtime now exists and passed diagnostics:
-- exact llama.cpp source HEAD `60addddf...`;
-- `llama-cli`, `llama-bench`, `llama-server` all exist;
-- Apple M1 Metal visible;
-- model was not downloaded/loaded/modified during restoration;
-- tracked LOOM files stayed clean.
+No inference occurred in final attempt because frozen runner-resolved `llama-server` path was absent. Model SHA remained verified. This is mechanical availability only, not a capability result.
 
-## Current checkpoint — FINAL 4B attempt
+Do not open another legacy 4B recovery/debug/rebuild checkpoint in this phase. Continue with 8B + 30B. Future FAST reintroduction requires a new clean runtime checkpoint.
+
+## Current checkpoint — compact 8B vs 30B practical suite
 
 Preregistration:
-`research/architecture/loom-4b-final-bakeoff-attempt-001-preregistration.md`.
+`research/architecture/loom-8b-30b-compact-practical-suite-001-preregistration.md`.
 
-This is the final 4B recovery attempt for current tier selection.
-- NO rebuild/setup probe/network/package/model mutation;
-- use existing restored pinned binaries only;
-- use existing `scripts/loom_4b_practical_bakeoff_runner_001.py` unchanged;
-- verify runner SHA/source HEAD/server/Metal/model SHA;
-- execute exactly one frozen 384-token LRUCache inference;
-- no retries or repairs.
+Purpose: determine where 30B produces enough correctness gain over 8B to justify much higher latency.
 
-If valid inference runs: `LOOM_4B_FINAL_BAKEOFF_PASS`.
-If any further mechanical blocker occurs: `LOOM_4B_FINAL_ATTEMPT_ABORTED`; park 4B for current phase and continue with 8B BALANCED + 30B DEEP. Do not open another 4B recovery checkpoint unless separately reactivated later.
+Frozen suite: five concise tasks, each run independently on both tiers with fixed prompts/output caps and no tools/skills/memory/RAG/Heretic/retries.
 
-Do not claim 4B is intrinsically less intelligent than 8B from parameter count alone. Current product decision may still park it on engineering cost.
+Tasks cover:
+- arithmetic/reasoning;
+- debugging;
+- strict structured instruction following;
+- supplied-context reasoning;
+- concise software-design/escalation judgement.
 
-After this final attempt, proceed to broader practical tier/product work without allowing 4B recovery to block progress. Heretic remains mandatory after tier selection/initial optimization.
+Primary product quantity: quality/correctness gain of 30B versus additional waiting time and resource cost.
+
+Do not optimize either tier before this result. Do not reactivate 4B. Do not implement routing thresholds before review.
+
+After the compact result:
+1. decide whether 8B should be default/primary and identify any proven 30B escalation categories;
+2. optimize selected tiers with skills/protocols, memory, tools and verification;
+3. build LOOM AUTO;
+4. expose via local OpenAI-compatible provider/Pi/chat UI;
+5. execute mandatory LOOM Heretic behavioral/steerability integration with preservation gates.
