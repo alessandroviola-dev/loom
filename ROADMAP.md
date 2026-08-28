@@ -1,9 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: Qwen3-30B-A3B speed research frozen; Qwen3.8 execution parked after static portability PASS
-Immediate next: `LOOM_30B_INTERACTIVE_RUNTIME_V1_001`
-Canonical context: `/AGENTS.md` v3.45.
+Current: `LOOM_30B_INTERACTIVE_V1_FUNCTIONAL_SLOW`
+Immediate next: review/persist the validated interactive CLI, then manual user session
+Canonical context: `/AGENTS.md` v3.46.
 
 ## 1. Frozen 30B research baseline
 
@@ -20,7 +20,7 @@ Closed or non-productive current-verifier paths:
 - real speculative drafter: not justified because perfect-oracle K=4 verifier ceiling is only `1.792925 tok/s` median;
 - K=8 oracle experiment invalid and not current priority.
 
-Conclusion: stop treating `5 tok/s` on this verifier as the immediate product goal. Preserve current runtime as the large-model comparator while separate R&D investigates materially different mechanisms.
+Conclusion: stop treating `5 tok/s` on this verifier as the immediate product goal. Preserve the 30B as the large-model comparator while separate R&D investigates materially different mechanisms.
 
 ## 2. Qwen3.8 research status — parked
 
@@ -35,54 +35,65 @@ Qwen3.8-27B dense:
 Qwen3.8-Flash-Next:
 - static LOOM decomposition feasible;
 - projected external baseline `3.858 GB/token`;
-- native MTP is potentially interesting but local runtime integration is not ready;
+- native MTP potentially interesting but local runtime integration not ready;
 - ~105.434 GiB artifact needs external storage.
 
-Decision: do not spend ~16 GB / ~105 GiB downloads now. Revisit after practical size/architecture bake-off or a new mechanism changes expected economics.
+Decision: do not spend ~16 GB / ~105 GiB downloads now. Revisit after practical size/architecture bake-off or a materially new mechanism.
 
-## 3. Current — LOOM 30B Interactive Runtime v1
+## 3. LOOM 30B Interactive Runtime v1 — FUNCTIONAL_SLOW
 
-Preregistration:
-`research/architecture/loom-30b-interactive-runtime-v1-001-preregistration.md`.
+Result:
+`research/architecture/loom-30b-interactive-runtime-v1-001-result.md`.
 
-Objective: turn the accepted 30B research engine into a real user-facing terminal chat runtime.
+Evidence:
+`results-local/research/30b-interactive-runtime-v1-001/20260828T122908Z/summary.json`.
 
-Required capabilities:
-- token-streamed text output;
-- canonical greedy semantics;
-- multi-turn conversation;
-- KV/recurrent state reuse;
-- `/reset` and `/exit`;
-- deterministic teardown;
-- TTFT/tok/s/RSS/swap instrumentation.
+Validated local candidate:
+`scripts/loom_30b_interactive_v1_001.py`
 
-Validation:
-- semantic parity vs canonical path;
-- streaming mechanics;
-- fixed 3-turn memory test;
-- long real answer;
-- five-turn stability test.
+Functional evidence:
+- 16-position semantic parity PASS;
+- token streaming PASS;
+- exact incremental multi-turn state reuse PASS;
+- 3-turn memory smoke PASS;
+- 5-turn stability/memory PASS;
+- zero SOURCE fallback / zero persistent expert cache;
+- peak RSS ~1.35 GiB;
+- swap safe.
 
-Ready target:
-- semantic parity and state reuse PASS;
-- long-form decode >=1.00 tok/s;
-- TTFT <=30 s;
-- peak RSS <=6.5 GiB;
-- cumulative swap <=512 MiB.
+Real long-form performance:
+- TTFT `47.832 s`;
+- decode-only `1.116 tok/s`;
+- end-to-end `0.921 tok/s`;
+- p50/p95 `0.869 / 1.276 s`.
 
-If accepted, review and persist as **LOOM 30B v1**, then perform a manual user session before broader architecture work.
+Classification is `FUNCTIONAL_SLOW` only because long-form TTFT exceeds the frozen `<=30 s` READY gate.
 
-## 4. Next scientific decision — 30B vs 8B vs 4B
+The candidate remains local/untracked and is not yet canonical.
 
-After 30B v1 is usable, acquire/run one matched Qwen-family 8B and one 4B baseline on the same M1/8GB.
+## 4. Immediate — code review, persistence, manual use
 
-The comparison must answer not `which has more parameters?` but:
+Before any 8B/4B comparison:
+1. inspect exact source/SHA of `scripts/loom_30b_interactive_v1_001.py`;
+2. verify no hidden model/runtime changes or test shortcuts;
+3. if review PASS, stage only that file and commit/push;
+4. user launches the committed CLI and holds a real conversation;
+5. record manual usability observations without replacing objective benchmark numbers.
 
+If manual use is acceptable, freeze as **LOOM 30B v1 FUNCTIONAL_SLOW**.
+
+A separate TTFT/prefill optimization checkpoint may be opened later if the manual session shows first-token latency is the dominant practical problem. Do not repair it inside the already-closed v1 checkpoint.
+
+## 5. Next scientific decision — 30B vs 8B vs 4B
+
+After manual 30B v1, acquire/run one matched Qwen-family 8B and one 4B baseline on the same M1/8GB.
+
+Question:
 **How much correct/useful work is produced per unit of waiting time and memory?**
 
 Matched outputs:
 - TTFT;
-- sustained tok/s;
+- sustained decode tok/s;
 - RAM/swap;
 - disk footprint;
 - end-to-end task time;
@@ -106,11 +117,9 @@ Use 8B as fast default, escalate difficult work to 30B.
 ### C. 4B/8B practical quality is competitive
 Prioritize a skill/tool/protocol-centric small-model architecture; retain 30B only where measured benefit justifies latency.
 
-## 5. Small-model intelligence amplification
+## 6. Small-model intelligence amplification
 
-After the size bake-off, optimize the selected 4B/8B path as a system rather than pretending prompts change parameter capacity.
-
-Candidate mechanisms:
+After size bake-off, optimize selected 4B/8B path as a system:
 - dynamically retrieved skills/protocols;
 - planner -> executor -> verifier workflows;
 - Python/calculator/filesystem/Git/web/RAG tools;
@@ -119,13 +128,13 @@ Candidate mechanisms:
 - task-specific LoRA/distillation only with frozen eval gates;
 - optional routing from fast small model to 30B deep mode.
 
-Measure improvement on the same practical eval set so gains are attributable to the system, not subjective impressions.
+Measure improvement on the same practical eval set.
 
-## 6. Behavioral/refusal editing
+## 7. Behavioral/refusal editing
 
-Use the project file `LOOM_HERETIC_TECHNICAL_PAPER.md` after runtime roles are selected.
+Use `LOOM_HERETIC_TECHNICAL_PAPER.md` only after runtime roles are selected.
 
-Goal: experimentally reduce refusal behavior / increase steerability while preserving useful capability.
+Goal: experimentally reduce refusal behavior / increase steerability while preserving capability.
 
 A separate preregistration must freeze:
 - contrastive prompt construction;
@@ -134,23 +143,24 @@ A separate preregistration must freeze:
 - intelligence/quality preservation metrics;
 - rollback criteria.
 
-Do not promise or label absolute `guardrail-free` behavior without measurement. Report observed refusal rate, steerability and quality effects.
+Report measured refusal rate and steerability rather than an unmeasured absolute `guardrail-free` label.
 
-## 7. Separate 30B speed R&D branch
+## 8. Separate 30B speed R&D
 
 Do not block product work on this branch.
 
 High-value materially new hypotheses:
-1. direct-from-higher-precision mixed-bit expert quantization rather than Q4->Q3/Q2 cascading;
-2. fused Metal kernel for packed-Q4 expert load/dequantized QMV path;
+1. direct-from-higher-precision mixed-bit expert quantization;
+2. fused Metal kernel for packed-Q4 expert load/QMV path;
 3. vectored/grouped expert reads and bounded multi-expert dispatch;
 4. offline trace simulation of small bounded expert caches before runtime implementation;
-5. materially new verifier architecture only if it changes the oracle ceiling economics.
+5. dedicated TTFT/prefill optimization if manual use justifies it;
+6. materially new verifier architecture only if it changes the oracle-ceiling economics.
 
-Each mechanism gets a separate preregistered test; no reopening settled failures by adjacent parameter search.
+Each mechanism gets a separate preregistered test.
 
-## 8. Qwen3.8 later
+## 9. Qwen3.8 later
 
-Revisit Qwen3.8-Flash-Next before dense 27B if future local storage/runtime conditions permit and the expected benefit becomes compelling, especially once native MTP/n-gram runtime support can be evaluated meaningfully.
+Revisit Qwen3.8-Flash-Next before dense 27B if storage/runtime conditions permit and expected benefit becomes compelling, especially once native MTP/n-gram runtime support can be evaluated meaningfully.
 
-Final project architecture should be chosen from measured practical utility, not novelty or nominal parameter count.
+Final project architecture is chosen from measured practical utility, not novelty or nominal parameter count.
