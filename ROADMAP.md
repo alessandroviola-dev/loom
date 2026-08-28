@@ -1,8 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: Capability Selector v0 completed GO with 15/15 correct applicability decisions and zero NORMAL false activations. Immediate next is end-to-end RAW8 vs AUTO8 conditional capability dispatch on fresh mixed tasks.
-Canonical context: `/AGENTS.md` v3.59.
+Current: Capability Selector v0 remains GO. First end-to-end RAW8-vs-AUTO8 dispatch attempt is closed NO_GO because a post-inference harness cleanup-evidence type bug prevented all 18 conditions from becoming valid scientific evidence.
+Immediate next: execute separate mechanical `LOOM_8B_AUTO_CAPABILITY_DISPATCH_001_FIX1` with unchanged scientific condition and one authorized instrumentation fix.
+Canonical context: `/AGENTS.md` v3.60.
 
 ## 1. Product direction — capability-first LOOM AUTO
 
@@ -28,57 +29,70 @@ Compact 8B vs 30B:
 8B capability funnel:
 - strict-output ACCEPTED;
 - verification-first ACCEPTED;
-- calculator REJECTED because correct arithmetic cannot repair a wrong model-selected expression.
+- calculator REJECTED.
 
 Capability Candidate v1:
-- NO_GO only because improvement was +1 vs frozen +2 requirement;
+- NO_GO under frozen +2 improvement gate;
 - CAP8 `7/8`, RAW8 `6/8`, 30B `7/8`;
 - zero regressions;
-- CAP8 `26.311 s` vs 30B `284.591 s` wall;
-- retain B/C as targeted capabilities, not an always-on bundle.
+- B/C retained as targeted capabilities.
 
 ## 4. Capability Selector v0 — GO
 
 Result:
 `research/architecture/loom-capability-selector-v0-001-result.md`.
 
-Frozen deterministic selector over `NORMAL`, `STRICT_OUTPUT`, `VERIFY_FIRST`:
+Frozen deterministic selector:
 - 15/15 correct;
 - per-label precision/recall/F1 `1.0000`;
 - NORMAL false activations `0/7`;
-- p50/p95 `8 us / 218 us`;
-- no inference/network/external packages.
+- p50/p95 `8 us / 218 us`.
 
-This validates applicability selection only.
+## 5. Auto Capability Dispatch 001 — MECHANICAL INVALID
 
-## 5. Current — 8B Auto Capability Dispatch 001
+Result:
+`research/architecture/loom-8b-auto-capability-dispatch-001-result.md`.
+
+Classification:
+`LOOM_8B_AUTO_CAPABILITY_DISPATCH_NO_GO`.
+
+All `18/18` child conditions reached inference but then failed while the experimental harness constructed cleanup evidence:
+`TypeError: object of type 'int' has no len()`.
+
+Outputs, selector labels/timing, scores and performance evidence were not persisted. Therefore valid conditions = `0/18` and no AUTO8 quality/performance conclusion is allowed.
+
+Model/runtime/selector provenance passed before inference. The original checkpoint remains closed; do not silently repair/reclassify it.
+
+## 6. Current — Auto Capability Dispatch FIX1
 
 Preregistration:
-`research/architecture/loom-8b-auto-capability-dispatch-001-preregistration.md`.
+`research/architecture/loom-8b-auto-capability-dispatch-001-fix1-preregistration.md`.
 
-Test the first end-to-end graph:
-`prompt -> selector v0 -> NORMAL / STRICT_OUTPUT / VERIFY_FIRST -> 8B`
-against RAW8.
+Keep original failed harness unchanged. Create separate fix1 harness with exactly one allowed semantic change: cleanup-evidence normalization for integer count versus event collection.
 
-Nine fresh mixed tasks:
-- 3 NORMAL;
-- 3 STRICT_OUTPUT;
-- 3 VERIFY_FIRST.
+Before any inference, persist failed-vs-fix1 diff and run synthetic no-model tests for both cleanup value shapes.
 
-Measure selector correctness, answer correctness/utility, regressions, TTFT, throughput, total wall, memory/swap and conditional capability cost.
+If preflight passes, execute the original frozen 18 RAW8/AUTO8 conditions once. No retries.
 
-Frozen GO requires selector >=8/9, zero NORMAL false activations, AUTO8 >=RAW8 +2 utility, zero per-task regressions and >=7/9 AUTO8 CORRECT.
+If a second independent harness defect appears, stop with mechanical NO_GO instead of accumulating patches.
 
-No 30B inference or escalation thresholds in this checkpoint.
+Original scientific gate remains unchanged:
+- all 18 valid;
+- selector >=8/9;
+- NORMAL false activations 0/3;
+- AUTO8 >= RAW8 +2 utility;
+- zero regressions;
+- AUTO8 >=7/9 CORRECT;
+- selector/protocol definitions unchanged.
 
-## 6. Output validation and 30B escalation
+## 7. Output validation and 30B escalation
 
-Only after AUTO8 dispatch GO, freeze validators for output/task success and test:
+Only after a valid AUTO8 dispatch GO, freeze validators for output/task success and test:
 `prompt -> selector/capability -> 8B -> validator -> 30B only on failed/uncertain validation`.
 
-The objective is to minimize expensive DEEP calls while preserving correctness. Do not use prompt length alone as escalation signal.
+Objective: minimize expensive DEEP calls while preserving correctness. Do not use prompt length alone as escalation signal.
 
-## 7. Further intelligence amplification
+## 8. Further intelligence amplification
 
 Later candidates:
 - memory/RAG;
@@ -87,18 +101,18 @@ Later candidates:
 - planner/executor/verifier;
 - domain adaptation/distillation after system-layer gains are measured.
 
-## 8. FAST tier
+## 9. FAST tier
 
 Legacy 4B llama.cpp path remains parked. Reintroduce only through a clean runtime aligned with final architecture.
 
-## 9. Provider/UI
+## 10. Provider/UI
 
 After execution graph validation, expose LOOM through a local OpenAI-compatible provider usable by Pi and a proper chat UI.
 
-## 10. Mandatory Heretic integration
+## 11. Mandatory Heretic integration
 
 After initial runtime/capability optimization, execute the Heretic-inspired behavioral/steerability track with preservation gates and decide per-tier application from evidence.
 
-## 11. Separate R&D
+## 12. Separate R&D
 
 Qwen3.8 and materially new 30B speed work remain separate and must not block capability-first product progress.
