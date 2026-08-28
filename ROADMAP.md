@@ -1,98 +1,77 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: legacy 4B FAST runtime is parked after final mechanical abort; active architecture work continues with validated 8B BALANCED and 30B DEEP tiers.
-Immediate next: run the preregistered compact five-task 8B-vs-30B practical suite.
-Canonical context: `/AGENTS.md` v3.55.
+Current: compact 8B-vs-30B suite completed. 8B BALANCED is provisional default; 30B DEEP is selective escalation; legacy 4B FAST remains parked.
+Immediate next: test cheap 8B capability amplification before implementing LOOM AUTO.
+Canonical context: `/AGENTS.md` v3.56.
 
 ## 1. Product direction — LOOM AUTO
 
 Near-term active tiers:
-- `loom-balanced` -> optimized 8B, candidate default;
-- `loom-deep` -> optimized 30B, candidate escalation tier;
-- future `loom-fast` -> lightweight runtime to be reintroduced later through a cleaner implementation;
-- `loom-auto` -> verification-driven routing/escalation.
+- `loom-balanced` -> optimized 8B, provisional default;
+- `loom-deep` -> optimized 30B, selective escalation;
+- future `loom-fast` -> reintroduce later via clean runtime;
+- `loom-auto` -> capability-first path plus validation-driven escalation.
 
-Do not freeze routing thresholds before current multi-task evidence.
+Do not freeze router thresholds yet.
 
 ## 2. LOOM Heretic — fundamental
 
-`LOOM_HERETIC_TECHNICAL_PAPER.md` is core/non-optional. Execute after runtime roles are selected and initially optimized. Freeze refusal/steerability and capability-preservation gates before edits.
+`LOOM_HERETIC_TECHNICAL_PAPER.md` is core/non-optional. Execute after initial runtime/capability optimization with frozen refusal/steerability and capability-preservation gates.
 
-## 3. LOOM 30B DEEP
+## 3. Compact 8B vs 30B evidence
 
-Canonical runtime commit `d3691b765004849abb01a7675e5a6e7c5d0edd4c`.
-Historical TTFT `47.832 s`, decode `1.116 tok/s`, end-to-end `0.921 tok/s`.
-LRUCache / 384 tokens: correct O(1) design but task INCOMPLETE; latency minutes.
+Result:
+`research/architecture/loom-8b-30b-compact-practical-suite-001-result.md`.
+Classification: `LOOM_8B_30B_COMPACT_SUITE_PASS`.
 
-## 4. LOOM 8B BALANCED
+8B: utility `4/10`, total task wall `35.325 s`, median TTFT `2.006 s`, pooled generation `12.931 tok/s`.
+30B: utility `7/10`, total task wall `468.867 s`, median TTFT `50.671 s`, pooled generation `1.402 tok/s`.
 
-Matched classification `LOOM_8B_BAKEOFF_RUNNER_PASS`; task INCOMPLETE at 384 tokens.
-TTFT `2.992 s`; generation `13.357 tok/s`; end-to-end `12.275 tok/s`; E2E wall `31.284 s`.
-Historical REALGEN remains ~`13.18 tok/s` real generation, confirming reproducibility.
+30B gained +3 utility points/+2 correct tasks for +`433.541 s` waiting cost (~`12.27x`).
 
-## 5. Legacy 4B FAST — parked
+Observed classes:
+- deterministic arithmetic: both fail -> tool path;
+- strict machine-readable contract: 8B semantic content right but formatting fails -> protocol path;
+- supplied-context reasoning: 8B matches 30B;
+- verification-driven design: 30B materially better -> candidate DEEP/escalation class.
 
-Historical Qwen3-4B Q4_K_M on pinned llama.cpp/Metal had `22.33 tok/s ±0.02`, but current recovery path is closed.
-
-Final result:
-`research/architecture/loom-4b-final-bakeoff-attempt-001-result.md`.
-Classification `LOOM_4B_FINAL_ATTEMPT_ABORTED`; no inference executed because the frozen runner's expected server path was absent.
-
-No capability conclusion is supported. No more legacy 4B recovery/debug/rebuild work in current phase. Revisit FAST later using a cleaner runtime, likely MLX-native or otherwise aligned with the final provider architecture.
-
-## 6. Compact 8B vs 30B practical suite
+## 4. Current — 8B capability amplification funnel
 
 Preregistration:
-`research/architecture/loom-8b-30b-compact-practical-suite-001-preregistration.md`.
+`research/architecture/loom-8b-capability-amplification-funnel-001-preregistration.md`.
 
-Five concise tasks:
-- arithmetic/reasoning;
-- debugging;
-- strict JSON instruction following;
-- supplied-context reasoning;
-- verification-driven software/model routing judgement.
+Fresh paired 8B-only branches:
+A. calculator tool capability;
+B. strict-output reusable protocol;
+C. verification-first reusable protocol.
 
-Each task is independently run on both models with frozen prompts, fresh state and 80–140 token caps. No tools, skills, memory/RAG, Heretic, retries or runtime optimization.
+Each branch compares raw 8B against exactly one treatment and has frozen acceptance criteria. No 30B/4B inference, downloads, runtime optimization, memory/RAG, fine-tuning or Heretic.
 
-Measure:
-- correctness/partial/incorrect;
-- instruction following;
-- completion;
-- TTFT;
-- generation/end-to-end speed;
-- wall time;
-- memory/swap;
-- time per correct task.
+Purpose: determine how much of the 8B-to-30B raw gap can be closed cheaply at the system layer.
 
-Primary decision: whether 30B provides enough correctness gain to justify its much larger latency, and on which task types.
+## 5. Capability-first execution graph
 
-## 7. Tier optimization
+After funnel review, accepted mechanisms may support a graph such as:
+`task -> deterministic capability/protocol -> 8B -> validator -> 30B only if unresolved`.
 
-After suite review:
-- make 8B default if it matches 30B on most practical tasks;
-- reserve 30B for task categories where it shows a material correctness advantage;
-- improve both with skills/protocols, memory, tools and verification;
-- later introduce a clean FAST tier if useful.
+Do not implement production routing until these mechanisms are validated.
 
-## 8. LOOM AUTO
+## 6. Tier optimization
 
-Implement routing only after measured tier boundaries exist. Prefer cheap-first execution plus task-specific verification/escalation over prompt-length heuristics.
+Optimize selected tiers only from evidence:
+- 8B: latency already strong; prioritize effective intelligence through protocols/tools/verification and later memory/RAG;
+- 30B: reserve for proven hard-task advantages and continue separate speed R&D;
+- FAST: revisit only after higher-value architecture work.
 
-Expose eventually:
-- `loom-fast`;
-- `loom-balanced`;
-- `loom-deep`;
-- `loom-auto`.
+## 7. Provider/UI
 
-## 9. Provider/UI
+After capability/routing design is validated, expose LOOM through a local OpenAI-compatible provider usable by Pi and a proper chat UI.
 
-Expose selected runtimes through a local OpenAI-compatible provider usable by Pi and a proper chat UI rather than extending temporary custom CLIs.
+## 8. Mandatory Heretic integration
 
-## 10. Mandatory Heretic integration
+After initial runtime/capability optimization, execute the Heretic-inspired behavioral/steerability track with preservation gates and decide per-tier application from evidence.
 
-After tier selection/initial optimization, execute the Heretic-inspired behavioral/steerability track with preservation gates. Determine per-tier application from measured behavior.
-
-## 11. Separate R&D
+## 9. Separate R&D
 
 Qwen3.8 and materially new 30B speed work remain separate and must not block tiered product progress.
