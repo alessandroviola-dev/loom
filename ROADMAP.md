@@ -1,109 +1,156 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: `QWEN38_BOTH_PORTABLE`
-Immediate next: `LOOM_QWEN38_27B_DENSE_STREAMING_FIRST_TOKEN_001`
-Canonical context: `/AGENTS.md` v3.44.
+Current: Qwen3-30B-A3B speed research frozen; Qwen3.8 execution parked after static portability PASS
+Immediate next: `LOOM_30B_INTERACTIVE_RUNTIME_V1_001`
+Canonical context: `/AGENTS.md` v3.45.
 
-## Frozen current 30B comparator
+## 1. Frozen 30B research baseline
 
 Qwen3-30B-A3B exact-Q4/top-8:
 - backend commit `96958de`;
 - sustained 3×32 `1.115874`, `1.229233`, `1.254611 tok/s`;
-- production median `1.229233 tok/s`;
+- research median `1.229233 tok/s`;
 - exactness/safety PASS.
 
-Closed speed attempts:
+Closed or non-productive current-verifier paths:
 - routing sparsity: no acceptable gain;
-- Q2/Q3 experts: fidelity fail;
+- Q2/Q3 expert requantization from deployed Q4: fidelity fail;
 - DFlash: closed;
-- perfect-oracle lossless K=4 verifier ceiling: median `1.792925 tok/s`, NOT PROMISING for a real drafter.
+- real speculative drafter: not justified because perfect-oracle K=4 verifier ceiling is only `1.792925 tok/s` median;
+- K=8 oracle experiment invalid and not current priority.
 
-Conclusion: current-Qwen3 5 tok/s work is frozen absent a materially different verifier architecture.
+Conclusion: stop treating `5 tok/s` on this verifier as the immediate product goal. Preserve current runtime as the large-model comparator while separate R&D investigates materially different mechanisms.
 
-## Qwen3.8 Portability Readiness — BOTH PASS
+## 2. Qwen3.8 research status — parked
 
-Result:
-`research/architecture/loom-qwen38-portability-readiness-001-result.md`.
+Metadata-only readiness:
+`QWEN38_BOTH_PORTABLE`.
 
-### Candidate A — Qwen3.8-27B dense
+Qwen3.8-27B dense:
+- static layer streaming fits active memory;
+- projected external weight traffic `13.702 GB/token`;
+- likely significantly worse naive decode economics than current sparse 30B.
 
-Fixed Q4 reference:
-`mlx-community/Qwen3.8-27B-4bit@3e6447f082e89cc7f0bc6e5441afd38dfce760ff`.
+Qwen3.8-Flash-Next:
+- static LOOM decomposition feasible;
+- projected external baseline `3.858 GB/token`;
+- native MTP is potentially interesting but local runtime integration is not ready;
+- ~105.434 GiB artifact needs external storage.
 
-Static feasibility:
-- 64 language layers;
-- largest layer `215,665,088 B`;
-- resident `1,587,312,640 B`;
-- naive streamed external traffic `13,702,468,608 B/token`;
-- required bandwidth 1/2/5 tok/s: `13.702 / 27.405 / 68.512 GB/s`.
+Decision: do not spend ~16 GB / ~105 GiB downloads now. Revisit after practical size/architecture bake-off or a new mechanism changes expected economics.
 
-Portable under bounded layer streaming, but static bandwidth makes ordinary one-token decode likely slower than the current sparse 30B. Actual execution is needed before eliminating it. Official architecture contains MTP, but baseline must be measured with MTP disabled.
-
-### Candidate B — Qwen3.8-Flash-Next
-
-Fixed Q4+MTP reference:
-`Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP@327c8a604de613b42f84ba5e6b796c0931e8aa3b`.
-
-Static feasibility:
-- 48 layers;
-- 512 routed experts, top-10 + shared;
-- routed expert `3,072,000 B`;
-- routed traffic `1,474,560,000 B/token`;
-- shared expert traffic `147,532,800 B/token`;
-- bounded n-gram lookup estimate `1,600 B/token`;
-- resident `991,928,320 B`;
-- transient `154,032,152 B`;
-- projected external `3,858,155,864 B/token`;
-- bandwidth 1/2/5 tok/s: `3.858 / 7.716 / 19.291 GB/s`;
-- MTP metadata covered, runtime adapter pending;
-- ~105.434 GiB weight payload requires external storage.
-
-Flash-Next is the architecture of greatest LOOM interest because expert-major storage, deterministic n-gram offload and native MTP can potentially compound.
-
-## Current — Candidate A actual execution
+## 3. Current — LOOM 30B Interactive Runtime v1
 
 Preregistration:
-`research/architecture/loom-qwen38-27b-dense-streaming-first-token-001-preregistration.md`.
+`research/architecture/loom-30b-interactive-runtime-v1-001-preregistration.md`.
 
-Before download:
-- reconcile the Python/MLX environment mismatch from readiness;
-- prefer the previously validated MLX 0.32.0 / mlx-lm 0.31.3 environment;
-- no blind global upgrade;
-- storage gate and fixed-revision resumable download only.
+Objective: turn the accepted 30B research engine into a real user-facing terminal chat runtime.
 
-Execution:
-1. acquire Q4 Candidate A, <=20 GiB network;
-2. static 64-layer text-only adapter/dry-run;
-3. representative layer parity;
-4. first deterministic full text token under bounded memory;
-5. 4-token normal autoregressive speed probe;
-6. early stop below `0.6146165 tok/s`;
-7. if justified, 3×8 or 3×16 confirmation.
+Required capabilities:
+- token-streamed text output;
+- canonical greedy semantics;
+- multi-turn conversation;
+- KV/recurrent state reuse;
+- `/reset` and `/exit`;
+- deterministic teardown;
+- TTFT/tok/s/RSS/swap instrumentation.
 
-`QWEN38_27B_DENSE_COMPETITIVE` requires confirmed median >=`1.1063097 tok/s` and all safety/validity gates PASS.
+Validation:
+- semantic parity vs canonical path;
+- streaming mechanics;
+- fixed 3-turn memory test;
+- long real answer;
+- five-turn stability test.
 
-MTP is not enabled in the baseline checkpoint; it is a separate possible optimization only if ordinary local generation works and merits further work.
+Ready target:
+- semantic parity and state reuse PASS;
+- long-form decode >=1.00 tok/s;
+- TTFT <=30 s;
+- peak RSS <=6.5 GiB;
+- cumulative swap <=512 MiB.
 
-## Candidate B after A
+If accepted, review and persist as **LOOM 30B v1**, then perform a manual user session before broader architecture work.
 
-Create a separate Flash-Next execution checkpoint using external storage. Required components:
-- fixed Q4+MTP artifact acquisition;
-- Qwen4Exp bounded-state adapter;
-- deterministic 512-expert resolver/expert-major layout;
-- exact n-gram hash/partition offload;
-- text first-token baseline with native MTP initially disabled;
-- only after baseline correctness: independent native-MTP throughput checkpoint.
+## 4. Next scientific decision — 30B vs 8B vs 4B
 
-## Final three-model bake-off
+After 30B v1 is usable, acquire/run one matched Qwen-family 8B and one 4B baseline on the same M1/8GB.
 
-After real local generation exists for A and B, compare against canonical Qwen3-30B-A3B on identical M1/8GB constraints:
-- sustained tok/s and TTFT;
-- RAM/swap/disk;
-- intelligence/quality on a frozen common LOOM eval set;
-- instruction following/refusal/steerability profile;
-- raw speed winner;
-- intelligence winner;
-- combined practical winner.
+The comparison must answer not `which has more parameters?` but:
 
-Do not infer final winners from static bandwidth projections or external hardware benchmarks.
+**How much correct/useful work is produced per unit of waiting time and memory?**
+
+Matched outputs:
+- TTFT;
+- sustained tok/s;
+- RAM/swap;
+- disk footprint;
+- end-to-end task time;
+- fixed practical intelligence score across:
+  - reasoning/math;
+  - coding;
+  - debugging;
+  - Italian technical explanation;
+  - structured instruction following;
+  - supplied-context/document reasoning;
+  - planning/tool-use decisions.
+
+Possible decisions:
+
+### A. 30B advantage is large
+Use 30B as primary/deep runtime and continue targeted speed R&D.
+
+### B. 8B is near 30B quality but much faster
+Use 8B as fast default, escalate difficult work to 30B.
+
+### C. 4B/8B practical quality is competitive
+Prioritize a skill/tool/protocol-centric small-model architecture; retain 30B only where measured benefit justifies latency.
+
+## 5. Small-model intelligence amplification
+
+After the size bake-off, optimize the selected 4B/8B path as a system rather than pretending prompts change parameter capacity.
+
+Candidate mechanisms:
+- dynamically retrieved skills/protocols;
+- planner -> executor -> verifier workflows;
+- Python/calculator/filesystem/Git/web/RAG tools;
+- persistent/retrieved memory;
+- test-time retries/candidate verification;
+- task-specific LoRA/distillation only with frozen eval gates;
+- optional routing from fast small model to 30B deep mode.
+
+Measure improvement on the same practical eval set so gains are attributable to the system, not subjective impressions.
+
+## 6. Behavioral/refusal editing
+
+Use the project file `LOOM_HERETIC_TECHNICAL_PAPER.md` after runtime roles are selected.
+
+Goal: experimentally reduce refusal behavior / increase steerability while preserving useful capability.
+
+A separate preregistration must freeze:
+- contrastive prompt construction;
+- layer/component selection protocol;
+- refusal/steerability metrics;
+- intelligence/quality preservation metrics;
+- rollback criteria.
+
+Do not promise or label absolute `guardrail-free` behavior without measurement. Report observed refusal rate, steerability and quality effects.
+
+## 7. Separate 30B speed R&D branch
+
+Do not block product work on this branch.
+
+High-value materially new hypotheses:
+1. direct-from-higher-precision mixed-bit expert quantization rather than Q4->Q3/Q2 cascading;
+2. fused Metal kernel for packed-Q4 expert load/dequantized QMV path;
+3. vectored/grouped expert reads and bounded multi-expert dispatch;
+4. offline trace simulation of small bounded expert caches before runtime implementation;
+5. materially new verifier architecture only if it changes the oracle ceiling economics.
+
+Each mechanism gets a separate preregistered test; no reopening settled failures by adjacent parameter search.
+
+## 8. Qwen3.8 later
+
+Revisit Qwen3.8-Flash-Next before dense 27B if future local storage/runtime conditions permit and the expected benefit becomes compelling, especially once native MTP/n-gram runtime support can be evaluated meaningfully.
+
+Final project architecture should be chosen from measured practical utility, not novelty or nominal parameter count.
