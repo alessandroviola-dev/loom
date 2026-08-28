@@ -1,101 +1,109 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: `SPEC_VERIFY_FRONTIER_NOT_PROMISING`
-Immediate next: `LOOM_QWEN38_PORTABILITY_READINESS_001`
-Canonical context: `/AGENTS.md` v3.43.
+Current: `QWEN38_BOTH_PORTABLE`
+Immediate next: `LOOM_QWEN38_27B_DENSE_STREAMING_FIRST_TOKEN_001`
+Canonical context: `/AGENTS.md` v3.44.
 
-## Frozen current 30B runtime
+## Frozen current 30B comparator
 
 Qwen3-30B-A3B exact-Q4/top-8:
 - backend commit `96958de`;
 - sustained 3×32 `1.115874`, `1.229233`, `1.254611 tok/s`;
 - production median `1.229233 tok/s`;
-- expert-major/canonicalization exact and safe.
+- exactness/safety PASS.
 
-## Closed speed paths
+Closed speed attempts:
+- routing sparsity: no acceptable gain;
+- Q2/Q3 experts: fidelity fail;
+- DFlash: closed;
+- perfect-oracle lossless K=4 verifier ceiling: median `1.792925 tok/s`, NOT PROMISING for a real drafter.
 
-Routing sparsity: `SPARSITY_FRONTIER_NO_ACCEPTABLE_GAIN`.
+Conclusion: current-Qwen3 5 tok/s work is frozen absent a materially different verifier architecture.
 
-Lower-bit Q2/Q3 expert requantization: `EXPERT_QUANT_FRONTIER_NO_ACCEPTABLE_GAIN`; both technically valid but failed frozen fidelity.
-
-DFlash: closed.
-
-Lossless speculative verifier ceiling:
-`SPEC_VERIFY_FRONTIER_NOT_PROMISING`.
+## Qwen3.8 Portability Readiness — BOTH PASS
 
 Result:
-`research/architecture/loom-30b-lossless-speculative-verification-ceiling-001-result.md`.
+`research/architecture/loom-qwen38-portability-readiness-001-result.md`.
 
-K=4 oracle ceiling final median `1.792925 tok/s` with 40.93% expert reuse and `568,641,024 B/output-token`; exactness/safety PASS. This is an upper bound only, not production speed. K=8 was INVALID.
+### Candidate A — Qwen3.8-27B dense
 
-Conclusion: do not spend current effort on a real drafter for the existing verifier. The 5 tok/s target requires a materially different architecture/runtime target.
+Fixed Q4 reference:
+`mlx-community/Qwen3.8-27B-4bit@3e6447f082e89cc7f0bc6e5441afd38dfce760ff`.
 
-## Current — Qwen3.8 Portability Readiness 001
+Static feasibility:
+- 64 language layers;
+- largest layer `215,665,088 B`;
+- resident `1,587,312,640 B`;
+- naive streamed external traffic `13,702,468,608 B/token`;
+- required bandwidth 1/2/5 tok/s: `13.702 / 27.405 / 68.512 GB/s`.
+
+Portable under bounded layer streaming, but static bandwidth makes ordinary one-token decode likely slower than the current sparse 30B. Actual execution is needed before eliminating it. Official architecture contains MTP, but baseline must be measured with MTP disabled.
+
+### Candidate B — Qwen3.8-Flash-Next
+
+Fixed Q4+MTP reference:
+`Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP@327c8a604de613b42f84ba5e6b796c0931e8aa3b`.
+
+Static feasibility:
+- 48 layers;
+- 512 routed experts, top-10 + shared;
+- routed expert `3,072,000 B`;
+- routed traffic `1,474,560,000 B/token`;
+- shared expert traffic `147,532,800 B/token`;
+- bounded n-gram lookup estimate `1,600 B/token`;
+- resident `991,928,320 B`;
+- transient `154,032,152 B`;
+- projected external `3,858,155,864 B/token`;
+- bandwidth 1/2/5 tok/s: `3.858 / 7.716 / 19.291 GB/s`;
+- MTP metadata covered, runtime adapter pending;
+- ~105.434 GiB weight payload requires external storage.
+
+Flash-Next is the architecture of greatest LOOM interest because expert-major storage, deterministic n-gram offload and native MTP can potentially compound.
+
+## Current — Candidate A actual execution
 
 Preregistration:
-`research/architecture/loom-qwen38-portability-readiness-001-preregistration.md`.
+`research/architecture/loom-qwen38-27b-dense-streaming-first-token-001-preregistration.md`.
 
-Purpose: decide, before large downloads, whether LOOM can partition and execute on M1/8GB:
+Before download:
+- reconcile the Python/MLX environment mismatch from readiness;
+- prefer the previously validated MLX 0.32.0 / mlx-lm 0.31.3 environment;
+- no blind global upgrade;
+- storage gate and fixed-revision resumable download only.
 
-### Qwen3.8-27B
-- dense 27B;
-- reference MLX Q4 payload ~16.1 GB;
-- candidate LOOM mechanism: bounded layer streaming;
-- key question: one-layer + mandatory resident state <=5.5 GiB and acceptable projected full-layer bytes/token.
+Execution:
+1. acquire Q4 Candidate A, <=20 GiB network;
+2. static 64-layer text-only adapter/dry-run;
+3. representative layer parity;
+4. first deterministic full text token under bounded memory;
+5. 4-token normal autoregressive speed probe;
+6. early stop below `0.6146165 tok/s`;
+7. if justified, 3×8 or 3×16 confirmation.
 
-### Qwen3.8-Flash-Next
-- reference Q4+MTP payload ~113.209 GB / 105.434 GiB;
-- `qwen4_exp`, 48 layers;
-- 125B main / 6B activated token;
-- 51B n-gram embedding;
-- 4B native MTP;
-- 512 routed experts, 10 active +1 shared;
-- candidate LOOM mechanisms: expert-major storage/resolver, deterministic n-gram lookup/offload, bounded shared/backbone/state residency, optional native MTP.
+`QWEN38_27B_DENSE_COMPETITIVE` requires confirmed median >=`1.1063097 tok/s` and all safety/validity gates PASS.
 
-Readiness checkpoint constraints:
-- metadata/config/index only;
-- <=100 MiB network per candidate;
-- no weight shards;
-- no model forward;
-- no package upgrades.
+MTP is not enabled in the baseline checkpoint; it is a separate possible optimization only if ordinary local generation works and merits further work.
 
-Outcomes:
-- `QWEN38_BOTH_PORTABLE`;
-- `QWEN38_FLASH_ONLY_PORTABLE`;
-- `QWEN38_27B_ONLY_PORTABLE`;
-- `QWEN38_NEITHER_PORTABLE`;
-- `QWEN38_READINESS_INCONCLUSIVE`.
+## Candidate B after A
 
-PORTABLE means static LOOM working-set/ABI feasibility only.
+Create a separate Flash-Next execution checkpoint using external storage. Required components:
+- fixed Q4+MTP artifact acquisition;
+- Qwen4Exp bounded-state adapter;
+- deterministic 512-expert resolver/expert-major layout;
+- exact n-gram hash/partition offload;
+- text first-token baseline with native MTP initially disabled;
+- only after baseline correctness: independent native-MTP throughput checkpoint.
 
-## After readiness
+## Final three-model bake-off
 
-Acquire and run only candidates that pass readiness, one at a time in ranked order.
-
-For each actual candidate:
-1. exact source/artifact provenance;
-2. Integration Readiness Protocol v1;
-3. static resolver/streaming replay;
-4. first-token correctness;
-5. bounded 32-token sustained run;
-6. memory/swap/safety;
-7. canonicalize only if useful.
-
-## Final model bake-off
-
-Once the feasible Qwen3.8 candidates run locally, compare on identical M1/8GB constraints:
-1. canonical `Qwen3-30B-A3B`;
-2. `Qwen3.8-27B` if portable;
-3. `Qwen3.8-Flash-Next` if portable.
-
-Measure:
+After real local generation exists for A and B, compare against canonical Qwen3-30B-A3B on identical M1/8GB constraints:
 - sustained tok/s and TTFT;
 - RAM/swap/disk;
 - intelligence/quality on a frozen common LOOM eval set;
-- instruction following/refusal/steerability;
-- winner for raw speed;
-- winner for intelligence;
-- winner for combined practical use.
+- instruction following/refusal/steerability profile;
+- raw speed winner;
+- intelligence winner;
+- combined practical winner.
 
-Do not infer the winner from external hardware/vendor benchmarks.
+Do not infer final winners from static bandwidth projections or external hardware benchmarks.
