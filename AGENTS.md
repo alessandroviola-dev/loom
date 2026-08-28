@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.42
+Version: 3.43
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -37,124 +37,95 @@ A fully preregistered compound funnel may traverse internal stages without inter
 18. validation-only metadata stays out of hot runtime when representable by a smaller contract;
 19. accepted production code is canonical only after review and Git persistence;
 20. quality-trading speed work freezes fidelity metrics/thresholds before candidate results;
-21. verifier-ceiling experiments using oracle proposals are upper bounds only and must never be reported as production generation speed.
+21. verifier-ceiling experiments using oracle proposals are upper bounds only and never production speed;
+22. large new-model downloads require a metadata-only portability/readiness gate first.
 
 External root: `<external-archive>/`
-BF16 cache: `<external-archive>/bf16-cache/`
 
-## Stable target / accepted runtime
-
-Mission: **Big models. Small machines.** Practical large open-weight AI on Apple M1/8GB.
-Current target: `Qwen3-30B-A3B` MLX Q4.
-
-Stable facts:
-- 48 MoE layers, 128 experts/layer, top-k 8;
-- routed identities `6144`;
-- Q4 routed bank `15,401,484,288 B`;
-- Q4 expert `2,506,752 B`;
-- full top-8 expert traffic/token `962,592,768 B`;
-- external serial-expert math/full final logits exact;
-- one routed expert logically live at a time;
-- DFlash closed;
-- raw 4-GiB LRU rejected.
+## Frozen Qwen3-30B-A3B production baseline
 
 Canonical backend:
 `scripts/loom_30b_moe_expert_major_backend_001.py`
 
-Current exact-Q4 speed baseline commit:
-`96958de` — `perf: keep packed expert file descriptor open`.
-Validated file SHA-256:
-`6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
+Current production baseline commit:
+`96958de` — persistent PACKED fd.
 
-Accepted exact sustained throughput:
+Exact-Q4/top-8 sustained throughput:
 `1.115874`, `1.229233`, `1.254611 tok/s`; median `1.229233 tok/s`.
 
-## Settled speed work
+Full Q4 expert traffic:
+`962,592,768 B/output-token`.
 
-### Expert-major — ACCEPTED / CANONICAL / CLOSED
+Settled/closed speed paths:
+- expert-major physical I/O/runtime/canonicalization: ACCEPTED;
+- exact-Q4 speed frontier: ADVANCED only via persistent fd;
+- routing sparsity: `SPARSITY_FRONTIER_NO_ACCEPTABLE_GAIN`;
+- Q2/Q3 expert requantization: `EXPERT_QUANT_FRONTIER_NO_ACCEPTABLE_GAIN`;
+- DFlash: CLOSED;
+- real speculative drafter on this verifier: NOT JUSTIFIED by oracle ceiling.
 
-Physical-I/O `EXPERT_MAJOR_GO`; full-bank runtime `EXPERT_MAJOR_RUNTIME_GO`; canonicalization `EXPERT_MAJOR_CANONICALIZATION_GO` with `FORMULAIC_RESOLVER`.
+## Lossless Speculative Verification Ceiling 001 — CLOSED / NOT PROMISING
 
-### Exact-Q4 Speed Frontier 001 — ADVANCED / PERSISTED
-
-Only process-lifetime PACKED fd retained. Stage-0 attribution before this delta:
-- expert file I/O `44.61%`;
-- expert compute `26.50%`;
-- backbone `14.74%`;
-- materialization/sync `11.51%`;
-- routing `2.64%`.
-
-### Routing Sparsity Frontier 001 — CLOSED / NO ACCEPTABLE GAIN
-
-`SPARSITY_FRONTIER_NO_ACCEPTABLE_GAIN`.
-Quality-valid tau `.95/.90` were not faster; `.80/.70` failed fidelity. Do not retry adjacent tau/fixed-top-k without a new hypothesis.
-
-### Lower-Bit Expert Frontier 001 — CLOSED / NO ACCEPTABLE GAIN
-
-`LOOM_30B_LOWER_BIT_EXPERT_SPEED_QUALITY_FRONTIER_001 = EXPERT_QUANT_FRONTIER_NO_ACCEPTABLE_GAIN`.
+`LOOM_30B_LOSSLESS_SPECULATIVE_VERIFICATION_CEILING_001 = SPEC_VERIFY_FRONTIER_NOT_PROMISING`.
 
 Result:
-`research/architecture/loom-30b-lower-bit-expert-speed-quality-frontier-001-result.md`
+`research/architecture/loom-30b-lossless-speculative-verification-ceiling-001-result.md`
 
 Evidence:
-`results-local/research/30b-lower-bit-expert-speed-quality-frontier-001/20260827T144620Z/`
+`results-local/research/30b-lossless-speculative-verification-ceiling-001/20260828T101836Z/`
 
-Local stack: MLX `0.32.0`, mlx-lm `0.31.3`; Q2 and Q3 native at group size 128.
-Both complete lower-bit banks built and passed `6144/6144` + `18,048/18,048` replay with zero fallback/cache.
+Exact K=2 ceiling:
+- `1.548806 tok/s`;
+- `22.36%` expert-payload reuse;
+- `747,325,440 B/output-token`.
 
-Q2:
-- expert `1,327,104 B`;
-- bank `8,153,726,976 B`;
-- traffic `509,607,936 B/token`;
-- fidelity: top1 `84.375%`, top3 `96.094%`, KL `0.426378` => FAIL.
+Exact K=4 ceiling:
+- candidate `1.776372 tok/s`;
+- final 3×32: `1.792925`, `1.807852`, `1.785392 tok/s`;
+- median `1.792925 tok/s`;
+- `40.93%` expert reuse;
+- `568,641,024 B/output-token`;
+- exactness/safety PASS.
 
-Q3:
-- expert `1,916,928 B`;
-- bank `11,777,605,632 B`;
-- traffic `736,100,352 B/token`;
-- fidelity: top1 `87.500%`, top3 `100%`, KL `0.150060` => FAIL.
+K=8: INVALID exactness; no performance evidence.
 
-No sustained speed benchmark was allowed because both failed USABLE fidelity. No tracked runtime code changed. Q4 remains production baseline.
+The K=4 median is only an oracle/verifier upper bound. Even with perfect proposals and zero drafter cost it is below the frozen promising threshold `2.458466 tok/s` and far below `5 tok/s`. Do not build/download a real drafter for the current verifier absent a materially new verifier architecture.
 
-Do not adopt Q2/Q3 or relax fidelity gates post hoc.
+Current Qwen3-30B-A3B production comparison baseline remains `1.229233 tok/s`, not `1.792925`.
 
-## Current checkpoint — LOSSLESS SPECULATIVE VERIFICATION CEILING 001
+## Current checkpoint — QWEN3.8 PORTABILITY READINESS 001
 
-`LOOM_30B_LOSSLESS_SPECULATIVE_VERIFICATION_CEILING_001`
+`LOOM_QWEN38_PORTABILITY_READINESS_001`
 
 Preregistration:
-`research/architecture/loom-30b-lossless-speculative-verification-ceiling-001-preregistration.md`
+`research/architecture/loom-qwen38-portability-readiness-001-preregistration.md`
 
-Purpose: before downloading/building any real drafter, measure the exact verifier-only throughput ceiling under perfect oracle proposals.
+Purpose: before downloading large weights, determine whether LOOM can partition/execute on M1/8GB:
+1. `Qwen3.8-27B` using reference `mlx-community/Qwen3.8-27B-4bit` (~16.1 GB);
+2. `Qwen3.8-Flash-Next` using reference `Vontra/Qwen3.8-Flash-Next-MLX-4bit-MTP` (~113.209 GB / 105.434 GiB).
 
-Frozen candidate chunk sizes only:
-- `K=2`;
-- `K=4`;
-- `K=8`.
+Frozen external architecture facts to mechanically revalidate:
+- Qwen3.8-27B is dense;
+- Flash-Next is `qwen4_exp`, 48 layers, 125B main / 6B active per token, +51B n-gram embedding, +4B native MTP, 512 routed experts with 10 active +1 shared.
 
-Requirements:
-- canonical Q4/top-8 semantics unchanged;
-- oracle proposals are exact greedy teacher tokens and imply 100% acceptance only for ceiling measurement;
-- causal/KV behavior equivalent to sequential decode;
-- routed identities and per-token accumulation exact;
-- raw float32 final-logit SHA must match sequential reference;
-- no lower-bit bank, routing sparsity, real drafter, DFlash, network/model download;
-- within-chunk reuse of one loaded expert is allowed only for the same expert identity required at multiple positions, without persistent cache.
+Readiness network cap:
+- metadata/small config/index only;
+- <=100 MiB per candidate;
+- NO weight shard download;
+- NO package upgrade;
+- NO model forward.
 
-For each valid K measure 32 verified output tokens, expert unique loads/bytes per output token, reuse rate, wall attribution, RSS/swap/safety.
+Candidate A gate: derive dense layer-streaming contract, projected resident working set and bytes/token; require one-layer + mandatory state <=5.5 GiB and no full-model residency requirement.
 
-Best K gets final `3×32` confirmation.
+Candidate B gate: derive expert-major, n-gram offload, shared/backbone/state and optional MTP contracts; require bounded active working set <=5.5 GiB, deterministic expert addressing, bounded n-gram access, and no full-artifact residency requirement.
 
-Classification:
-- `SPEC_VERIFY_5TPS_CEILING_REACHED` if median >=5 tok/s;
-- `SPEC_VERIFY_FRONTIER_PROMISING` if median >=2.458466 tok/s but <5;
-- `SPEC_VERIFY_FRONTIER_NOT_PROMISING` if valid ceiling <2.458466 tok/s;
-- `SPEC_VERIFY_FRONTIER_INCONCLUSIVE` only for genuine runtime/API/instrumentation ambiguity.
+Final outcomes:
+- `QWEN38_BOTH_PORTABLE`;
+- `QWEN38_FLASH_ONLY_PORTABLE`;
+- `QWEN38_27B_ONLY_PORTABLE`;
+- `QWEN38_NEITHER_PORTABLE`;
+- `QWEN38_READINESS_INCONCLUSIVE`.
 
-Oracle-ceiling tok/s is NOT production speed.
+PORTABLE is a static feasibility result, not a speed/quality claim.
 
-## Strategic next
-
-If ceiling is promising/reaches 5: preregister a real lossless drafter frontier, starting with zero-download n-gram/prompt lookup where applicable, then a small tokenizer-compatible Qwen-family drafter only if justified by the measured ceiling.
-
-If ceiling is not promising: stop optimizing this verifier with speculative decoding and move to the planned Qwen3.8-27B / Qwen3.8-Flash-Next bake-off or a materially different verifier architecture.
+After readiness: acquire/run portable candidates one at a time in ranked order, then final matched bake-off on sustained tok/s/TTFT, RAM/swap/disk, intelligence/quality, instruction/refusal/steerability.
