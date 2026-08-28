@@ -1,9 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: `LOOM_30B_INTERACTIVE_V1_FUNCTIONAL_SLOW`
-Immediate next: `LOOM_30B_INTERACTIVE_V1_CANONICALIZATION_REPAIR_001`
-Canonical context: `/AGENTS.md` v3.47.
+Current: `LOOM_30B_INTERACTIVE_V1_CANONICALIZATION_GO`
+Immediate next: exact review/persist the two repaired runtime files, then manual terminal use
+Canonical context: `/AGENTS.md` v3.48.
 
 ## 1. Frozen 30B research baseline
 
@@ -39,71 +39,58 @@ Validated functionality:
 - live streaming PASS;
 - exact multi-turn state reuse PASS;
 - three-turn and five-turn memory/stability PASS;
-- zero SOURCE fallback/cache;
-- peak RSS ~1.35 GiB;
-- swap safe.
+- zero SOURCE fallback/cache.
 
 Long-form:
 - TTFT `47.832 s`;
 - decode `1.116 tok/s`;
 - end-to-end `0.921 tok/s`.
 
-Classification `FUNCTIONAL_SLOW` is solely because TTFT exceeds frozen 30 s READY threshold.
+Classification `FUNCTIONAL_SLOW` remains because TTFT exceeds the frozen 30 s READY threshold.
 
-## 4. Exact source review — repair required before commit
+## 4. Canonicalization Repair 001 — GO
 
-Reviewed candidate SHA:
-`25607adf29b8bd045a938b6bd32afa2322d95ebaa5e156da5f86010a4101bcfa`.
+Result:
+`research/architecture/loom-30b-interactive-v1-canonicalization-repair-001-result.md`.
 
-Canonicalization blockers:
-1. CLI depends on two untracked research Python helpers, so a clean checkout cannot run it;
-2. per-token standalone decode is not a robust streaming detokenizer path;
-3. stop/EOS may be printed before termination;
-4. next-turn suffix discovery scans full transcript for second-last EOS and is fragile to special-token-looking content.
+The source-review defects were repaired without touching the canonical expert-major backend.
 
-These findings do not invalidate prior runtime evidence; they require a bounded production-code repair.
+Intended local production files:
+- `scripts/loom_30b_runtime_core_v1_001.py` — SHA `75da01c85d3b0d4c1aae9c10cf5bb19723ef39ec6ef8b0149707a977afc4befc`;
+- `scripts/loom_30b_interactive_v1_001.py` — SHA `08e84d1b19afdd4bad757db29d0d804783a35ee41db17696c14c56c8913488cb`.
 
-## 5. Current — Interactive v1 Canonicalization Repair 001
-
-Preregistration:
-`research/architecture/loom-30b-interactive-v1-canonicalization-repair-001-preregistration.md`.
-
-Repair objectives:
-- create minimal tracked runtime core `scripts/loom_30b_runtime_core_v1_001.py` from only the validated helper functionality needed by the CLI;
-- repaired CLI imports no untracked research modules;
-- canonical expert-major backend unchanged;
-- use mlx-lm stateful `tokenizer.detokenizer`;
-- never emit EOS/control stop markers;
-- robust canonical turn suffix preserving exact generated token IDs/KV;
-- startup stop-token/template compatibility check;
-- exact 16-position parity and state-reuse regression;
-- special-token-looking input smoke;
+Repair gates PASS:
+- tracked-ready dependency graph;
+- 16-position exact token/routing/logit parity;
+- exact incremental state reuse;
 - Unicode streaming equivalence;
-- 3-turn memory + bounded live generation regression;
-- recursively verify production imports are tracked/runtime-safe.
+- stop/EOS not emitted;
+- literal `<|im_end|>` boundary smoke;
+- `7319` conversation smoke;
+- PACKED-only, fallback 0, no persistent expert cache, deterministic fd close.
 
-Expected files after GO:
-- `scripts/loom_30b_runtime_core_v1_001.py`;
-- `scripts/loom_30b_interactive_v1_001.py`.
+Bounded regression performance was `1.449028 tok/s`, TTFT `18.288247 s`, but historical long-form v1 performance remains the comparator.
 
-Pi does not commit. ChatGPT reviews final diffs/SHAs, then user commits approved files only.
+## 5. Immediate — final source review, Git persistence, manual use
 
-## 6. Manual LOOM 30B v1 session
+The repair GO is not yet canonical status.
 
-After canonicalization GO and commit:
-- user launches the committed CLI;
-- holds a real free-form multi-turn conversation;
-- records practical observations separately from benchmark numbers.
+Before commit:
+1. ChatGPT inspects exact contents of both repaired local files and verifies reported SHAs;
+2. canonical backend must remain zero-diff;
+3. user stages only those two files;
+4. `git diff --cached --check` and staged-file review;
+5. commit/push;
+6. remote content verification.
 
-If acceptable, freeze **LOOM 30B v1 FUNCTIONAL_SLOW** as the large practical comparator.
+Then user launches the committed CLI for a real free-form multi-turn conversation. If acceptable, freeze **LOOM 30B v1 FUNCTIONAL_SLOW** as the large practical comparator.
 
-A later dedicated TTFT/prefill optimization checkpoint may be opened if manual use shows first-token latency is the main usability issue.
+## 6. Next scientific decision — 30B vs 8B vs 4B
 
-## 7. Next scientific decision — 30B vs 8B vs 4B
+After manual 30B v1, run one matched Qwen-family 8B and 4B baseline on the same M1/8GB.
 
-Run one matched Qwen-family 8B and 4B baseline on the same M1/8GB.
-
-Primary question: **how much correct/useful work is produced per unit of waiting time and memory?**
+Question:
+**How much correct/useful work is produced per unit of waiting time and memory?**
 
 Matched outputs:
 - TTFT;
@@ -118,7 +105,7 @@ Possible architecture decisions:
 - 8B fast primary + 30B escalation;
 - 4B/8B skill/tool/protocol-centric primary, 30B only where measured benefit justifies latency.
 
-## 8. Small-model intelligence amplification
+## 7. Small-model intelligence amplification
 
 After size bake-off:
 - dynamically retrieved skills/protocols;
@@ -131,7 +118,7 @@ After size bake-off:
 
 Measure all gains on the same practical eval set.
 
-## 9. Behavioral/refusal editing
+## 8. Behavioral/refusal editing
 
 Use `LOOM_HERETIC_TECHNICAL_PAPER.md` only after runtime roles are selected.
 
@@ -139,7 +126,7 @@ Separate preregistration must freeze contrastive prompt construction, layer/comp
 
 Report measured refusal rate/steerability rather than an unmeasured absolute `guardrail-free` label.
 
-## 10. Separate 30B speed R&D
+## 9. Separate 30B speed R&D
 
 Do not block product work.
 
@@ -149,6 +136,6 @@ Materially new hypotheses:
 3. vectored/grouped expert reads and bounded multi-expert dispatch;
 4. offline trace simulation of small bounded expert caches;
 5. TTFT/prefill optimization after manual-use evidence;
-6. a materially new verifier architecture only if it changes oracle-ceiling economics.
+6. materially new verifier architecture only if it changes oracle-ceiling economics.
 
 Final project architecture is chosen from measured practical utility, not novelty or nominal parameter count.
