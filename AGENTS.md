@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.53
+Version: 3.54
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -31,10 +31,8 @@ After every significant checkpoint, ChatGPT updates canonical GitHub state and u
 ## Local roots
 
 GitHub is canonical.
-Active clone:
-`<repository-root>`.
-Separate archive/clone:
-`<external-archive>`.
+Active clone: `<repository-root>`.
+Archive/second clone: `<external-archive>`.
 Do not mix relative artifacts across roots. Archive artifacts require explicit absolute paths.
 
 ## Mission / target architecture
@@ -51,71 +49,56 @@ Do not freeze router thresholds before matched multi-task evidence.
 
 `LOOM_HERETIC_TECHNICAL_PAPER.md` is a core final-project track. Execute after runtime-role selection/initial optimization with frozen refusal/steerability and capability-preservation gates. Do not claim unmeasured absolute guardrail-free status.
 
-## LOOM 30B DEEP baseline
+## 30B DEEP
 
 Production commit `d3691b765004849abb01a7675e5a6e7c5d0edd4c`.
 Historical long-form TTFT `47.832 s`; decode `1.116 tok/s`; end-to-end `0.921 tok/s`.
-Matched/manual LRUCache under 384 output tokens: correct O(1) design and `get()->-1`, but task INCOMPLETE during `put()`; latency minutes.
+Matched/manual LRUCache under 384 output tokens: correct O(1) design and `get()->-1`, task INCOMPLETE during `put()`, latency minutes.
 
-## LOOM 8B BALANCED matched result
+## 8B BALANCED
 
 Result: `research/architecture/loom-8b-practical-bakeoff-runner-001-result.md`.
-Evidence: `results-local/research/8b-practical-bakeoff-runner-001/20260828T144423Z/summary.json`.
+Classification `LOOM_8B_BAKEOFF_RUNNER_PASS`; task INCOMPLETE at 384 tokens.
+TTFT `2.992 s`; generation `13.357 tok/s`; end-to-end `12.275 tok/s`; E2E wall `31.284 s`; p50/p95 `68.932/71.667 ms`; MLX peak `3,912,428,412 B`; swap peak `2498.62 MB`.
+Output chose correct O(1) architecture but remained unfinished. Not a coding-quality PASS.
 
-Runtime: Qwen3-8B 3-bit/group64 Direct MLX, real M1 built-in `qmv_fast`, BF16 KV, greedy, thinking OFF, cleanup every 10 committed tokens.
+## 4B FAST — recovered condition
 
-Classification `LOOM_8B_BAKEOFF_RUNNER_PASS`; task `INCOMPLETE` at 384 tokens.
-Metrics: TTFT `2.992 s`; generation `13.357 tok/s`; end-to-end `12.275 tok/s`; E2E wall `31.284 s`; p50/p95 `68.932/71.667 ms`; MLX peak `3,912,428,412 B`; swap peak `2498.62 MB`; 38 cleanups / `2.140 s`.
-Output chose correct O(1) architecture but stopped in `put()` and contained an unnecessary `self.key_to` assignment. Not a coding-quality PASS.
-
-## LOOM 4B FAST — recovered historical condition
-
-Historical canonical runtime control:
-`research/runtime/llama-cpp-4b-control-001.md`.
-
-Historical model/runtime:
-- `Qwen/Qwen3-4B-GGUF`;
-- `Qwen3-4B-Q4_K_M.gguf`;
-- Q4_K_M;
-- SHA `7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5`;
+Historical canonical control: Qwen3-4B Q4_K_M on pinned llama.cpp/Metal.
+- model SHA `7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5`;
 - pinned llama.cpp `60addddf3c567c43ec3caf70fc953fba3572d96f`;
-- Metal, `-ngl -1`, Flash Attention auto;
-- historical text generation `22.33 tok/s ± 0.02`.
+- historical text generation `22.33 tok/s ±0.02`;
+- exact model artifact verified at `<external-archive>/models/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf`.
 
-Exact model artifact is currently verified in archive:
-`<external-archive>/models/Qwen3-4B-GGUF/Qwen3-4B-Q4_K_M.gguf`.
+First matched attempt: `LOOM_4B_BAKEOFF_RUNTIME_NOT_READY`; no inference.
 
-## 4B matched attempt — MECHANICAL NOT READY
+Runtime restoration result:
+`research/architecture/loom-4b-llama-runtime-restoration-001-result.md`.
+Classification remains `LOOM_4B_LLAMA_RUNTIME_RESTORATION_NO_GO` because the server-target build unexpectedly downloaded a UI asset outside the preregistered network boundary. Do not retroactively relax this gate.
 
-Result:
-`research/architecture/loom-4b-practical-bakeoff-runner-001-result.md`.
-Evidence:
-`results-local/research/4b-practical-bakeoff-runner-001/20260828T145853Z/`.
+Mechanically, the restored runtime now exists and passed diagnostics:
+- exact llama.cpp source HEAD `60addddf...`;
+- `llama-cli`, `llama-bench`, `llama-server` all exist;
+- Apple M1 Metal visible;
+- model was not downloaded/loaded/modified during restoration;
+- tracked LOOM files stayed clean.
 
-Classification: `LOOM_4B_BAKEOFF_RUNTIME_NOT_READY`.
-No inference occurred. Model SHA passed; task `NOT_ASSESSED`. Historical pinned llama.cpp source/build/server was unavailable in active clone, so Pi correctly stopped. This supports no 4B capability/performance claim.
-
-Local experimental runner exists:
-`scripts/loom_4b_practical_bakeoff_runner_001.py`.
-Do not modify/rerun it until restoration GO.
-
-## Current checkpoint — 4B llama.cpp runtime restoration
+## Current checkpoint — FINAL 4B attempt
 
 Preregistration:
-`research/architecture/loom-4b-llama-runtime-restoration-001-preregistration.md`.
+`research/architecture/loom-4b-final-bakeoff-attempt-001-preregistration.md`.
 
-Historical setup probe:
-`scripts/llama_cpp_setup_probe.py`, tracked SHA `f7a49cc9e31a3754fcb7d5b0a912f93e2eadbd22`.
-Historical valid setup probe 003 proved the pinned source, Release + Metal, server ON, UI OFF.
+This is the final 4B recovery attempt for current tier selection.
+- NO rebuild/setup probe/network/package/model mutation;
+- use existing restored pinned binaries only;
+- use existing `scripts/loom_4b_practical_bakeoff_runner_001.py` unchanged;
+- verify runner SHA/source HEAD/server/Metal/model SHA;
+- execute exactly one frozen 384-token LRUCache inference;
+- no retries or repairs.
 
-Restoration is mechanical only:
-1. run tracked setup probe exactly; source-network fetch/clone of official ggml-org/llama.cpp is authorized if needed;
-2. if exact setup PASS, build only the `llama-server` target additionally because the tracked probe explicitly builds only `llama-cli`/`llama-bench`;
-3. verify exact source HEAD, CMake flags, cli/bench/server diagnostics and Metal device;
-4. no model acquisition/copy/load/inference;
-5. no tracked-file modification.
+If valid inference runs: `LOOM_4B_FINAL_BAKEOFF_PASS`.
+If any further mechanical blocker occurs: `LOOM_4B_FINAL_ATTEMPT_ABORTED`; park 4B for current phase and continue with 8B BALANCED + 30B DEEP. Do not open another 4B recovery checkpoint unless separately reactivated later.
 
-Classification only `LOOM_4B_LLAMA_RUNTIME_RESTORATION_GO` or `...NO_GO`.
-After GO stop; unchanged 4B bake-off rerun is separate.
+Do not claim 4B is intrinsically less intelligent than 8B from parameter count alone. Current product decision may still park it on engineering cost.
 
-After valid 4B matched result, freeze broader compact 4B/8B/30B practical suite before role/router thresholds. Heretic remains mandatory after tier selection.
+After this final attempt, proceed to broader practical tier/product work without allowing 4B recovery to block progress. Heretic remains mandatory after tier selection/initial optimization.
