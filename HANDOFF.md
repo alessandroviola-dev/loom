@@ -1,90 +1,99 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-28
-Status: ACTIVE — Capability Selector v0 remains GO. The first end-to-end RAW8 vs AUTO8 dispatch checkpoint is closed NO_GO because all 18 conditions hit a post-inference harness instrumentation bug before outputs/metrics were persisted. No capability-quality conclusion is supported. Current checkpoint is a separate mechanical FIX1 with unchanged scientific conditions.
+Status: ACTIVE — Auto Capability Dispatch FIX1 completed with valid evidence but failed its frozen scientific gate. Selector v0 did not generalize sufficiently to mixed cues and AUTO8 reached only 2/9 fully correct tasks. Current checkpoint pivots to post-generation output validation before any 30B escalation work.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_8B_AUTO_CAPABILITY_DISPATCH_001_FIX1`
-Pi context: `/AGENTS.md` v3.60.
+Current checkpoint: `LOOM_8B_OUTPUT_VALIDATOR_V0_001`
+Pi context: `/AGENTS.md` v3.61.
 
 ## Product architecture direction
 
 - 8B BALANCED — provisional default/primary tier;
 - 30B DEEP — selective escalation where measured gain justifies latency;
 - FAST — concept retained, legacy 4B parked;
-- LOOM AUTO — selector -> targeted capability -> 8B -> validation -> 30B only if unresolved.
+- LOOM AUTO direction — `8B -> post-generation validator -> accept / repair / 30B escalation`, not selector-first prompt classification.
 
 Do not freeze 30B escalation thresholds yet.
 
 ## LOOM Heretic
 
-`LOOM_HERETIC_TECHNICAL_PAPER.md` remains fundamental/non-optional after initial runtime/capability optimization, with frozen refusal/steerability and capability-preservation gates.
+`LOOM_HERETIC_TECHNICAL_PAPER.md` remains fundamental/non-optional after initial runtime/capability optimization with frozen refusal/steerability and capability-preservation gates.
 
-## Key evidence
+## Runtime evidence
+
+8B BALANCED remains Qwen3-8B 3-bit/group64 Direct MLX, ~13 tok/s real generation.
+30B DEEP remains ~1.4 tok/s on compact tasks with ~50 s median TTFT.
+
+Historical 8B 4-bit is not a current rescue: the continuous unquantized-KV profile resource-failed after a controlled high-free-memory launch and the KV8 branch has no canonical quality result. Do not reopen from current evidence.
+
+Legacy 4B FAST remains parked after mechanical abort.
+
+## Key prior evidence
 
 Compact 8B vs 30B:
-- 8B utility `4/10`, wall `35.325 s`;
-- 30B utility `7/10`, wall `468.867 s`;
-- +3 utility cost +`433.541 s` (~12.27x wall).
+- 8B utility 4/10, wall 35.325 s;
+- 30B utility 7/10, wall 468.867 s;
+- +3 utility cost +433.541 s (~12.27x).
 
 8B capability funnel:
 - calculator REJECTED;
-- strict-output ACCEPTED;
-- verification-first ACCEPTED.
+- strict-output ACCEPTED branch-level;
+- verification-first ACCEPTED branch-level.
 
 Capability Candidate v1:
-- `LOOM_8B_CAPABILITY_CANDIDATE_V1_NO_GO` under frozen +2 improvement gate;
-- CAP8 `7/8`, RAW8 `6/8`, 30B `7/8`;
-- no regressions;
-- B/C remain targeted capabilities.
+- NO_GO under frozen +2 improvement gate;
+- CAP8 7/8, RAW8 6/8, 30B 7/8;
+- B/C retained only as targeted evidence, not an always-on bundle.
 
-Capability Selector v0:
-- `LOOM_CAPABILITY_SELECTOR_V0_GO`;
-- 15/15 correct;
-- NORMAL false activations 0/7;
-- p50/p95 8 us / 218 us.
+Capability Selector v0 isolated set:
+- GO 15/15, zero NORMAL false activations, microsecond overhead.
 
-## Auto Capability Dispatch 001 — closed mechanical NO_GO
+## Auto Capability Dispatch FIX1 result
 
 Result:
-`research/architecture/loom-8b-auto-capability-dispatch-001-result.md`
+`research/architecture/loom-8b-auto-capability-dispatch-001-fix1-result.md`
 Evidence:
-`results-local/research/8b-auto-capability-dispatch-001/20260828T164106Z/`
-Classification: `LOOM_8B_AUTO_CAPABILITY_DISPATCH_NO_GO`.
+`results-local/research/8b-auto-capability-dispatch-001-fix1/20260828T165528Z/`
+Classification: `LOOM_8B_AUTO_CAPABILITY_DISPATCH_FIX1_NO_GO`.
 
-All 18 child conditions reached inference but then failed while building cleanup evidence with:
-`TypeError: object of type 'int' has no len()`.
+All 18 conditions valid.
 
-Valid conditions: `0/18` because generated output, selector labels/walls, scoring, latency and post-run evidence were not persisted.
+Frozen gate:
+- selector accuracy `7/9` <8/9;
+- NORMAL false activations `1/3` >0;
+- AUTO8 utility `8` vs RAW8 `6`: +2 PASS;
+- zero utility regressions: PASS;
+- AUTO8 CORRECT `2/9` <7/9.
 
-Pre-inference provenance did pass:
-- exact frozen 8B model/runtime;
-- selector SHA `5ccaae77862ceb60700115487ea4db5e5bdcae330d8dcb7583d3186e6521887d`;
-- failed harness `scripts/loom_8b_auto_capability_dispatch_001.py` SHA `a0346835bd927add1309ac800a9ae5c1fbffff25cb0f2307737186b526f9c460`.
+RAW8: utility 6, C/P/I 1/4/4, E2E wall 45.979878 s.
+AUTO8: utility 8, C/P/I 2/4/3, E2E wall 58.924179 s.
 
-This is instrumentation failure only. It does not invalidate selector/B/C capability evidence and supports no AUTO8 quality/performance claim.
+Selector mistakes:
+- T03 VERIFY_FIRST classified STRICT_OUTPUT;
+- T07 NORMAL classified VERIFY_FIRST.
 
-## Exact next action — FIX1
+Supported conclusion: selector-first/static-protocol dispatch is not reliable enough. Do not tune on these exposed tasks or use this graph as the basis for 30B escalation.
+
+## Exact next action — Output Validator v0
 
 Preregistration:
-`research/architecture/loom-8b-auto-capability-dispatch-001-fix1-preregistration.md`.
+`research/architecture/loom-8b-output-validator-v0-001-preregistration.md`.
 
-Keep failed harness untouched. Create only:
-`scripts/loom_8b_auto_capability_dispatch_001_fix1.py`.
+Create only:
+`scripts/loom_8b_output_validator_v0_001.py`.
 
-Only authorized source-semantic delta is cleanup-evidence type normalization at the traceback site: integer cleanup count is persisted directly; collections use their length. No inference/scoring/selector/protocol/prompt/order changes.
+Run synthetic no-model fixtures first. Then run 12 fresh RAW8 tasks once each.
 
-Before inference:
-1. verify original harness SHA;
-2. persist exact unified diff;
-3. synthetic no-model checks for integer and collection cleanup values;
-4. verify selector/model/runtime provenance;
-5. prove zero network/package/model mutation.
+Validator kinds are explicitly supplied by benchmark metadata to isolate validator fidelity:
+- exact JSON object/array;
+- exact CSV;
+- restricted key:value contract;
+- verification-first structural rule;
+- UNVERIFIABLE -> always UNCERTAIN.
 
-Then rerun the same frozen 18 RAW8/AUTO8 conditions once under the separate FIX1 checkpoint. No condition retries.
+Main safety objective: **zero false PASS** on mechanically invalid outputs. Open-ended T10–T12 must all abstain as UNCERTAIN.
 
-If a second independent harness defect appears, stop with mechanical NO_GO rather than patch again.
+No 30B, selector tuning, capability injection, retries/repair, calculator, 4B, network/downloads, runtime changes, memory/RAG, fine-tuning, Heretic or provider/UI.
 
-If valid evidence is obtained, apply the original frozen gate unchanged: all 18 valid; selector >=8/9; zero NORMAL false activations; AUTO8 >=RAW8 +2 utility; zero regressions; AUTO8 >=7/9 CORRECT; frozen selector/protocol definitions unchanged.
-
-After FIX1 GO only, move to output validation and selective 30B escalation.
+If GO, next separately test selective repair and/or 30B escalation only for FAIL/UNCERTAIN outputs. Do not expose an unvalidated answer merely because the 8B generated it.
