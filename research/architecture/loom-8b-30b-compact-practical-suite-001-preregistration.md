@@ -35,6 +35,18 @@ Use the canonical Git-persisted Qwen3-30B-A3B Q4 interactive/runtime core:
 - existing incremental state/runtime semantics;
 - no new speed mechanism in this suite.
 
+## Experimental source scope
+
+Create exactly one new experimental harness:
+
+`scripts/loom_8b_30b_compact_practical_suite_001.py`
+
+No existing tracked runtime/runner may be modified.
+
+The harness must support isolated child execution so only one model is loaded at a time. A permitted design is for the parent process to invoke the same script in child mode with explicit `--model {8b,30b}` and `--task Txx` arguments. Model state must not be shared across tasks/models. The parent may orchestrate the frozen AB/BA order and aggregate evidence.
+
+Do not create additional helper scripts unless a deterministic mechanical limitation makes the single-file design impossible; in that case stop `INCOMPLETE` before model execution rather than broadening source scope.
+
 ## Shared boundary
 
 No skills, tools, memory/RAG, Heretic editing, prompt optimization, self-repair, retries, agent loops or verifier feedback. We want raw tier behavior before intelligence amplification.
@@ -104,7 +116,7 @@ To reduce systematic host-state/order bias, use an AB/BA task grouping without c
 - T04: 30B then 8B
 - T05: 8B then 30B
 
-Host readiness and provenance must be checked before each model launch/run group. Do not purge/manipulate swap to make a gate pass.
+Host readiness and provenance must be checked before each model child launch. Do not purge/manipulate swap to make a gate pass.
 
 ## Task scoring
 
@@ -148,6 +160,13 @@ Also aggregate per model:
 
 Primary practical decision quantity:
 **quality/correctness gain of 30B versus additional waiting time and resource cost.**
+
+## Evidence root
+
+Persist under:
+`results-local/research/8b-30b-compact-practical-suite-001/<timestamp>/`
+
+Preserve one child evidence record per model/task plus aggregate summary and exact source SHA/diff.
 
 ## Interpretation
 
