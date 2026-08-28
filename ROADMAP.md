@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: 8B Capability Candidate v1 completed NO_GO under its frozen promotion gate. Strict-output and verification-first remain accepted targeted capabilities; calculator remains rejected. Immediate next is zero-inference capability-selector validation.
-Canonical context: `/AGENTS.md` v3.58.
+Current: Capability Selector v0 completed GO with 15/15 correct applicability decisions and zero NORMAL false activations. Immediate next is end-to-end RAW8 vs AUTO8 conditional capability dispatch on fresh mixed tasks.
+Canonical context: `/AGENTS.md` v3.59.
 
 ## 1. Product direction — capability-first LOOM AUTO
 
@@ -10,7 +10,7 @@ Near-term active tiers:
 - `loom-balanced` -> optimized 8B, provisional default;
 - `loom-deep` -> 30B selective escalation;
 - future `loom-fast` -> reintroduce later through a clean runtime;
-- `loom-auto` -> capability selection, 8B execution, validation, then 30B only when unresolved.
+- `loom-auto` -> selector, targeted capability, 8B execution, validation, then 30B only when unresolved.
 
 Do not freeze 30B escalation thresholds yet.
 
@@ -18,66 +18,67 @@ Do not freeze 30B escalation thresholds yet.
 
 `LOOM_HERETIC_TECHNICAL_PAPER.md` is core/non-optional after initial runtime/capability optimization. Freeze refusal/steerability and capability-preservation gates before edits.
 
-## 3. Compact 8B vs 30B evidence
+## 3. Runtime/product evidence
 
-8B utility `4/10`, wall `35.325 s`.
-30B utility `7/10`, wall `468.867 s`.
-30B gained +3 utility at +`433.541 s` waiting (~12.27x wall).
+Compact 8B vs 30B:
+- 8B utility `4/10`, wall `35.325 s`;
+- 30B utility `7/10`, wall `468.867 s`;
+- 30B +3 utility at +`433.541 s` waiting (~12.27x wall).
 
-## 4. 8B capability amplification funnel
+8B capability funnel:
+- strict-output ACCEPTED;
+- verification-first ACCEPTED;
+- calculator REJECTED because correct arithmetic cannot repair a wrong model-selected expression.
 
-Accepted:
-- strict-output protocol;
-- verification-first protocol.
+Capability Candidate v1:
+- NO_GO only because improvement was +1 vs frozen +2 requirement;
+- CAP8 `7/8`, RAW8 `6/8`, 30B `7/8`;
+- zero regressions;
+- CAP8 `26.311 s` vs 30B `284.591 s` wall;
+- retain B/C as targeted capabilities, not an always-on bundle.
 
-Rejected:
-- current calculator flow, because correct arithmetic does not repair wrong model-selected expressions/semantics.
-
-## 5. Capability Candidate v1 — NO_GO
+## 4. Capability Selector v0 — GO
 
 Result:
-`research/architecture/loom-8b-capability-candidate-v1-001-result.md`.
+`research/architecture/loom-capability-selector-v0-001-result.md`.
 
-CAP8:
-- utility `7/8`;
-- 3/4 CORRECT;
-- zero regressions;
-- total wall `26.311 s`.
+Frozen deterministic selector over `NORMAL`, `STRICT_OUTPUT`, `VERIFY_FIRST`:
+- 15/15 correct;
+- per-label precision/recall/F1 `1.0000`;
+- NORMAL false activations `0/7`;
+- p50/p95 `8 us / 218 us`;
+- no inference/network/external packages.
 
-RAW8:
-- utility `6/8`.
+This validates applicability selection only.
 
-30B:
-- utility `7/8`;
-- total wall `284.591 s`.
-
-Candidate gate failed only the preregistered `>=+2` improvement requirement: CAP8 improved by `+1`. Do not relax/retry the gate. The result does not invalidate the separately accepted B/C mechanisms; retain them as targeted conditional capabilities rather than an always-on promoted bundle.
-
-## 6. Current — Capability Selector v0
+## 5. Current — 8B Auto Capability Dispatch 001
 
 Preregistration:
-`research/architecture/loom-capability-selector-v0-001-preregistration.md`.
+`research/architecture/loom-8b-auto-capability-dispatch-001-preregistration.md`.
 
-Test exact deterministic rules for three labels on 15 unseen mixed/adversarial prompts:
-- `NORMAL`;
-- `STRICT_OUTPUT`;
-- `VERIFY_FIRST`.
+Test the first end-to-end graph:
+`prompt -> selector v0 -> NORMAL / STRICT_OUTPUT / VERIFY_FIRST -> 8B`
+against RAW8.
 
-No model inference. Measure selector accuracy, confusion matrix, precision/recall/F1, false activations and microsecond-level wall.
+Nine fresh mixed tasks:
+- 3 NORMAL;
+- 3 STRICT_OUTPUT;
+- 3 VERIFY_FIRST.
 
-If GO, proceed to separate end-to-end conditional dispatch with 8B. If NO_GO, keep capabilities explicitly invoked and do not tune on the same prompt set.
+Measure selector correctness, answer correctness/utility, regressions, TTFT, throughput, total wall, memory/swap and conditional capability cost.
 
-## 7. End-to-end conditional dispatch
+Frozen GO requires selector >=8/9, zero NORMAL false activations, AUTO8 >=RAW8 +2 utility, zero per-task regressions and >=7/9 AUTO8 CORRECT.
 
-Only after selector GO, test:
-`prompt -> selector -> NORMAL/accepted protocol -> 8B`
-against raw 8B on fresh mixed tasks. Measure quality delta, false activation cost and latency overhead. This remains separate from 30B escalation thresholds.
+No 30B inference or escalation thresholds in this checkpoint.
 
-## 8. 30B escalation / LOOM AUTO
+## 6. Output validation and 30B escalation
 
-After capability selection and 8B validation are established, add validation-driven 30B escalation. Use 30B only for residual failures/uncertainty where measured quality gain justifies latency.
+Only after AUTO8 dispatch GO, freeze validators for output/task success and test:
+`prompt -> selector/capability -> 8B -> validator -> 30B only on failed/uncertain validation`.
 
-## 9. Further intelligence amplification
+The objective is to minimize expensive DEEP calls while preserving correctness. Do not use prompt length alone as escalation signal.
+
+## 7. Further intelligence amplification
 
 Later candidates:
 - memory/RAG;
@@ -86,18 +87,18 @@ Later candidates:
 - planner/executor/verifier;
 - domain adaptation/distillation after system-layer gains are measured.
 
-## 10. FAST tier
+## 8. FAST tier
 
 Legacy 4B llama.cpp path remains parked. Reintroduce only through a clean runtime aligned with final architecture.
 
-## 11. Provider/UI
+## 9. Provider/UI
 
 After execution graph validation, expose LOOM through a local OpenAI-compatible provider usable by Pi and a proper chat UI.
 
-## 12. Mandatory Heretic integration
+## 10. Mandatory Heretic integration
 
 After initial runtime/capability optimization, execute the Heretic-inspired behavioral/steerability track with preservation gates and decide per-tier application from evidence.
 
-## 13. Separate R&D
+## 11. Separate R&D
 
 Qwen3.8 and materially new 30B speed work remain separate and must not block capability-first product progress.
