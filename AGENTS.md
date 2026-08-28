@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.59
+Version: 3.60
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -79,7 +79,6 @@ Compact 8B-vs-30B suite:
 Capability Candidate v1:
 - **`LOOM_8B_CAPABILITY_CANDIDATE_V1_NO_GO`** because CAP8 improved only `+1` vs required `+2`;
 - CAP8 still matched 30B `7/8` on that fresh set with `26.311 s` vs `284.591 s` wall;
-- do not relax/retry candidate gate;
 - retain strict-output and verification-first as targeted capabilities, not an always-on bundle.
 
 ## Capability Selector v0 — COMPLETE / GO
@@ -88,35 +87,63 @@ Result: `research/architecture/loom-capability-selector-v0-001-result.md`.
 Evidence: `results-local/research/capability-selector-v0-001/20260828T163136Z/evidence.json`.
 Classification: **`LOOM_CAPABILITY_SELECTOR_V0_GO`**.
 
-Frozen deterministic selector over `NORMAL`, `STRICT_OUTPUT`, `VERIFY_FIRST`:
+Observed:
 - accuracy `15/15`;
 - per-label precision/recall/F1 all `1.0000`;
-- expected-NORMAL false activations `0/7`;
+- NORMAL false activations `0/7`;
 - selector p50/p95 `8 us / 218 us`;
-- zero model inference/network/external packages.
+- no model inference/network/external packages.
 
-This GO authorizes end-to-end conditional 8B dispatch. It does not prove general semantic classification and does not authorize 30B routing thresholds.
+## 8B Auto Capability Dispatch 001 — CLOSED / MECHANICAL INVALID
 
-## Current checkpoint — 8B Auto Capability Dispatch 001
+Result:
+`research/architecture/loom-8b-auto-capability-dispatch-001-result.md`.
+Evidence:
+`results-local/research/8b-auto-capability-dispatch-001/20260828T164106Z/`.
+Classification: **`LOOM_8B_AUTO_CAPABILITY_DISPATCH_NO_GO`**.
+
+All `18/18` child conditions reached inference but then ended `MECHANICAL_FAILURE` while cleanup evidence was being built:
+`TypeError: object of type 'int' has no len()`.
+
+Because generated outputs/selector decisions/timings were not persisted, valid scientific conditions = `0/18`. No answer-quality, selector or performance conclusion is supported.
+
+Pre-inference provenance did pass:
+- exact 8B model/runtime;
+- selector SHA `5ccaae77862ceb60700115487ea4db5e5bdcae330d8dcb7583d3186e6521887d`;
+- failed harness SHA `a0346835bd927add1309ac800a9ae5c1fbffff25cb0f2307737186b526f9c460`.
+
+The original checkpoint remains permanently closed. Do not repair/reclassify it.
+
+## Current checkpoint — 8B Auto Capability Dispatch 001 FIX1
 
 Preregistration:
-`research/architecture/loom-8b-auto-capability-dispatch-001-preregistration.md`.
+`research/architecture/loom-8b-auto-capability-dispatch-001-fix1-preregistration.md`.
 
-Goal: compare RAW8 vs AUTO8 on 9 fresh mixed tasks using the exact frozen selector and exact accepted protocol strings.
+FIX1 is mechanical only. Keep the failed harness untouched and create:
+`scripts/loom_8b_auto_capability_dispatch_001_fix1.py`.
 
-AUTO8 graph:
-`prompt -> selector v0 -> NORMAL / STRICT_OUTPUT / VERIFY_FIRST -> 8B`.
+Only authorized semantic source change: normalize cleanup-evidence count safely when runtime supplies an integer count versus a collection. No model invocation, prompt, selector, protocol, scoring, execution-order or metric-formula changes.
 
-Task mix:
-- 3 NORMAL, including adversarial cue cases;
-- 3 STRICT_OUTPUT;
-- 3 VERIFY_FIRST.
+Before inference:
+- verify original harness SHA;
+- persist exact failed-vs-fix1 unified diff;
+- synthetic no-model tests for integer and collection cleanup values;
+- verify selector/model/runtime provenance;
+- zero network/package/model mutation.
 
-Create only:
-`scripts/loom_8b_auto_capability_dispatch_001.py`.
+Then execute the exact original 18 scientific conditions once. No per-condition retry.
 
-Frozen GO requires all 18 conditions valid, selector >=8/9, zero NORMAL false activations, AUTO8 >=RAW8 +2 utility, zero per-task regressions, >=7/9 AUTO8 CORRECT, and unchanged selector/protocol definitions.
+If a second independent harness defect prevents valid evidence, classify mechanical NO_GO and stop rather than patching again inside FIX1.
 
-No 30B inference, calculator, 4B, downloads, runtime changes, selector tuning, protocol changes, retries, memory/RAG, tools, fine-tuning, Heretic, provider/UI or production integration.
+Original scientific GO gate remains unchanged:
+- all 18 valid;
+- selector >=8/9;
+- NORMAL false activations 0/3;
+- AUTO8 >= RAW8 +2 utility;
+- zero per-task regressions;
+- AUTO8 >=7/9 CORRECT;
+- unchanged selector/protocol definitions.
 
-If GO, next checkpoint is output validation plus selective 30B escalation. Heretic remains mandatory after initial runtime/capability optimization.
+No 30B inference, calculator, 4B, network/downloads, runtime changes, selector tuning, capability rewriting, retries, memory/RAG, tools, fine-tuning, Heretic, provider/UI or production integration.
+
+If FIX1 GO, next checkpoint is output validation plus selective 30B escalation. Heretic remains mandatory after initial runtime/capability optimization.
