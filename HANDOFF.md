@@ -1,55 +1,27 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-28
-Status: ACTIVE — Qwen3-30B-A3B now has a validated end-to-end interactive local runtime candidate. Classification is `LOOM_30B_INTERACTIVE_V1_FUNCTIONAL_SLOW`: all correctness/streaming/state/stability gates pass, but long-form TTFT `47.832 s` exceeds the frozen READY limit. Candidate source is still local/untracked and awaits exact code review + Git persistence.
+Status: ACTIVE — Qwen3-30B-A3B has a functionally validated interactive runtime (`FUNCTIONAL_SLOW`), but exact source review found reproducibility/streaming/boundary blockers before production canonicalization. Current checkpoint is a bounded canonicalization repair.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_INTERACTIVE_V1_CODE_REVIEW_PERSISTENCE`
-Pi context: `/AGENTS.md` v3.46.
+Current checkpoint: `LOOM_30B_INTERACTIVE_V1_CANONICALIZATION_REPAIR_001`
+Pi context: `/AGENTS.md` v3.47.
 
-## Frozen 30B research comparator
+## Frozen 30B comparator
 
-Canonical backend:
-`scripts/loom_30b_moe_expert_major_backend_001.py`
+Canonical backend: `scripts/loom_30b_moe_expert_major_backend_001.py`.
+Commit `96958de`.
+Research median `1.229233 tok/s` from 3×32 exact Q4/top-8 runs.
+Backend SHA `6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
 
-Commit:
-`96958de`.
+Closed speed paths: routing sparsity no acceptable gain; Q2/Q3 fidelity fail; DFlash closed; perfect-oracle K=4 verifier ceiling only `1.792925 tok/s`, so real drafter is not justified.
 
-Exact-Q4/top-8 benchmark 3×32:
-- `1.115874`;
-- `1.229233`;
-- `1.254611 tok/s`;
-median `1.229233 tok/s`.
-
-Validated backend SHA-256:
-`6bb4cfd46f7ea9f1f54d680ef146b84f85a3475377511dfcc89eb18a4733a4e1`.
-
-Closed current-verifier speed paths:
-- expert-major accepted/canonical;
-- persistent PACKED fd retained;
-- routing sparsity no acceptable gain;
-- Q2/Q3 from Q4 fidelity fail;
-- DFlash closed;
-- perfect-oracle K=4 verifier ceiling only `1.792925 tok/s`, so real speculative drafter is not justified.
-
-## Qwen3.8 status — both statically portable, execution parked
-
-`QWEN38_BOTH_PORTABLE` from metadata-only readiness.
-
-Qwen3.8-27B projected external streaming traffic:
-`13,702,468,608 B/token`.
-
-Qwen3.8-Flash-Next projected external baseline:
-`3,858,155,864 B/token`.
-
-Do not download/execute either now. Revisit after practical 30B-vs-8B-vs-4B comparison unless explicitly reactivated.
+Qwen3.8-27B and Flash-Next are both statically portable but execution/downloads are parked until after practical size comparison.
 
 ## Interactive Runtime v1 001 — FUNCTIONAL_SLOW
 
-Result:
-`research/architecture/loom-30b-interactive-runtime-v1-001-result.md`
-Evidence:
-`results-local/research/30b-interactive-runtime-v1-001/20260828T122908Z/summary.json`
+Result: `research/architecture/loom-30b-interactive-runtime-v1-001-result.md`.
+Evidence: `results-local/research/30b-interactive-runtime-v1-001/20260828T122908Z/summary.json`.
 
 Environment:
 - `.venvs/stretch030-mlx0320-fix1/bin/python`;
@@ -57,86 +29,56 @@ Environment:
 - MLX `0.32.0`;
 - mlx-lm `0.31.3`.
 
-Local candidate:
-`scripts/loom_30b_interactive_v1_001.py`
-
-Current source status:
-- untracked/local;
-- not yet reviewed by ChatGPT;
-- not yet committed/pushed;
-- therefore not canonical yet.
-
-Validated gates:
-- semantic parity: PASS, 16/16 positions;
-- streaming: PASS; flush p95 `0.000075 s`;
-- exact incremental state reuse: PASS;
-- 3-turn memory test: PASS (`7319` recovered);
-- 5-turn stability/memory: PASS (`ALFA-482` recovered);
-- no model reload between turns;
-- SOURCE fallback `0`;
-- persistent expert cache `false`;
+Functional gates PASS:
+- 16/16 semantic parity;
+- live streaming;
+- exact incremental multi-turn KV/recurrent reuse;
+- `7319` three-turn memory smoke;
+- five-turn stability with `ALFA-482` recovered;
+- zero SOURCE fallback/cache;
 - peak RSS `1,447,067,648 B`;
-- swap safety PASS.
+- swap safe.
 
-Real long-form metrics:
-- TTFT `47.832 s`;
-- decode-only `1.116 tok/s`;
-- end-to-end `0.921 tok/s`;
-- p50/p95 token wall `0.869 / 1.276 s`.
+Long-form: TTFT `47.832 s`; decode `1.116 tok/s`; end-to-end `0.921 tok/s`; p50/p95 `0.869 / 1.276 s`.
+Only READY-gate miss was TTFT >30 s.
 
-Five-turn TTFT / decode:
-- T1 `29.013 s` / `0.789 tok/s`;
-- T2 `48.049 s` / `1.226 tok/s`;
-- T3 `21.830 s` / `1.426 tok/s`;
-- T4 `20.699 s` / `1.305 tok/s`;
-- T5 `26.003 s` / `1.331 tok/s`.
+## Exact source review findings
 
-Final classification:
-`LOOM_30B_INTERACTIVE_V1_FUNCTIONAL_SLOW`.
+Reviewed candidate: `scripts/loom_30b_interactive_v1_001.py`.
+Reviewed SHA-256: `25607adf29b8bd045a938b6bd32afa2322d95ebaa5e156da5f86010a4101bcfa`.
 
-Only frozen READY-gate failure: long-form TTFT >30 s. Do not modify the threshold after the result.
+Blockers before commit:
+1. production CLI imports two untracked research helpers: `loom_30b_moe_first_greedy_generation_001` and `loom_30b_moe_shared_backbone_residency_001`; both are absent from the remote branch, so committing only the CLI would break reproducibility;
+2. live streaming uses `tokenizer.decode([token])` independently per token instead of the installed mlx-lm stateful streaming detokenizer;
+3. EOS/stop token is decoded/emitted before the stop test and can become visible;
+4. incremental turn boundary is located by scanning the whole re-tokenized transcript for the second-last hard-coded EOS, which is fragile to special-token-looking content.
 
-## Immediate action
+These are code-productization issues, not evidence that the validated model/runtime semantics are wrong.
 
-Review exact local source before any commit.
+## Current repair
 
-Need from local machine:
-- SHA-256 of `scripts/loom_30b_interactive_v1_001.py`;
-- complete source or exact new-file diff;
-- `git status --short` to verify no accidental tracked changes.
+Preregistration:
+`research/architecture/loom-30b-interactive-v1-canonicalization-repair-001-preregistration.md`.
 
-Review goals:
-- canonical backend remains imported/used without hidden mutation;
-- PACKED only / zero SOURCE fallback;
-- no payload cache;
-- deterministic state/KV semantics;
-- chat template and EOS handling correct;
-- `/reset`, `/exit`, Ctrl-C/EOF teardown correct;
-- persistent fd always closes;
-- no test-only shortcuts leaking into CLI;
-- no unrelated code.
+Frozen repair scope:
+- promote minimal tracked `scripts/loom_30b_runtime_core_v1_001.py` containing only validated helper functionality required by interactive runtime;
+- repaired `scripts/loom_30b_interactive_v1_001.py` imports only tracked runtime code + frozen installed packages;
+- canonical backend has zero diff;
+- use `tokenizer.detokenizer` for incremental text;
+- test stop/EOS before emission;
+- robust canonical next-turn suffix, preserving exact generated token IDs in KV;
+- literal `<|im_end|>` user-input smoke;
+- Unicode/multi-token streaming equivalence;
+- 16-position semantic parity + exact state-reuse regression;
+- 3-turn memory + bounded live interactive regression;
+- recursive tracked dependency audit.
 
-If review PASS:
-1. stage only interactive script;
-2. `git diff --cached --check`;
-3. commit/push;
-4. pull canonical docs if updated;
-5. user launches committed CLI for a real manual conversation.
+Pi must not commit/push. Expected intended production file set after GO:
+- `scripts/loom_30b_runtime_core_v1_001.py`;
+- `scripts/loom_30b_interactive_v1_001.py`.
 
-Only after the manual session should this be frozen as **LOOM 30B v1 FUNCTIONAL_SLOW** practical comparator.
+After Pi result: ChatGPT reviews exact diffs/SHAs. If PASS, user stages only those files, runs `git diff --cached --check`, commits/pushes, then manually chats with the committed runtime.
 
-## After manual v1
+Only after that manual session: freeze LOOM 30B v1 practical comparator and start matched 30B vs 8B vs 4B bake-off.
 
-Run matched practical 30B vs Qwen-family 8B vs 4B comparison measuring:
-- TTFT;
-- decode tok/s;
-- RAM/swap;
-- end-to-end time-to-correct-task;
-- fixed practical intelligence across reasoning/math, coding/debugging, Italian explanation, structured instructions, supplied-context reasoning and planning/tool-use decisions.
-
-Then decide between:
-- 30B primary/deep;
-- 8B/4B fast primary + 30B deep;
-- skill/tool/protocol-centric small-model architecture.
-
-Only after role selection open the Heretic-inspired refusal/steerability editing checkpoint. Separate R&D can later study TTFT/prefill optimization and materially new 30B speed mechanisms.
+Later: decide large/deep vs small/fast roles, then Heretic-paper-informed refusal/steerability editing; keep TTFT/prefill and new 30B speed mechanisms as separate R&D.
