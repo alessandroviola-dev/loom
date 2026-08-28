@@ -1,19 +1,19 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-28
-Current: 30B DEEP and 8B BALANCED matched evidence exist. 4B model/runtime artifacts are mechanically present, but restoration protocol closed NO_GO due an unexpected UI-asset network fetch. One final no-rebuild/no-network 4B inference attempt remains; otherwise park 4B.
-Immediate next: execute `LOOM_4B_FINAL_BAKEOFF_ATTEMPT_001`, then move on regardless of outcome.
-Canonical context: `/AGENTS.md` v3.54.
+Current: legacy 4B FAST runtime is parked after final mechanical abort; active architecture work continues with validated 8B BALANCED and 30B DEEP tiers.
+Immediate next: run the preregistered compact five-task 8B-vs-30B practical suite.
+Canonical context: `/AGENTS.md` v3.55.
 
 ## 1. Product direction — LOOM AUTO
 
-Target one adaptive system:
-- `loom-fast` -> optimized ~4B when/if retained;
-- `loom-balanced` -> optimized ~8B;
-- `loom-deep` -> optimized 30B;
-- `loom-auto` -> cheapest likely-successful tier plus verification-driven escalation.
+Near-term active tiers:
+- `loom-balanced` -> optimized 8B, candidate default;
+- `loom-deep` -> optimized 30B, candidate escalation tier;
+- future `loom-fast` -> lightweight runtime to be reintroduced later through a cleaner implementation;
+- `loom-auto` -> verification-driven routing/escalation.
 
-Do not freeze routing thresholds before matched multi-task evidence.
+Do not freeze routing thresholds before current multi-task evidence.
 
 ## 2. LOOM Heretic — fundamental
 
@@ -29,50 +29,69 @@ LRUCache / 384 tokens: correct O(1) design but task INCOMPLETE; latency minutes.
 
 Matched classification `LOOM_8B_BAKEOFF_RUNNER_PASS`; task INCOMPLETE at 384 tokens.
 TTFT `2.992 s`; generation `13.357 tok/s`; end-to-end `12.275 tok/s`; E2E wall `31.284 s`.
+Historical REALGEN remains ~`13.18 tok/s` real generation, confirming reproducibility.
 
-## 5. LOOM 4B FAST
+## 5. Legacy 4B FAST — parked
 
-Historical Qwen3-4B Q4_K_M on pinned llama.cpp/Metal:
-- model SHA `7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5`;
-- pinned llama.cpp `60addddf3c567c43ec3caf70fc953fba3572d96f`;
-- historical text generation `22.33 tok/s ±0.02`.
+Historical Qwen3-4B Q4_K_M on pinned llama.cpp/Metal had `22.33 tok/s ±0.02`, but current recovery path is closed.
 
-First matched attempt: `LOOM_4B_BAKEOFF_RUNTIME_NOT_READY`; no inference.
-Restoration: `LOOM_4B_LLAMA_RUNTIME_RESTORATION_NO_GO` because the server-target build unexpectedly fetched a UI asset outside authorization. Classification remains closed.
+Final result:
+`research/architecture/loom-4b-final-bakeoff-attempt-001-result.md`.
+Classification `LOOM_4B_FINAL_ATTEMPT_ABORTED`; no inference executed because the frozen runner's expected server path was absent.
 
-Mechanically, exact pinned binaries now exist and pass diagnostics. Therefore one separate final attempt is allowed without rebuilding/network/model mutation.
+No capability conclusion is supported. No more legacy 4B recovery/debug/rebuild work in current phase. Revisit FAST later using a cleaner runtime, likely MLX-native or otherwise aligned with the final provider architecture.
 
-## 6. Final 4B attempt
+## 6. Compact 8B vs 30B practical suite
 
 Preregistration:
-`research/architecture/loom-4b-final-bakeoff-attempt-001-preregistration.md`.
+`research/architecture/loom-8b-30b-compact-practical-suite-001-preregistration.md`.
 
-Use existing restored runtime and existing experimental runner unchanged. Exactly one frozen LRUCache inference, max 384 tokens.
+Five concise tasks:
+- arithmetic/reasoning;
+- debugging;
+- strict JSON instruction following;
+- supplied-context reasoning;
+- verification-driven software/model routing judgement.
 
-- valid inference -> record 4B result and continue;
-- any new mechanical blocker -> `LOOM_4B_FINAL_ATTEMPT_ABORTED`, park 4B for current phase.
+Each task is independently run on both models with frozen prompts, fresh state and 80–140 token caps. No tools, skills, memory/RAG, Heretic, retries or runtime optimization.
 
-No more 4B recovery/debug work in this phase.
+Measure:
+- correctness/partial/incorrect;
+- instruction following;
+- completion;
+- TTFT;
+- generation/end-to-end speed;
+- wall time;
+- memory/swap;
+- time per correct task.
 
-## 7. Broader practical evaluation
+Primary decision: whether 30B provides enough correctness gain to justify its much larger latency, and on which task types.
 
-After the final 4B attempt, proceed regardless of outcome. If 4B is retained, include it in the compact multi-task suite. If parked, compare/optimize 8B BALANCED and 30B DEEP and revisit a lightweight fast tier later from a cleaner runtime path.
+## 7. Tier optimization
 
-Task suite should cover coding, debugging, reasoning/math, structured instruction following, Italian technical explanation, supplied-context reasoning and planning/tool-use decisions.
+After suite review:
+- make 8B default if it matches 30B on most practical tasks;
+- reserve 30B for task categories where it shows a material correctness advantage;
+- improve both with skills/protocols, memory, tools and verification;
+- later introduce a clean FAST tier if useful.
 
-Score correctness/completion plus TTFT, wall, decode throughput, memory/swap and time-to-correct-task.
+## 8. LOOM AUTO
 
-## 8. Tier optimization and LOOM AUTO
+Implement routing only after measured tier boundaries exist. Prefer cheap-first execution plus task-specific verification/escalation over prompt-length heuristics.
 
-Optimize selected tiers with skills/protocols, memory, tools and verification, then implement evidence-based routing/escalation. Do not let unavailable 4B infrastructure block 8B/30B progress.
+Expose eventually:
+- `loom-fast`;
+- `loom-balanced`;
+- `loom-deep`;
+- `loom-auto`.
 
 ## 9. Provider/UI
 
-Expose selected LOOM tiers through a local OpenAI-compatible provider usable by Pi and a proper chat UI instead of expanding temporary CLIs.
+Expose selected runtimes through a local OpenAI-compatible provider usable by Pi and a proper chat UI rather than extending temporary custom CLIs.
 
 ## 10. Mandatory Heretic integration
 
-After tier selection/initial optimization, execute the Heretic-inspired behavioral/steerability track with preservation gates.
+After tier selection/initial optimization, execute the Heretic-inspired behavioral/steerability track with preservation gates. Determine per-tier application from measured behavior.
 
 ## 11. Separate R&D
 
