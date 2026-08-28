@@ -1,69 +1,80 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-28
-Status: ACTIVE — 4B legacy path parked after final mechanical abort. Current active product comparison is LOOM 8B BALANCED vs LOOM 30B DEEP using a compact five-task suite designed to measure quality gain per waiting/resource cost.
+Status: ACTIVE — compact 8B-vs-30B suite completed. Evidence supports 8B BALANCED as provisional default and 30B DEEP as selective escalation. Legacy 4B FAST remains parked. Current checkpoint tests whether cheap LOOM capabilities can close observed 8B gaps before 30B escalation.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_8B_30B_COMPACT_PRACTICAL_SUITE_001`
-Pi context: `/AGENTS.md` v3.55.
+Current checkpoint: `LOOM_8B_CAPABILITY_AMPLIFICATION_FUNNEL_001`
+Pi context: `/AGENTS.md` v3.56.
 
-## Product direction
+## Provisional product architecture
 
-Current active tiers:
-- 8B BALANCED — candidate default/primary tier;
-- 30B DEEP — candidate escalation tier;
-- FAST tier — architecturally retained, but legacy 4B llama.cpp implementation parked for this phase;
-- LOOM AUTO — later evidence-based router/escalator.
+- 8B BALANCED — default/primary candidate;
+- 30B DEEP — selective escalation when measured gain justifies latency;
+- FAST — retained conceptually, legacy 4B implementation parked;
+- LOOM AUTO — capability-first execution and verification-driven escalation.
 
-Do not freeze routing thresholds before current compact evidence is reviewed.
+Do not freeze router thresholds yet.
 
 ## LOOM Heretic
 
-`LOOM_HERETIC_TECHNICAL_PAPER.md` remains fundamental/non-optional. After tier selection/initial optimization, execute the Heretic-inspired refusal/steerability editing track with frozen capability-preservation gates.
+`LOOM_HERETIC_TECHNICAL_PAPER.md` remains fundamental/non-optional. Execute after initial runtime/capability optimization with frozen refusal/steerability and capability-preservation gates.
 
-## 30B DEEP baseline
+## Compact 8B vs 30B result
 
-Canonical production runtime commit `d3691b765004849abb01a7675e5a6e7c5d0edd4c`.
-Historical long-form TTFT `47.832 s`, decode `1.116 tok/s`, end-to-end `0.921 tok/s`.
-LRUCache at 384 tokens: correct O(1) architecture and `get()->-1`, but INCOMPLETE during `put()`; practical waiting time minutes.
+Result:
+`research/architecture/loom-8b-30b-compact-practical-suite-001-result.md`
+Evidence:
+`results-local/research/8b-30b-compact-practical-suite-001/20260828T152617Z/`
+Classification: `LOOM_8B_30B_COMPACT_SUITE_PASS`.
 
-## 8B BALANCED matched result
+8B:
+- utility `4/10`;
+- correct/partial/incorrect `2/1/2`;
+- total task wall `35.325 s`;
+- median TTFT `2.006 s`;
+- pooled generation `12.931 tok/s`;
+- time/correct task `17.663 s`.
 
-Qwen3-8B 3-bit/group64 Direct MLX, M1 built-in `qmv_fast`, BF16 KV, greedy, thinking OFF.
-Matched LRUCache result: `LOOM_8B_BAKEOFF_RUNNER_PASS`; task INCOMPLETE at 384 tokens.
-TTFT `2.992 s`; generation `13.357 tok/s`; end-to-end `12.275 tok/s`; E2E wall `31.284 s`.
-Output strategy correct but unfinished; not coding-quality PASS.
+30B:
+- utility `7/10`;
+- correct/partial/incorrect `4/0/1`;
+- total task wall `468.867 s`;
+- median TTFT `50.671 s`;
+- pooled generation `1.402 tok/s`;
+- time/correct task `117.217 s`.
 
-## 4B FAST — parked
+30B gained +3 utility points and +2 correct tasks, but cost +`433.541 s` waiting time (~`12.27x` task wall).
 
-Historical Qwen3-4B Q4_K_M runtime existed and measured `22.33 tok/s ±0.02`, but current legacy llama.cpp recovery consumed disproportionate engineering effort.
+Failure/win decomposition:
+- arithmetic T01: both wrong -> deterministic tool candidate;
+- debugging T02: 8B safe fix but partial diagnosis; 30B core better but instruction-length fail;
+- strict JSON T03: 8B semantic content right but fenced -> protocol/structured-output candidate;
+- supplied context T04: 8B matches 30B;
+- verification-driven design T05: clear 30B advantage.
 
-Final result:
-`research/architecture/loom-4b-final-bakeoff-attempt-001-result.md`.
-Classification: `LOOM_4B_FINAL_ATTEMPT_ABORTED`.
-Evidence: `results-local/research/4b-final-bakeoff-attempt-001/20260828T151352Z/`.
+Therefore do not use 30B as a generic correctness rescue for every task. Prefer cheap capability fixes where failure class is deterministic/protocol-level.
 
-Final attempt executed no inference because the frozen runner-resolved `llama-server` path was absent. Model SHA remained verified; no network/build/model mutation occurred. This is not evidence about 4B capability.
-
-No more legacy 4B recovery/debug/rebuild work in this phase. A future FAST tier may be created through a clean new runtime such as MLX after 8B/30B architecture work.
-
-## Exact next action — compact 8B vs 30B suite
+## Current checkpoint
 
 Preregistration:
-`research/architecture/loom-8b-30b-compact-practical-suite-001-preregistration.md`.
+`research/architecture/loom-8b-capability-amplification-funnel-001-preregistration.md`.
 
-Run five concise frozen tasks on both validated tiers, fresh state per task:
-1. deterministic arithmetic/capacity reasoning;
-2. Python debugging;
-3. exact JSON instruction following;
-4. supplied-context reasoning;
-5. concise verification-driven model-escalation design.
+Frozen 8B-only paired funnel on fresh prompts:
+A. RAW vs deterministic calculator-tool flow;
+B. RAW vs reusable strict-output protocol;
+C. RAW vs reusable verification-first protocol.
 
-Fixed output caps are 80–140 tokens to prevent verbosity from dominating 30B wall time. No skills/tools/memory/RAG/Heretic/retries/runtime optimization.
+Create only:
+`scripts/loom_8b_capability_amplification_funnel_001.py`.
 
-For every task/model record correctness (`CORRECT/PARTIAL/INCORRECT`), instruction-following, completion, TTFT, throughput, wall and resources. Aggregate a descriptive utility score /10 plus time per correct task.
+No 30B/4B inference, downloads, model/runtime changes, memory/RAG, Heretic, fine-tuning, production integration or unregistered retries.
 
-Primary question:
-**Does 30B produce a material correctness advantage over 8B that justifies its extra waiting time and memory cost, and on which task types?**
+Each branch is scored independently against frozen acceptance rules. A successful branch becomes a candidate LOOM capability, not automatically production behavior.
 
-After result/review, choose initial BALANCED/DEEP roles. Then optimize with skills/protocols/memory/tools/verification, build LOOM AUTO, provider/UI integration, and mandatory Heretic track.
+## Next after funnel
+
+Use accepted mechanisms to design the first capability-first LOOM execution graph, likely:
+`task -> deterministic capability/protocol when applicable -> 8B -> validation -> 30B only on unresolved failure/uncertainty`.
+
+Then validate architecture before provider/UI integration. Mandatory Heretic track remains after initial runtime/capability optimization.
