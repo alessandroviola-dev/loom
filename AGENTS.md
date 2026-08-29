@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.68
+Version: 3.69
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -27,7 +27,7 @@ GitHub is canonical. Active clone: `<repository-root>`.
 
 **Big models. Small machines.**
 - BALANCED: Qwen3-8B 3-bit/group64 Direct MLX, ~13 tok/s, provisional primary.
-- DEEP: Qwen3-30B-A3B; canonical custom MLX path ~1.4 tok/s. 30B runtime acceleration is the active priority.
+- DEEP: Qwen3-30B-A3B; historical custom MLX path ~1.4 tok/s. Apple Metal MoE paging Stage1R2 has now reached 4.40 tok/s on the frozen Stage1 workload, but canonical DEEP is not replaced until Stage2 reproducibility/quality work passes.
 - FAST: concept retained; legacy 4B parked.
 - LOOM AUTO validator-first work remains valid but PAUSED during this runtime investigation.
 - LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
@@ -44,73 +44,82 @@ Canonical result:
 Frozen source:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
 
-Feasibility established native Metal build, bounded LRU expert slots, `pread`, Apple Metal path and plausible S8/S16/S24 projections on base M1 8 GiB. S32 rejected. Feasibility GO makes no inference-speed claim.
+Feasibility established native Metal build, bounded LRU expert slots, `pread`, Apple Metal path and plausible S8/S16/S24 projections on base M1 8 GiB. S32 rejected.
 
 ## Stage1 / Stage1R — CLOSED MECHANICALLY
 
-Stage1 result:
-`research/architecture/loom-30b-apple-moe-paging-stage1-001-result.md`
-Classification: `LOOM_30B_APPLE_MOE_PAGING_STAGE1_MECHANICAL_NO_GO`.
+Stage1:
+`LOOM_30B_APPLE_MOE_PAGING_STAGE1_MECHANICAL_NO_GO`.
 
-Stage1R result:
-`research/architecture/loom-30b-apple-moe-paging-stage1r-001-result.md`
-Classification: `LOOM_30B_APPLE_MOE_PAGING_STAGE1R_MECHANICAL_NO_GO`.
+Stage1R:
+`LOOM_30B_APPLE_MOE_PAGING_STAGE1R_MECHANICAL_NO_GO`.
 
-No valid S8/S16/S24 performance measurement exists from either checkpoint.
-
-Stage1R root cause: frozen `llama-cli` is interactive/conversational and entered a `> ` / `readline` loop, producing ~4.55 GB runaway output. The observed ~14 GiB swap is invalid as model-residency evidence because the prior harness also retained output bookkeeping/full decode in memory.
+No performance claim follows from those attempts. Root causes were stdio/evidence instrumentation and use of interactive `llama-cli` rather than the noninteractive frontend.
 
 ## Noninteractive frontend recovery — COMPLETE / GO
 
 Canonical result:
 `research/architecture/loom-30b-noninteractive-frontend-recovery-001-result.md`
 
-Classification:
-`LOOM_30B_NONINTERACTIVE_FRONTEND_RECOVERY_GO`.
-
-Evidence:
-`results-local/research/30b-noninteractive-frontend-recovery-001/20260829T205441Z/report.json`
-
-Correct frozen one-shot frontend:
+Correct one-shot frontend:
 `llama-completion -no-cnv`
 
 `llama-completion` SHA256:
 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`
 
-Recovered local harness:
+Recovered bounded-output harness:
 `scripts/loom_30b_apple_moe_paging_stage1_001.py`
 SHA256:
 `4b1dd6edb2d8a9bda64a034cbf771b05d2bfc7c267c9ee547b49e8d465154eac`
 
-Harness output accounting is now bounded, streams directly to disk, has a 64 MiB/profile hard cap, incremental telemetry and `finally` finalization. Synthetic runaway terminated at exactly 64 MiB retained output with ~10.313 MiB parent RSS increase and 0 MiB swap delta.
+Harness streams output directly to durable disk, keeps bounded parent-memory accounting, has 64 MiB/profile runaway protection, incremental telemetry and `finally` finalization.
 
-## Current checkpoint — Stage1R2 001
+## Stage1R2 — COMPLETE / GO
 
-Preregistration:
-`research/architecture/loom-30b-apple-moe-paging-stage1r2-001-preregistration.md`
+Canonical result:
+`research/architecture/loom-30b-apple-moe-paging-stage1r2-001-result.md`
 
-Reuse only existing verified GGUF:
-`results-local/research/30b-apple-moe-paging-stage1-001/20260829T131816Z/model/Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
+Evidence:
+`results-local/research/30b-apple-moe-paging-stage1r2-001/20260829T211631Z/final-report.json`
 
-Size: `12,424,439,872` bytes.
-SHA256:
-`c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`
+Classification:
+**`LOOM_30B_APPLE_MOE_PAGING_STAGE1R2_GO`**.
 
-No download/copy/requantization.
+Verified model:
+`Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
+Size `12,424,439,872` bytes.
+SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
 
-Frozen scientific sweep remains S8 -> S16 -> conditional S24, never S32, with exact original prompt and:
-- `-n 96`
-- `-c 1024`
-- `--temp 0`
-- `--moe-n-layers 48`
-- `--no-mmap`
-- `--no-warmup`
-- `--cpu-moe`
-- `-ub 1`
-- `-no-cnv`
+Measured frozen Stage1 workload:
+- S8: 2.99 tok/s, load 19.294 s, E2E 52.606 s;
+- S16: 3.58 tok/s, load 16.625 s, E2E 45.110 s;
+- S24: **4.40 tok/s**, load **14.426 s**, E2E **37.704 s**.
 
-Use `llama-completion`, never `llama-cli`.
+S24 memory/safety:
+- RSS 2935.766 MiB;
+- wired 5032.297 MiB;
+- compressed 1567.734 MiB;
+- swap 1125.94 MiB;
+- minimum headroom 13%;
+- no critical pressure/OOM/corruption/runaway.
 
-Stage1R2 GO requires exact provenance, coherent output, best safe generation >=2.5 tok/s, no critical memory/OOM, no output-runaway cap event and complete durable evidence.
+Historical contextual speedup at S24:
+- 3.1384× vs 1.402 tok/s compact practical DEEP reference;
+- 3.5795× vs 1.229233 tok/s exact-Q4 historical reference.
 
-No package installs, binary rebuild, source/runtime/harness edit, validator work, Heretic/provider/UI or production integration.
+These are historical practical references, not same-artifact one-factor comparisons.
+
+## Current checkpoint — Stage2 comparability audit
+
+Before matched quality/performance Stage2, identify the exact historical custom MLX 30B checkpoint/artifact and determine whether it is checkpoint-identical to ByteShape `Qwen3-30B-A3B-Instruct-2507`, architecture-only comparable, or nonmatched for quality.
+
+This audit is metadata/provenance only: no model inference, no download, no package/source mutation.
+
+After the audit, preregister Stage2 for:
+- S24 reproducibility across fresh processes;
+- fresh matched practical tasks;
+- TTFT/load/E2E and memory/swap stability;
+- quality/correctness preservation;
+- explicit interpretation rules if checkpoint identity differs.
+
+Do not replace canonical DEEP solely from Stage1R2.
