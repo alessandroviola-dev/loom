@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-29
-Current: `LOOM_30B_APPLE_MOE_PAGING_FEASIBILITY_GO` completed on base M1 8GB. Immediate priority is Stage 1 real generation with one ByteShape Q3_K_S-3.25bpw GGUF. Validator/guided-repair work remains PAUSED.
-Canonical context: `/AGENTS.md` v3.66.
+Current: Apple MoE paging feasibility GO; original Stage 1 closed MECHANICAL_NO_GO from harness failures; harness recovery GO completed. Immediate priority is preregistered Stage1R real generation using the same verified GGUF/runtime and frozen recovered harness. Validator/guided-repair work remains PAUSED.
+Canonical context: `/AGENTS.md` v3.67.
 
 ## 1. Product direction
 
@@ -23,60 +23,86 @@ Resume only after the current 30B runtime priority.
 
 ## 3. Apple MoE paging feasibility — GO
 
-Result:
+Canonical result:
 `research/architecture/loom-30b-apple-moe-paging-feasibility-001-result.md`
 
 Frozen PoC:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
 
-Base M1 8GB evidence:
-- native Metal build successful;
-- Apple Metal device exposed;
-- bounded MoE slots/LRU + `pread` + Metal sync source path confirmed;
-- local storage diagnostic ~2579.51 MiB/s;
-- Q3_K_S-3.25 projected totals S8 6.304 GiB, S16 6.954, S24 7.604, S32 8.253;
-- 32 slots rejected;
-- selected Q3_K_S-3.25bpw for Stage 1.
+Verified binary SHA:
+`c65a60d78d47aca232beaac2161090914b4c0cca79975b46227a1d32b5643844`.
 
-This GO is mechanism/build feasibility only, not an inference-speed claim.
+Base M1 8GB feasibility established native Metal build, bounded MoE slots/LRU + `pread` + Metal synchronization and plausible S8/S16/S24 memory projections. S32 rejected.
 
-## 4. Current — Apple MoE Paging Stage 1 001
+## 4. Stage 1 001 — closed mechanical
+
+Canonical result:
+`research/architecture/loom-30b-apple-moe-paging-stage1-001-result.md`
+
+Classification:
+`LOOM_30B_APPLE_MOE_PAGING_STAGE1_MECHANICAL_NO_GO`.
+
+No scientifically valid S8/S16/S24 measurement exists. First attempt was invalid from stdio pipe backpressure; post-correction execution exposed a second evidence-durability flaw. No model/runtime performance claim follows.
+
+## 5. Harness recovery — GO
+
+Classification:
+`LOOM_30B_STAGE1_HARNESS_RECOVERY_GO`.
+
+Evidence:
+`results-local/research/30b-stage1-harness-recovery-001/20260829T195240Z/`
+
+Frozen recovered local runner:
+`scripts/loom_30b_apple_moe_paging_stage1_001.py`
+SHA256 `6857a7f7deeb6c8d88db81df4ce06e4ac2e571079971cebdd16718b625930ecf`.
+Size 446 lines / 26,980 bytes.
+
+Recovery proves continuous >2 MiB output drain, incremental telemetry, clean/nonzero-exit persistence, and resume-to-pre-inference behavior without launching a model.
+
+## 6. Current — Apple MoE Paging Stage1R 001
 
 Preregistration:
-`research/architecture/loom-30b-apple-moe-paging-stage1-001-preregistration.md`
+`research/architecture/loom-30b-apple-moe-paging-stage1r-001-preregistration.md`
 
-Exactly one authorized download:
-`byteshape/Qwen3-30B-A3B-Instruct-2507-GGUF/Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
+Reuse only existing verified artifact:
+`results-local/research/30b-apple-moe-paging-stage1-001/20260829T131816Z/model/Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
+
+Size `12,424,439,872` bytes.
 SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
-Published size ~12.4 GB; normalized quality 97.97%.
+No model download authorized.
 
-Frozen real-generation sweep:
-- 8 expert slots;
-- 16 expert slots;
-- conditional 24 expert slots if S16 safety gate passes;
-- identical `-ub 1` to preserve slot-count as the sweep factor;
-- no 32 slot run;
-- 48 MoE layers, no mmap, no warmup, exact expert CPU override.
+Freeze checks before inference:
+- harness SHA exact;
+- model SHA/size exact;
+- source commit exact;
+- binary SHA exact;
+- no conflicting process.
 
-GO requires at least one coherent clean run and best safe generation >=2.5 tok/s without critical host pressure or corruption.
+Frozen real-generation sweep remains:
+- S8;
+- S16;
+- conditional S24 if S16 safety gate passes;
+- never S32;
+- temp 0, max 96 generated tokens, ctx 1024;
+- `--moe-n-layers 48`, `--no-mmap`, `--no-warmup`, `--cpu-moe`, `-ub 1`;
+- fresh process per measured profile;
+- no post-hoc tuning or retry of a scientifically valid profile.
 
-## 5. If Stage 1 GO
+Evidence must be durable before launch, streamed incrementally during execution, and finalized on all exit paths.
 
-Stage 2 must test reproducibility and a fresh matched practical comparison against canonical DEEP custom MLX. Measure:
-- TTFT/load behavior;
-- decode tok/s;
-- E2E wall;
-- memory/wired/compressed/swap;
-- storage traffic/cache behavior;
-- output quality/correctness.
+GO requires at least one coherent clean run and best safe generation >=2.5 tok/s without critical host pressure/corruption and with exact provenance/evidence.
 
-Do not replace canonical DEEP solely from one Stage-1 speed result.
+## 7. If Stage1R GO
 
-## 6. If Stage 1 NO_GO
+Stage 2 must establish reproducibility and fresh matched practical/quality comparison against canonical DEEP custom MLX. Measure TTFT/load, decode tok/s, E2E wall, memory/wired/compressed/swap, storage/cache behavior and output quality/correctness.
 
-Do not download a second quant post hoc. Diagnose whether the failure is throughput, memory pressure, model/runtime compatibility or output corruption. Any alternative quant/runtime requires a fresh preregistration.
+Do not replace canonical DEEP solely from one Stage1R speed result.
 
-## 7. Later work
+## 8. If Stage1R scientific NO_GO
+
+Do not download a second quant or tune flags post hoc. Diagnose whether the valid observed failure is throughput, memory pressure, compatibility or output corruption. Any alternative quant/runtime requires a fresh preregistration.
+
+## 9. Later work
 
 After this runtime priority:
 - resume sanitized validator-guided repair/selective-DEEP graph;
