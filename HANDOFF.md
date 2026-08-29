@@ -1,16 +1,16 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-29
-Status: ACTIVE — `LOOM_30B_APPLE_MOE_PAGING_FEASIBILITY_GO` completed successfully on the base M1 8 GiB host. Validator/guided-repair work remains PAUSED. Current checkpoint is the first real GGUF generation using Apple Metal expert paging.
+Status: ACTIVE — Apple MoE paging feasibility is GO. Original Stage 1 closed `MECHANICAL_NO_GO` from harness failures, then `LOOM_30B_STAGE1_HARNESS_RECOVERY_GO` completed. Current checkpoint is fresh preregistered Stage1R using the same scientific workload and recovered frozen harness.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_APPLE_MOE_PAGING_STAGE1_001`
-Pi context: `/AGENTS.md` v3.66.
+Current checkpoint: `LOOM_30B_APPLE_MOE_PAGING_STAGE1R_001`
+Pi context: `/AGENTS.md` v3.67.
 
 ## Product direction
 
 - BALANCED 8B remains the fast provisional primary tier (~13 tok/s).
-- DEEP 30B remains quality/escalation tier but current custom MLX runtime is ~1.4 tok/s and too slow for frequent use.
+- DEEP 30B remains quality/escalation tier; current custom MLX runtime ~1.4 tok/s is too slow for frequent use.
 - FAST retained conceptually; legacy 4B parked.
 - LOOM AUTO validator-first track remains valid but paused during 30B runtime R&D.
 - LOOM Heretic remains mandatory after initial runtime/capability optimization.
@@ -21,41 +21,77 @@ Pi context: `/AGENTS.md` v3.66.
 
 ## Apple MoE paging feasibility — GO
 
-Result:
+Canonical result:
 `research/architecture/loom-30b-apple-moe-paging-feasibility-001-result.md`
+
+Frozen PoC:
+`kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
+
+Verified binary SHA:
+`c65a60d78d47aca232beaac2161090914b4c0cca79975b46227a1d32b5643844`
+
+S8/S16/S24 were feasible candidates from static projection; S32 rejected.
+
+## Original Stage 1 — MECHANICAL_NO_GO
+
+Canonical result:
+`research/architecture/loom-30b-apple-moe-paging-stage1-001-result.md`
+
+No valid S8/S16/S24 measurement exists.
+
+Mechanical history:
+1. first S8 invalid from stdout/stderr pipe backpressure;
+2. minimum drain correction still left evidence persistence RAM-only until post-child finalization, so interruption/error produced no reconstructable scientific profile evidence.
+
+No performance conclusion about the model/runtime follows from Stage 1.
+
+## Harness recovery — GO
+
 Evidence:
-`results-local/research/30b-apple-moe-paging-feasibility-001/20260829T130414Z/report.json`
+`results-local/research/30b-stage1-harness-recovery-001/20260829T195240Z/`
 
-Exact frozen PoC:
-`kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
+Recovered harness:
+`scripts/loom_30b_apple_moe_paging_stage1_001.py`
 
-Confirmed on M1 8GB:
-- native Metal build succeeds;
-- required MoE paging flags present;
-- Apple Metal device detected;
-- source confirms bounded LRU expert slots, `pread` expert loading and Metal synchronization/interceptor;
-- storage diagnostic ~2579.51 MiB/s;
-- projected Q3_K_S totals: S8 6.304 GiB, S16 6.954, S24 7.604, S32 8.253;
-- S32 is out; S8/S16/S24 are Stage-1 candidates;
-- selected only ByteShape Q3_K_S-3.25bpw.
+Frozen SHA256:
+`6857a7f7deeb6c8d88db81df4ce06e4ac2e571079971cebdd16718b625930ecf`
 
-## Exact next action — Stage 1 real generation
+Size: 446 lines / 26,980 bytes.
+
+Synthetic validation passed:
+- 2,097,152 bytes continuous combined output retained;
+- stdout/stderr marker bytes 1,048,576 each;
+- incremental telemetry persisted;
+- clean exit and nonzero exit evidence persisted;
+- resume path reaches pre-inference point without running a model.
+
+## Exact next action — Stage1R real generation
 
 Preregistration:
-`research/architecture/loom-30b-apple-moe-paging-stage1-001-preregistration.md`
+`research/architecture/loom-30b-apple-moe-paging-stage1r-001-preregistration.md`
 
-Download exactly one model:
-`Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
+Reuse only this existing local GGUF:
+`results-local/research/30b-apple-moe-paging-stage1-001/20260829T131816Z/model/Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
+
+Expected size: `12,424,439,872` bytes.
 Expected SHA256:
 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`
 
-Create only:
-`scripts/loom_30b_apple_moe_paging_stage1_001.py`
+No model download is authorized.
 
-Run frozen slot sweep S8 -> S16 -> conditional S24 with identical `-ub 1`, 48 MoE layers, no mmap/warmup and the PoC's expert CPU override. Exact prompt/cap/context are in the preregistration.
+Before inference verify:
+- harness SHA exactly `6857a7f7...930ecf`;
+- GGUF SHA/size exactly;
+- source commit exactly `41ec4c4...de892`;
+- binary SHA exactly `c65a60d7...43844`;
+- no conflicting inference process.
 
-Safety: S24 only if S16 exits cleanly with no critical memory pressure, peak swap <=3.5 GiB, no OOM and >=5% host memory headroom. Never test 32 slots.
+Run original frozen sweep S8 -> S16 -> conditional S24 with temp 0, n=96, ctx=1024, `--moe-n-layers 48`, `--no-mmap`, `--no-warmup`, `--cpu-moe`, `-ub 1`.
 
-GO requires coherent output and best safe generation >=2.5 tok/s with valid provenance/evidence and no critical host-pressure event.
+S24 only if S16 exits cleanly, no critical/red memory pressure, peak swap <=3.5 GiB, no OOM and >=5% headroom. Never S32.
 
-If GO: Stage 2 should establish reproducibility and compare the new DEEP path with canonical custom MLX under fresh matched practical tasks before changing product defaults.
+GO requires coherent output and best safe generation >=2.5 tok/s with complete durable evidence and no critical host-pressure event.
+
+If GO: Stage 2 establishes reproducibility and a fresh matched practical/quality comparison before changing canonical DEEP.
+If scientific NO_GO: diagnose the observed bottleneck; no post-hoc second quant or flag tuning.
+If mechanical NO_GO: preserve evidence and stop before any unregistered retry.
