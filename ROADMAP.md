@@ -1,73 +1,91 @@
 # LOOM Roadmap
 
-Last updated: 2026-08-28
-Current: 8B Validator-Guided Repair 001 is MECHANICAL_NO_GO because hidden expected-payload/spec metadata leaked into repair feedback. A separate pre-guided `V_VERIFY_RULE` false acceptance was also observed. Immediate next: model-free hardening of `V_VERIFY_RULE` on fresh adversarial fixtures before any guided-repair rerun.
-Canonical context: `/AGENTS.md` v3.64.
+Last updated: 2026-08-29
+Current: `LOOM_VERIFY_RULE_VALIDATOR_HARDENING_GO` completed successfully. Validator/guided-repair work is PAUSED. Immediate priority is 30B runtime acceleration via Apple-Silicon MoE expert paging feasibility.
+Canonical context: `/AGENTS.md` v3.65.
 
-## 1. Product direction — validator-first LOOM AUTO
+## 1. Product direction
 
-Near-term tiers:
-- `loom-balanced` -> Qwen3-8B 3-bit, provisional primary;
-- `loom-deep` -> expensive selective 30B;
-- future `loom-fast` -> clean-runtime reintroduction later;
-- `loom-auto` -> generate with 8B, validate, apply only proven cheap repairs, then DEEP only when cheaper verified paths fail.
+- `loom-balanced`: Qwen3-8B 3-bit, ~13 tok/s, provisional primary.
+- `loom-deep`: Qwen3-30B-A3B, current custom MLX path ~1.4 tok/s and too slow for practical frequent use.
+- `loom-fast`: future clean-runtime tier; legacy 4B parked.
+- `loom-auto`: validator-first architecture remains planned but its active experiments are paused during 30B runtime R&D.
 
-Do not freeze general DEEP thresholds yet. Generic confidence is not validation.
+LOOM Heretic remains mandatory after initial runtime/capability optimization.
 
-## 2. Core evidence
+## 2. Validator track — paused at a clean checkpoint
 
-Output Validator v0: GO, zero false PASS on its preregistered set, correct UNCERTAIN abstention, sub-ms overhead.
+Output Validator v0: GO.
+Selective Rescue 001: scientific NO_GO at final 5/8 CORRECT, zero false accepts.
+8B Validator-Guided Repair 001: MECHANICAL_NO_GO due hidden-spec leakage.
+VERIFY_RULE Validator Hardening 001: **GO** — 24/24, FP/FN 0/0, contradiction and forbidden-heuristic rejection 2/2, p95 0.006542 ms.
 
-Validator-Guided Selective Rescue 001: NO_GO; RAW8 2/8 -> final 5/8 CORRECT, zero false accepts, 4/8 DEEP calls avoided, but final gate required >=6/8. One-shot DEEP repaired only one of four residual failures.
+A fresh sanitized guided-repair experiment remains planned but is not active.
 
-8B Validator-Guided Repair 001: MECHANICAL_NO_GO; guided feedback leaked hidden validator-spec/expected-payload information. Guided-repair performance from that run is invalid and must not be reused.
+## 3. New 30B runtime opportunity
 
-A `V_VERIFY_RULE` false acceptance occurred before guided repair in that run. This means feedback sanitization alone is insufficient as the immediate next step.
+New public evidence justifies reopening 30B runtime architecture rather than only optimizing the existing custom MLX expert-major path.
 
-## 3. Current — VERIFY_RULE Validator Hardening 001
+Relevant external mechanisms:
+- low-bpw GGUF Qwen3-30B-A3B on 8GB-class systems;
+- bounded expert residency rather than full expert materialization;
+- LRU expert slots;
+- direct disk-backed expert loading;
+- Apple Metal shared-memory/event synchronization;
+- OS/storage-aware working-set management.
+
+Primary Apple PoC source:
+`kisasexypantera94/llama.cpp`, branch `moe-expert-residency`, commit `41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
+
+Reference result: Qwen3-30B-A3B Q6_K reported at 13 tok/s after warmup on M1 Pro 16GB. This is not assumed transferable to M1 8GB.
+
+Potato OS / ik_llama evidence motivates the research, but `ik_llama.cpp` itself is not assumed as the Mac backend because Metal is not one of its fully supported performant backends.
+
+## 4. Current — 30B Apple MoE Paging Feasibility 001
 
 Preregistration:
-`research/architecture/loom-verify-rule-validator-hardening-001-preregistration.md`
+`research/architecture/loom-30b-apple-moe-paging-feasibility-001-preregistration.md`
 
-No model inference.
+No model inference and no model download.
 
-Exactly 24 fresh deterministic/adversarial fixtures test:
-- cheap-first requirement;
-- named check coverage;
-- accept polarity;
-- escalation polarity;
-- forbidden-heuristic rejection;
-- contradiction rejection.
+Goals:
+- exact PoC source checkout;
+- native Metal build on base M1 8GB;
+- verify expert-paging flags and Apple device path;
+- confirm source mechanism (bounded slots/LRU + disk reads + Metal sync);
+- measure read-only local storage readiness if possible;
+- project working memory for 8/16/24/32 slots;
+- classify compatibility of two frozen ByteShape ~12.5GB candidates.
 
-GO requires zero false PASS on 16 expected FAIL fixtures, >=7/8 PASS recall, 2/2 contradiction rejection, 2/2 forbidden-heuristic rejection, p95 <5 ms and no external dependencies/network/model changes.
+GO permits the next checkpoint to authorize exactly one candidate download and one bounded real-generation experiment.
 
-## 4. Next if validator hardening GO
+## 5. Candidate Stage-1 models if feasibility GO
 
-Preregister a completely fresh 8B guided-repair suite.
+Frozen candidates only:
+- KQ: `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`, ~12.4GB, published normalized quality 97.97%, SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`;
+- IQ: `Qwen3-30B-A3B-Instruct-2507-IQ3_S-3.29bpw.gguf`, ~12.5GB, published normalized GPU score 97.35%, SHA256 `b8770ce5b81cb47fbdfc75a00fae220297955ef58697411888c1f3dc30a2e230`.
 
-Repair feedback must use an allowlisted schema containing only public/check-derived fields such as check ID, failure code, component/field name and observed condition. It must never serialize validator spec objects, hidden expected payloads, scorer labels or ground-truth answers.
+Do not download both. Select only after local compatibility/memory evidence.
 
-Use fresh prompts, not the exposed guided-repair T01–T08 set.
+## 6. If Stage 1 succeeds
 
-## 5. Later selective DEEP
+Compare new GGUF/Metal paging runtime directly with canonical 30B custom MLX under the same concise prompt/output settings:
+- TTFT;
+- generation tok/s;
+- E2E wall;
+- resident/wired memory;
+- swap;
+- storage read volume/rate if measurable;
+- output correctness/parity.
 
-Only after cheap guided repair is independently validated, test:
-`8B -> validator -> safe repair -> guided 8B repair -> residual FAIL -> DEEP -> revalidate`.
+Only retained quality plus meaningful practical speedup can change DEEP runtime direction.
 
-Measure final correctness, false accepts, DEEP call rate, DEEP repair yield and waiting cost.
+## 7. Later work
 
-## 6. Semantic verifier / automatic validator selection
-
-Separate future research:
-- semantic/open-ended verifier;
-- task-specific tests/tools;
-- retrieval-grounded verification where factual;
-- automatic validator/contract derivation from user request on fresh data.
-
-## 7. Other tracks
-
-- LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
-- Historical 8B 4-bit branch remains closed by resource evidence.
-- Legacy 4B FAST remains parked.
-- Provider/UI follows validated execution graph.
-- Qwen3.8 and new 30B speed R&D remain separate and must not block validator-first progress.
+After this priority investigation:
+- resume sanitized validator-guided repair and selective-DEEP graph;
+- semantic verifier/open-ended validation;
+- automatic validator/contract derivation;
+- provider/UI;
+- mandatory Heretic track;
+- FAST clean-runtime reintroduction.
