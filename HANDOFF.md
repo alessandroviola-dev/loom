@@ -1,64 +1,61 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-29
-Status: ACTIVE — `V_VERIFY_RULE` hardening completed GO. The validator/guided-repair track is now PAUSED by explicit project decision while 30B runtime acceleration becomes the immediate priority.
+Status: ACTIVE — `LOOM_30B_APPLE_MOE_PAGING_FEASIBILITY_GO` completed successfully on the base M1 8 GiB host. Validator/guided-repair work remains PAUSED. Current checkpoint is the first real GGUF generation using Apple Metal expert paging.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_APPLE_MOE_PAGING_FEASIBILITY_001`
-Pi context: `/AGENTS.md` v3.65.
+Current checkpoint: `LOOM_30B_APPLE_MOE_PAGING_STAGE1_001`
+Pi context: `/AGENTS.md` v3.66.
 
 ## Product direction
 
 - BALANCED 8B remains the fast provisional primary tier (~13 tok/s).
-- DEEP 30B remains quality/escalation tier but current custom MLX runtime is too slow (~1.4 tok/s).
-- FAST concept retained; legacy 4B parked.
-- LOOM AUTO validator-first work remains valid but paused during this runtime investigation.
-- LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
+- DEEP 30B remains quality/escalation tier but current custom MLX runtime is ~1.4 tok/s and too slow for frequent use.
+- FAST retained conceptually; legacy 4B parked.
+- LOOM AUTO validator-first track remains valid but paused during 30B runtime R&D.
+- LOOM Heretic remains mandatory after initial runtime/capability optimization.
 
-## Closed validator checkpoint
+## Validator track — paused at clean checkpoint
 
-`LOOM_VERIFY_RULE_VALIDATOR_HARDENING_GO`
+`LOOM_VERIFY_RULE_VALIDATOR_HARDENING_GO`: 24/24 fixtures, FP/FN 0/0, p95 0.006542 ms. Sanitized guided-repair work may resume later; do not run it now.
+
+## Apple MoE paging feasibility — GO
 
 Result:
-`research/architecture/loom-verify-rule-validator-hardening-001-result.md`
-
+`research/architecture/loom-30b-apple-moe-paging-feasibility-001-result.md`
 Evidence:
-`results-local/research/verify-rule-validator-hardening-001/20260829T123542Z/report.json`
+`results-local/research/30b-apple-moe-paging-feasibility-001/20260829T130414Z/report.json`
 
-Observed: 24/24 correct fixtures, FP/FN 0/0, contradiction rejection 2/2, forbidden-heuristic rejection 2/2, p95 0.006542 ms, no inference/network/package mutation.
+Exact frozen PoC:
+`kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
 
-A future fresh sanitized guided-repair suite is PAUSED, not cancelled. Do not execute it now.
+Confirmed on M1 8GB:
+- native Metal build succeeds;
+- required MoE paging flags present;
+- Apple Metal device detected;
+- source confirms bounded LRU expert slots, `pread` expert loading and Metal synchronization/interceptor;
+- storage diagnostic ~2579.51 MiB/s;
+- projected Q3_K_S totals: S8 6.304 GiB, S16 6.954, S24 7.604, S32 8.253;
+- S32 is out; S8/S16/S24 are Stage-1 candidates;
+- selected only ByteShape Q3_K_S-3.25bpw.
 
-## New external runtime evidence
+## Exact next action — Stage 1 real generation
 
-Public work shows a materially different approach to oversized MoE inference:
-- Potato OS reports Qwen3-30B-A3B low-bpw GGUF around 8–9 tok/s on Raspberry Pi 5 8GB + SSD;
-- an Apple-Silicon llama.cpp PoC implements bounded Metal expert slots, LRU residency, disk-backed expert loading and Metal synchronization;
-- that PoC reports Qwen3-30B-A3B Q6_K on M1 Pro 16GB at 13 tok/s after warmup.
+Preregistration:
+`research/architecture/loom-30b-apple-moe-paging-stage1-001-preregistration.md`
 
-The Apple PoC source is frozen for investigation:
-`kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`, branch `moe-expert-residency`.
-
-These are external reference results only. They do not establish performance on the user's base M1 8GB.
-
-## Exact next action
-
-Read:
-`research/architecture/loom-30b-apple-moe-paging-feasibility-001-preregistration.md`
+Download exactly one model:
+`Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
+Expected SHA256:
+`c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`
 
 Create only:
-`scripts/loom_30b_apple_moe_paging_feasibility_001.py`
+`scripts/loom_30b_apple_moe_paging_stage1_001.py`
 
-Feasibility only:
-1. verify host/toolchain/storage;
-2. fetch exact frozen PoC source commit into results-local;
-3. build native Metal CLI without source patches/package installs;
-4. verify `--moe-n-slots`, `--moe-n-layers`, `--no-mmap`, `--no-warmup` and Apple Metal device path;
-5. source-confirm bounded expert cache/LRU + disk read + Metal sync mechanism;
-6. perform read-only local I/O diagnostic if an existing large artifact is available;
-7. project 8/16/24/32 expert-slot memory envelopes for the M1 8GB;
-8. classify ByteShape Q3_K_S-3.25bpw and IQ3_S-3.29bpw compatibility.
+Run frozen slot sweep S8 -> S16 -> conditional S24 with identical `-ub 1`, 48 MoE layers, no mmap/warmup and the PoC's expert CPU override. Exact prompt/cap/context are in the preregistration.
 
-No model download. No inference. No package-manager mutation. No source patching. No Git commit/push.
+Safety: S24 only if S16 exits cleanly with no critical memory pressure, peak swap <=3.5 GiB, no OOM and >=5% host memory headroom. Never test 32 slots.
 
-If GO, the following checkpoint may authorize exactly ONE ~12.5GB GGUF download and a bounded real-generation test.
+GO requires coherent output and best safe generation >=2.5 tok/s with valid provenance/evidence and no critical host-pressure event.
+
+If GO: Stage 2 should establish reproducibility and compare the new DEEP path with canonical custom MLX under fresh matched practical tasks before changing product defaults.
