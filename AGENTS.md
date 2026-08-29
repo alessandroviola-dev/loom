@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.64
+Version: 3.65
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -15,72 +15,64 @@ GitHub is canonical. Active clone: `<repository-root>`.
 ## Core rules
 
 1. one-factor comparisons; deterministic inputs; exact provenance;
-2. no silent rescue or post-hoc gate relaxation;
+2. no silent rescue/post-hoc gate relaxation;
 3. fail closed before expensive execution;
 4. invalid/inconclusive runs support no performance claim;
 5. production code requires exact review + Git persistence;
 6. do not tune on exposed evaluation examples;
-7. hidden ground truth/spec metadata must never enter model repair/judge inputs unless explicitly preregistered as public input.
+7. hidden ground truth/spec metadata must never enter model repair/judge inputs unless explicitly preregistered as public input;
+8. expensive model downloads require a separately authorized/preregistered checkpoint.
 
 ## Product direction
 
 **Big models. Small machines.**
 - BALANCED: Qwen3-8B 3-bit/group64 Direct MLX, ~13 tok/s, provisional primary tier.
-- DEEP: canonical 30B, ~1.4 tok/s compact generation, selective expensive tier.
+- DEEP: Qwen3-30B-A3B, current canonical custom MLX path ~1.4 tok/s; **30B runtime acceleration is now the active priority**.
 - FAST: concept retained; legacy 4B parked.
-- LOOM AUTO direction: validator-first; accept only validated results, use cheap semantics-preserving/guided repair when independently validated, DEEP only after cheap paths fail.
+- LOOM AUTO validator-first work remains valid but is temporarily PAUSED during the 30B runtime investigation.
 
 LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
 
-## Key evidence
+## Validator track — PAUSED after successful hardening
 
-### Output Validator v0 — GO
-`research/architecture/loom-8b-output-validator-v0-001-result.md`
-- zero false PASS on its preregistered mechanically-verifiable set;
-- open-ended tasks abstained UNCERTAIN;
-- validator p95 <1 ms.
+Output Validator v0 remains GO.
+Selective Rescue 001 remains scientific NO_GO at final `5/8` CORRECT.
+8B Validator-Guided Repair 001 remains MECHANICAL_NO_GO due hidden-spec leakage.
 
-### Validator-Guided Selective Rescue 001 — scientific NO_GO
-`research/architecture/loom-validator-guided-selective-rescue-001-result.md`
-- RAW8 2/8 CORRECT -> final 5/8;
-- zero false accepts;
-- safe fence repair 2/2;
-- DEEP called 4/8, avoided 4/8;
-- only one DEEP call repaired a residual failure;
-- missed frozen final >=6/8 gate.
+### VERIFY_RULE Validator Hardening 001 — GO
+Result: `research/architecture/loom-verify-rule-validator-hardening-001-result.md`
+Evidence: `results-local/research/verify-rule-validator-hardening-001/20260829T123542Z/report.json`
+Harness SHA `66aaee0fa5cba740113b92a0bdf94d8043150e6ac86e2e92c51093a6c67a58bc`.
 
-### 8B Validator-Guided Repair 001 — MECHANICAL NO_GO
-Result: `research/architecture/loom-8b-validator-guided-repair-001-result.md`
-Evidence: `results-local/research/8b-validator-guided-repair-001/20260828T204632Z/`
-Classification: **`LOOM_8B_VALIDATOR_GUIDED_REPAIR_MECHANICAL_NO_GO`**.
+Observed:
+- `24/24` fixtures correct;
+- confusion `TP 8 / TN 16 / FP 0 / FN 0`;
+- contradiction reject `2/2`;
+- forbidden-heuristic reject `2/2`;
+- p95 `0.006542 ms`;
+- no inference/network/external packages.
 
-Cause: guided-repair input serialized validator spec metadata containing hidden expected-payload information. This violates the no-hidden-ground-truth boundary. Guided repair outputs/aggregates are scientifically invalid; do not reuse or rescore them.
+The planned fresh sanitized guided-repair suite is PAUSED, not cancelled. Do not execute it unless canonical context explicitly reactivates it.
 
-Independent diagnostic observed before guided repair: one `V_VERIFY_RULE` output (T08) was validator PASS but ground-truth PARTIAL. Leakage cannot explain that pre-guided false acceptance. Therefore do not immediately rerun guided repair with only sanitized feedback.
-
-## Current checkpoint — VERIFY_RULE Validator Hardening 001
+## Current priority — 30B Apple MoE Paging Feasibility 001
 
 Preregistration:
-`research/architecture/loom-verify-rule-validator-hardening-001-preregistration.md`.
+`research/architecture/loom-30b-apple-moe-paging-feasibility-001-preregistration.md`
 
-Model-free checkpoint. Create only:
-`scripts/loom_verify_rule_validator_hardening_001.py`.
+Question: can the Apple M1 8GB host build and expose a real Metal expert-paging runtime for Qwen3-30B-A3B before any model download?
 
-Exactly 24 fresh deterministic/adversarial fixtures:
-- 8 expected PASS;
-- 16 expected FAIL covering missing cheap-first, missing checks, wrong accept/escalation polarity, forbidden heuristic, and contradictions.
+Frozen primary source:
+- `kisasexypantera94/llama.cpp`
+- branch `moe-expert-residency`
+- commit `41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
 
-PASS requires all required components positively satisfied and no contradiction. Missing evidence -> FAIL. No fuzzy semantic PASS.
+Public reference evidence reports the mechanism on Apple Silicon, including Qwen3-30B-A3B Q6_K on M1 Pro 16GB at 13 tok/s after warmup. This is external reference evidence only, not a claim for the M1 8GB host.
 
-Frozen GO:
-- 24/24 valid;
-- false PASS 0/16;
-- PASS recall >=7/8;
-- contradiction reject 2/2;
-- forbidden-heuristic reject 2/2;
-- p95 <5 ms;
-- standard library only, no model/network/package mutation.
+`ik_llama.cpp` is reference material for quant/kernel ideas; do not assume it is the Mac backend because its maintainers do not treat Metal as a fully performant supported backend.
 
-No model inference, no guided-repair rerun, no JSON/CSV/KV validator changes, no 30B.
+This feasibility checkpoint allows source-code network fetch only. **No model download, no inference, no package-manager installs, no source patching.**
 
-If GO: preregister a fresh guided-repair suite using hardened VERIFY_RULE and a sanitized allowlisted failure report. The repair report may include only public/check-derived fields; never validator spec objects, hidden expected payloads, scorer labels or ground-truth answers.
+Create exactly:
+`scripts/loom_30b_apple_moe_paging_feasibility_001.py`
+
+Required: exact source checkout, native Metal build, MoE flag/device verification, source proof of bounded expert slots + disk reads + Metal synchronization, read-only local storage probe if possible, 8GB memory projection, and compatibility classification of the frozen ByteShape KQ-3.25 and IQ-3.29 candidates.
