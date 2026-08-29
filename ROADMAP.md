@@ -1,106 +1,104 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-29
-Current: Apple MoE paging feasibility GO; original Stage 1 closed MECHANICAL_NO_GO from harness failures; harness recovery GO completed. Immediate priority is preregistered Stage1R real generation using the same verified GGUF/runtime and frozen recovered harness. Validator/guided-repair work remains PAUSED.
-Canonical context: `/AGENTS.md` v3.67.
+Current: Apple MoE feasibility GO; Stage1 and Stage1R closed MECHANICAL_NO_GO with no valid performance measurement; noninteractive frontend recovery GO completed. Immediate priority is preregistered Stage1R2 using `llama-completion -no-cnv` with bounded-output instrumentation. Validator/guided-repair remains PAUSED.
+Canonical context: `/AGENTS.md` v3.68.
 
 ## 1. Product direction
 
 - `loom-balanced`: Qwen3-8B 3-bit, ~13 tok/s, provisional primary.
-- `loom-deep`: Qwen3-30B-A3B; canonical custom MLX ~1.4 tok/s, now under alternative-runtime investigation.
+- `loom-deep`: Qwen3-30B-A3B; canonical custom MLX ~1.4 tok/s, under alternative-runtime investigation.
 - `loom-fast`: future clean-runtime tier; legacy 4B parked.
-- `loom-auto`: validator-first architecture remains planned but experiments are paused during 30B runtime R&D.
+- `loom-auto`: validator-first architecture planned but paused during 30B runtime R&D.
 - LOOM Heretic remains mandatory after initial runtime/capability optimization.
 
 ## 2. Validator track — paused cleanly
 
 Output Validator v0: GO.
 Selective Rescue 001: scientific NO_GO at 5/8 final CORRECT, zero false accepts.
-8B Validator-Guided Repair 001: MECHANICAL_NO_GO due hidden-spec leakage.
+8B Validator-Guided Repair 001: MECHANICAL_NO_GO from hidden-spec leakage.
 VERIFY_RULE Validator Hardening 001: GO — 24/24, FP/FN 0/0, contradiction/forbidden-heuristic reject 2/2.
 
 Resume only after the current 30B runtime priority.
 
 ## 3. Apple MoE paging feasibility — GO
 
-Canonical result:
+Result:
 `research/architecture/loom-30b-apple-moe-paging-feasibility-001-result.md`
 
-Frozen PoC:
+Frozen source:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
-
-Verified binary SHA:
-`c65a60d78d47aca232beaac2161090914b4c0cca79975b46227a1d32b5643844`.
 
 Base M1 8GB feasibility established native Metal build, bounded MoE slots/LRU + `pread` + Metal synchronization and plausible S8/S16/S24 memory projections. S32 rejected.
 
-## 4. Stage 1 001 — closed mechanical
+## 4. Stage1 / Stage1R — closed mechanically
 
-Canonical result:
+Stage1 result:
 `research/architecture/loom-30b-apple-moe-paging-stage1-001-result.md`
+Classification: `LOOM_30B_APPLE_MOE_PAGING_STAGE1_MECHANICAL_NO_GO`.
 
-Classification:
-`LOOM_30B_APPLE_MOE_PAGING_STAGE1_MECHANICAL_NO_GO`.
+Stage1R result:
+`research/architecture/loom-30b-apple-moe-paging-stage1r-001-result.md`
+Classification: `LOOM_30B_APPLE_MOE_PAGING_STAGE1R_MECHANICAL_NO_GO`.
 
-No scientifically valid S8/S16/S24 measurement exists. First attempt was invalid from stdio pipe backpressure; post-correction execution exposed a second evidence-durability flaw. No model/runtime performance claim follows.
+No valid S8/S16/S24 scientific measurement exists.
 
-## 5. Harness recovery — GO
+Stage1R showed the frozen `llama-cli` frontend is interactive and entered a repeated `> ` / `readline` loop, generating ~4.55 GB output. The associated ~14 GiB swap is excluded from model-memory conclusions because the prior harness also retained unbounded output bookkeeping/full decode.
 
-Classification:
-`LOOM_30B_STAGE1_HARNESS_RECOVERY_GO`.
+## 5. Noninteractive frontend recovery — GO
+
+Result:
+`research/architecture/loom-30b-noninteractive-frontend-recovery-001-result.md`
 
 Evidence:
-`results-local/research/30b-stage1-harness-recovery-001/20260829T195240Z/`
+`results-local/research/30b-noninteractive-frontend-recovery-001/20260829T205441Z/report.json`
 
-Frozen recovered local runner:
-`scripts/loom_30b_apple_moe_paging_stage1_001.py`
-SHA256 `6857a7f7deeb6c8d88db81df4ce06e4ac2e571079971cebdd16718b625930ecf`.
-Size 446 lines / 26,980 bytes.
+Correct one-shot frontend:
+`llama-completion -no-cnv`.
 
-Recovery proves continuous >2 MiB output drain, incremental telemetry, clean/nonzero-exit persistence, and resume-to-pre-inference behavior without launching a model.
+Frozen `llama-completion` SHA256:
+`38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
 
-## 6. Current — Apple MoE Paging Stage1R 001
+Frozen recovered harness SHA256:
+`4b1dd6edb2d8a9bda64a034cbf771b05d2bfc7c267c9ee547b49e8d465154eac`.
+
+Harness now uses direct durable streaming, bounded parent-memory accounting, incremental telemetry/finalization, and a 64 MiB/profile output cap. Synthetic runaway terminated at the cap with ~10.313 MiB parent RSS increase and zero swap delta.
+
+## 6. Current — Stage1R2 001
 
 Preregistration:
-`research/architecture/loom-30b-apple-moe-paging-stage1r-001-preregistration.md`
+`research/architecture/loom-30b-apple-moe-paging-stage1r2-001-preregistration.md`
 
-Reuse only existing verified artifact:
+Reuse only existing verified model:
 `results-local/research/30b-apple-moe-paging-stage1-001/20260829T131816Z/model/Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
 
 Size `12,424,439,872` bytes.
 SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
-No model download authorized.
+No model download/copy/requantization authorized.
 
-Freeze checks before inference:
-- harness SHA exact;
-- model SHA/size exact;
-- source commit exact;
-- binary SHA exact;
-- no conflicting process.
+Before inference verify exact recovered harness SHA, clean frozen source commit, exact model SHA/size and exact `llama-completion` SHA. No runner edit or binary rebuild authorized.
 
-Frozen real-generation sweep remains:
+Frozen real-generation sweep:
 - S8;
 - S16;
 - conditional S24 if S16 safety gate passes;
 - never S32;
 - temp 0, max 96 generated tokens, ctx 1024;
-- `--moe-n-layers 48`, `--no-mmap`, `--no-warmup`, `--cpu-moe`, `-ub 1`;
-- fresh process per measured profile;
+- `--moe-n-layers 48 --no-mmap --no-warmup --cpu-moe -ub 1 -no-cnv`;
+- fresh `llama-completion` process per profile;
 - no post-hoc tuning or retry of a scientifically valid profile.
 
-Evidence must be durable before launch, streamed incrementally during execution, and finalized on all exit paths.
+GO requires at least one coherent clean run and best safe generation >=2.5 tok/s without critical memory/OOM, output-runaway or provenance/evidence failure.
 
-GO requires at least one coherent clean run and best safe generation >=2.5 tok/s without critical host pressure/corruption and with exact provenance/evidence.
+## 7. If Stage1R2 GO
 
-## 7. If Stage1R GO
+Stage2 must establish reproducibility and fresh matched practical/quality comparison against canonical DEEP custom MLX. Measure TTFT/load, decode tok/s, E2E wall, memory/wired/compressed/swap, storage/cache behavior and output quality/correctness.
 
-Stage 2 must establish reproducibility and fresh matched practical/quality comparison against canonical DEEP custom MLX. Measure TTFT/load, decode tok/s, E2E wall, memory/wired/compressed/swap, storage/cache behavior and output quality/correctness.
+Do not replace canonical DEEP solely from one Stage1R2 speed result.
 
-Do not replace canonical DEEP solely from one Stage1R speed result.
+## 8. If Stage1R2 scientific NO_GO
 
-## 8. If Stage1R scientific NO_GO
-
-Do not download a second quant or tune flags post hoc. Diagnose whether the valid observed failure is throughput, memory pressure, compatibility or output corruption. Any alternative quant/runtime requires a fresh preregistration.
+Do not download a second quant or tune flags post hoc. Diagnose the valid bottleneck. Any alternative quant/runtime requires fresh preregistration.
 
 ## 9. Later work
 
