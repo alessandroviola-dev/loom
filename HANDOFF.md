@@ -1,63 +1,64 @@
 # LOOM — Active Handoff
 
-Last updated: 2026-08-28
-Status: ACTIVE — Output Validator v0 remains GO. Validator-Guided Selective Rescue 001 was scientific NO_GO at 5/8 CORRECT. The next cheap guided-repair experiment became MECHANICAL_NO_GO because hidden expected-payload/spec metadata leaked into repair input. A separate pre-guided false acceptance on `V_VERIFY_RULE` also surfaced. Current checkpoint hardens only `V_VERIFY_RULE` with model-free adversarial fixtures before any guided-repair rerun.
+Last updated: 2026-08-29
+Status: ACTIVE — `V_VERIFY_RULE` hardening completed GO. The validator/guided-repair track is now PAUSED by explicit project decision while 30B runtime acceleration becomes the immediate priority.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_VERIFY_RULE_VALIDATOR_HARDENING_001`
-Pi context: `/AGENTS.md` v3.64.
+Current checkpoint: `LOOM_30B_APPLE_MOE_PAGING_FEASIBILITY_001`
+Pi context: `/AGENTS.md` v3.65.
 
 ## Product direction
 
-- 8B BALANCED — provisional primary tier;
-- 30B DEEP — expensive selective tier;
-- FAST — concept retained, legacy 4B parked;
-- LOOM AUTO — validator-first: validated acceptance, cheap repair when independently proven, DEEP only after cheaper verified paths fail.
+- BALANCED 8B remains the fast provisional primary tier (~13 tok/s).
+- DEEP 30B remains quality/escalation tier but current custom MLX runtime is too slow (~1.4 tok/s).
+- FAST concept retained; legacy 4B parked.
+- LOOM AUTO validator-first work remains valid but paused during this runtime investigation.
+- LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
 
-Open-ended semantic verification and automatic validator selection remain separate unresolved tracks. LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
+## Closed validator checkpoint
 
-## Key evidence
+`LOOM_VERIFY_RULE_VALIDATOR_HARDENING_GO`
 
-### Output Validator v0 — GO
-- zero false PASS on its preregistered set;
-- open-ended UNCERTAIN abstention correct;
-- sub-ms overhead.
+Result:
+`research/architecture/loom-verify-rule-validator-hardening-001-result.md`
 
-### Selective Rescue 001 — NO_GO
-- RAW8 2/8 CORRECT -> final 5/8;
-- zero false accepts;
-- fence repair 2/2;
-- DEEP calls 4/8, avoided 4/8;
-- only one DEEP call repaired a residual failure;
-- failed only final >=6/8 gate.
+Evidence:
+`results-local/research/verify-rule-validator-hardening-001/20260829T123542Z/report.json`
 
-### 8B Validator-Guided Repair 001 — MECHANICAL_NO_GO
-Result: `research/architecture/loom-8b-validator-guided-repair-001-result.md`
-Evidence: `results-local/research/8b-validator-guided-repair-001/20260828T204632Z/`
+Observed: 24/24 correct fixtures, FP/FN 0/0, contradiction rejection 2/2, forbidden-heuristic rejection 2/2, p95 0.006542 ms, no inference/network/package mutation.
 
-The harness passed validator spec metadata containing hidden expected-payload information into guided-repair feedback. Therefore guided-repair outputs and aggregates are invalid scientific evidence. No rerun was performed.
+A future fresh sanitized guided-repair suite is PAUSED, not cancelled. Do not execute it now.
 
-Independent diagnostic: T08 was accepted by `V_VERIFY_RULE` while the frozen scorer marked it PARTIAL, and that acceptance happened before guided repair. Therefore leakage does not explain it. Do not merely sanitize feedback and rerun the exposed suite.
+## New external runtime evidence
 
-## Exact next action — VERIFY_RULE Validator Hardening 001
+Public work shows a materially different approach to oversized MoE inference:
+- Potato OS reports Qwen3-30B-A3B low-bpw GGUF around 8–9 tok/s on Raspberry Pi 5 8GB + SSD;
+- an Apple-Silicon llama.cpp PoC implements bounded Metal expert slots, LRU residency, disk-backed expert loading and Metal synchronization;
+- that PoC reports Qwen3-30B-A3B Q6_K on M1 Pro 16GB at 13 tok/s after warmup.
 
-Preregistration:
-`research/architecture/loom-verify-rule-validator-hardening-001-preregistration.md`
+The Apple PoC source is frozen for investigation:
+`kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`, branch `moe-expert-residency`.
+
+These are external reference results only. They do not establish performance on the user's base M1 8GB.
+
+## Exact next action
+
+Read:
+`research/architecture/loom-30b-apple-moe-paging-feasibility-001-preregistration.md`
 
 Create only:
-`scripts/loom_verify_rule_validator_hardening_001.py`
+`scripts/loom_30b_apple_moe_paging_feasibility_001.py`
 
-No model inference.
+Feasibility only:
+1. verify host/toolchain/storage;
+2. fetch exact frozen PoC source commit into results-local;
+3. build native Metal CLI without source patches/package installs;
+4. verify `--moe-n-slots`, `--moe-n-layers`, `--no-mmap`, `--no-warmup` and Apple Metal device path;
+5. source-confirm bounded expert cache/LRU + disk read + Metal sync mechanism;
+6. perform read-only local I/O diagnostic if an existing large artifact is available;
+7. project 8/16/24/32 expert-slot memory envelopes for the M1 8GB;
+8. classify ByteShape Q3_K_S-3.25bpw and IQ3_S-3.29bpw compatibility.
 
-Run exactly 24 fresh model-free fixtures: 8 expected PASS and 16 adversarial expected FAIL across cheap-first, named checks, accept polarity, escalation polarity, forbidden heuristics and contradiction cases.
+No model download. No inference. No package-manager mutation. No source patching. No Git commit/push.
 
-GO requires:
-- 24/24 valid records;
-- false PASS 0/16;
-- PASS recall >=7/8;
-- contradiction rejection 2/2;
-- forbidden-heuristic rejection 2/2;
-- p95 <5 ms;
-- standard library only, zero network/package/model mutation.
-
-If GO, next checkpoint will be a fresh guided-repair suite with sanitized allowlisted failure reports. Do not reuse the exposed T01–T08 tasks or any hidden validator-spec payload.
+If GO, the following checkpoint may authorize exactly ONE ~12.5GB GGUF download and a bounded real-generation test.
