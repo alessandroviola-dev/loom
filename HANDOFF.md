@@ -1,96 +1,82 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — Stage2 product-candidate validation completed GO. Apple Metal MoE paging S24 is now canonical `loom-deep`. Current task is the 30B acceleration funnel, beginning with a bounded persistent/cache feasibility audit inspired by mini-SGLang concepts.
+Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Persistent/cache feasibility audit completed GO. Current checkpoint is the preregistered no-patch `--prompt-cache` experiment before paging/I/O attribution.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_ACCELERATION_PERSISTENT_CACHE_FEASIBILITY_001`
-Pi context: `/AGENTS.md` v3.72.
+Current checkpoint: `LOOM_30B_ACCEL_PROMPT_CACHE_001`
+Pi context: `/AGENTS.md` v3.73.
 
-## Product direction
+## Canonical DEEP
 
-- BALANCED 8B remains provisional primary at ~13 tok/s.
-- DEEP is now Qwen3-30B-A3B-Instruct-2507 Q3_K_S-3.25bpw on Apple Metal MoE paging S24.
-- Historical custom MLX ~1.4 tok/s is retained as historical comparison/fallback only.
-- FAST retained conceptually; legacy 4B parked.
-- LOOM AUTO validator-first work remains paused during 30B acceleration R&D.
-- LOOM Heretic remains mandatory after initial runtime/capability optimization.
-
-## Stage1R2 — COMPLETE / GO
-
-Canonical result:
-`research/architecture/loom-30b-apple-moe-paging-stage1r2-001-result.md`
-
-Validated S24 baseline:
-- 4.40 generation tok/s;
-- 3.95 prompt tok/s;
-- load 14.426 s;
-- E2E 37.704 s;
-- RSS 2935.766 MiB;
-- swap 1125.94 MiB;
-- minimum headroom 13%;
-- no critical pressure/OOM/corruption/runaway.
-
-Model SHA256:
+Model:
+`Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
+SHA256:
 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
 
-Frozen runtime source:
-`kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
+Runtime:
+`kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
+with `llama-completion -no-cnv` SHA256 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
 
-Frontend:
-`llama-completion -no-cnv`, SHA256 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
+Profile:
+S24.
 
-## Stage2 comparability — COMPLETE
+Validated generation baseline:
+~4.39–4.40 tok/s.
 
-Historical MLX and Apple candidate are architecture-matched but checkpoint-different. Product utility comparisons are valid; same-checkpoint runtime-only superiority claims are not.
+Stage2 product-candidate result:
+`LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
+Apple S24 is canonical DEEP on product-utility grounds.
 
-Historical MLX:
-`Qwen/Qwen3-30B-A3B-MLX-4bit@4e2776a4cc73a8a251d0b797010a5b07fd541a3e`.
-
-New DEEP upstream:
-`Qwen/Qwen3-30B-A3B-Instruct-2507`.
-
-## Stage2 product-candidate validation — COMPLETE / GO
+## Persistent/cache feasibility — COMPLETE / GO
 
 Canonical result:
-`research/architecture/loom-30b-stage2-product-candidate-validation-001-result.md`
+`research/architecture/loom-30b-accel-persistent-cache-feasibility-001-result.md`
+
+Evidence:
+`results-local/research/30b-accel-persistent-cache-feasibility-001/20260830T101246Z/`
 
 Classification:
-`LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
+`LOOM_30B_ACCEL_PERSISTENT_CACHE_FEASIBILITY_GO`.
 
-Block A Apple S24 reproducibility:
-- 4.38 / 4.39 / 4.39 tok/s;
-- median 4.39 tok/s;
-- no critical pressure/runaway; peak swap about 1.5 GiB.
+Key findings:
+- no built `llama-server` is available;
+- built canonical `llama-completion` exposes explicit `--prompt-cache` support;
+- first no-patch experiment should compare stable-prefix warm prompt cache against cache-disabled target baseline;
+- audit performed no inference, GGUF open, patch, build, download, package install or Git action.
 
-Matched practical suite:
-- objective T1–T5: historical 2/5, Apple 4/5;
-- rubric T6–T7: historical 6/6, Apple 5/6;
-- pooled generation: 1.444 vs 4.059 tok/s = 2.81x;
-- median E2E: 65.909 vs 26.380 s = 0.40x;
-- no critical memory/OOM/corruption/runaway.
+## Exact next action — prompt cache 001
 
-All frozen promotion gates passed. Apple S24 is canonical DEEP on product-utility grounds.
+Preregistration:
+`research/architecture/loom-30b-accel-prompt-cache-001-preregistration.md`
 
-## Exact next action — acceleration feasibility audit
+Three independent rounds. Each round:
+1. B: cache-disabled target prompt in a fresh process;
+2. W: warm prompt with a fresh per-round `--prompt-cache` file;
+3. C: target prompt in a fresh process using that same cache file.
 
-Primary architecture reference: mini-SGLang concepts adapted independently for Apple Silicon.
+Stable prefix, warm suffix and target suffix are frozen byte-for-byte in the preregistration.
 
-First audit before runtime mutation:
-1. inspect frozen fork/build for persistent frontend/server support;
-2. identify stable-prefix / KV or prompt-cache mechanisms already available;
-3. verify whether S24 MoE paging flags are accepted by the persistent frontend;
-4. identify observable cache/prompt/decode metrics without source patching;
-5. determine whether existing build can test persistent/warm behavior without model download or source mutation;
-6. map expert/I/O prefetch hooks in the frozen source for the later direct decode-throughput experiment.
+Primary metric:
+median C/B target prompt-eval wall ratio.
 
-No production promotion work remains: DEEP promotion is complete.
+GO requires:
+- median prompt-eval wall ratio <=0.70;
+- median target E2E C/B <1.00;
+- warm-cache generation throughput >=90% of baseline generation throughput;
+- deterministic correct outputs;
+- no critical memory/OOM/corruption/runaway;
+- peak swap <=3.5 GiB;
+- complete durable evidence;
+- no model/source/runtime/package mutation.
 
-After audit, preregister first acceleration experiment. Priority sequence:
-- persistent process/cache behavior;
-- paging/I/O attribution;
-- overlap/expert prefetch;
-- controlled lighter quant only under a separate download/quality preregistration if still justified;
-- Caveman-style context packing later for end-to-end agent speed.
+Prompt cache is evaluated as a prefill/E2E optimization only; it is not a direct decode-speed claim.
 
-Target: 5+ tok/s first; investigate 6–9 tok/s without unacceptable quality or memory cost.
+## After prompt-cache
+
+Proceed to paging/I/O attribution to isolate direct decode bottlenecks in S24. Use that evidence to choose the first source-level expert prefetch/overlap experiment inspired by mini-SGLang principles.
+
+Acceleration target:
+5+ tok/s first, then investigate 6–9 tok/s without unacceptable quality or memory cost.
+
+Later: Caveman-style deterministic context packing for end-to-end agent speed. Validator work remains paused; Heretic remains mandatory later.
