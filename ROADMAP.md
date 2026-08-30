@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-30
-Current: Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache 001 closed MECHANICAL_NO_GO because of output-budget/validator design, despite strong diagnostic cache reuse. Immediate priority is Prompt Cache R1 recovery, then paging/I/O attribution. Validator/guided-repair remains PAUSED.
-Canonical context: `/AGENTS.md` v3.74.
+Current: Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache 001 closed MECHANICAL_NO_GO because of output-budget/validator design, despite strong diagnostic cache reuse. R1 then stopped before inference because its wrapper-freeze rule was incompatible with the R1 recovery deltas. Immediate priority is Prompt Cache R2 with a separately derived/frozen research wrapper, then paging/I/O attribution. Validator/guided-repair remains PAUSED.
+Canonical context: `/AGENTS.md` v3.75.
 
 ## 1. Product direction
 
@@ -58,20 +58,46 @@ Mechanical defects:
 - `-n 8` truncated target `4317`;
 - exact-string warm validator rejected semantically correct explanatory output containing `ambra`.
 
-## 6. Current — Prompt Cache R1 001
+## 6. Prompt Cache R1 — MECHANICAL_NO_GO before inference
+
+Canonical result:
+`research/architecture/loom-30b-accel-prompt-cache-r1-001-result.md`
+
+Evidence:
+`results-local/research/30b-accel-prompt-cache-r1-001/20260830T105237Z/`.
+
+R1 correctly stopped before inference after verifying the original wrapper SHA256:
+`1c62f4ab53e0c31bf3c725991d1f87a3f81cd75ab91d6da2e1b05bf8a499ba5e`.
+
+The verified wrapper hard-coded `-n 8`, exact-string validation and Prompt Cache 001 evidence/classification handling. Because R1 also required that wrapper unchanged while requiring `-n 24` and semantic validation, R1 was mechanically unexecutable. No new model measurement occurred.
+
+## 7. Current — Prompt Cache R2 001
 
 Preregistration:
-`research/architecture/loom-30b-accel-prompt-cache-r1-001-preregistration.md`
+`research/architecture/loom-30b-accel-prompt-cache-r2-001-preregistration.md`
 
-Mechanical recovery deltas only:
+Scientific conditions remain unchanged from the intended R1 recovery:
+- exact original prompts;
+- canonical S24;
 - `-n 24`;
-- frozen semantic validation (`ambra` for W, standalone `4317` for B/C).
+- frozen semantic validation (`ambra` for W, standalone `4317` for B/C);
+- B/W/C order;
+- three rounds;
+- fresh cache per round;
+- same acceleration thresholds;
+- no runtime/model/package mutation.
 
-Everything else remains frozen: prompts, S24, B/W/C order, three rounds, fresh cache per round, same acceleration thresholds and no runtime/model mutation.
+R2 explicitly repairs only the harness contract:
+- verify and preserve the frozen Prompt Cache 001 parent wrapper;
+- derive a separate R2 wrapper before inference;
+- permit only preregistered mechanical wrapper deltas;
+- synthetic-test without opening the GGUF;
+- freeze and persist derived-wrapper SHA before inference;
+- forbid wrapper edits after inference begins.
 
-If R1 GO, prompt cache becomes a validated prefill/E2E optimization for stable-prefix workloads. It still does not count as direct decode acceleration.
+If R2 GO, prompt cache becomes a validated prefill/E2E optimization for stable-prefix workloads. It still does not count as direct decode acceleration.
 
-## 7. Next decode-focused checkpoint
+## 8. Next decode-focused checkpoint
 
 Paging/I/O attribution on canonical S24:
 - expert hit/miss behavior;
@@ -82,7 +108,7 @@ Paging/I/O attribution on canonical S24:
 
 Do not patch runtime before attribution is completed and a new intervention is preregistered.
 
-## 8. Later work
+## 9. Later work
 
 After 30B runtime priority:
 - Caveman context packing;
