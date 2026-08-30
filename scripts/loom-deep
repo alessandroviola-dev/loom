@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# Unified local-only LOOM DEEP profile manager (WP4).
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=/dev/null
+source "$ROOT/config/loom-deep-profiles.env"
+STATE="$ROOT/.loom/runtime/loom-deep"
+PROFILE_FILE="$ROOT/.loom/loom-deep-profile"
+PID_FILE="$STATE/llama-server.pid"
+RUN_PROFILE_FILE="$STATE/profile"
+LOG_FILE="$STATE/llama-server.log"
+URL="http://${LOOM_DEEP_HOST}:${LOOM_DEEP_PORT}"
+mkdir -p "$STATE" "$(dirname "$PROFILE_FILE")"
+
+selected_profile() {
+  local profile="fast"
+  [[ -s "$PROFILE_FILE" ]] && profile="$(<"$PROFILE_FILE")"
+  case "$profile" in fast|unlocked) printf '%s\n' "$profile";; *) echo "invalid selected profile: $profile" >&2; exit 64;; esac
+}
+profile_values() {
+  PROFILE="$(selected_profile)"
+  case "$PROFILE" in
+    fast) MODEL="$LOOM_DEEP_FAST_MODEL"; ALIAS="$LOOM_DEEP_FAST_ALIAS";;
+    unlocked) MODEL="$LOOM_DEEP_UNLOCKED_MODEL"; ALIAS="$LOOM_DEEP_UNLOCKED_ALIAS";;
+  esac
+}
+running() { [[ -s "$PID_FILE" ]] && kill -0 "$(<"$PID_FILE")" 2>/dev/null; }
+stop_managed() {
+  if ! running; then rm -f "$PID_FILE" "$RUN_PROFILE_FILE"; return 0; fi
+  local pid="$(<"$PID_FILE")"
+  kill -TERM "$pid"
+  for _ in $(seq 1 45); do
+    kill -0 "$pid" 2>/dev/null || { rm -f "$PID_FILE" "$RUN_PROFILE_FILE"; return 0; }
+    sleep 1
+  done
+  echo "managed server did not stop; refusing to SIGKILL" >&2
+  return 1
+}
+# Compatibility helpers can have been used before WP4. Stop only their recorded LOOM PIDs;
+# never touch an unowned listener.
+stop_legacy() {
+  "$ROOT/scripts/loom-deep-server" stop >/dev/null 2>&1 || true
+  "$ROOT/scripts/loom-deep-r2-abliterated-q3ks-server" stop >/dev/null 2>&1 || true
+}
+port_free() {
+  if lsof -nP -iTCP:"$LOOM_DEEP_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "port ${LOOM_DEEP_PORT} is already occupied; refusing to start an additional server" >&2
+    lsof -nP -iTCP:"$LOOM_DEEP_PORT" -sTCP:LISTEN >&2 || true
+    return 1
+  fi
+}
+case "${1:-status}" in
+  use)
+    [[ $# -eq 2 && ( "$2" == fast || "$2" == unlocked ) ]] || { echo "usage: $0 use {fast|unlocked}" >&2; exit 64; }
+    stop_managed
+    stop_legacy
+    printf '%s\n' "$2" > "$PROFILE_FILE"
+    profile_values
+    echo "selected: $PROFILE ($ALIAS); server stopped"
+    ;;
+  start)
+    profile_values
+    if running; then echo "already running: $(<"$PID_FILE") $URL ($(<"$RUN_PROFILE_FILE"))"; exit 0; fi
+    rm -f "$PID_FILE" "$RUN_PROFILE_FILE"
+    [[ -x "$ROOT/$LOOM_DEEP_BIN" ]] || { echo "missing executable: $LOOM_DEEP_BIN" >&2; exit 1; }
+    [[ -f "$ROOT/$MODEL" ]] || { echo "missing model: $MODEL" >&2; exit 1; }
+    port_free
+    (
+      cd "$ROOT"
+      exec "$ROOT/$LOOM_DEEP_BIN" --offline --host "$LOOM_DEEP_HOST" --port "$LOOM_DEEP_PORT" --alias "$ALIAS" \
+        --ctx-size "$LOOM_DEEP_CTX" --parallel "$LOOM_DEEP_PARALLEL" \
+        --moe-n-slots "$LOOM_DEEP_SLOTS" --moe-n-layers "$LOOM_DEEP_MOE_LAYERS" \
+        --no-mmap --no-warmup --cpu-moe -b "$LOOM_DEEP_CTX" -ub 1 --cache-ram "$LOOM_DEEP_CACHE_RAM" --no-ui-mcp-proxy \
+        --model "$ROOT/$MODEL" --log-file "$LOG_FILE"
+    ) >>"$LOG_FILE" 2>&1 &
+    echo $! > "$PID_FILE"; printf '%s\n' "$PROFILE" > "$RUN_PROFILE_FILE"
+    for _ in $(seq 1 180); do
+      curl -fsS "$URL/health" >/dev/null && { echo "started: $(<"$PID_FILE") $URL ($PROFILE/$ALIAS)"; exit 0; }
+      running || { echo "server exited; inspect $LOG_FILE" >&2; exit 1; }
+      sleep 1
+    done
+    echo "server did not become healthy; inspect $LOG_FILE" >&2; exit 1
+    ;;
+  stop) stop_managed; echo "stopped";;
+  status)
+    profile_values
+    if running; then echo "running: $(<"$PID_FILE") $URL ($(<"$RUN_PROFILE_FILE"))"; curl -fsS "$URL/health" || true
+    else rm -f "$PID_FILE" "$RUN_PROFILE_FILE"; echo "not running; selected: $PROFILE ($ALIAS)"; exit 1; fi
+    ;;
+  health) curl -fsS "$URL/health";;
+  current) profile_values; printf 'selected: %s (%s)\nendpoint: %s\nmodel: %s\n' "$PROFILE" "$ALIAS" "$URL" "$MODEL";;
+  *) echo "usage: $0 {use fast|unlocked|start|stop|status|health|current}" >&2; exit 64;;
+esac
