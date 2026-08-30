@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.84
+Version: 3.85
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired for the current push.
@@ -66,15 +66,6 @@ Validated matched S24/S32 3x96-token A/B:
 - E2E ratio `0.8172`;
 - byte-identical outputs.
 
-S32 resources:
-- peak RSS `3914.6 MiB`;
-- peak sampled swap `1651.88 MiB`;
-- minimum sampled free memory `10%`;
-- no crash/OOM/corruption/critical pressure indication.
-
-Final flags include:
-`--ctx-size 4096 --parallel 1 --moe-n-slots 32 --moe-n-layers 48 --no-mmap --no-warmup --cpu-moe -b 4096 -ub 1 --cache-ram 512`
-
 Operational target:
 - `scripts/loom-deep-server start|status|health|stop`;
 - WebUI `http://127.0.0.1:18080/`;
@@ -83,21 +74,24 @@ Operational target:
 WP1 result:
 `research/integration/loom-runtime-productization-wp1-result.md`
 
-Evidence:
-`results-local/runtime-productization-wp1/20260830T124040Z/`
+Lifecycle script persistence commit:
+`75e210f4d46cb8b7955e46763e329f28f37b699e`
+
+Validated lifecycle script SHA256:
+`616752d8bf3da44b5ab5244f429c03b6be7e30c917f6aa6e8651a03f6ed1d939`
 
 ## WP2 — COMPLETE / GO / PERSISTED
 
 Classification:
 `LOOM_CONTEXT_INTELLIGENCE_WP2_GO`.
 
-Canonical implementation commit:
+Implementation commit:
 `0e249f8f5cfaf89398d01e2ee50281fb75b86cd7`
 
 Contract:
 `research/integration/loom-context-intelligence-wp2.md`
 
-Canonical result:
+Result:
 `research/integration/loom-context-intelligence-wp2-result.md`
 
 Evidence:
@@ -114,49 +108,113 @@ Validated final benchmark:
 - A/B/C objective success `6/7` each; shared JSON cap miss baseline-equivalent;
 - combined heavy-context median provider-input reduction `23.24%`;
 - no-op provider-input overhead `0%`;
-- recovery verification `6/6`, `100%` SHA-verified;
-- no accepted wrong result from stale/incorrect memory;
-- real Pi local-model combined-path request passed;
-- canonical provider/model label is now `loom-local/loom-deep-30b-s32`;
-- S32 server remained healthy.
+- recovery `6/6`, `100%` SHA-verified;
+- real Pi combined-path request passed;
+- canonical provider/model label `loom-local/loom-deep-30b-s32`.
 
-Rollback:
+Rollback Context Intelligence:
 `LOOM_CONTEXT_INTELLIGENCE=0 pi --model loom-local/loom-deep-30b-s32`
 
 Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems.
 
-## Repository persistence audit — OPEN MECHANICAL ITEM
-
-The WP2 commit is reviewed and persisted. However, the validated WP1 lifecycle script `scripts/loom-deep-server` is still present only as an untracked local file and is absent from GitHub.
-
-Before WP3 begins, persist **only** the exact validated `scripts/loom-deep-server` file through an explicitly authorized bounded commit. Do not sweep in the many unrelated/historical untracked scripts.
-
-`config/loom-deep-server.env` is already persisted by the WP2 commit.
-
-## Later macro packages
-
-### WP3 — Behavioral Transform — PLANNED / NOT AUTHORIZED
+## Current checkpoint — WP3 Behavioral Transform
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
 
-Technical search priority:
-1. Abliterix-derived MoE-aware methodology adapted to LOOM;
-2. Heretic;
-3. Senbonzakura-style multi-direction methods;
-4. clean LOOM-native equivalent when upstream tooling is incompatible.
+Status: **AUTHORIZED / ACTIVE**.
 
-Select by fit to GGUF/llama.cpp/Apple Silicon. Prefer a small reversible/runtime-loadable adapter when technically valid. Prompt-only behavior does not satisfy WP3.
+Authoritative contract:
+`research/integration/loom-behavioral-transform-wp3.md`
 
-### WP4 — Final Integration + Acceptance — PLANNED
+Goal:
+produce and validate an **actual model/adapter-level behavioral transform** for canonical LOOM DEEP while preserving capability, runtime usability, and rollback.
+
+Prompt-only jailbreak/system-prompt behavior does not satisfy WP3.
+
+### WP3 method priority
+
+Use method families as engineering references, not mandatory dependencies:
+
+1. **LOOM-native low-rank directional adapter** using the Heretic/projected-abliteration core as the lowest-cost production candidate;
+2. **Abliterix-derived MoE-aware refinement** when measured evidence justifies expert/router/layer-specific treatment;
+3. **Senbonzakura-derived multi-direction/subspace** if a stable single direction remains materially insufficient;
+4. another clean low-rank directional equivalent only if upstream-oriented routes are mechanically incompatible.
+
+Current external reality:
+- Abliterix has MoE/Qwen A3B methods but documents Linux/CUDA as its production environment and large MoE reference runs far beyond the M1 8 GiB budget;
+- Heretic's transferable core is streamed residual means + directional low-rank editing, while its bitsandbytes/NF4 path is not mandatory for LOOM;
+- Senbonzakura adds multi-direction refusal-subspace editing but its upstream full-precision editing path is also not a natural M1-8GiB production route;
+- llama.cpp supports separate GGUF LoRA adapters and server-side LoRA loading, which is the preferred final artifact path.
+
+Do not port/install these frameworks wholesale merely to satisfy naming. Prefer a clean LOOM-native implementation using documented mathematical ideas and exact provenance. Avoid copying AGPL implementation code without explicit license review.
+
+### WP3 architecture target
+
+Preferred path:
+
+`frozen contrast sets -> streamed residual statistics -> stable direction/subspace -> low-rank delta -> GGUF-compatible adapter -> canonical llama-server -> frozen behavior/preservation/resource A/B`
+
+Preserve the canonical quantized GGUF as base. Do not require a resident BF16/FP16 30B copy if a tensor-streamed/adapter route can avoid it.
+
+Start cheap:
+- streaming residual mean;
+- mean/projected mean direction;
+- attention output projection first;
+- rank 1 first;
+- small bounded strength/layer sweep;
+- only escalate to MoE-specific or multi-direction methods when measured evidence supports it.
+
+Do not begin with broad Optuna/TPE search.
+
+### WP3 execution
+
+Pi may:
+- inspect current upstream method repos/docs and freeze exact reference commits;
+- create project-local temporary environments;
+- minimally instrument an isolated llama.cpp/runtime analysis path if needed for residual extraction;
+- inspect/dequantize only selected GGUF tensors needed to construct a low-rank delta;
+- generate PEFT-like or direct GGUF-compatible LoRA/adapter artifacts;
+- test server loading with adapter;
+- run bounded frozen behavioral/capability/resource evaluations;
+- revert failed candidates and continue through the method ladder.
+
+Pi must preserve:
+- base S32 server/runtime rollback;
+- WP2 Context Intelligence rollback;
+- base model hash and artifact.
+
+### WP3 promotion
+
+`LOOM_BEHAVIORAL_TRANSFORM_WP3_GO` requires:
+- actual adapter/model-level transform;
+- exact provenance/hashes;
+- runtime-loadable transformed profile;
+- material improvement on frozen target-behavior evaluation, target >=50% relative reduction when baseline rate supports that statistic;
+- no material broken/degenerate-output increase;
+- capability non-inferior within frozen tolerance;
+- target >=90% of canonical S32 decode unless a smaller loss is justified by a substantially better behavior/capability Pareto result;
+- safe RAM/swap;
+- real Pi request through transformed profile;
+- successful disable/rollback;
+- durable evidence.
+
+`LOOM_BEHAVIORAL_TRANSFORM_WP3_NO_GO` = bounded valid methods do not produce a useful Pareto improvement.
+
+`LOOM_BEHAVIORAL_TRANSFORM_WP3_PHYSICAL_BLOCKED` = actual transform cannot be produced/evaluated because of proven host/toolchain/representation constraints after the bounded method ladder is exhausted.
+
+Do not return after routine candidate failures.
+
+## WP4 — PLANNED / NOT AUTHORIZED
 
 Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
 
-Assemble the best validated outputs from WP1-WP3 and run end-to-end acceptance.
+Assemble the best validated WP1-WP3 outputs and run end-to-end final acceptance.
 
 ## Current state
 
-WP1: GO.
+WP1: GO and fully persisted.
 WP2: GO and persisted.
-Current action: persist the single missing validated WP1 lifecycle script. Do not begin WP3 yet.
+WP3: authorized and active.
+WP4: not authorized.
