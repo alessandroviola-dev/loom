@@ -1,114 +1,108 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache R2 is validated GO for stable-prefix prefill/E2E. External non-mutating paging/I/O tracing preflight completed scientific NO_GO because the current macOS session could not validate a high-value per-process read observable. Current checkpoint is source-level paging/I/O instrumentation design only; no source patch/build/model run is yet authorized.
+Status: ACTIVE — user-directed acceleration mode. Micro-checkpoints are now internal gates inside one autonomous full-capability integration sprint. Goal is a usable end-to-end LOOM system today: canonical 30B DEEP runtime, local API, web UI, Pi integration, best validated acceleration, lightweight context/memory/observability improvements, and an actual validated behavioral-freedom transform where technically feasible on the reference M1 8 GiB host.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_ACCEL_PAGING_IO_INSTRUMENTATION_DESIGN_001`
-Pi context: `/AGENTS.md` v3.77.
+Current checkpoint: `LOOM_FULL_CAPABILITY_INTEGRATION_SPRINT_001`
+Pi context: `/AGENTS.md` v3.78.
 
-## Canonical DEEP
+## Canonical starting point
 
-Model:
+DEEP model:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
 SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
 
-Runtime:
+Runtime baseline:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
-with `llama-completion -no-cnv` SHA256 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
+
+Validated `llama-completion -no-cnv` SHA256:
+`38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
 
 Profile: S24.
 Validated fresh-process decode baseline: ~4.39–4.40 tok/s.
 
-Stage2 product result:
-`LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
-Apple S24 is canonical DEEP.
+## Validated acceleration already retained
 
-## Prompt Cache R2 — GO
-
-Canonical result:
-`research/architecture/loom-30b-accel-prompt-cache-r2-001-result.md`
+Prompt Cache R2:
+`LOOM_30B_ACCEL_PROMPT_CACHE_R2_GO`.
 
 Evidence:
 `results-local/research/30b-accel-prompt-cache-r2-001/20260830T105738Z/`
 
-Validated measurements:
-- all 14 frozen gates passed;
-- 9/9 functionally valid invocations;
+Validated stable-prefix result:
 - median C/B prompt-eval ratio `0.04025`;
 - median C/B E2E ratio `0.10751`;
-- median B/C generation `3.49 / 3.47 tok/s`;
 - decode preservation `99.43%`;
-- cache reuse directly confirmed;
-- peak RSS `2948.83 MiB`;
-- peak swap `1267.56 MiB`.
+- all frozen gates passed.
 
-Scientific interpretation:
-prompt cache is a validated canonical DEEP prefill/E2E optimization for stable-prefix workloads. It is not direct decode acceleration and does not change the canonical ~4.39–4.40 tok/s decode baseline.
+Prompt cache is canonical for reusable stable-prefix prefill/E2E acceleration.
 
-Historical Prompt Cache 001 and R1 remain MECHANICAL_NO_GO and must not be promoted as scientific results.
+## Paging attribution context
 
-## Paging/I/O Attribution Preflight 001 — NO_GO
-
-Canonical result:
-`research/architecture/loom-30b-accel-paging-io-attribution-preflight-001-result.md`
+External non-mutating tracing preflight completed:
+`LOOM_30B_ACCEL_PAGING_IO_ATTRIBUTION_PREFLIGHT_NO_GO`.
 
 Evidence:
 `results-local/research/30b-accel-paging-io-attribution-preflight-001/20260830T111709Z/`
 
-Classification:
-**`LOOM_30B_ACCEL_PAGING_IO_ATTRIBUTION_PREFLIGHT_NO_GO`**.
+Meaning:
+tested native tracing did not expose a validated high-value per-process read observable under the current session constraints. This says nothing about whether paging is a decode bottleneck.
 
-Frozen synthetic probe:
-- 5 deterministic `os.pread` reads;
-- offsets `0`, `4096`, `16384`, `32768`, `49152`;
-- aggregate requested/returned bytes `15,872`;
-- probe SHA256 `0ee66ce40e5865c6288a9ea259b02d7e46d58d3086ca4cc99dd6253c623e095d`;
-- deterministic parser SHA256 `46e996b911b177a0695b8d70edd816b7b606ec1c3c5fef5bb37bf5ff0883797c`.
+Pinned source inspection already established:
+- per-layer LRU hit/miss counters exist internally;
+- misses schedule expert-pool reads;
+- `pread_pool(...)` performs the read loop;
+- pool-read tasks may run concurrently;
+- sidecar completion follows `resolve(...)`.
 
-Result:
-- provenance/no-GGUF/no-mutation/evidence/cleanup gates passed;
-- tested native tracers did not yield usable read observations under the current session constraints;
-- no high-value direct read observable A-C was validated;
-- no method was selected for inference attribution.
+The previously preregistered instrumentation-design checkpoint remains useful research material but is now an internal phase of the full sprint rather than a user-facing stop.
 
-Scientific meaning:
-external non-mutating tracing is not sufficient in the current environment. This result makes no claim about whether expert paging is a decode bottleneck.
+## Current — Full Capability Integration Sprint 001
 
-## Current — Paging/I/O Instrumentation Design 001
+Authoritative sprint contract:
+`research/integration/loom-full-capability-integration-sprint-001.md`
 
-Preregistration:
-`research/architecture/loom-30b-accel-paging-io-instrumentation-design-001-preregistration.md`
+Operating-mode change:
+- Pi works end-to-end;
+- internal tests/gates remain evidence-based;
+- a failed sub-experiment is recorded/reverted and Pi continues;
+- no return to the user for routine GO/NO_GO substeps;
+- stop only on final acceptance or a genuine hard blocker requiring user action/credentials/destructive or security-sensitive host changes.
 
-Purpose:
-design, without implementing, the minimum source-level measurement instrumentation needed for later canonical S24 paging/I/O attribution.
+Final target:
+1. reliable local 30B DEEP serving;
+2. stable local API, preferably OpenAI-compatible;
+3. usable local browser chat;
+4. Pi configured and verified against LOOM;
+5. best validated prompt/cache/runtime acceleration enabled;
+6. source-level paging attribution/optimization performed internally when justified;
+7. lightweight local observability;
+8. Caveman/Cavemem/LoopX-style context and durable-memory mechanisms integrated only when measured useful;
+9. bounded workflow/orchestration ideas used only when beneficial;
+10. actual behavioral-freedom transform attempted using Heretic or a technically valid LOOM-native equivalent, with preservation/resource validation;
+11. one/few-command start/stop and durable operational documentation.
 
-Pinned source facts:
-- `moe_layer` already contains `total_hits` / `total_misses`;
-- `resolve(...)` updates LRU hit/miss state;
-- misses schedule one `pread_pool(...)` task per bound expert pool;
-- `pread_pool(...)` loops on `pread(...)` until the pool stride is transferred;
-- read tasks may execute concurrently via `dispatch_apply`;
-- sidecar completion is signaled after `resolve(...)` completes.
+## Research inputs
 
-The design checkpoint must freeze:
-- exact minimal source locations;
-- exact direct counters and timing semantics;
-- race-free atomic/non-atomic update policy;
-- one final non-hot-path statistics emission point;
-- deterministic machine-readable output schema;
-- exact direct claims vs forbidden interpretations;
-- overhead-validation policy for a later instrumented binary.
+Project repository-paper priority:
+- mini-SGLang — inference/cache/scheduling concepts;
+- Caveman — deterministic context compression/packing;
+- Cavemem — progressive local memory;
+- LoopX — durable state/re-entry;
+- pi-dynamic-workflows — bounded opt-in orchestration;
+- Observal — local measurement/replay philosophy;
+- Heretic — contrastive residual-direction behavioral editing.
 
-No GGUF, inference, source edit, rebuild, package install, runtime mutation or prefetch implementation is allowed in this checkpoint.
+These are sources of mechanisms, not mandatory wholesale dependencies.
 
-## Planned sequence after design
+## Final classification
 
-If instrumentation design GO:
-1. preregister measurement-only instrumentation implementation/build;
-2. produce a separate instrumented binary with frozen diff and SHA;
-3. preregister canonical-vs-instrumented overhead calibration;
-4. only if perturbation is acceptable, run instrumented canonical S24 paging/I/O attribution;
-5. only if attribution demonstrates a material I/O bottleneck with overlap headroom, preregister expert-prefetch/overlap intervention.
+`LOOM_FULL_CAPABILITY_INTEGRATION_SPRINT_GO` only when runtime + API + web + Pi + final behavior-edit profile are genuinely operational and validated.
 
-Acceleration target remains: protect ~4.39–4.40 tok/s, reach 5+ first, then investigate 6–9 tok/s. Caveman context packing remains later work.
+If the entire product stack works but an evidenced physical/toolchain limit prevents an actual model-level behavioral transform on M1 8 GiB, use:
+`LOOM_FULL_CAPABILITY_INTEGRATION_SPRINT_PRODUCT_GO_BEHAVIOR_BLOCKED`.
+
+Do not label prompt-only jailbreak behavior as Heretic/decensoring.
+
+Pi must not commit/push. ChatGPT remains responsible for canonical Git persistence after the final sprint report.
