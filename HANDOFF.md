@@ -1,14 +1,13 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — WP1 Runtime + Product Serving GO and fully persisted; WP2 Context Intelligence GO and persisted; WP3 Behavioral Transform is now authorized and active.
+Status: WP1 Runtime + Product Serving GO and fully persisted; WP2 Context Intelligence GO and persisted; WP3 Behavioral Transform completed locally with valid NO_GO and awaits bounded persistence. WP4 is not authorized.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Pi context: `/AGENTS.md` v3.85.
+Pi context: `/AGENTS.md` v3.86.
 Plan: `research/integration/loom-accelerated-macro-workpackages-v1.md`.
-Current WP3 contract: `research/integration/loom-behavioral-transform-wp3.md`.
 
-## Canonical DEEP
+## Canonical product state
 
 Model:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
@@ -38,11 +37,8 @@ Operational endpoints:
 Lifecycle:
 `scripts/loom-deep-server start|status|health|stop`.
 
-Lifecycle script persistence commit:
+Lifecycle persistence commit:
 `75e210f4d46cb8b7955e46763e329f28f37b699e`.
-
-Validated script SHA256:
-`616752d8bf3da44b5ab5244f429c03b6be7e30c917f6aa6e8651a03f6ed1d939`.
 
 ## WP1 — COMPLETE / GO / FULLY PERSISTED
 
@@ -55,7 +51,7 @@ Result:
 Evidence:
 `results-local/runtime-productization-wp1/20260830T124040Z/`
 
-The validated S32 serving stack, `config/loom-deep-server.env`, and lifecycle script are all represented in the repository. No remaining WP1 persistence blocker.
+Canonical S32 serving stack, config and lifecycle script are represented in Git.
 
 ## WP2 — COMPLETE / GO / PERSISTED
 
@@ -86,7 +82,6 @@ Validated WP2 benchmark:
 - combined heavy-context provider-input reduction **23.24%** median;
 - no-op provider-input overhead **0%**;
 - exact recovery **6/6, 100% SHA-verified**;
-- no accepted stale-memory error;
 - real combined Pi task passed;
 - server remained healthy.
 
@@ -96,71 +91,68 @@ Canonical Pi model label:
 Rollback only Context Intelligence:
 `LOOM_CONTEXT_INTELLIGENCE=0 pi --model loom-local/loom-deep-30b-s32`
 
-## Current — WP3 Behavioral Transform
+## WP3 — COMPLETE LOCALLY / NO_GO — PERSISTENCE PENDING
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
 
-Status: **AUTHORIZED / ACTIVE**.
+Classification:
+`LOOM_BEHAVIORAL_TRANSFORM_WP3_NO_GO`.
 
-Authoritative contract:
+Contract:
 `research/integration/loom-behavioral-transform-wp3.md`
 
-Goal:
-produce an actual model/adapter-level behavioral transform for canonical LOOM DEEP, with frozen behavior evaluation, capability preservation, resource measurement, exact provenance and a reversible runtime-loadable artifact.
+Local final report:
+`research/integration/loom-behavioral-transform-wp3-result.md`
 
-Prompt-only jailbreak/system-prompt changes do not count.
+Evidence:
+`results-local/behavioral-transform-wp3/20260830T144523Z/`
 
-### Method strategy
+Reported tested transform families:
+1. rank-1 directional GGUF LoRA;
+2. MoE-router GGUF LoRA;
+3. rank-4 subspace/multi-direction GGUF LoRA.
 
-WP3 does not mandate installation of Heretic/Abliterix/Senbonzakura.
+All were actually constructed and loaded through canonical `llama-server`, so WP3 is **not** physical/toolchain blocked.
 
-Preferred progression:
-1. LOOM-native Heretic-style/projected single-direction low-rank adapter;
-2. Abliterix-derived MoE-aware refinement only if measured evidence supports it;
-3. Senbonzakura-derived multi-direction/subspace if a stable single direction remains insufficient;
-4. clean alternative low-rank directional route if the upstream-oriented representations are mechanically incompatible.
+Frozen behavior result:
+- held-out refusal baseline/candidates remained `6/6`;
+- target-behavior reduction `0%`;
+- behavior promotion gate failed for all bounded routes;
+- no adapter is promoted.
 
-Why:
-- internal Heretic paper identifies streaming residual means and reversible low-rank edits as the transferable core for constrained hardware;
-- Abliterix adds Qwen MoE-specific concepts but its documented production/reference path is Linux/CUDA and far above M1 8 GiB resources;
-- Senbonzakura adds multi-direction editing but also assumes a much heavier full-precision transformation path upstream;
-- current llama.cpp supports separate GGUF LoRA adapters, which is the preferred final artifact representation.
+Rollback/result integrity:
+- base S32 + WP2 restored;
+- base hashes verified;
+- `127.0.0.1:18080` health passed;
+- rollback tested;
+- WP4 not started.
 
-### Preferred architecture
+Do not weaken the frozen behavior gate after seeing this result and do not substitute prompt-only behavior.
 
-`frozen contrast sets -> streamed residual statistics -> stable direction/subspace -> low-rank delta -> GGUF adapter -> canonical llama-server -> behavior/capability/resource A/B`
+## Current exact action
 
-Preserve the canonical base GGUF. Avoid a resident full BF16/FP16 30B copy when selected-tensor/streaming methods can avoid it.
+Persist the bounded WP3 research package before WP4:
+- final WP3 result document;
+- frozen behavioral/capability evaluation specs needed to reproduce the classification;
+- reusable small WP3 source/scripts/configs that generated/evaluated the tested adapters.
 
-### Internal gates
+Do not commit:
+- generated GGUF/LoRA adapter binaries;
+- full/model artifacts;
+- `results-local/`;
+- caches/temp environments;
+- home-directory config/secrets;
+- unrelated historical untracked scripts.
 
-Pi should autonomously:
-- freeze external method commits/revisions used as references;
-- audit canonical Qwen MoE tensor/adapter mapping;
-- implement bounded residual extraction/streaming parity evidence;
-- start with projected/single-direction attention-output rank-1/low-rank candidates;
-- escalate to MoE-aware or multi-direction methods only if evidence justifies it;
-- generate and load a GGUF-compatible adapter if feasible;
-- compare base vs transformed under frozen behavior/capability/resource tests;
-- preserve base S32 and WP2 rollback throughout.
+After that persistence commit is reviewed, WP4 may be authorized.
 
-Do not return after routine candidate NO_GO results.
+## WP4 — PLANNED / NOT AUTHORIZED
 
-### WP3 classification
+WP4 final product candidate is the best validated state:
+- S32 runtime/server/WebUI/API;
+- serving prompt/KV reuse;
+- Caveman + Cavemem enabled;
+- no WP3 adapter enabled because WP3 is valid NO_GO.
 
-`LOOM_BEHAVIORAL_TRANSFORM_WP3_GO` requires an actual runtime-loadable transform, material frozen behavior improvement, preserved capabilities, practically usable throughput/resources, a real Pi transformed-profile request, successful rollback and durable evidence.
-
-Target primary behavior improvement: >=50% relative reduction when the baseline target/refusal rate is large enough for that statistic to be meaningful.
-
-Target transformed decode: >=90% of canonical S32 median unless a smaller loss is justified by a substantially stronger behavior/capability Pareto result.
-
-`LOOM_BEHAVIORAL_TRANSFORM_WP3_NO_GO` = valid bounded transform families do not give a useful Pareto result.
-
-`LOOM_BEHAVIORAL_TRANSFORM_WP3_PHYSICAL_BLOCKED` = proven host/toolchain/representation constraint prevents all actual model-level transforms after the bounded method ladder.
-
-## Later
-
-WP4 — Final Integration + Acceptance remains planned and not authorized.
-
-Pi should not commit/push during WP3 execution. At the macro boundary ChatGPT may explicitly authorize one reviewed bounded persistence commit under `AGENTS.md`.
+WP4 may classify GO with a documented WP3 NO_GO if all final product acceptance gates pass.
