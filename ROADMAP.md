@@ -1,17 +1,17 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-30
-Current: WP1 Runtime + Product Serving GO and fully persisted. WP2 Context Intelligence GO and persisted. WP3 Behavioral Transform completed locally with valid NO_GO and awaits bounded persistence. WP4 is planned but not authorized.
-Canonical context: `/AGENTS.md` v3.86.
+Current: WP1 Runtime + Product Serving GO and fully persisted. WP2 Context Intelligence GO and persisted. WP3 Behavioral Transform completed valid NO_GO for three GGUF-LoRA families. **WP3-R2 Behavioral Unlock is active** with materially different routes: exact-base abliterated replacement and native llama.cpp control-vector steering. WP4 remains blocked.
+Canonical context: `/AGENTS.md` v3.87.
 Plan: `research/integration/loom-accelerated-macro-workpackages-v1.md`.
+R2 contract: `research/integration/loom-behavioral-unlock-wp3-r2.md`.
 
-## 1. Canonical product state
+## 1. Canonical product baseline
 
 - `loom-deep`: Qwen3-30B-A3B-Instruct-2507 Q3_K_S-3.25bpw on Apple Metal MoE paging **S32** through persistent localhost `llama-server`.
 - canonical Pi model label: `loom-local/loom-deep-30b-s32`.
 - S24 remains validated runtime rollback.
-- Caveman + Cavemem Context Intelligence is enabled by default for the local Pi provider and can be disabled independently.
-- no behavioral adapter is promoted after WP3 NO_GO.
+- Caveman + Cavemem Context Intelligence remains enabled by default and independently disableable.
 
 ## 2. WP1 — Runtime + Product Serving — COMPLETE / GO / PERSISTED
 
@@ -24,19 +24,7 @@ Result:
 Evidence:
 `results-local/runtime-productization-wp1/20260830T124040Z/`
 
-Validated S24/S32 matched A/B:
-- S24 median decode `4.382 tok/s`, E2E `29.185 s`;
-- S32 median decode **5.596 tok/s**, E2E **23.849 s**;
-- decode improvement `1.2768x`;
-- byte-identical outputs.
-
-Operational stack:
-- embedded existing WebUI `http://127.0.0.1:18080/`;
-- OpenAI-compatible API base `http://127.0.0.1:18080/v1`;
-- localhost-only/offline;
-- Pi verified against local server;
-- serving-path stable-prefix reuse validated under `--cache-ram 512`;
-- lifecycle helper `scripts/loom-deep-server` persisted in commit `75e210f4d46cb8b7955e46763e329f28f37b699e`.
+Validated S32 median decode `5.596 tok/s`; S24 rollback `4.382 tok/s`. Local WebUI/API/Pi/cache/lifecycle are validated and persisted.
 
 ## 3. WP2 — Context Intelligence — COMPLETE / GO / PERSISTED
 
@@ -55,19 +43,11 @@ Evidence:
 Canonical Context Intelligence:
 - Caveman deterministic context selection/compression/recovery;
 - Cavemem SQLite/FTS5 progressive project memory;
-- Pi `before_provider_request` bridge for `loom-local`;
-- no extra LLM, embedding model, daemon or model-visible tool schema;
-- reversible/fail-open integration.
+- `23.24%` median heavy-context provider-input reduction;
+- `0%` no-op overhead;
+- `6/6` exact recovery SHA-verified.
 
-Validated final comparison:
-- A/B/C task success `6/7` each;
-- combined heavy-context provider-input reduction **23.24%** median;
-- no-op input overhead **0%**;
-- exact recovery **6/6, 100% SHA-verified**;
-- real combined Pi task passed;
-- server remained healthy.
-
-## 4. WP3 — Behavioral Transform — COMPLETE LOCALLY / NO_GO
+## 4. WP3 — Behavioral Transform — VALID NO_GO
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
@@ -75,33 +55,52 @@ Checkpoint:
 Classification:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3_NO_GO`.
 
-Local result:
-`research/integration/loom-behavioral-transform-wp3-result.md`
+Three actual runtime-loadable GGUF LoRA families were tested: rank-1 directional, MoE-router and rank-4 subspace/multi-direction. All loaded but frozen held-out refusal remained `6/6`, so those methods are rejected.
 
-Evidence:
-`results-local/behavioral-transform-wp3/20260830T144523Z/`
+This is not a physical/toolchain block and not proof that the architecture cannot be unlocked.
 
-Actual runtime-loadable GGUF LoRA transform families tested:
-1. rank-1 directional;
-2. MoE-router;
-3. rank-4 subspace/multi-direction.
+## 5. WP3-R2 — Behavioral Unlock — ACTIVE
 
-Frozen held-out refusal remained `6/6` for every tested candidate, producing `0%` target-behavior reduction. Therefore the frozen promotion gate failed and no adapter is promoted.
+Checkpoint:
+`LOOM_BEHAVIORAL_UNLOCK_WP3_R2`
 
-This is a scientific NO_GO, not a physical block: adapters were actually generated and loaded through canonical `llama-server`.
+Contract:
+`research/integration/loom-behavioral-unlock-wp3-r2.md`
 
-Base S32 + WP2 was restored, hash-verified, health-checked and rollback-tested on port 18080.
+### Route A — exact-base behavioral replacement
 
-Do not relax the frozen behavior gate or substitute prompt-only behavior after this result.
+Research found an independently abliterated derivative of the exact upstream base:
+`huihui-ai/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated`.
 
-Before WP4, persist the bounded reproducibility package: WP3 result, frozen eval specifications, and reusable small source/scripts/configs. Exclude generated adapters/models and `results-local/`.
+GGUF quants are available from:
+`mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-GGUF`.
 
-## 5. WP4 — Final Integration + Acceptance — PLANNED / NOT AUTHORIZED
+First candidate:
+`Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.Q3_K_S.gguf`, published around 13.3 GB, `qwen3moe`.
 
-WP4 should assemble the strongest validated product state:
-- S32 runtime/server/WebUI/API;
-- validated serving-path prompt/KV reuse;
-- Caveman + Cavemem;
-- no behavioral adapter enabled because WP3 completed valid NO_GO.
+Candidate must be treated as untrusted until exact local provenance/metadata/hash/behavior/capability/resource verification.
 
-WP4 may still classify GO when WP3 is explicitly retained as NO_GO, provided clean startup, API/WebUI/Pi, capability/resource, privacy, rollback, exact hashes/provenance and operational documentation all pass.
+### Route B — native activation steering
+
+Current llama.cpp supports control vectors at runtime and includes `cvector-generator` for GGUF models. This acts on layer activations during inference, a materially different intervention from WP3's failed LoRA adapters.
+
+Use frozen contrast data disjoint from final held-out evaluation; bounded mean/PCA, layer-range and scale variants only.
+
+### Promotion target
+
+Retain original WP3 held-out gate unchanged.
+
+`LOOM_BEHAVIORAL_UNLOCK_WP3_R2_GO` requires:
+- actual model-level or activation-level change;
+- >=50% relative reduction from original `6/6` behavior baseline, preferably <=1/6 for a strong candidate;
+- practical capability preservation;
+- stable local serving with performance/RAM/swap evidence;
+- exact hashes/provenance;
+- Pi + WP2 compatibility;
+- clean rollback to canonical S32 + WP2.
+
+If local replacement/control-vector routes fail, inspect other evidence-backed Qwen3-A3B derivatives. External compute is a later explicit user-action boundary, not an automatic action.
+
+## 6. WP4 — BLOCKED / NOT AUTHORIZED
+
+Do not begin final acceptance while WP3-R2 is active.
