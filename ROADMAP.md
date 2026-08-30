@@ -1,9 +1,10 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-30
-Current: accelerated macro-work-package mode. Prompt Cache R2 is validated GO. Current work package is `LOOM_RUNTIME_PRODUCTIZATION_WP1`; later packages cover agent capability, Heretic/behavioral transform, and final integration.
-Canonical context: `/AGENTS.md` v3.79.
+Current: accelerated macro-work-package mode. Prompt Cache R2 is validated GO. Current work package is `LOOM_RUNTIME_PRODUCTIZATION_WP1`; later packages are Context Intelligence (Caveman + Cavemem only), Behavioral Transform, and Final Integration.
+Canonical context: `/AGENTS.md` v3.80.
 Plan: `research/integration/loom-accelerated-macro-workpackages-v1.md`.
+WP1 contract: `research/integration/loom-runtime-productization-wp1.md`.
 
 ## 1. Product direction
 
@@ -40,12 +41,15 @@ Prompt cache is accepted for reusable stable-prefix prefill/E2E acceleration.
 
 External non-mutating tracing preflight completed valid `NO_GO`: current unprivileged tools did not expose a validated high-value per-process read observable.
 
-Pinned source inspection confirms internal LRU hit/miss counters and the `pread_pool(...)` expert-read path. Minimal isolated source-level instrumentation is therefore allowed inside WP1 without another user-facing checkpoint.
+Pinned source inspection confirms internal LRU hit/miss counters and the `pread_pool(...)` expert-read path. Minimal isolated source-level instrumentation is allowed inside WP1 without another user-facing checkpoint.
 
 ## 5. WP1 — Runtime + Product Serving
 
 Checkpoint:
 `LOOM_RUNTIME_PRODUCTIZATION_WP1`
+
+Authoritative contract:
+`research/integration/loom-runtime-productization-wp1.md`
 
 Deliver in one Pi macro task:
 - fastest reliable validated 30B runtime practical on the host;
@@ -53,8 +57,11 @@ Deliver in one Pi macro task:
 - target >=5 tok/s first;
 - retain S24 rollback baseline;
 - persistent localhost serving/API, preferably OpenAI-compatible;
-- validated prompt cache in the serving path where applicable;
-- usable browser chat;
+- directly verified serving-path prompt/prefix caching where applicable;
+- **existing** privacy-respecting browser UI only;
+- prefer native `llama-server` WebUI;
+- do not build a custom LOOM frontend from scratch;
+- if native UI is unsuitable, select an existing open-source local UI only after verifying no required cloud inference/conversation-data egress and no mandatory telemetry in the selected configuration;
 - Pi connected/tested against local LOOM;
 - lightweight operational tracing/health/logs;
 - simple start/stop workflow;
@@ -63,36 +70,38 @@ Deliver in one Pi macro task:
 Do not stop for individual internal NO_GO results. Record/revert and continue.
 
 Runtime stopping rule:
-after three materially different evidence-backed decode interventions fail to beat the best validated runtime, stop micro-optimization and finish product serving.
+after three materially different evidence-backed decode interventions fail to beat the best validated runtime, stop micro-optimization and finish product serving. Reaching >=5 tok/s is a target, not a condition for productization GO if the stopping rule is legitimately exhausted.
 
-## 6. WP2 — Agent Capability Layer
+## 6. WP2 — Context Intelligence
 
 Checkpoint:
-`LOOM_AGENT_CAPABILITY_WP2`
+`LOOM_CONTEXT_INTELLIGENCE_WP2`
 
-Integrate selectively and measure net benefit:
-- Caveman deterministic typed compression/context packing/recovery handles;
-- LoopX durable state/re-entry;
-- Cavemem progressive local memory;
-- Observal lightweight local trace/accounting/replay concepts;
-- pi-dynamic-workflows bounded optional workflows/resume.
+Permanent mechanisms selected for implementation:
+- **Caveman** — deterministic typed compression, context packing, token-budget selection and recovery handles;
+- **Cavemem** — progressive local project memory, compact searchable observations and exact retrieval on demand.
 
-Prefer small LOOM-native implementations over wholesale upstream installs.
+Cavemem selects relevant prior information; Caveman decides what enters the active prompt and how compactly.
 
-## 7. WP3 — Behavioral Transform / Heretic
+Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems. Borrow only small implementation ideas if necessary for Caveman/Cavemem with negligible overhead.
+
+WP2 requires measured net token/task benefit.
+
+## 7. WP3 — Behavioral Transform
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
 
-Separate macro task because canonical DEEP is GGUF while upstream Heretic is Transformers/PEFT-oriented.
-
 Goal:
 actual model/adapter-level behavioral transform with provenance, behavior evidence, capability preservation and runtime-loadable artifact.
 
-Preferred routes:
-1. compatible Heretic representation + exportable low-rank artifact;
-2. valid llama.cpp-compatible adapter/export route;
-3. clean LOOM-native contrastive residual-direction low-rank equivalent.
+Search/implementation priority:
+1. Abliterix-derived MoE-aware methodology adapted to LOOM;
+2. Heretic;
+3. Senbonzakura-style multi-direction methods;
+4. clean LOOM-native equivalent when upstream implementations are incompatible with the actual host/runtime.
+
+Select by technical fit to canonical GGUF/llama.cpp/Apple Silicon, not project popularity. Prefer a small reversible/runtime-loadable adapter over a second full model copy when technically valid.
 
 Prompt-only behavior does not count as WP3 completion.
 
@@ -107,23 +116,19 @@ Required:
 - reliable clean startup;
 - API/web/Pi all operational;
 - selected runtime acceleration active;
-- prompt cache active where applicable;
-- agent capability layer enabled only where net-positive;
+- serving-path prompt/prefix cache active where directly verified;
+- Caveman + Cavemem enabled only in validated net-positive form;
 - behavioral-transform profile loaded/validated or exact physical/toolchain blocker documented;
 - representative capability smoke tests;
 - final performance/memory evidence;
 - exact hashes/provenance;
 - concise operational documentation.
 
-## 9. Research sources
+## 9. Current research inputs
 
 Use mechanisms selectively from:
-- mini-SGLang — KV/prefix reuse, chunked prefill, scheduling/prefetch/overlap;
-- Caveman — context compression/packing;
-- Cavemem — progressive memory;
-- LoopX — durable state;
-- pi-dynamic-workflows — bounded orchestration;
-- Observal — measurement/replay;
-- Heretic — contrastive residual-direction low-rank editing.
+- mini-SGLang — KV/prefix reuse and scheduling/prefetch/overlap for WP1;
+- Caveman + Cavemem for WP2;
+- Abliterix/Heretic/Senbonzakura concepts for WP3.
 
-These are research/engineering inputs, not mandatory dependencies.
+Other repository papers remain available research references but are not current permanent integration requirements.
