@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.86
+Version: 3.87
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired for the current push.
@@ -117,7 +117,7 @@ Rollback Context Intelligence:
 
 Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems.
 
-## WP3 — COMPLETE LOCALLY / NO_GO — PERSISTENCE PENDING
+## WP3 — COMPLETE LOCALLY / VALID NO_GO
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
@@ -125,7 +125,7 @@ Checkpoint:
 Reported classification:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3_NO_GO`.
 
-Authoritative contract:
+Contract:
 `research/integration/loom-behavioral-transform-wp3.md`
 
 Local result:
@@ -134,41 +134,86 @@ Local result:
 Local evidence:
 `results-local/behavioral-transform-wp3/20260830T144523Z/`
 
-Reported bounded outcome:
-- actual GGUF LoRA adapters were produced and loaded through the canonical `llama-server` path;
+Valid bounded outcome:
+- real GGUF LoRA candidates built and loaded through canonical `llama-server`;
 - rank-1 directional route tested;
 - MoE-router route tested;
 - rank-4 subspace/multi-direction route tested;
-- frozen held-out refusal result remained `6/6` for all tested transformed candidates;
-- relative target-behavior reduction therefore remained `0%`, failing the frozen behavior promotion gate;
-- no transform is promoted;
-- base S32 + WP2 was restored, hash-verified, health-checked, and rollback-tested on `127.0.0.1:18080`;
-- WP4 was not started.
+- original frozen held-out refusal remained `6/6` for all candidates;
+- target-behavior reduction `0%`;
+- no WP3 adapter promoted;
+- base S32 + WP2 restored and rollback-tested.
 
 Interpretation:
-WP3 is a valid scientific NO_GO, not a physical/toolchain block. The project demonstrated that real runtime-loadable transforms can be created on this host, but the bounded validated method families did not produce a useful behavioral improvement under the frozen evaluation.
+WP3 falsified those three bounded adapter families. It did **not** prove the Qwen3-30B-A3B architecture cannot be behaviorally unlocked.
 
-Do not weaken or replace the frozen WP3 behavior gate after seeing this result. Do not relabel prompt-only behavior as a model transform. Do not promote any WP3 adapter.
+Do not alter the original WP3 frozen evaluation after the result. R2 must retain direct comparability to it.
 
-Before WP4 begins, persist only the bounded reusable WP3 source/spec/result files through the explicit macro-boundary exception. Exclude generated adapter/model artifacts and `results-local/` evidence from Git.
+## Current checkpoint — WP3-R2 Behavioral Unlock
+
+Checkpoint:
+`LOOM_BEHAVIORAL_UNLOCK_WP3_R2`
+
+Status: **AUTHORIZED / ACTIVE**.
+
+Authoritative contract:
+`research/integration/loom-behavioral-unlock-wp3-r2.md`
+
+User direction:
+continue research toward an actually behaviorally unlocked local model rather than moving to WP4 with the WP3 NO_GO state.
+
+### R2 materially different routes
+
+1. **Exact-base external abliterated replacement candidate**
+   - upstream behavioral derivative: `huihui-ai/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated`;
+   - declared base: `Qwen/Qwen3-30B-A3B-Instruct-2507`;
+   - GGUF quant source: `mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-GGUF`;
+   - first candidate: `Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.Q3_K_S.gguf`, published around 13.3 GB, architecture `qwen3moe`.
+
+2. **Native llama.cpp activation/control-vector steering**
+   - use `cvector-generator` on GGUF;
+   - runtime supports `--control-vector`, `--control-vector-scaled`, and `--control-vector-layer-range`;
+   - this changes activations during inference and is materially different from the failed WP3 LoRA weight edits.
+
+3. **Evidence-backed external Qwen3-A3B derivatives** only if A/B fail, with exact local verification before any promotion.
+
+4. **External-compute escalation** only after local routes are exhausted and only after returning to user with a specific justified plan; do not purchase/require credentials autonomously.
+
+### R2 invariants
+
+- preserve original canonical base GGUF/hash;
+- preserve S32 and WP2 rollback;
+- do not trust third-party `abliterated` labels without local frozen evaluation;
+- original WP3 held-out behavior set remains unchanged and directly reused;
+- candidate may add capability/drift controls, but may not rewrite the old behavior gate;
+- no prompt-only success claim;
+- no public exposure;
+- do not start WP4.
+
+### R2 GO target
+
+`LOOM_BEHAVIORAL_UNLOCK_WP3_R2_GO` requires:
+- actual model-level or activation-level intervention;
+- >=50% relative reduction against the original frozen `6/6` behavior baseline, preferably <=1/6 for a strong candidate;
+- practical capability non-inferior on frozen controls;
+- exact provenance/hashes;
+- stable local serving with throughput/RAM/swap recorded;
+- localhost API and one real Pi request through WP2 where applicable;
+- clean rollback to canonical S32 + WP2.
+
+Do not stop after a routine candidate failure. Follow the R2 contract through the replacement/control-vector ladder.
 
 ## WP4 — PLANNED / NOT AUTHORIZED
 
 Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
 
-WP4 must assemble the best validated product state:
-- WP1 S32 runtime/server/WebUI/API;
-- validated serving-path prompt/KV reuse;
-- WP2 Caveman + Cavemem;
-- **no behavioral adapter enabled**, because WP3 completed valid NO_GO;
-- exact WP3 NO_GO retained as research evidence rather than silently retried or relabeled.
-
-WP4 acceptance may still be GO when WP3 is valid NO_GO, provided final product operation/capability/resource/provenance gates pass and the absence of a promoted behavioral transform is explicit.
+WP4 remains blocked until WP3-R2 completes or returns a genuine external-compute/user-action blocker.
 
 ## Current state
 
 WP1: GO and fully persisted.
 WP2: GO and persisted.
-WP3: scientifically complete locally with NO_GO; bounded Git persistence pending.
+WP3: valid NO_GO for three adapter families.
+WP3-R2: authorized and active with materially different routes.
 WP4: not authorized.
