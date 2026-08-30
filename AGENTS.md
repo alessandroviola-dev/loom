@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.89
+Version: 3.90
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired for the current push.
@@ -18,16 +18,6 @@ Default rule: Pi must not commit/push/PR.
 
 Narrow exception: at a completed macro-work-package boundary, ChatGPT may explicitly authorize one bounded persistence commit/push containing only reviewed package implementation/result/docs. Never include `.loom/`, `results-local/`, personal/home-directory config, secrets, caches, model artifacts, generated databases, or unrelated working-tree changes.
 
-## Operating rule
-
-Inside an authorized macro work package:
-- do not return after routine internal GO/NO_GO results;
-- record failed experiments;
-- fix or revert regressions;
-- continue to the next justified action;
-- preserve frozen scientific gates;
-- keep one known-good runnable baseline.
-
 ## Core rules
 
 1. evidence over narrative;
@@ -43,7 +33,7 @@ Inside an authorized macro work package:
 
 ## WP1 — Runtime + Product Serving — COMPLETE / GO / PERSISTED
 
-Canonical FAST model:
+FAST model:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
 
 SHA256:
@@ -52,21 +42,10 @@ SHA256:
 Pinned source:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
 
-Canonical `llama-server` SHA256:
+Pinned `llama-server` SHA256:
 `58aec7b9a924ce0bc7910b889d91cc6d55064991459ddddea70a5c8f3ca08506`
 
-Runtime: S32. Rollback: S24.
-
-Validated matched S24/S32:
-- S24 median decode `4.382 tok/s`, E2E `29.185 s`;
-- S32 median decode `5.596 tok/s`, E2E `23.849 s`;
-- byte-identical outputs.
-
-Current compatibility lifecycle:
-`scripts/loom-deep-server start|status|health|stop`.
-
-Lifecycle persistence commit:
-`75e210f4d46cb8b7955e46763e329f28f37b699e`.
+Runtime: S32. Historical validated median decode `5.596 tok/s`.
 
 ## WP2 — Context Intelligence — COMPLETE / GO / PERSISTED
 
@@ -80,24 +59,21 @@ Canonical layer:
 - Caveman-derived deterministic host-side packing/compression/recovery;
 - Cavemem-derived SQLite/FTS5 project memory;
 - Pi `before_provider_request` integration for `loom-local`;
-- no extra LLM, embedding requirement, daemon or model-visible tool schema;
 - heavy-context provider-input reduction `23.24%` median;
 - no-op overhead `0%`;
 - exact recovery `6/6`, SHA-verified.
 
 Rollback:
-`LOOM_CONTEXT_INTELLIGENCE=0 pi --model loom-local/loom-deep-30b-s32`
-
-Do not add LoopX, Observal or pi-dynamic-workflows as separate permanent systems.
+`LOOM_CONTEXT_INTELLIGENCE=0`.
 
 ## WP3 — Behavioral Transform — COMPLETE / VALID NO_GO
 
 Classification:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3_NO_GO`.
 
-Rank-1 directional, MoE-router and rank-4 subspace GGUF-LoRA candidates were built and served but all retained the original frozen held-out refusal result at `6/6`. Those three adapter families remain rejected. This did not establish architecture-level impossibility.
+Rank-1 directional, MoE-router and rank-4 subspace GGUF-LoRA candidates were built and served but retained the original frozen held-out refusal result at `6/6`. Those three bounded methods remain rejected.
 
-The local historical result `research/integration/loom-behavioral-transform-wp3-result.md` may be archived with the eventual WP4 persistence package; do not sweep in unrelated historical scripts.
+The still-local historical result `research/integration/loom-behavioral-transform-wp3-result.md` may be included in the final bounded WP4 persistence package; do not sweep unrelated historical scripts.
 
 ## WP3-R2 — Behavioral Unlock — COMPLETE / GO / PERSISTED
 
@@ -107,102 +83,105 @@ Classification:
 Persistence commit:
 `1252fcfad73878981a1aa1844a484949a12d5ff4`.
 
-Selected UNLOCKED model:
+UNLOCKED model:
 `Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.Q3_K_S.gguf`
 
-Source:
-`mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-GGUF`
-
-Local SHA256:
+SHA256:
 `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
 
-Validated outcome:
+Validated R2 outcome:
 - frozen explicit refusals `6/6 -> 0/6`;
 - benign capability `8/8 -> 8/8`;
 - no increased frozen degeneration;
-- loopback API/WebUI passed;
-- real Pi + WP2 request passed;
-- clean rollback to FAST + WP2 passed.
+- API/WebUI and real Pi + WP2 passed;
+- rollback to FAST + WP2 passed.
 
-Tradeoff:
-- about `55%` of fresh FAST decode under R2 comparison;
-- materially higher swap pressure;
-- disposition/behavior drift remains explicit.
-
-Product decision: retain both profiles. Do not silently replace FAST with UNLOCKED.
-
-## Current checkpoint — WP4 Final Integration + Acceptance
+## WP4 — Final Integration + Acceptance — COMPLETE LOCALLY / GO — PERSISTENCE PENDING
 
 Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
 
-Status: **AUTHORIZED / ACTIVE**.
+Classification:
+`LOOM_FINAL_ACCEPTANCE_WP4_GO`.
 
-Authoritative contract:
+Contract:
 `research/integration/loom-final-acceptance-wp4.md`
 
-### Final product target
+Local result:
+`research/integration/loom-final-acceptance-wp4-result.md`
 
-Two selectable DEEP profiles:
+Evidence:
+`results-local/final-acceptance-wp4/20260830T182958Z/`
 
-1. `loom-deep-30b-s32` — FAST/default;
-2. `loom-deep-30b-unlocked` — behaviorally unlocked, slower/more resource-intensive.
-
-Only one 30B profile should be resident at a time on this 8 GiB host.
-
-Preferred operator UX:
+### Final operator UX
 
 ```text
-scripts/loom-deep use fast
-scripts/loom-deep use unlocked
-scripts/loom-deep start
-scripts/loom-deep stop
-scripts/loom-deep status
-scripts/loom-deep health
-scripts/loom-deep current
+scripts/loom-deep use fast|unlocked
+scripts/loom-deep start|stop|status|health|current
 ```
 
-Equivalent compact UX is acceptable if clearer and fully documented.
+Normal serving endpoint for both profiles:
+- WebUI `http://127.0.0.1:18080/`;
+- API `http://127.0.0.1:18080/v1`.
 
-Normal switching should use one stable loopback serving endpoint where practical, preferably `127.0.0.1:18080`, so Pi/WP2/WebUI do not need manual endpoint rewiring.
+FAST remains default. Only one 30B profile is resident at a time.
 
-### Stable local model artifacts
+### Stable local artifacts
 
-Final product operation must not depend on timestamped experimental paths.
+Ignored local model paths:
+- `models/loom-deep-30b-fast.gguf` -> SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`;
+- `models/loom-deep-30b-unlocked.gguf` -> SHA256 `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`.
 
-Use ignored repository-local `models/` stable paths. Do not duplicate multi-GB data just to create aliases. Prefer safe verified hard-links on the same filesystem, otherwise move/rename; verify SHA256 before and after and preserve a good copy until validation succeeds.
+Pinned local runtime link:
+- `.loom/runtime/loom-llama-server` -> SHA256 `58aec7b9a924ce0bc7910b889d91cc6d55064991459ddddea70a5c8f3ca08506`.
 
-Both GGUFs remain local and excluded from Git.
+Model aliases were created by verified hard-link without redownload/copy. Models and `.loom/` remain excluded from Git.
 
-### WP4 acceptance
+### Final acceptance
 
-WP4 must verify end-to-end:
-- stable model paths/hashes;
-- FAST default;
-- FAST -> UNLOCKED -> FAST switching through final UX;
-- no intentional concurrent FAST+UNLOCKED 30B residency;
-- loopback API/WebUI for both;
-- real Pi + WP2 request for both;
-- final UNLOCKED recheck against unchanged frozen six held-out + eight benign cases;
-- FAST performance health;
-- UNLOCKED decode/prefill/E2E/RSS/swap/memory-pressure evidence;
-- prompt/KV cache compatibility;
+Passed:
+- FAST -> UNLOCKED -> FAST switching twice;
+- old profile PID stopped before replacement;
+- only loopback listener present;
+- health, `/v1/models`, API chat and WebUI for both profiles;
+- Pi + WP2 for both labels;
 - Context Intelligence disable rollback;
-- clean final rollback to FAST + WP2;
-- durable operator documentation `docs/LOOM_OPERATIONS.md`;
-- final result `research/integration/loom-final-acceptance-wp4-result.md`;
-- evidence under `results-local/final-acceptance-wp4/<timestamp>/`.
+- UNLOCKED frozen reproduction: refusal `0/6`, held-out degeneration `0/6`, benign capability `8/8`;
+- prompt/KV cache for both: repeated 1,149-token prefix reduced to one evaluated token;
+- final rollback to FAST + WP2 with hash/API/health verification.
 
-Pi may update local `~/.pi/agent/models.json` with backup as needed so both labels are usable without manual edits. Never commit home configuration or secrets.
+Final WP4 performance snapshot:
+- FAST: decode `6.209 tok/s`, prefill `3.438 tok/s`, E2E `7.131 s`, RSS `4.00->4.01 GiB`, swap `1269->1308 MiB`, free memory `11->10%`;
+- UNLOCKED: decode `2.963 tok/s`, prefill `1.673 tok/s`, E2E `9.129 s`, RSS `4.13->4.16 GiB`, swap `1667->1708 MiB`, free memory `8->9%`.
 
-Do not redownload a verified local 13 GB model unnecessarily.
+UNLOCKED remains slower and more memory/swap constrained; its disposition drift remains explicit.
 
-Do not commit/push during WP4 execution. Return one final bounded report for review.
+Final active state after WP4: FAST + WP2 on `127.0.0.1:18080`.
 
-## Current state
+### Current exact action
 
-WP1: GO / persisted.
-WP2: GO / persisted.
-WP3: valid NO_GO for three adapter families.
-WP3-R2: GO / persisted.
-WP4: authorized and active.
+Persist one bounded final WP4 package under the macro-boundary exception.
+
+Include only reviewed final product/config/result/docs and, if useful for historical completeness, the original WP3 NO_GO result file.
+
+Expected WP4 product files:
+- `config/loom-deep-profiles.env`;
+- `config/loom-deep-server.env`;
+- `config/loom-deep-r2-abliterated-q3ks.env`;
+- `scripts/loom-deep`;
+- `scripts/loom_wp4_probe.py`;
+- `docs/LOOM_OPERATIONS.md`;
+- `research/integration/loom-final-acceptance-wp4-result.md`.
+
+Optional archival inclusion:
+- `research/integration/loom-behavioral-transform-wp3-result.md`.
+
+Exclude:
+- both GGUFs / `models/`;
+- `.loom/`;
+- `results-local/`;
+- home-directory Pi config;
+- caches/secrets;
+- unrelated historical untracked scripts.
+
+After persistence, review the exact final commit and classify LOOM final product as fully persisted.
