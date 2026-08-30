@@ -1,104 +1,93 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-30
-Current: Apple Metal MoE paging S24 is canonical `loom-deep`. Persistent/cache feasibility completed GO. Immediate priority is the preregistered `--prompt-cache` experiment, followed by paging/I/O attribution for direct decode acceleration. Validator/guided-repair remains PAUSED.
-Canonical context: `/AGENTS.md` v3.73.
+Current: Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache 001 closed MECHANICAL_NO_GO because of output-budget/validator design, despite strong diagnostic cache reuse. Immediate priority is Prompt Cache R1 recovery, then paging/I/O attribution. Validator/guided-repair remains PAUSED.
+Canonical context: `/AGENTS.md` v3.74.
 
 ## 1. Product direction
 
 - `loom-balanced`: Qwen3-8B 3-bit, ~13 tok/s, provisional primary.
 - `loom-deep`: **Qwen3-30B-A3B-Instruct-2507 Q3_K_S-3.25bpw on Apple Metal MoE paging S24**.
-- historical custom MLX ~1.4 tok/s: retained as historical comparison/fallback only.
-- `loom-fast`: future clean-runtime tier; legacy 4B parked.
-- `loom-auto`: validator-first architecture planned but paused during 30B acceleration R&D.
-- LOOM Heretic remains mandatory after initial runtime/capability optimization.
+- historical custom MLX ~1.4 tok/s: historical comparison/fallback only.
+- `loom-fast`: future clean-runtime tier.
+- `loom-auto`: paused during 30B acceleration.
+- LOOM Heretic remains mandatory later.
 
 ## 2. Canonical DEEP validation
 
-Stage1R2:
-`LOOM_30B_APPLE_MOE_PAGING_STAGE1R2_GO`.
-Best safe S24 ~4.40 tok/s.
+Stage1R2 GO: best safe ~4.40 tok/s.
+Stage2 product GO: Apple S24 promoted to canonical DEEP.
+Validated fresh-process decode baseline: ~4.39–4.40 tok/s.
 
-Stage2 comparability:
-`LOOM_30B_STAGE2_COMPARABILITY_ARCHITECTURE_MATCH_CHECKPOINT_DIFFERENT`.
+## 3. Acceleration funnel
 
-Stage2 product validation:
-`LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
-Apple S24 reproducibility 4.38 / 4.39 / 4.39 tok/s; matched pooled generation 2.81x historical MLX; median E2E 0.40x historical; all promotion gates passed.
+Primary reference: mini-SGLang concepts independently adapted for Apple Silicon.
 
-## 3. 30B acceleration funnel
-
-Primary architectural reference: mini-SGLang concepts adapted independently for Apple Silicon.
-
-Priority sequence:
-1. prompt/prefix cache no-patch experiment;
+Priority:
+1. prompt/prefix cache;
 2. paging/I/O attribution;
 3. overlap scheduling / expert I/O prefetch;
-4. controlled lighter quant only under separate artifact + quality preregistration if still justified;
-5. persistent server path only under explicit build preregistration if useful;
-6. Caveman-style deterministic context packing for end-to-end agent speed.
+4. lighter quant only under separate artifact/quality preregistration if justified;
+5. persistent server path only under explicit build preregistration;
+6. Caveman-style context packing later.
 
-Target sequence:
-- preserve ~4.39–4.40 tok/s baseline;
-- reach 5+ decode tok/s;
-- then investigate 6–9 tok/s;
-- reject gains with unacceptable quality loss or memory instability.
+Target: 5+ decode tok/s first, then investigate 6–9 tok/s.
 
-## 4. Persistent/cache feasibility — COMPLETE / GO
+## 4. Persistent/cache feasibility — GO
+
+No built `llama-server`; canonical `llama-completion` supports `--prompt-cache`.
+
+## 5. Prompt Cache 001 — MECHANICAL_NO_GO
 
 Canonical result:
-`research/architecture/loom-30b-accel-persistent-cache-feasibility-001-result.md`
-
-Classification:
-`LOOM_30B_ACCEL_PERSISTENT_CACHE_FEASIBILITY_GO`.
+`research/architecture/loom-30b-accel-prompt-cache-001-result.md`
 
 Evidence:
-`results-local/research/30b-accel-persistent-cache-feasibility-001/20260830T101246Z/`.
+`results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/`.
 
-Findings:
-- no built `llama-server` available;
-- canonical `llama-completion` supports explicit `--prompt-cache`;
-- recommended first no-patch factor: exact stable-prefix warm prompt cache vs cache-disabled baseline;
-- no inference/runtime mutation occurred during audit.
+Diagnostic observations:
+- median C/B prompt-eval ratio **0.04174**;
+- median C/B E2E ratio **0.08973**;
+- decode preservation **96.98%**;
+- cache creation/reuse and 262/269 token prefix match observed;
+- safe memory/swap.
 
-## 5. Current — prompt cache 001
+No scientific GO is claimed because all nine invocations failed functional validity under the frozen contract.
+
+Mechanical defects:
+- `-n 8` truncated target `4317`;
+- exact-string warm validator rejected semantically correct explanatory output containing `ambra`.
+
+## 6. Current — Prompt Cache R1 001
 
 Preregistration:
-`research/architecture/loom-30b-accel-prompt-cache-001-preregistration.md`
+`research/architecture/loom-30b-accel-prompt-cache-r1-001-preregistration.md`
 
-Design:
-- same canonical model/runtime/S24;
-- frozen stable prefix and deterministic warm/target suffixes;
-- 3 independent rounds;
-- B cache-disabled target -> W fresh-cache warm -> C same-cache target;
-- fresh process each invocation;
-- primary metric prompt/prefill wall C/B;
-- secondary E2E/cache/decode/memory metrics.
+Mechanical recovery deltas only:
+- `-n 24`;
+- frozen semantic validation (`ambra` for W, standalone `4317` for B/C).
 
-GO requires at least 30% median prompt-eval wall reduction, lower median E2E, >=90% decode-throughput preservation, correct outputs and safe memory.
+Everything else remains frozen: prompts, S24, B/W/C order, three rounds, fresh cache per round, same acceleration thresholds and no runtime/model mutation.
 
-This experiment optimizes prefill/E2E, not direct decode.
+If R1 GO, prompt cache becomes a validated prefill/E2E optimization for stable-prefix workloads. It still does not count as direct decode acceleration.
 
-## 6. Next decode-focused checkpoint
+## 7. Next decode-focused checkpoint
 
-After prompt-cache result, run paging/I/O attribution on canonical S24.
-
-Measure enough evidence to distinguish:
-- expert cache hit/miss behavior;
-- expert bytes read per output token;
+Paging/I/O attribution on canonical S24:
+- expert hit/miss behavior;
+- expert bytes read/token;
 - synchronous `pread` cost;
-- storage wait vs compute time;
-- whether an expert prefetch/overlap intervention has sufficient headroom to plausibly push decode beyond 5 tok/s.
+- storage wait vs compute;
+- headroom for overlap/prefetch.
 
-Do not patch runtime before the attribution checkpoint is preregistered and completed.
+Do not patch runtime before attribution is completed and a new intervention is preregistered.
 
-## 7. Later work
+## 8. Later work
 
 After 30B runtime priority:
-- Caveman-style context packing;
-- resume sanitized validator-guided repair/selective-DEEP graph;
-- semantic verifier/open-ended validation;
-- automatic validator/contract derivation;
+- Caveman context packing;
+- resume validator/guided repair;
+- semantic verifier;
 - provider/UI;
 - mandatory Heretic;
-- FAST clean-runtime reintroduction.
+- FAST reintroduction.
