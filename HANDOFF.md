@@ -1,19 +1,19 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — Stage1R2 Apple Metal MoE paging GO at 4.40 tok/s. Comparability audit proved historical MLX and new GGUF are architecture-matched but checkpoint-different. Stage2 product-candidate validation is now preregistered.
+Status: ACTIVE — Stage2 product-candidate validation completed GO. Apple Metal MoE paging S24 is now canonical `loom-deep`. Current task is the 30B acceleration funnel, beginning with a bounded persistent/cache feasibility audit inspired by mini-SGLang concepts.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_STAGE2_PRODUCT_CANDIDATE_VALIDATION_001`
-Pi context: `/AGENTS.md` v3.71.
+Current checkpoint: `LOOM_30B_ACCELERATION_PERSISTENT_CACHE_FEASIBILITY_001`
+Pi context: `/AGENTS.md` v3.72.
 
 ## Product direction
 
 - BALANCED 8B remains provisional primary at ~13 tok/s.
-- Historical DEEP custom MLX remains ~1.4 tok/s.
-- Apple Metal MoE paging is the leading DEEP candidate after S24 reached 4.40 tok/s safely.
-- New candidate is `Qwen3-30B-A3B-Instruct-2507`; historical MLX derives from `Qwen3-30B-A3B`. Stage2 is therefore a product comparison, not strict same-checkpoint runtime parity.
-- LOOM AUTO validator-first work remains paused during 30B runtime R&D.
+- DEEP is now Qwen3-30B-A3B-Instruct-2507 Q3_K_S-3.25bpw on Apple Metal MoE paging S24.
+- Historical custom MLX ~1.4 tok/s is retained as historical comparison/fallback only.
+- FAST retained conceptually; legacy 4B parked.
+- LOOM AUTO validator-first work remains paused during 30B acceleration R&D.
 - LOOM Heretic remains mandatory after initial runtime/capability optimization.
 
 ## Stage1R2 — COMPLETE / GO
@@ -21,7 +21,7 @@ Pi context: `/AGENTS.md` v3.71.
 Canonical result:
 `research/architecture/loom-30b-apple-moe-paging-stage1r2-001-result.md`
 
-Best safe S24:
+Validated S24 baseline:
 - 4.40 generation tok/s;
 - 3.95 prompt tok/s;
 - load 14.426 s;
@@ -31,60 +31,66 @@ Best safe S24:
 - minimum headroom 13%;
 - no critical pressure/OOM/corruption/runaway.
 
-Verified GGUF SHA256:
+Model SHA256:
 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
 
-Frozen runtime:
-`kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
-with `llama-completion -no-cnv` SHA256 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
+Frozen runtime source:
+`kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
 
-## Comparability audit — COMPLETE
+Frontend:
+`llama-completion -no-cnv`, SHA256 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
 
-Canonical result:
-`research/architecture/loom-30b-stage2-comparability-audit-001-result.md`
+## Stage2 comparability — COMPLETE
 
-Classification:
-`LOOM_30B_STAGE2_COMPARABILITY_ARCHITECTURE_MATCH_CHECKPOINT_DIFFERENT`.
+Historical MLX and Apple candidate are architecture-matched but checkpoint-different. Product utility comparisons are valid; same-checkpoint runtime-only superiority claims are not.
 
 Historical MLX:
-`Qwen/Qwen3-30B-A3B-MLX-4bit@4e2776a4cc73a8a251d0b797010a5b07fd541a3e`, upstream `Qwen/Qwen3-30B-A3B`, MLX Q4/group128.
+`Qwen/Qwen3-30B-A3B-MLX-4bit@4e2776a4cc73a8a251d0b797010a5b07fd541a3e`.
 
-New candidate:
-`Qwen/Qwen3-30B-A3B-Instruct-2507`, ByteShape Q3_K_S-3.25bpw.
+New DEEP upstream:
+`Qwen/Qwen3-30B-A3B-Instruct-2507`.
 
-Shared core MoE topology: 48 layers, 128 experts, top-8, hidden 2048. Checkpoint/version, RoPE/context, quantization and chat template differ.
+## Stage2 product-candidate validation — COMPLETE / GO
 
-## Exact next action — Stage2 product-candidate validation
+Canonical result:
+`research/architecture/loom-30b-stage2-product-candidate-validation-001-result.md`
 
-Preregistration:
-`research/architecture/loom-30b-stage2-product-candidate-validation-001-preregistration.md`
-
-Block A:
-- Apple S24 only;
-- exact Stage1R2 prompt;
-- 3 fresh processes;
-- reproducibility gate: 3/3 clean, median >=4.0 tok/s, no run <3.5, no critical pressure/OOM/corruption/runaway, swap <=3.5 GiB.
-
-Block B:
-- 7 fresh matched practical tasks on both historical MLX and Apple S24;
-- temperature 0;
-- same semantic prompt, each product using its canonical tokenizer/chat template;
-- T1–T5 deterministic validation; T6–T7 frozen rubrics;
-- measure decode/prompt throughput, load/TTFT where available, E2E and host memory/swap.
-
-GO additionally requires:
-- Apple objective score >=4/5 and at most one PASS below MLX;
-- Apple rubric total at most one point below MLX;
-- Apple matched generation throughput >=2.0x MLX;
-- Apple median matched E2E <=0.80x MLX;
-- no critical host failure and peak swap <=3.5 GiB;
-- complete durable evidence.
-
-GO:
+Classification:
 `LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
 
-A GO makes Apple MoE paging eligible to become canonical DEEP on product utility grounds only.
+Block A Apple S24 reproducibility:
+- 4.38 / 4.39 / 4.39 tok/s;
+- median 4.39 tok/s;
+- no critical pressure/runaway; peak swap about 1.5 GiB.
 
-## After Stage2
+Matched practical suite:
+- objective T1–T5: historical 2/5, Apple 4/5;
+- rubric T6–T7: historical 6/6, Apple 5/6;
+- pooled generation: 1.444 vs 4.059 tok/s = 2.81x;
+- median E2E: 65.909 vs 26.380 s = 0.40x;
+- no critical memory/OOM/corruption/runaway.
 
-If GO, canonicalize DEEP promotion, then open a separate 30B acceleration funnel. Primary reference: mini-SGLang concepts — persistent/prefix caching, chunked prefill, overlap scheduling and expert/I/O prefetch — independently adapted to Apple Silicon. Caveman-style deterministic context packing follows as end-to-end optimization.
+All frozen promotion gates passed. Apple S24 is canonical DEEP on product-utility grounds.
+
+## Exact next action — acceleration feasibility audit
+
+Primary architecture reference: mini-SGLang concepts adapted independently for Apple Silicon.
+
+First audit before runtime mutation:
+1. inspect frozen fork/build for persistent frontend/server support;
+2. identify stable-prefix / KV or prompt-cache mechanisms already available;
+3. verify whether S24 MoE paging flags are accepted by the persistent frontend;
+4. identify observable cache/prompt/decode metrics without source patching;
+5. determine whether existing build can test persistent/warm behavior without model download or source mutation;
+6. map expert/I/O prefetch hooks in the frozen source for the later direct decode-throughput experiment.
+
+No production promotion work remains: DEEP promotion is complete.
+
+After audit, preregister first acceleration experiment. Priority sequence:
+- persistent process/cache behavior;
+- paging/I/O attribution;
+- overlap/expert prefetch;
+- controlled lighter quant only under a separate download/quality preregistration if still justified;
+- Caveman-style context packing later for end-to-end agent speed.
+
+Target: 5+ tok/s first; investigate 6–9 tok/s without unacceptable quality or memory cost.
