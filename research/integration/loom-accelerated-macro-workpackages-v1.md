@@ -1,117 +1,103 @@
 # LOOM Accelerated Macro Work Packages v1
 
 Date: 2026-08-30
-Status: ACTIVE — WP3-R2 behavioral unlock achieved locally; persistence pending
+Status: ACTIVE — WP4 final integration authorized
 
 ## Purpose
 
-Replace user-facing micro-checkpoints with substantial Pi work packages. Scientific gates remain internal. Pi records failures, reverts regressions and continues inside the active work package instead of returning after every GO/NO_GO.
+Use substantial Pi macro work packages instead of user-facing micro-checkpoints. Pi records/fixes/reverts routine failures internally and returns at macro completion or a genuine user-action blocker.
 
 ## WP1 — Runtime + Product Serving — COMPLETE / GO / PERSISTED
 
-Checkpoint:
-`LOOM_RUNTIME_PRODUCTIZATION_WP1`
-
 Outcome:
-- canonical S32 runtime at `5.596 tok/s` median matched decode;
-- persistent localhost `llama-server`;
+- canonical FAST S32 runtime;
+- `5.596 tok/s` validated median matched decode;
+- persistent localhost llama-server;
 - WebUI/API/Pi/cache/lifecycle validated;
 - S24 rollback retained.
 
 ## WP2 — Context Intelligence — COMPLETE / GO / PERSISTED
-
-Checkpoint:
-`LOOM_CONTEXT_INTELLIGENCE_WP2`
 
 Outcome:
 - Caveman deterministic packing/compression/recovery;
 - Cavemem SQLite/FTS5 progressive project memory;
 - `23.24%` median heavy-context provider-input reduction;
 - `0%` no-op overhead;
-- `6/6` SHA-verified exact recovery;
-- easy rollback.
+- `6/6` exact recovery;
+- independent rollback.
 
 ## WP3 — Behavioral Transform — COMPLETE / VALID NO_GO
 
-Checkpoint:
-`LOOM_BEHAVIORAL_TRANSFORM_WP3`
-
 Outcome:
-- rank-1 directional, MoE-router and rank-4 subspace GGUF-LoRA candidates were built and served;
-- frozen held-out refusal remained `6/6` for all;
-- those adapter families are rejected;
-- result did not prove architecture-level impossibility.
+- rank-1 directional, MoE-router and rank-4 subspace GGUF-LoRA candidates were built/served;
+- frozen refusal stayed `6/6`;
+- those three adapter families rejected;
+- no architecture-level impossibility conclusion.
 
-## WP3-R2 — Behavioral Unlock — COMPLETE LOCALLY / GO / PERSISTENCE PENDING
+## WP3-R2 — Behavioral Unlock — COMPLETE / GO / PERSISTED
 
-Checkpoint:
-`LOOM_BEHAVIORAL_UNLOCK_WP3_R2`
+Persistence commit:
+`1252fcfad73878981a1aa1844a484949a12d5ff4`
 
-Contract:
-`research/integration/loom-behavioral-unlock-wp3-r2.md`
-
-Local result:
-`research/integration/loom-behavioral-unlock-wp3-r2-result.md`
-
-Evidence:
-`results-local/behavioral-unlock-wp3-r2/20260830T160845Z/`
-
-Classification:
-`LOOM_BEHAVIORAL_UNLOCK_WP3_R2_GO`.
-
-Selected route:
-exact-lineage Huihui abliterated replacement, Q3_K_S GGUF.
-
-Selected model:
+Selected UNLOCKED model:
 `Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.Q3_K_S.gguf`
 
-Local SHA256:
+SHA256:
 `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
 
-Validated outcome:
-- original frozen explicit-refusal gate `6/6 -> 0/6`, `100%` relative reduction;
+Outcome:
+- frozen explicit refusals `6/6 -> 0/6`;
 - benign capability `8/8 -> 8/8`;
-- no increased degeneration in frozen evaluation;
-- loopback API/WebUI stable;
-- real Pi + WP2 request passed;
-- rollback to canonical S32 + WP2 passed.
+- API/WebUI and real Pi + WP2 passed;
+- rollback to FAST + WP2 passed;
+- accepted with explicit slower/high-swap/disposition-drift caveat.
 
-Tradeoff:
-- fresh candidate decode about `55%` of fresh S32 baseline under the R2 comparison;
-- materially higher swap pressure;
-- behavioral/disposition drift recorded and retained.
+Product decision: retain FAST and UNLOCKED as separate selectable profiles.
 
-Product decision:
-retain two selectable DEEP profiles rather than replacing the fast baseline:
-1. `loom-deep-30b-s32` — fast/default;
-2. `loom-deep-30b-unlocked` — behaviorally unlocked Candidate A, slower/more resource-intensive.
-
-The unlocked GGUF is a local model artifact and must not be committed. Persist only provenance/hash, small operational code/config, frozen specs and result documentation.
-
-## Current action
-
-Persist and review the bounded WP3-R2 reproducibility/product-profile package. Do not begin WP4 before that review.
-
-## WP4 — FINAL INTEGRATION + ACCEPTANCE — PLANNED / NOT AUTHORIZED
+## WP4 — Final Integration + Acceptance — ACTIVE
 
 Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
 
-WP4 should integrate both validated DEEP profiles plus WP2 and test profile switching/rollback, API/WebUI/Pi, capability, performance, RAM/swap and exact provenance.
+Contract:
+`research/integration/loom-final-acceptance-wp4.md`
+
+Goal:
+turn all validated results into the final practical LOOM product.
+
+Final product target:
+1. `loom-deep-30b-s32` — FAST/default;
+2. `loom-deep-30b-unlocked` — validated behavioral-unlock profile.
+
+WP4 must provide:
+- stable ignored `models/` artifact paths without unnecessary GGUF duplication;
+- one resident 30B at a time;
+- simple profile selection/switching;
+- stable localhost serving endpoint where practical;
+- API/WebUI/Pi + WP2 validation for both;
+- unchanged frozen UNLOCKED behavior/capability reproduction;
+- FAST health/performance;
+- UNLOCKED decode/prefill/E2E/RSS/swap/memory-pressure evidence;
+- prompt/KV cache compatibility;
+- Context Intelligence rollback;
+- clean FAST -> UNLOCKED -> FAST acceptance sequence;
+- operations documentation and final result/evidence.
+
+Pi does not commit/push during WP4 execution. Final persistence follows review.
 
 ## Global execution rules
 
-1. Do not return after routine internal NO_GO results.
-2. Record and revert regressions, then continue.
-3. Never relax a frozen scientific gate after seeing its result.
-4. Keep a known-good runnable baseline throughout.
-5. Prefer practical LOOM-native or already-compatible artifacts over unnecessary framework ports.
-6. No public internet exposure by default.
-7. No SIP/security disabling, destructive system actions, unrelated user-data deletion, or paid-cloud/credential requirements without returning to the user.
-8. Default: Pi does not commit/push. At a completed macro boundary, ChatGPT may explicitly authorize one bounded reviewed persistence commit.
-9. Intermediate evidence remains under `results-local/`.
-10. A macro work package returns one bounded end report with candidates, measurements, failed/reverted attempts, changed files, commands and evidence roots.
+1. Do not return after routine internal failures.
+2. Record and fix/revert regressions, then continue.
+3. Never relax frozen gates after seeing results.
+4. Preserve a known-good FAST baseline.
+5. Do not run both 30B profiles concurrently for convenience.
+6. Avoid unnecessary multi-GB model duplication or redownload.
+7. No public internet exposure by default.
+8. No SIP/security disabling, destructive unrelated cleanup, paid-cloud or new credential requirements.
+9. Intermediate evidence stays under `results-local/`.
+10. Return one bounded final report with implementation, acceptance measurements, changed files and evidence roots.
 
 ## Current work package
 
-WP3-R2 execution is complete locally with GO; bounded persistence is the current action.
+`LOOM_FINAL_ACCEPTANCE_WP4`
