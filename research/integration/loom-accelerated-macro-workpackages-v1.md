@@ -11,110 +11,103 @@ Scientific gates remain internal. Pi records failures, reverts regressions and c
 
 A work package ends only when its substantial deliverable is complete or a genuine blocker requires user action, credentials, destructive/security-sensitive host changes, unavailable storage/hardware, or a project-direction choice not resolvable from existing goals/evidence.
 
-## WP1 — Runtime + Product Serving — COMPLETE / GO
+## WP1 — Runtime + Product Serving — COMPLETE / GO / PERSISTED
 
 Checkpoint:
 `LOOM_RUNTIME_PRODUCTIZATION_WP1`
 
-Authoritative contract:
+Contract:
 `research/integration/loom-runtime-productization-wp1.md`
 
-Canonical result:
+Result:
 `research/integration/loom-runtime-productization-wp1-result.md`
 
 Outcome:
-- canonical S32 runtime at 5.596 tok/s median matched decode;
+- canonical S32 runtime at `5.596 tok/s` median matched decode;
 - S24 retained as rollback;
 - persistent localhost `llama-server`;
-- existing embedded WebUI;
+- embedded existing WebUI;
 - OpenAI-compatible local API;
 - Pi connected/tested;
 - serving-path prompt/KV reuse verified;
-- operational start/status/health/stop workflow.
+- `scripts/loom-deep-server` lifecycle workflow persisted.
 
-## WP2 — Context Intelligence — ACTIVE
+## WP2 — Context Intelligence — COMPLETE / GO / PERSISTED
 
 Checkpoint:
 `LOOM_CONTEXT_INTELLIGENCE_WP2`
 
-Authoritative contract:
+Contract:
 `research/integration/loom-context-intelligence-wp2.md`
 
-Goal:
-improve effective local-model/Pi context efficiency and continuity with only the two highest-priority mechanisms selected by the user.
+Result:
+`research/integration/loom-context-intelligence-wp2-result.md`
 
-Primary engineering inputs only:
+Outcome:
+- Caveman-derived deterministic context packing/compression/recovery;
+- Cavemem-derived SQLite/FTS5 progressive project memory;
+- Pi host-side `before_provider_request` integration;
+- no extra LLM/embedding daemon/model-visible tool schema;
+- `23.24%` median heavy-context provider-input reduction;
+- `0%` no-op input overhead;
+- `6/6` SHA-verified exact recovery;
+- objective success non-inferior to baseline;
+- easy disable/rollback.
 
-### 1. Caveman
-Use for:
-- deterministic type-aware compression;
-- token-budget context selection/packing;
-- lexical/BM25-style relevance + recency + priority + error/pin preservation;
-- recovery handles for omitted evidence;
-- restoring chronology after relevance-based selection;
-- bypassing compression on small/no-op inputs when overhead would be negative.
+Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems.
 
-Primary expected benefit:
-less provider-facing input context, lower prefill cost/memory pressure, and more targeted use of the 30B model.
-
-### 2. Cavemem
-Use for:
-- project-scoped progressive local memory;
-- SQLite/FTS5-first compact searchable observations;
-- retrieving only relevant prior facts/decisions/evidence;
-- exact body/evidence retrieval on demand;
-- privacy/redaction before durable writes;
-- no mandatory embeddings in v0.
-
-Cavemem decides what prior information should be recovered; Caveman decides what should actually enter the prompt and how compactly.
-
-Do **not** integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems in WP2. Small implementation ideas may be borrowed only when they are necessary to support Caveman/Cavemem and have negligible overhead.
-
-WP2 final comparison:
-- A: WP1 baseline;
-- B: Caveman only;
-- C: Caveman + Cavemem.
-
-WP2 completion requires measured net benefit in token use/task utility, exact recovery/provenance, safe memory/privacy behavior and easy rollback.
-
-## WP3 — Behavioral Transform — PLANNED / NOT AUTHORIZED
+## WP3 — Behavioral Transform — ACTIVE
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
 
+Contract:
+`research/integration/loom-behavioral-transform-wp3.md`
+
 Goal:
-produce and validate an actual model/adapter-level behavioral-freedom transform for the final LOOM profile. Prompt-only behavior does not satisfy WP3.
+produce and validate an actual model/adapter-level behavioral transform for canonical LOOM DEEP. Prompt-only behavior does not count.
 
-Current technical search priority:
-1. **Abliterix-derived methodology**, especially MoE-aware behavioral editing concepts, adapted to LOOM rather than assuming the full upstream CUDA stack can run on M1 8 GiB;
-2. **Heretic** as the established project baseline and technical reference;
-3. **Senbonzakura-style multi-direction methods** if they offer a better feasible route for the canonical Qwen MoE configuration;
-4. a clean LOOM-native equivalent when upstream implementations are physically/toolchain-incompatible.
-
-The criterion is not project popularity. Select the method that gives the strongest technically valid transform for the actual canonical GGUF/llama.cpp/Apple-Silicon stack.
+Method/reference order:
+1. LOOM-native Heretic/projected single-direction low-rank adapter;
+2. Abliterix-derived MoE-aware refinement when measured evidence supports it;
+3. Senbonzakura-derived multi-direction/subspace when single-direction remains materially insufficient;
+4. clean low-rank alternative if required by representation/toolchain constraints.
 
 Preferred final artifact:
-a small reversible/runtime-loadable adapter or equivalent artifact usable by the final llama.cpp serving path, rather than a second full model copy, when technically valid.
+a small reversible **GGUF LoRA adapter** loaded separately by canonical `llama-server`, rather than a second full model copy.
 
-Require provenance, frozen behavioral evaluation, capability preservation, resource/throughput delta and exact artifact hashes.
+Preferred technical path:
 
-## WP4 — Final Integration + Acceptance — PLANNED
+`frozen contrast/evaluation sets -> streamed residual statistics -> stable direction/subspace -> low-rank delta -> GGUF adapter -> llama-server -> frozen base/transformed behavior/capability/resource A/B`
+
+Important constraints:
+- preserve canonical S32 and WP2 rollback paths;
+- avoid a full resident BF16/FP16 30B representation when selected-tensor streaming can avoid it;
+- use FP32/FP64 for sensitive geometric accumulation;
+- start with deterministic/searchless rank-1 / attention-output candidates;
+- do not begin with broad TPE;
+- escalate to MoE-specific or multi-direction methods only when evidence supports it;
+- do not copy AGPL implementation code without explicit license review.
+
+WP3 completion requires an actual runtime-loadable transform, material frozen target-behavior improvement, capability preservation, safe resources/throughput, real Pi transformed-profile validation, exact hashes and successful rollback.
+
+## WP4 — Final Integration + Acceptance — PLANNED / NOT AUTHORIZED
 
 Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
 
 Goal:
-assemble the best validated outputs of WP1–WP3 into the final practical LOOM system.
+assemble the best validated outputs of WP1-WP3 into the final practical LOOM system.
 
 Required acceptance:
 - reliable clean startup;
 - localhost serving/API healthy;
 - selected existing browser WebUI works;
 - Pi works against local LOOM;
-- selected runtime acceleration active;
-- validated serving-path prompt/prefix caching active where applicable;
-- Caveman + Cavemem enabled only in their validated net-positive form;
-- behavioral-transform profile loaded and validated, or exact evidenced physical/toolchain blocker documented;
+- S32 or later better validated runtime active;
+- validated serving-path prompt/prefix caching active;
+- Caveman + Cavemem active in validated form;
+- behavioral-transform profile loaded and validated, or exact evidenced blocker classified;
 - representative capability smoke tests pass;
 - final decode/prefill/E2E/RAM/swap recorded;
 - simple documented start/stop/health flow;
@@ -129,10 +122,10 @@ Required acceptance:
 5. Prefer small LOOM-native adaptations over installing large upstream stacks.
 6. No public internet exposure by default.
 7. No SIP/security disabling, destructive system actions, unrelated user-data deletion, or paid-cloud/credential requirements without returning to the user.
-8. Pi does not commit/push; ChatGPT persists canonical Git state at macro-work-package boundaries.
+8. Default: Pi does not commit/push. At a completed macro boundary, ChatGPT may explicitly authorize one bounded reviewed persistence commit.
 9. Intermediate evidence remains under `results-local/`.
 10. A macro work package returns one bounded end report with deliverables, measurements, failed/reverted attempts, changed files, commands and evidence roots.
 
 ## Current work package
 
-`LOOM_CONTEXT_INTELLIGENCE_WP2`
+`LOOM_BEHAVIORAL_TRANSFORM_WP3`
