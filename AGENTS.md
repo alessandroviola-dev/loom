@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.75
+Version: 3.76
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -54,86 +54,74 @@ Validated decode baseline: ~4.39–4.40 tok/s.
 `LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
 Apple S24 is canonical DEEP on product-utility grounds.
 
-## Persistent/cache feasibility — COMPLETE / GO
-
-`LOOM_30B_ACCEL_PERSISTENT_CACHE_FEASIBILITY_GO`.
-No built `llama-server`; canonical `llama-completion` supports explicit `--prompt-cache`.
-
-## Prompt Cache 001 — CLOSED MECHANICALLY
+## Prompt Cache R2 — COMPLETE / GO
 
 Canonical result:
-`research/architecture/loom-30b-accel-prompt-cache-001-result.md`
+`research/architecture/loom-30b-accel-prompt-cache-r2-001-result.md`
 
 Classification:
-**`LOOM_30B_ACCEL_PROMPT_CACHE_MECHANICAL_NO_GO`**.
+**`LOOM_30B_ACCEL_PROMPT_CACHE_R2_GO`**.
 
 Evidence:
-`results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/`
+`results-local/research/30b-accel-prompt-cache-r2-001/20260830T105738Z/`
 
-Diagnostic observations only:
-- median C/B prompt-eval ratio 0.04174;
-- median C/B E2E ratio 0.08973;
-- decode preservation 96.98%;
-- cache creation/reuse mechanically proven.
+Validated stable-prefix prompt-cache result:
+- 9/9 functionally valid invocations;
+- median C/B prompt-eval ratio `0.04025`;
+- median C/B E2E ratio `0.10751`;
+- median B/C generation `3.49 / 3.47 tok/s`;
+- decode preservation `99.43%`;
+- cache size `26,449,272` bytes;
+- cache SHA256 `f96f9fb61f6e2302fb206932a4ca497c8a1ccbe7346c22b20bc0678094dd5a99`;
+- C loaded 269-token sessions and matched 262/269 prompt tokens;
+- peak RSS `2948.83 MiB`;
+- peak swap `1267.56 MiB`;
+- all 14 frozen gates passed.
 
-Do not promote those ratios as a scientific GO because all nine invocations failed the frozen functional-validity rule.
+Prompt cache is now a validated canonical DEEP **prefill/E2E optimization for stable-prefix workloads**.
+It is not direct decode acceleration and does not replace the ~4.39–4.40 tok/s canonical decode baseline.
 
-Mechanical cause:
-- frozen `-n 8` truncated target answer `4317` to `...porta 4`;
-- warm answer contained correct `ambra` but exact-string validator rejected explanatory prose.
+Historical Prompt Cache 001 and R1 remain closed MECHANICAL_NO_GO and must not be promoted as scientific performance results.
 
-## Prompt Cache R1 001 — CLOSED MECHANICALLY BEFORE INFERENCE
-
-Canonical result:
-`research/architecture/loom-30b-accel-prompt-cache-r1-001-result.md`
-
-Classification:
-**`LOOM_30B_ACCEL_PROMPT_CACHE_R1_MECHANICAL_NO_GO`**.
-
-Evidence:
-`results-local/research/30b-accel-prompt-cache-r1-001/20260830T105237Z/`
-
-R1 correctly stopped before inference.
-
-Verified parent wrapper:
-`results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/prompt_cache_runner.py`
-SHA256:
-`1c62f4ab53e0c31bf3c725991d1f87a3f81cd75ab91d6da2e1b05bf8a499ba5e`
-
-Mechanical defect:
-- R1 required that wrapper unchanged;
-- the wrapper hard-coded `-n 8`, exact-string validation and Prompt Cache 001 evidence/classification handling;
-- therefore it could not implement the preregistered R1 mechanical deltas without violating its own freeze rule.
-
-No inference and no new performance evidence occurred.
-
-## Current checkpoint — Prompt Cache R2 001
+## Current checkpoint — Paging/I/O Attribution Preflight 001
 
 Preregistration:
-`research/architecture/loom-30b-accel-prompt-cache-r2-001-preregistration.md`
+`research/architecture/loom-30b-accel-paging-io-attribution-preflight-001-preregistration.md`
 
-Scientific design remains frozen:
-- canonical model/runtime/S24;
-- exact stable prefix and suffixes;
-- `-n 24`;
-- frozen semantic validator: W contains standalone `ambra`, B/C contain standalone `4317`;
-- 3 rounds B -> W -> C;
-- fresh cache per round;
-- only scientific factor is prompt-cache reuse;
-- same primary threshold: median C/B prompt-eval wall <=0.70;
-- E2E lower, decode >=90%, safe memory, complete evidence.
+Purpose:
+prove a non-mutating observation method before the real S24 paging/I/O attribution run.
 
-R2 harness repair only:
-- verify frozen parent wrapper SHA above;
-- preserve parent unchanged;
-- derive a separate R2 wrapper before inference;
-- only preregistered mechanical wrapper changes are allowed;
-- synthetic-test without opening GGUF;
-- freeze and persist derived-wrapper SHA before inference;
-- no wrapper edits after inference begins.
+Pinned-source facts already established:
+- Apple MoE offloader tracks LRU hits/misses internally;
+- misses create expert-pool `pread(...)` tasks;
+- pool reads are synchronous within `pread_pool(...)` and may be parallelized across tasks with `dispatch_apply`;
+- sidecar completion is signaled only after `resolve(...)` completes;
+- internal hit/miss counters are present but not exposed by the inspected interface.
 
-## After Prompt Cache R2
+This preflight must:
+- NOT open the GGUF;
+- NOT run inference;
+- inventory already-installed macOS observation tools;
+- validate candidate tracing against a frozen synthetic `os.pread` process;
+- require durable raw output and deterministic parsing;
+- select one non-mutating method only if a high-value per-process read observable is validated;
+- make no performance claim.
 
-Next decode-focused checkpoint: paging/I/O attribution. Measure expert paging cost before source-level prefetch/overlap work inspired by mini-SGLang.
+Forbidden in this checkpoint:
+- source patch/rebuild;
+- dynamic interposition;
+- package install;
+- SIP/security changes;
+- runtime/model mutation;
+- prefetch/overlap implementation;
+- Git commit/push by Pi.
 
-Acceleration goal: protect ~4.39–4.40 tok/s, reach 5+ first, then investigate 6–9 tok/s without unacceptable quality/memory cost.
+## After attribution preflight
+
+If GO: preregister the actual canonical S24 inference paging/I/O attribution using the validated observation method.
+
+If NO_GO: preregister a separate instrumentation strategy before any source-level measurement patch is allowed.
+
+Only after actual attribution supports an I/O bottleneck may LOOM preregister expert-prefetch/overlap intervention.
+
+Acceleration goal remains: protect ~4.39–4.40 tok/s, reach 5+ first, then investigate 6–9 tok/s without unacceptable quality/memory cost.
