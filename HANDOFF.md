@@ -1,11 +1,12 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — accelerated macro-work-package mode. User-facing micro-checkpoints are retired. Current work is `LOOM_RUNTIME_PRODUCTIZATION_WP1`; later macro packages cover agent capability, Heretic/behavioral transform, and final acceptance.
+Status: ACTIVE — accelerated macro-work-package mode. Current work is `LOOM_RUNTIME_PRODUCTIZATION_WP1`. Later packages are Context Intelligence (Caveman + Cavemem only), Behavioral Transform, and Final Acceptance.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Pi context: `/AGENTS.md` v3.79.
+Pi context: `/AGENTS.md` v3.80.
 Plan: `research/integration/loom-accelerated-macro-workpackages-v1.md`.
+Current WP1 contract: `research/integration/loom-runtime-productization-wp1.md`.
 
 ## Canonical starting point
 
@@ -47,58 +48,60 @@ Evidence:
 Meaning:
 current unprivileged external tracing did not expose validated high-value per-process read measurements. This does not refute paging as a bottleneck.
 
-Pinned source inspection established internal hit/miss counters and the `pread_pool(...)` read path. Minimal isolated source-level measurement is therefore authorized inside WP1.
+Pinned source inspection established internal hit/miss counters and the `pread_pool(...)` read path. Minimal isolated source-level measurement is authorized inside WP1.
 
 ## Current — WP1 Runtime + Product Serving
 
 Checkpoint:
 `LOOM_RUNTIME_PRODUCTIZATION_WP1`
 
-Pi should work autonomously across internal substeps and return only when WP1 is complete or a genuine user-action blocker exists.
+Authoritative contract:
+`research/integration/loom-runtime-productization-wp1.md`
+
+Pi works autonomously across internal substeps and returns only when WP1 is complete or a genuine user-action blocker exists.
 
 WP1 deliverables:
 1. best validated practical 30B runtime;
-2. persistent localhost serving/API, preferably OpenAI-compatible;
-3. usable local browser chat;
-4. Pi configured/tested against local LOOM;
-5. validated prompt cache enabled where applicable;
-6. source-level paging/decode attribution and bounded acceleration attempts handled internally;
-7. >=5 tok/s target first, but stop micro-optimization after three materially different evidence-backed failures to beat the best runtime;
-8. operational health/start/stop/logging/tracing;
-9. final decode/prefill/E2E/RAM/swap evidence;
-10. preserve S24 known-good rollback baseline.
+2. bounded source-level paging/decode attribution and evidence-backed acceleration attempts handled internally;
+3. target >=5 tok/s decode first, with canonical S24 preserved as rollback;
+4. persistent localhost serving/API, preferably OpenAI-compatible;
+5. validated serving-path prompt/prefix caching where directly supported and verified;
+6. **existing** privacy-respecting local WebUI — prefer native `llama-server` WebUI; no custom LOOM frontend from scratch;
+7. fallback WebUI only if existing/open-source/local and verified to require no conversation/model-data egress or mandatory telemetry in selected configuration;
+8. Pi configured and tested against the same final local model path;
+9. operational health/start/stop/logging/tracing;
+10. final decode/prefill/E2E/RAM/swap evidence.
+
+Runtime micro-optimization stopping rule:
+after three materially different evidence-backed interventions fail to beat the best validated runtime, stop optimization and finish serving/integration. A final result below 5 tok/s does not invalidate WP1 if this stopping rule is legitimately exhausted and the product stack is complete.
 
 Do not return after routine internal NO_GO results; record/revert and continue.
 
-## Next macro packages
+## Approved later macro packages
 
-WP2 — `LOOM_AGENT_CAPABILITY_WP2`
-- Caveman-style deterministic context packing/typed compression;
-- LoopX-style durable state/re-entry;
-- Cavemem-style progressive local memory;
-- Observal-style lightweight local tracing/accounting;
-- bounded pi-dynamic-workflows only when net-positive.
+### WP2 — Context Intelligence
+Checkpoint: `LOOM_CONTEXT_INTELLIGENCE_WP2`.
 
-WP3 — `LOOM_BEHAVIORAL_TRANSFORM_WP3`
-- actual model/adapter-level behavioral transform using Heretic or a technically valid LOOM-native directional low-rank equivalent;
-- separate because upstream Heretic is Transformers/PEFT-oriented while canonical DEEP is GGUF;
-- prompt-only behavior does not satisfy WP3.
+Permanent mechanisms only:
+- Caveman — deterministic context compression/packing/recovery handles;
+- Cavemem — progressive local project memory and relevant retrieval.
 
-WP4 — `LOOM_FINAL_ACCEPTANCE_WP4`
-- assemble best validated outputs;
-- final end-to-end acceptance;
-- documented start/stop/health;
-- exact hashes/provenance/evidence.
+Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems. Borrow only small ideas if required to support Caveman/Cavemem with negligible overhead.
 
-## Research inputs
+### WP3 — Behavioral Transform
+Checkpoint: `LOOM_BEHAVIORAL_TRANSFORM_WP3`.
 
-Project papers are engineering sources, not mandatory wholesale dependencies:
-- mini-SGLang — inference/cache/scheduling/prefetch concepts;
-- Caveman — deterministic context compression/packing;
-- Cavemem — progressive local memory;
-- LoopX — durable state/re-entry;
-- pi-dynamic-workflows — bounded opt-in orchestration;
-- Observal — local measurement/replay philosophy;
-- Heretic — contrastive residual-direction low-rank editing.
+Technical priority:
+1. Abliterix-derived MoE-aware method adapted to LOOM;
+2. Heretic;
+3. Senbonzakura-style multi-direction methods;
+4. clean LOOM-native equivalent when upstream stacks are incompatible.
+
+Criterion: best technically valid route for canonical GGUF/llama.cpp/Apple Silicon. Prefer a small runtime-loadable adapter when technically valid. Prompt-only behavior does not count.
+
+### WP4 — Final Integration + Acceptance
+Checkpoint: `LOOM_FINAL_ACCEPTANCE_WP4`.
+
+Assemble best validated outputs from WP1–WP3 and perform final end-to-end acceptance with exact hashes, provenance, resource evidence and operational documentation.
 
 Pi must not commit/push. ChatGPT persists canonical Git state at macro-work-package boundaries.
