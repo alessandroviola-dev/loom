@@ -1,18 +1,17 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-30
-Current: Stage1R2 Apple Metal MoE paging GO at 4.40 tok/s. Comparability audit completed: historical MLX and new GGUF are architecture-matched but checkpoint-different. Stage2 product-candidate validation is preregistered. Validator/guided-repair remains PAUSED.
-Canonical context: `/AGENTS.md` v3.71.
+Current: Stage2 product-candidate validation completed GO. Apple Metal MoE paging S24 is now canonical `loom-deep`. Immediate priority is the 30B acceleration funnel, beginning with a persistent/cache feasibility audit inspired by mini-SGLang concepts. Validator/guided-repair remains PAUSED.
+Canonical context: `/AGENTS.md` v3.72.
 
 ## 1. Product direction
 
 - `loom-balanced`: Qwen3-8B 3-bit, ~13 tok/s, provisional primary.
-- `loom-deep`: historical custom MLX ~1.4 tok/s; Apple Metal MoE paging candidate S24 reaches 4.40 tok/s.
+- `loom-deep`: **Qwen3-30B-A3B-Instruct-2507 Q3_K_S-3.25bpw on Apple Metal MoE paging S24**.
+- historical custom MLX ~1.4 tok/s: retained as historical comparison/fallback only.
 - `loom-fast`: future clean-runtime tier; legacy 4B parked.
-- `loom-auto`: validator-first architecture planned but paused during 30B runtime R&D.
+- `loom-auto`: validator-first architecture planned but paused during 30B acceleration R&D.
 - LOOM Heretic remains mandatory after initial runtime/capability optimization.
-
-Do not replace canonical DEEP before Stage2 product validation.
 
 ## 2. Stage1R2 — COMPLETE / GO
 
@@ -28,69 +27,73 @@ Best safe S24:
 - minimum headroom 13%;
 - no critical pressure/OOM/corruption/runaway.
 
-Candidate model:
-`Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`.
-
-## 3. Comparability audit — COMPLETE
-
-Canonical result:
-`research/architecture/loom-30b-stage2-comparability-audit-001-result.md`
+## 3. Stage2 comparability audit — COMPLETE
 
 Classification:
 `LOOM_30B_STAGE2_COMPARABILITY_ARCHITECTURE_MATCH_CHECKPOINT_DIFFERENT`.
 
 Historical MLX lineage:
-`Qwen/Qwen3-30B-A3B-MLX-4bit@4e2776a4cc73a8a251d0b797010a5b07fd541a3e`, upstream `Qwen/Qwen3-30B-A3B`, MLX affine Q4/group128.
+`Qwen/Qwen3-30B-A3B-MLX-4bit@4e2776a4cc73a8a251d0b797010a5b07fd541a3e`.
 
-New candidate:
-`Qwen/Qwen3-30B-A3B-Instruct-2507`, ByteShape Q3_K_S-3.25bpw.
+New DEEP upstream identity:
+`Qwen/Qwen3-30B-A3B-Instruct-2507`.
 
-Core MoE structure matches, but checkpoint/version, RoPE/context, quantization and chat-template text differ. Strict same-checkpoint runtime/quality parity claims are forbidden.
+Architecture matches but checkpoint/version, RoPE/context, quantization and chat template differ. Do not claim strict same-checkpoint runtime parity.
 
-## 4. Current — Stage2 product-candidate validation 001
+## 4. Stage2 product-candidate validation — COMPLETE / GO
 
-Preregistration:
-`research/architecture/loom-30b-stage2-product-candidate-validation-001-preregistration.md`
+Canonical result:
+`research/architecture/loom-30b-stage2-product-candidate-validation-001-result.md`
 
-Block A:
-- S24 reproducibility over 3 fresh Apple processes;
-- median >=4.0 tok/s, no run <3.5;
-- no critical pressure/OOM/corruption/runaway;
-- swap <=3.5 GiB.
-
-Block B:
-- 7 fresh matched practical tasks on historical MLX and Apple S24;
-- temp 0, same semantic prompts;
-- product-native tokenizer/chat template allowed;
-- objective validation T1–T5 and frozen rubrics T6–T7;
-- measure decode/prompt throughput, load/TTFT when observable, E2E, memory/wired/compressed/swap.
-
-GO requires all preregistered gates, including:
-- Apple objective >=4/5 and at most one PASS below historical;
-- rubric total at most one point below historical;
-- Apple matched generation throughput >=2.0x historical;
-- Apple median matched E2E <=0.80x historical;
-- complete safe evidence.
-
-GO classification:
+Classification:
 `LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
 
-A GO may promote Apple Metal MoE paging to canonical DEEP on product-utility grounds only.
+Reproducibility:
+- Apple S24 fresh-process runs: 4.38 / 4.39 / 4.39 tok/s;
+- median 4.39 tok/s.
 
-## 5. After Stage2 — 30B acceleration funnel
+Fresh matched practical suite:
+- objective T1–T5: historical 2/5, Apple 4/5;
+- rubric T6–T7: historical 6/6, Apple 5/6;
+- pooled generation: historical 1.444, Apple 4.059 tok/s = 2.81x;
+- median E2E: historical 65.909 s, Apple 26.380 s = 0.40x;
+- no critical memory/OOM/corruption/runaway.
 
-Primary architecture reference from the repository research bundle: mini-SGLang concepts, independently adapted for Apple Silicon:
-- persistent process / stable prefix caching;
-- KV/prompt reuse;
-- chunked prefill;
-- overlap scheduling;
-- expert/I/O prefetch.
+All preregistered product-selection gates passed. Apple S24 is promoted to canonical DEEP on product-utility grounds.
 
-Secondary end-to-end optimization: Caveman-style deterministic context packing.
+## 5. Current — 30B acceleration funnel
 
-Goal: move from current 4.40 tok/s toward 5+ first, then investigate whether 6–9 tok/s is achievable without unacceptable quality or memory cost.
+Primary architecture reference from the repository research bundle: mini-SGLang concepts, independently adapted for Apple Silicon.
 
-## 6. Later work
+Priority order:
+1. persistent process / stable-prefix cache feasibility audit;
+2. persistent/warm S24 experiment if mechanically supported;
+3. paging/I/O attribution;
+4. overlap scheduling and expert/I/O prefetch;
+5. controlled lighter-quant experiment only under separate artifact/quality preregistration if justified;
+6. Caveman-style deterministic context packing for end-to-end agent speed.
+
+Do not port CUDA-specific mini-SGLang implementation blindly.
+
+Acceleration objectives:
+- preserve validated ~4.39–4.40 tok/s baseline;
+- reach 5+ tok/s first;
+- then investigate 6–9 tok/s;
+- reject gains that introduce unacceptable quality loss, critical memory pressure, OOM or unstable swap behavior.
+
+## 6. Immediate checkpoint
+
+`LOOM_30B_ACCELERATION_PERSISTENT_CACHE_FEASIBILITY_001`
+
+Metadata/source/build audit only before modifying the promoted runtime. Determine:
+- persistent frontend/server support in frozen fork/build;
+- S24 flag compatibility;
+- existing prompt/KV/prefix caching controls;
+- observable timing/cache metrics without source patching;
+- whether a bounded persistent/warm experiment can be run without download/source mutation;
+- source locations suitable for later expert/I/O prefetch experiments.
+
+## 7. Later work
 
 After the 30B runtime priority:
 - resume sanitized validator-guided repair/selective-DEEP graph;
