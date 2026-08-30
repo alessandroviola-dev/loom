@@ -1,110 +1,84 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: WP1 Runtime + Product Serving GO and fully persisted; WP2 Context Intelligence GO and persisted; WP3 original LoRA families valid NO_GO; **WP3-R2 Behavioral Unlock completed locally with GO** using the Huihui Q3_K_S replacement. R2 persistence is pending. WP4 remains not authorized.
+Status: WP1 GO/persisted; WP2 GO/persisted; WP3 original adapter families valid NO_GO; WP3-R2 Behavioral Unlock GO/persisted; **WP4 Final Integration + Acceptance is authorized and active**.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Pi context: `/AGENTS.md` v3.88.
+Pi context: `/AGENTS.md` v3.89.
 Plan: `research/integration/loom-accelerated-macro-workpackages-v1.md`.
-R2 contract: `research/integration/loom-behavioral-unlock-wp3-r2.md`.
+WP4 contract: `research/integration/loom-final-acceptance-wp4.md`.
 
-## Canonical fast baseline
+## Final product candidates
+
+### FAST / default
+
+Label:
+`loom-deep-30b-s32`
 
 Model:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
-SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
 
-Runtime: **S32**. Rollback: S24.
+SHA256:
+`c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`
 
-Validated S32 median decode `5.596 tok/s`, median E2E `23.849 s`.
+Validated S32 median decode: `5.596 tok/s`.
 
-Operational endpoints:
-- WebUI `http://127.0.0.1:18080/`;
-- API base `http://127.0.0.1:18080/v1`;
-- health `http://127.0.0.1:18080/health`.
+### UNLOCKED
 
-Lifecycle:
-`scripts/loom-deep-server start|status|health|stop`.
+Label:
+`loom-deep-30b-unlocked`
 
-## WP1 — COMPLETE / GO / FULLY PERSISTED
-
-Classification:
-`LOOM_RUNTIME_PRODUCTIZATION_WP1_GO`
-
-Result:
-`research/integration/loom-runtime-productization-wp1-result.md`
-
-Evidence:
-`results-local/runtime-productization-wp1/20260830T124040Z/`
-
-## WP2 — COMPLETE / GO / PERSISTED
-
-Classification:
-`LOOM_CONTEXT_INTELLIGENCE_WP2_GO`
-
-Implementation commit:
-`0e249f8f5cfaf89398d01e2ee50281fb75b86cd7`
-
-Result:
-`research/integration/loom-context-intelligence-wp2-result.md`
-
-Evidence:
-`results-local/context-intelligence-wp2/20260830T133259Z/`
-
-Canonical Context Intelligence remains Caveman deterministic packing/recovery + Cavemem SQLite/FTS5 progressive project memory, with `23.24%` median heavy-context provider-input reduction and `0%` no-op overhead.
-
-Canonical fast Pi label:
-`loom-local/loom-deep-30b-s32`.
-
-## WP3 — COMPLETE / VALID NO_GO
-
-The original rank-1 directional, MoE-router and rank-4 subspace GGUF-LoRA candidates all loaded successfully but retained the frozen `6/6` refusal result. Those adapter families remain rejected.
-
-## WP3-R2 — COMPLETE LOCALLY / GO — PERSISTENCE PENDING
-
-Classification:
-`LOOM_BEHAVIORAL_UNLOCK_WP3_R2_GO`.
-
-Local result:
-`research/integration/loom-behavioral-unlock-wp3-r2-result.md`
-
-Evidence:
-`results-local/behavioral-unlock-wp3-r2/20260830T160845Z/`
-
-Selected candidate:
+Model:
 `Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated.Q3_K_S.gguf`
 
-Source:
-`mradermacher/Huihui-Qwen3-30B-A3B-Instruct-2507-abliterated-GGUF`
-
-Local SHA256:
+SHA256:
 `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
 
-Frozen results:
-- explicit refusals `6/6 -> 0/6`;
+WP3-R2 persistence commit:
+`1252fcfad73878981a1aa1844a484949a12d5ff4`
+
+Validated R2 behavior/capability:
+- explicit refusal `6/6 -> 0/6`;
 - benign capability `8/8 -> 8/8`;
-- no increased degeneration;
-- loopback API/WebUI stable;
-- real Pi + WP2 request passed;
-- rollback to canonical S32 + WP2 passed.
+- no increased frozen degeneration;
+- API/WebUI and real Pi + WP2 passed;
+- clean rollback to FAST passed.
 
-Caveats:
-- fresh decode about `55%` of fresh S32 baseline;
-- materially higher swap pressure;
-- behavioral/disposition drift recorded and must remain explicit.
+Tradeoff: about `55%` of fresh FAST decode in the R2 comparison, with materially higher swap pressure and explicit disposition drift.
 
-## Product direction
+## Context Intelligence
 
-Keep two validated DEEP profiles:
-1. `loom-deep-30b-s32` — fast/default;
-2. `loom-deep-30b-unlocked` — behaviorally unlocked Candidate A, slower and more memory-intensive.
+WP2 Caveman + Cavemem remains canonical for both profiles. Normal final operation should use the existing `loom-local` provider integration and preserve independent `LOOM_CONTEXT_INTELLIGENCE=0` rollback.
 
-Do not commit either GGUF model artifact to Git. Persist only exact provenance/hash, small operational scripts/configs, frozen eval specs and result documentation.
+## WP4 target
 
-## Current exact action
+Turn the research state into a stable two-profile product.
 
-Persist the bounded WP3-R2 reproducibility/product-profile package under the macro-boundary exception. Do not begin WP4 until that commit is reviewed.
+Required final UX should provide simple profile selection, preferably:
 
-## WP4
+```text
+scripts/loom-deep use fast
+scripts/loom-deep use unlocked
+scripts/loom-deep start
+scripts/loom-deep stop
+scripts/loom-deep status
+scripts/loom-deep health
+scripts/loom-deep current
+```
 
-Planned / not authorized. Final acceptance should integrate and validate both DEEP profiles plus WP2, profile switching and rollback.
+Only one 30B should be resident at a time.
+
+Normal switching should use a stable loopback endpoint where practical, preferably `127.0.0.1:18080`, so Pi/WP2/WebUI do not require manual endpoint rewiring.
+
+Final model artifacts should use stable local ignored `models/` paths, without unnecessary multi-GB duplication. Verify hashes before/after any hard-link/move.
+
+WP4 must validate FAST -> UNLOCKED -> FAST, API/WebUI/Pi+WP2, frozen UNLOCKED behavior/capability reproduction, FAST health/performance, UNLOCKED resources/performance, cache compatibility and rollback.
+
+Durable outputs:
+- `docs/LOOM_OPERATIONS.md`;
+- `research/integration/loom-final-acceptance-wp4-result.md`;
+- local evidence under `results-local/final-acceptance-wp4/<timestamp>/`.
+
+The still-local original WP3 NO_GO result may be archived with the eventual bounded WP4 persistence package. Do not sweep unrelated historical untracked scripts.
+
+Pi must not commit/push during WP4 execution; return one final report for review.
