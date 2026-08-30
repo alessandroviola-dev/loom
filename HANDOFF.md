@@ -1,82 +1,75 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Persistent/cache feasibility audit completed GO. Current checkpoint is the preregistered no-patch `--prompt-cache` experiment before paging/I/O attribution.
+Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache 001 closed MECHANICAL_NO_GO because the frozen output budget/validator invalidated otherwise clean cache measurements. Current checkpoint is preregistered Prompt Cache R1 recovery.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_ACCEL_PROMPT_CACHE_001`
-Pi context: `/AGENTS.md` v3.73.
+Current checkpoint: `LOOM_30B_ACCEL_PROMPT_CACHE_R1_001`
+Pi context: `/AGENTS.md` v3.74.
 
 ## Canonical DEEP
 
 Model:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
-SHA256:
-`c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
+SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
 
 Runtime:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
 with `llama-completion -no-cnv` SHA256 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
 
-Profile:
-S24.
+Profile: S24.
+Validated decode baseline: ~4.39–4.40 tok/s.
 
-Validated generation baseline:
-~4.39–4.40 tok/s.
-
-Stage2 product-candidate result:
+Stage2 product result:
 `LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
-Apple S24 is canonical DEEP on product-utility grounds.
+Apple S24 is canonical DEEP.
 
-## Persistent/cache feasibility — COMPLETE / GO
+## Prompt Cache 001 — MECHANICAL_NO_GO
 
 Canonical result:
-`research/architecture/loom-30b-accel-persistent-cache-feasibility-001-result.md`
+`research/architecture/loom-30b-accel-prompt-cache-001-result.md`
 
 Evidence:
-`results-local/research/30b-accel-persistent-cache-feasibility-001/20260830T101246Z/`
+`results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/`
 
-Classification:
-`LOOM_30B_ACCEL_PERSISTENT_CACHE_FEASIBILITY_GO`.
+Observed diagnostic evidence:
+- cache-disabled prompt eval ~71–74 s;
+- warm-cache prompt eval ~2.95–3.07 s;
+- median C/B prompt-eval ratio 0.04174;
+- median C/B E2E ratio 0.08973;
+- decode preservation 96.98%;
+- fresh 26,449,272-byte cache files created/reused with matching hashes;
+- runtime reported 262/269 prompt-token match;
+- memory/swap safe.
 
-Key findings:
-- no built `llama-server` is available;
-- built canonical `llama-completion` exposes explicit `--prompt-cache` support;
-- first no-patch experiment should compare stable-prefix warm prompt cache against cache-disabled target baseline;
-- audit performed no inference, GGUF open, patch, build, download, package install or Git action.
+These are diagnostic only, not a scientific GO, because every invocation failed the frozen functional validator.
 
-## Exact next action — prompt cache 001
+Mechanical cause:
+- `-n 8` truncated `4317` to `...porta 4`;
+- warm answer semantically included `ambra` but exact-string validation rejected explanatory text.
+
+## Exact next action — Prompt Cache R1
 
 Preregistration:
-`research/architecture/loom-30b-accel-prompt-cache-001-preregistration.md`
+`research/architecture/loom-30b-accel-prompt-cache-r1-001-preregistration.md`
 
-Three independent rounds. Each round:
-1. B: cache-disabled target prompt in a fresh process;
-2. W: warm prompt with a fresh per-round `--prompt-cache` file;
-3. C: target prompt in a fresh process using that same cache file.
+Recovery only:
+- generation budget `-n 24`;
+- semantic validator frozen before execution: W contains `ambra`; B/C contain standalone `4317`.
 
-Stable prefix, warm suffix and target suffix are frozen byte-for-byte in the preregistration.
+Scientific design unchanged:
+- same exact prompts;
+- canonical S24 only;
+- three independent B -> W -> C rounds;
+- fresh cache per round;
+- prompt-cache reuse is the sole scientific factor;
+- primary GO threshold median C/B prompt-eval wall <=0.70;
+- lower E2E, decode >=90%, safe memory and complete evidence required.
 
-Primary metric:
-median C/B target prompt-eval wall ratio.
+Reuse the frozen Prompt Cache 001 wrapper unchanged and verify its exact SHA before inference.
 
-GO requires:
-- median prompt-eval wall ratio <=0.70;
-- median target E2E C/B <1.00;
-- warm-cache generation throughput >=90% of baseline generation throughput;
-- deterministic correct outputs;
-- no critical memory/OOM/corruption/runaway;
-- peak swap <=3.5 GiB;
-- complete durable evidence;
-- no model/source/runtime/package mutation.
+## After R1
 
-Prompt cache is evaluated as a prefill/E2E optimization only; it is not a direct decode-speed claim.
+Proceed to paging/I/O attribution for direct decode acceleration. Then preregister expert-prefetch/overlap intervention if attribution supports it.
 
-## After prompt-cache
-
-Proceed to paging/I/O attribution to isolate direct decode bottlenecks in S24. Use that evidence to choose the first source-level expert prefetch/overlap experiment inspired by mini-SGLang principles.
-
-Acceleration target:
-5+ tok/s first, then investigate 6–9 tok/s without unacceptable quality or memory cost.
-
-Later: Caveman-style deterministic context packing for end-to-end agent speed. Validator work remains paused; Heretic remains mandatory later.
+Target: 5+ decode tok/s first, then investigate 6–9 tok/s. Caveman-style context packing remains later end-to-end work.
