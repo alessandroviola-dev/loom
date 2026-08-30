@@ -1,13 +1,13 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.80
+Version: 3.81
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired for the current push.
 
 ## Roles / synchronization
 
-Pi: local inspection/execution, implementation, bounded experimentation, local integration, durable `results-local/` evidence, autonomous continuation through internal gates inside the active macro work package.
+Pi: local inspection/execution, implementation, bounded experimentation, local integration, durable `results-local/` evidence, autonomous continuation through internal gates inside an authorized macro work package.
 
 ChatGPT: scientific direction, macro-package definition/review, canonical Git/GitHub persistence.
 
@@ -18,18 +18,17 @@ Pi must not commit/push/PR.
 
 ## Operating rule
 
-Do not return after routine internal GO/NO_GO results.
-
-Inside the active macro work package:
+Inside an authorized macro work package:
+- do not return after routine internal GO/NO_GO results;
 - record failed experiments;
 - revert regressions;
 - continue to the next justified action;
 - preserve frozen scientific gates;
 - keep one known-good runnable baseline.
 
-Return only when:
-1. the macro work package deliverable is substantially complete; or
-2. a genuine blocker requires user action, credentials, destructive/security-sensitive host changes, unavailable hardware/storage, or a project-direction choice not resolvable from existing goals/evidence.
+Return only when the macro deliverable is substantially complete or a genuine blocker requires user action, credentials, destructive/security-sensitive host changes, unavailable hardware/storage, or a project-direction choice not resolvable from existing goals/evidence.
+
+Do not begin a later macro package until it is explicitly authorized.
 
 ## Core rules
 
@@ -44,64 +43,75 @@ Return only when:
 9. project-local dependencies/environments are allowed when required and recorded;
 10. Pi does not commit/push.
 
-## Canonical DEEP starting point
+## Canonical DEEP — WP1 validated
 
 Model:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
 
-SHA256:
+Model SHA256:
 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`
 
-Source baseline:
+Source:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
 
-Validated frontend SHA256:
-`38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`
+Canonical serving binary:
+`llama-server`
+SHA256:
+`58aec7b9a924ce0bc7910b889d91cc6d55064991459ddddea70a5c8f3ca08506`
 
-Profile: S24.
-Validated fresh-process decode baseline: ~4.39–4.40 tok/s.
+Canonical runtime profile: **S32**.
+Rollback profile: S24.
 
-Validated prompt-cache result:
-`LOOM_30B_ACCEL_PROMPT_CACHE_R2_GO`.
+Matched deterministic S24/S32 3x96-token A/B:
+- S24 median decode `4.382 tok/s`, E2E `29.185 s`;
+- S32 median decode `5.596 tok/s`, E2E `23.849 s`;
+- S32/S24 decode `1.2768x`;
+- S32/S24 E2E `0.8172`;
+- byte-identical outputs.
 
-Stable-prefix result:
-- median C/B prompt-eval ratio `0.04025`;
-- median C/B E2E ratio `0.10751`;
-- decode preservation `99.43%`.
+S32 resource evidence:
+- peak RSS `3914.6 MiB`;
+- peak sampled swap `1651.88 MiB`;
+- minimum sampled free memory `10%`;
+- no crash/OOM/corruption/critical pressure indication.
 
-Prompt/prefix caching is accepted for stable-prefix prefill/E2E optimization.
+Final S32 flags include:
+`--ctx-size 4096 --parallel 1 --moe-n-slots 32 --moe-n-layers 48 --no-mmap --no-warmup --cpu-moe -b 4096 -ub 1 --cache-ram 512`
+
+## WP1 — COMPLETE / GO
+
+Classification:
+`LOOM_RUNTIME_PRODUCTIZATION_WP1_GO`
+
+Canonical result:
+`research/integration/loom-runtime-productization-wp1-result.md`
+
+Evidence:
+`results-local/runtime-productization-wp1/20260830T124040Z/`
+
+Operational path:
+- start: `scripts/loom-deep-server start`;
+- status: `scripts/loom-deep-server status`;
+- health: `scripts/loom-deep-server health`;
+- stop: `scripts/loom-deep-server stop`;
+- WebUI: `http://127.0.0.1:18080/`;
+- API: `http://127.0.0.1:18080/v1/chat/completions`;
+- health endpoint: `http://127.0.0.1:18080/health`.
+
+The existing embedded `llama-server` WebUI is selected. No custom LOOM WebUI was built. Final server is localhost-only and offline-configured.
+
+Serving-path cache reuse is directly validated with bounded `--cache-ram 512`: cold 136 prompt tokens / 27.809 s; reuse 134 cached + 2 evaluated tokens / 280.389 ms; reuse E2E 0.332 s.
+
+Pi is configured against `http://127.0.0.1:18080/v1` and completed a real offline local-model request successfully.
+
+Current configured provider/model id is `loom-local/loom-deep-30b-s24`. This label is stale relative to the now-canonical S32 runtime. Treat it as naming debt only; do not infer S24 execution from the id. Rename during a later authorized configuration/integration pass.
 
 ## Macro work-package plan
 
 Authoritative plan:
 `research/integration/loom-accelerated-macro-workpackages-v1.md`
 
-### WP1 — Runtime + Product Serving
-
-Current checkpoint:
-`LOOM_RUNTIME_PRODUCTIZATION_WP1`
-
-Authoritative contract:
-`research/integration/loom-runtime-productization-wp1.md`
-
-Deliver:
-- best validated practical 30B runtime;
-- persistent localhost serving/API, preferably OpenAI-compatible;
-- an existing privacy-respecting local WebUI;
-- Pi connected/tested against local LOOM;
-- prompt/prefix cache in the serving path only where directly verified;
-- operational trace/health/start/stop;
-- decode/prefill/E2E/RAM/swap evidence.
-
-Runtime acceleration is internal to WP1. Source-level instrumentation/builds and evidence-backed runtime patches are authorized in isolated variants.
-
-Target >=5 tok/s decode first. After three materially different evidence-backed decode interventions fail to beat the best validated runtime, stop micro-optimization and finish serving/integration.
-
-**Web UI rule:** do not build a custom LOOM web interface from scratch. Prefer the existing `llama-server` WebUI if compatible. Otherwise use an existing open-source local UI only after verifying no required cloud inference/conversation-data egress and no mandatory telemetry for the selected configuration.
-
-WP1 does not implement Caveman/Cavemem or behavioral editing.
-
-### WP2 — Context Intelligence
+### WP2 — Context Intelligence — PLANNED / NOT YET AUTHORIZED
 
 Checkpoint:
 `LOOM_CONTEXT_INTELLIGENCE_WP2`
@@ -110,59 +120,28 @@ Primary permanent mechanisms only:
 - Caveman for deterministic compression/context packing/recovery handles;
 - Cavemem for progressive local project memory/retrieval.
 
-Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems. Small implementation ideas from them may be borrowed only when required to support Caveman/Cavemem with negligible overhead.
+Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems. Small implementation ideas may be borrowed only where they support Caveman/Cavemem with negligible overhead.
 
-### WP3 — Behavioral Transform
+### WP3 — Behavioral Transform — PLANNED
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
 
-Search priority:
+Technical search priority:
 1. Abliterix-derived MoE-aware methodology adapted to LOOM;
 2. Heretic;
 3. Senbonzakura-style multi-direction methods;
 4. clean LOOM-native equivalent when upstream tooling is incompatible.
 
-Select by technical fit to canonical GGUF/llama.cpp/Apple Silicon, not popularity. Prefer a small reversible/runtime-loadable adapter when technically valid. Prompt-only behavior does not satisfy WP3.
+Select by fit to GGUF/llama.cpp/Apple Silicon. Prefer a small reversible/runtime-loadable adapter when technically valid. Prompt-only behavior does not satisfy WP3.
 
-### WP4 — Final Integration + Acceptance
+### WP4 — Final Integration + Acceptance — PLANNED
 
 Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
 
-Assemble best validated outputs of WP1–WP3 and run final end-to-end acceptance.
+Assemble the best validated outputs from WP1-WP3 and run end-to-end acceptance.
 
-## Repository research inputs
+## Current state
 
-Current priority engineering sources:
-- mini-SGLang: prefix/KV reuse and scheduling/prefetch/overlap concepts for WP1;
-- Caveman + Cavemem for WP2;
-- Abliterix/Heretic/Senbonzakura concepts for WP3.
-
-Other papers remain research references, not current permanent integration requirements.
-
-## Current WP1 internal context
-
-External paging tracing preflight was valid `NO_GO`: available unprivileged native tracing did not expose validated per-process read observables. This does not refute paging as a bottleneck.
-
-Pinned source already shows internal hit/miss counters and `pread_pool(...)`. WP1 may therefore implement minimal isolated source-level measurement, calibrate overhead, attribute decode cost, and test evidence-backed acceleration patches without pausing for each sub-result.
-
-## WP1 final return required
-
-Return one bounded report only at WP1 completion/blocker, including:
-- WP1 classification;
-- final runtime architecture;
-- start/stop/health commands;
-- browser URL and selected existing WebUI;
-- privacy/local-only verification for that UI;
-- API endpoint/model id;
-- Pi configuration/test result;
-- selected source/binary/model hashes;
-- final runtime flags;
-- decode/prefill/E2E/RAM/swap;
-- serving-path prompt/prefix-cache state;
-- tracing/health state;
-- changed files/configs;
-- evidence roots;
-- notable failed/reverted runtime candidates;
-- remaining genuine blocker, if any.
+WP1 is complete. Do not begin WP2 until user authorization.
