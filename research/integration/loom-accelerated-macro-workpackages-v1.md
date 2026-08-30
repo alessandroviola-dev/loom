@@ -1,7 +1,7 @@
 # LOOM Accelerated Macro Work Packages v1
 
 Date: 2026-08-30
-Status: ACTIVE — WP4 final integration authorized
+Status: WP4 completed locally with GO; final bounded persistence pending
 
 ## Purpose
 
@@ -11,7 +11,7 @@ Use substantial Pi macro work packages instead of user-facing micro-checkpoints.
 
 Outcome:
 - canonical FAST S32 runtime;
-- `5.596 tok/s` validated median matched decode;
+- historical validated median matched decode `5.596 tok/s`;
 - persistent localhost llama-server;
 - WebUI/API/Pi/cache/lifecycle validated;
 - S24 rollback retained.
@@ -52,52 +52,74 @@ Outcome:
 - rollback to FAST + WP2 passed;
 - accepted with explicit slower/high-swap/disposition-drift caveat.
 
-Product decision: retain FAST and UNLOCKED as separate selectable profiles.
-
-## WP4 — Final Integration + Acceptance — ACTIVE
+## WP4 — Final Integration + Acceptance — COMPLETE LOCALLY / GO / PERSISTENCE PENDING
 
 Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
 
+Classification:
+`LOOM_FINAL_ACCEPTANCE_WP4_GO`.
+
 Contract:
 `research/integration/loom-final-acceptance-wp4.md`
 
-Goal:
-turn all validated results into the final practical LOOM product.
+Local result:
+`research/integration/loom-final-acceptance-wp4-result.md`
 
-Final product target:
+Evidence:
+`results-local/final-acceptance-wp4/20260830T182958Z/`
+
+Final product:
 1. `loom-deep-30b-s32` — FAST/default;
 2. `loom-deep-30b-unlocked` — validated behavioral-unlock profile.
 
-WP4 must provide:
-- stable ignored `models/` artifact paths without unnecessary GGUF duplication;
-- one resident 30B at a time;
-- simple profile selection/switching;
-- stable localhost serving endpoint where practical;
-- API/WebUI/Pi + WP2 validation for both;
-- unchanged frozen UNLOCKED behavior/capability reproduction;
-- FAST health/performance;
-- UNLOCKED decode/prefill/E2E/RSS/swap/memory-pressure evidence;
-- prompt/KV cache compatibility;
-- Context Intelligence rollback;
-- clean FAST -> UNLOCKED -> FAST acceptance sequence;
-- operations documentation and final result/evidence.
+Final UX:
+```text
+scripts/loom-deep use fast|unlocked
+scripts/loom-deep start|stop|status|health|current
+```
 
-Pi does not commit/push during WP4 execution. Final persistence follows review.
+Stable local endpoint for either active profile:
+`127.0.0.1:18080`.
+
+Final acceptance passed:
+- stable hard-linked ignored model artifacts with hash preservation;
+- FAST -> UNLOCKED -> FAST switching twice;
+- only one resident 30B profile at a time;
+- loopback-only serving;
+- health/models/API/WebUI for both;
+- Pi + WP2 for both;
+- Context Intelligence disable rollback;
+- UNLOCKED frozen reproduction: refusal `0/6`, degeneration `0/6`, benign `8/8`;
+- prompt/KV cache for both, repeated 1,149-token prefix reduced to one evaluated token;
+- final rollback to FAST + WP2.
+
+Final WP4 performance snapshot:
+- FAST: decode `6.209 tok/s`, prefill `3.438 tok/s`, E2E `7.131 s`, RSS `4.00->4.01 GiB`, swap `1269->1308 MiB`;
+- UNLOCKED: decode `2.963 tok/s`, prefill `1.673 tok/s`, E2E `9.129 s`, RSS `4.13->4.16 GiB`, swap `1667->1708 MiB`.
+
+Final active state after execution: FAST + WP2.
+
+## Current action
+
+Create one bounded final persistence commit containing only reviewed WP4 product/config/result/docs, optionally plus the reviewed historical WP3 NO_GO result.
+
+Exclude:
+- `models/` and all GGUFs;
+- `.loom/`;
+- `results-local/`;
+- home-directory Pi configuration;
+- caches/secrets;
+- unrelated historical untracked scripts.
+
+After that commit is pushed and reviewed, LOOM is FINAL / GO / FULLY PERSISTED.
 
 ## Global execution rules
 
-1. Do not return after routine internal failures.
-2. Record and fix/revert regressions, then continue.
-3. Never relax frozen gates after seeing results.
-4. Preserve a known-good FAST baseline.
-5. Do not run both 30B profiles concurrently for convenience.
-6. Avoid unnecessary multi-GB model duplication or redownload.
-7. No public internet exposure by default.
-8. No SIP/security disabling, destructive unrelated cleanup, paid-cloud or new credential requirements.
-9. Intermediate evidence stays under `results-local/`.
-10. Return one bounded final report with implementation, acceptance measurements, changed files and evidence roots.
-
-## Current work package
-
-`LOOM_FINAL_ACCEPTANCE_WP4`
+1. Evidence over narrative.
+2. Never relax frozen gates after seeing results.
+3. Preserve exact provenance and hashes.
+4. No public internet exposure by default.
+5. No SIP/security disabling or destructive unrelated cleanup.
+6. Large local models remain outside Git.
+7. Pi commits only under the explicit bounded macro-boundary exception.
