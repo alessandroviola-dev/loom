@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.71
+Version: 3.72
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -27,9 +27,9 @@ GitHub is canonical. Active clone: `<repository-root>`.
 
 **Big models. Small machines.**
 - BALANCED: Qwen3-8B 3-bit/group64 Direct MLX, ~13 tok/s, provisional primary.
-- DEEP: historical custom MLX path ~1.4 tok/s. Apple Metal MoE paging Stage1R2 reached 4.40 tok/s and is the leading DEEP candidate, but the candidate checkpoint differs from historical MLX.
+- DEEP: **Apple Metal MoE paging is now canonical** after Stage2 product-candidate GO. Current model is Qwen3-30B-A3B-Instruct-2507 Q3_K_S-3.25bpw at S24. Historical custom MLX ~1.4 tok/s is retained as historical comparison/fallback only.
 - FAST: concept retained; legacy 4B parked.
-- LOOM AUTO validator-first work remains valid but PAUSED during 30B runtime investigation.
+- LOOM AUTO validator-first work remains valid but PAUSED during 30B acceleration work.
 - LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
 
 ## Stage1R2 — COMPLETE / GO
@@ -37,10 +37,7 @@ GitHub is canonical. Active clone: `<repository-root>`.
 Canonical result:
 `research/architecture/loom-30b-apple-moe-paging-stage1r2-001-result.md`
 
-Classification:
-**`LOOM_30B_APPLE_MOE_PAGING_STAGE1R2_GO`**.
-
-Best safe S24:
+Best safe S24 on frozen Stage1 workload:
 - generation 4.40 tok/s;
 - prompt 3.95 tok/s;
 - load 14.426 s;
@@ -50,7 +47,7 @@ Best safe S24:
 - minimum headroom 13%;
 - no critical pressure/OOM/corruption/runaway.
 
-New candidate artifact:
+Candidate artifact:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
 SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
 
@@ -67,47 +64,51 @@ Canonical result:
 `research/architecture/loom-30b-stage2-comparability-audit-001-result.md`
 
 Classification:
-**`LOOM_30B_STAGE2_COMPARABILITY_ARCHITECTURE_MATCH_CHECKPOINT_DIFFERENT`**.
+`LOOM_30B_STAGE2_COMPARABILITY_ARCHITECTURE_MATCH_CHECKPOINT_DIFFERENT`.
 
 Historical MLX:
 `Qwen/Qwen3-30B-A3B-MLX-4bit@4e2776a4cc73a8a251d0b797010a5b07fd541a3e`
-Declared upstream `Qwen/Qwen3-30B-A3B`; MLX affine Q4/group128.
+(upstream `Qwen/Qwen3-30B-A3B`, MLX affine Q4/group128).
 
-New candidate upstream identity:
-`Qwen/Qwen3-30B-A3B-Instruct-2507`; ByteShape Q3_K_S-3.25bpw.
+New DEEP upstream identity:
+`Qwen/Qwen3-30B-A3B-Instruct-2507`, ByteShape Q3_K_S-3.25bpw.
 
-Core architecture matches 48 layers / 128 experts / top-8 / hidden 2048, but checkpoint/version, RoPE/context, quantization and chat-template text differ. Historical 1.402 and 1.229233 tok/s remain contextual references only.
+Shared core topology: 48 layers / 128 experts / top-8 / hidden 2048. Checkpoint/version, RoPE/context, quantization and chat-template text differ. Do not claim same-checkpoint runtime-only superiority.
 
-## Current checkpoint — Stage2 product-candidate validation 001
+## Stage2 product-candidate validation — COMPLETE / GO
 
-Preregistration:
-`research/architecture/loom-30b-stage2-product-candidate-validation-001-preregistration.md`
+Canonical result:
+`research/architecture/loom-30b-stage2-product-candidate-validation-001-result.md`
 
-Stage2 compares the historical MLX and Apple MoE candidates as different-checkpoint products, not as a strict runtime-only experiment.
+Classification:
+**`LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`**.
 
-Frozen plan:
-- Block A: Apple S24 reproducibility, 3 fresh processes on the Stage1R2 prompt;
-- Block B: 7 fresh matched practical tasks on historical MLX and Apple S24;
-- temperature 0, same semantic prompts, own canonical tokenizer/chat template per candidate;
-- exact provenance and durable telemetry/output evidence;
-- objective tasks T1–T5 plus frozen rubrics T6–T7;
-- no prompt tuning/retry after results begin.
+Block A S24 reproducibility:
+- 4.38, 4.39, 4.39 tok/s;
+- median **4.39 tok/s**;
+- all clean; no critical pressure/runaway; peak swap ~1.5 GiB.
 
-Promotion gate requires, among other frozen conditions:
-- S24 reproducibility median >=4.0 tok/s, no run <3.5;
-- new candidate objective score >=4/5 and at most one PASS below historical;
-- rubric total at most one point below historical;
-- matched generation throughput >=2.0x historical;
-- median matched E2E <=0.80x historical;
-- no critical memory/OOM/corruption/runaway and peak swap <=3.5 GiB.
+Fresh matched suite H historical MLX vs N Apple S24:
+- objective T1–T5: H 2/5, N **4/5**;
+- rubric T6–T7: H 6/6, N **5/6**;
+- median generation: H 1.437, N **3.730 tok/s**;
+- pooled generation: H 1.444, N **4.059 tok/s** = **2.81x**;
+- median E2E: H 65.909 s, N **26.380 s** = **0.40x**;
+- no critical memory/OOM/corruption/runaway.
 
-GO classification:
-`LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
+All preregistered promotion gates passed. Apple S24 is now canonical DEEP on product-utility grounds. This is a different-checkpoint product decision, not a same-model one-factor runtime claim.
 
-A GO may promote Apple MoE paging to canonical DEEP on product-utility grounds, but may not claim same-checkpoint runtime-only parity.
+## Current checkpoint — 30B acceleration funnel design
 
-No model download, package install, runtime/source/model modification, slot tuning, mini-SGLang acceleration, Heretic integration, provider/UI work or Git action by Pi during Stage2.
+Primary architectural reference from the repository research bundle: mini-SGLang concepts, independently adapted for Apple Silicon:
+- persistent process / stable prefix caching;
+- KV/prompt reuse;
+- chunked prefill;
+- overlap scheduling;
+- expert/I/O prefetch.
 
-## After Stage2
+Secondary end-to-end optimization: Caveman-style deterministic context packing after runtime work.
 
-Open a separate 30B acceleration funnel if Stage2 validates the candidate. Primary architectural reference from repository research bundle: mini-SGLang concepts — persistent/prefix caching, chunked prefill, overlap scheduling and expert/I/O prefetch — independently adapted for Apple Silicon. Caveman-style context packing is secondary end-to-end optimization.
+First step: bounded persistent/cache feasibility audit with no production/runtime mutation. Establish what persistent frontend/cache mechanisms are already available in the frozen fork/build and what can be measured without patching source. Then preregister the first acceleration experiment.
+
+Acceleration goal: protect the 4.39–4.40 tok/s validated baseline, reach 5+ first, then investigate 6–9 tok/s without unacceptable quality/memory cost.
