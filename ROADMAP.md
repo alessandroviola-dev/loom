@@ -1,10 +1,9 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-30
-Current: WP1 Runtime + Product Serving GO and fully persisted. WP2 Context Intelligence GO and persisted. WP3 Behavioral Transform is now authorized and active.
-Canonical context: `/AGENTS.md` v3.85.
+Current: WP1 Runtime + Product Serving GO and fully persisted. WP2 Context Intelligence GO and persisted. WP3 Behavioral Transform completed locally with valid NO_GO and awaits bounded persistence. WP4 is planned but not authorized.
+Canonical context: `/AGENTS.md` v3.86.
 Plan: `research/integration/loom-accelerated-macro-workpackages-v1.md`.
-WP3 contract: `research/integration/loom-behavioral-transform-wp3.md`.
 
 ## 1. Canonical product state
 
@@ -12,7 +11,7 @@ WP3 contract: `research/integration/loom-behavioral-transform-wp3.md`.
 - canonical Pi model label: `loom-local/loom-deep-30b-s32`.
 - S24 remains validated runtime rollback.
 - Caveman + Cavemem Context Intelligence is enabled by default for the local Pi provider and can be disabled independently.
-- `loom-balanced`: Qwen3-8B 3-bit ~13 tok/s remains lighter provisional tier.
+- no behavioral adapter is promoted after WP3 NO_GO.
 
 ## 2. WP1 — Runtime + Product Serving — COMPLETE / GO / PERSISTED
 
@@ -38,9 +37,6 @@ Operational stack:
 - Pi verified against local server;
 - serving-path stable-prefix reuse validated under `--cache-ram 512`;
 - lifecycle helper `scripts/loom-deep-server` persisted in commit `75e210f4d46cb8b7955e46763e329f28f37b699e`.
-
-Validated lifecycle script SHA256:
-`616752d8bf3da44b5ab5244f429c03b6be7e30c917f6aa6e8651a03f6ed1d939`.
 
 ## 3. WP2 — Context Intelligence — COMPLETE / GO / PERSISTED
 
@@ -68,76 +64,44 @@ Validated final comparison:
 - combined heavy-context provider-input reduction **23.24%** median;
 - no-op input overhead **0%**;
 - exact recovery **6/6, 100% SHA-verified**;
-- no accepted stale-memory error;
 - real combined Pi task passed;
 - server remained healthy.
 
-## 4. WP3 — Behavioral Transform — ACTIVE
+## 4. WP3 — Behavioral Transform — COMPLETE LOCALLY / NO_GO
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
 
-Contract:
-`research/integration/loom-behavioral-transform-wp3.md`
+Classification:
+`LOOM_BEHAVIORAL_TRANSFORM_WP3_NO_GO`.
 
-Goal:
-produce and validate an actual model/adapter-level behavioral transform for the canonical 30B, with a reversible runtime-loadable artifact and no unacceptable capability/resource regression.
+Local result:
+`research/integration/loom-behavioral-transform-wp3-result.md`
 
-Prompt-only behavior does not count.
+Evidence:
+`results-local/behavioral-transform-wp3/20260830T144523Z/`
 
-### Engineering strategy
+Actual runtime-loadable GGUF LoRA transform families tested:
+1. rank-1 directional;
+2. MoE-router;
+3. rank-4 subspace/multi-direction.
 
-Use external projects as method references rather than mandatory installed stacks.
+Frozen held-out refusal remained `6/6` for every tested candidate, producing `0%` target-behavior reduction. Therefore the frozen promotion gate failed and no adapter is promoted.
 
-Priority:
-1. LOOM-native Heretic-style/projected single-direction low-rank adapter as the cheapest strong baseline;
-2. Abliterix-derived MoE-aware refinement if measurements justify expert/router/layer-specific treatment;
-3. Senbonzakura-derived multi-direction/subspace if single-direction editing is stably insufficient;
-4. clean low-rank alternative only if required by representation/toolchain constraints.
+This is a scientific NO_GO, not a physical block: adapters were actually generated and loaded through canonical `llama-server`.
 
-The preferred final artifact is a small **GGUF LoRA adapter** loaded separately by `llama-server`, not a second full 30B copy.
+Base S32 + WP2 was restored, hash-verified, health-checked and rollback-tested on port 18080.
 
-Preferred path:
+Do not relax the frozen behavior gate or substitute prompt-only behavior after this result.
 
-`frozen contrast/eval sets -> streamed residual statistics -> stable direction/subspace -> low-rank delta -> GGUF adapter -> canonical llama-server -> frozen base/transformed A/B`
-
-### Resource strategy
-
-- do not require a full BF16/FP16 30B resident representation if selected-tensor streaming can avoid it;
-- use FP32/FP64 for sensitive geometric accumulation;
-- dequantize only selected tensors/blocks needed to form the delta;
-- start rank-1 / attention-output / small bounded layer-strength search;
-- broad TPE is not the first action;
-- only escalate to MoE-specific or multi-direction mechanisms when measured evidence supports it.
-
-### Promotion targets
-
-`LOOM_BEHAVIORAL_TRANSFORM_WP3_GO` requires:
-- actual model/adapter transform;
-- exact provenance and adapter hash;
-- transformed profile loadable through canonical local serving;
-- material frozen target-behavior improvement; target >=50% relative reduction when baseline rate supports it;
-- no material degeneration/broken-output increase;
-- representative capability non-inferior within frozen tolerance;
-- target >=90% of canonical S32 decode unless a smaller loss is justified by a substantially stronger Pareto result;
-- safe memory/swap;
-- real Pi transformed-profile request;
-- successful adapter disable/rollback;
-- durable evidence.
-
-`LOOM_BEHAVIORAL_TRANSFORM_WP3_NO_GO` = valid bounded transform routes fail to give a useful Pareto improvement.
-
-`LOOM_BEHAVIORAL_TRANSFORM_WP3_PHYSICAL_BLOCKED` = proven physical/toolchain/representation barrier prevents all actual transforms after the bounded method ladder.
-
-Do not stop for routine internal method failures.
+Before WP4, persist the bounded reproducibility package: WP3 result, frozen eval specifications, and reusable small source/scripts/configs. Exclude generated adapters/models and `results-local/`.
 
 ## 5. WP4 — Final Integration + Acceptance — PLANNED / NOT AUTHORIZED
 
-After WP3, assemble the best validated runtime + Context Intelligence + behavioral profile and run final end-to-end acceptance with exact hashes, capability/resource tests and documented operation.
+WP4 should assemble the strongest validated product state:
+- S32 runtime/server/WebUI/API;
+- validated serving-path prompt/KV reuse;
+- Caveman + Cavemem;
+- no behavioral adapter enabled because WP3 completed valid NO_GO.
 
-## 6. Research inputs
-
-- mini-SGLang concepts already informed WP1 runtime/cache work;
-- Caveman + Cavemem are canonical WP2 mechanisms;
-- internal Heretic technical paper + current Abliterix/Heretic/Senbonzakura research are WP3 references;
-- llama.cpp separate GGUF LoRA loading is the preferred runtime representation for the WP3 transform.
+WP4 may still classify GO when WP3 is explicitly retained as NO_GO, provided clean startup, API/WebUI/Pi, capability/resource, privacy, rollback, exact hashes/provenance and operational documentation all pass.
