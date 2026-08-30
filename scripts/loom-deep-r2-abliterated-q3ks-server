@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# WP3-R2 Candidate A lifecycle helper. Canonical S32 remains scripts/loom-deep-server.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/config/loom-deep-r2-abliterated-q3ks.env"
+RUNTIME_DIR="$ROOT/results-local/runtime-productization-wp3-r2/abliterated-q3ks"
+PID_FILE="$RUNTIME_DIR/llama-server.pid"; LOG_FILE="$RUNTIME_DIR/llama-server.log"
+mkdir -p "$RUNTIME_DIR"; URL="http://${LOOM_R2_A_HOST}:${LOOM_R2_A_PORT}"
+running() { [[ -s "$PID_FILE" ]] && kill -0 "$(<"$PID_FILE")" 2>/dev/null; }
+case "${1:-status}" in
+ start)
+  if running; then echo "already running: pid $(<"$PID_FILE") $URL"; exit 0; fi
+  rm -f "$PID_FILE"; [[ -x "$ROOT/$LOOM_R2_A_BIN" && -f "$ROOT/$LOOM_R2_A_MODEL" ]] || { echo 'missing R2 candidate artifact/runtime' >&2; exit 1; }
+  (cd "$ROOT"; exec "$ROOT/$LOOM_R2_A_BIN" --offline --host "$LOOM_R2_A_HOST" --port "$LOOM_R2_A_PORT" --alias "$LOOM_R2_A_ALIAS" --ctx-size "$LOOM_R2_A_CTX" --parallel 1 --moe-n-slots "$LOOM_R2_A_SLOTS" --moe-n-layers "$LOOM_R2_A_MOE_LAYERS" --no-mmap --no-warmup --cpu-moe -b "$LOOM_R2_A_CTX" -ub 1 --cache-ram 512 --no-ui-mcp-proxy --model "$ROOT/$LOOM_R2_A_MODEL" --log-file "$LOG_FILE") >>"$LOG_FILE" 2>&1 &
+  echo $! > "$PID_FILE"; for _ in $(seq 1 180); do curl -fsS "$URL/health" >/dev/null && { echo "started: pid $(<"$PID_FILE") $URL"; exit 0; }; running || { echo "server exited; inspect $LOG_FILE" >&2; exit 1; }; sleep 1; done; echo 'server did not become healthy' >&2; exit 1;;
+ stop)
+  if ! running; then rm -f "$PID_FILE"; echo 'not running'; exit 0; fi; pid="$(<"$PID_FILE")"; kill -TERM "$pid"; for _ in $(seq 1 30); do kill -0 "$pid" 2>/dev/null || { rm -f "$PID_FILE"; echo stopped; exit 0; }; sleep 1; done; echo 'did not stop; refusing SIGKILL' >&2; exit 1;;
+ status) running && { echo "running: pid $(<"$PID_FILE") $URL"; curl -fsS "$URL/health"; } || { rm -f "$PID_FILE"; echo "not running: $URL"; exit 1; };;
+ health) curl -fsS "$URL/health";;
+ *) echo "usage: $0 {start|stop|status|health}" >&2; exit 64;;
+esac
