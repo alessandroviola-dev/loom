@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.73
+Version: 3.74
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -27,17 +27,15 @@ GitHub is canonical. Active clone: `<repository-root>`.
 
 **Big models. Small machines.**
 - BALANCED: Qwen3-8B 3-bit/group64 Direct MLX, ~13 tok/s, provisional primary.
-- DEEP: **Apple Metal MoE paging is canonical** after Stage2 product-candidate GO. Current model is Qwen3-30B-A3B-Instruct-2507 Q3_K_S-3.25bpw at S24.
+- DEEP: **Apple Metal MoE paging is canonical**. Model Qwen3-30B-A3B-Instruct-2507 Q3_K_S-3.25bpw, S24.
 - Historical custom MLX ~1.4 tok/s is retained as historical comparison/fallback only.
 - FAST: concept retained; legacy 4B parked.
-- LOOM AUTO validator-first work remains valid but PAUSED during 30B acceleration work.
-- LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
+- LOOM AUTO validator-first remains PAUSED during 30B acceleration.
+- LOOM Heretic remains mandatory after initial runtime/capability optimization.
 
 ## Canonical DEEP baseline
 
-Model:
-`Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
-SHA256:
+Model SHA256:
 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`
 
 Frozen source:
@@ -48,63 +46,64 @@ Frontend:
 SHA256:
 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`
 
-Profile:
-S24 (`--moe-n-slots 24`).
+Profile: S24.
+Validated decode baseline: ~4.39–4.40 tok/s.
 
-Validated Stage1R2 baseline:
-- ~4.39–4.40 generation tok/s;
-- Stage1R2 load 14.426 s;
-- no critical pressure/OOM/corruption/runaway.
+## Stage2 product validation — COMPLETE / GO
 
-Stage2 product validation:
-- Apple S24 reproducibility 4.38 / 4.39 / 4.39 tok/s;
-- matched pooled generation 4.059 tok/s vs historical MLX 1.444 = 2.81x;
-- median E2E 26.380 s vs 65.909 s = 0.40x;
-- objective score 4/5 vs 2/5 historical.
-
-Canonical result:
-`research/architecture/loom-30b-stage2-product-candidate-validation-001-result.md`
+`LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
+Apple S24 is canonical DEEP on product-utility grounds.
 
 ## Persistent/cache feasibility — COMPLETE / GO
 
+`LOOM_30B_ACCEL_PERSISTENT_CACHE_FEASIBILITY_GO`.
+No built `llama-server`; canonical `llama-completion` supports explicit `--prompt-cache`.
+
+## Prompt cache 001 — CLOSED MECHANICALLY
+
 Canonical result:
-`research/architecture/loom-30b-accel-persistent-cache-feasibility-001-result.md`
+`research/architecture/loom-30b-accel-prompt-cache-001-result.md`
 
 Classification:
-**`LOOM_30B_ACCEL_PERSISTENT_CACHE_FEASIBILITY_GO`**.
+**`LOOM_30B_ACCEL_PROMPT_CACHE_MECHANICAL_NO_GO`**.
 
 Evidence:
-`results-local/research/30b-accel-persistent-cache-feasibility-001/20260830T101246Z/`
+`results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/`
 
-Audit result:
-- no built `llama-server` exists in the frozen build;
-- canonical `llama-completion` exposes explicit `--prompt-cache` support;
-- first recommended no-patch factor is stable-prefix warm prompt cache versus cache-disabled baseline;
-- no inference/GGUF open/source patch/build/download/package/Git action occurred during the audit.
+Diagnostic observations only:
+- median C/B prompt-eval ratio 0.04174;
+- median C/B E2E ratio 0.08973;
+- decode preservation 96.98%;
+- cache creation/reuse mechanically proven.
 
-Prompt cache is an end-to-end/prefill optimization candidate, not a direct decode-speed claim.
+Do not promote those ratios as a scientific GO because all nine invocations failed the frozen functional-validity rule.
 
-## Current checkpoint — prompt cache 001
+Mechanical cause:
+- frozen `-n 8` truncated target answer `4317` to `...porta 4`;
+- warm answer contained correct `ambra` but exact-string validator rejected explanatory prose.
+
+## Current checkpoint — Prompt Cache R1 001
 
 Preregistration:
-`research/architecture/loom-30b-accel-prompt-cache-001-preregistration.md`
+`research/architecture/loom-30b-accel-prompt-cache-r1-001-preregistration.md`
 
-Frozen experiment:
-- same canonical S24 model/runtime;
-- stable prefix frozen byte-for-byte;
-- three independent rounds;
-- each round B cache-disabled target -> W fresh-cache warm prompt -> C same-cache target;
-- fresh process every invocation;
-- `-n 8 -c 1024 --temp 0 --moe-n-slots 24 --moe-n-layers 48 --no-mmap --no-warmup --cpu-moe -ub 1 -no-cnv`;
-- only scientific factor is `--prompt-cache` reuse.
+Recovery deltas only:
+- `-n 24` instead of `-n 8`;
+- frozen semantic validator: warm must contain `ambra`; target must contain standalone `4317`.
 
-Primary GO requirement:
-median warm-cache target prompt-eval wall <=0.70x cache-disabled target baseline, with lower E2E, decode preservation >=90%, correct deterministic outputs, safe memory and complete evidence.
+Everything else remains scientifically frozen:
+- canonical model/runtime/S24;
+- exact stable prefix and suffixes;
+- 3 rounds B -> W -> C;
+- fresh cache per round;
+- only scientific factor is prompt-cache reuse;
+- same primary threshold: median C/B prompt-eval wall <=0.70;
+- E2E lower, decode >=90%, safe memory, complete evidence.
 
-No source/runtime/model/package mutation, rebuild, slot/ubatch tuning, prompt tuning, expert-prefetch work, Caveman, production work or Pi Git action.
+Reuse the already-frozen research wrapper unchanged; if its exact SHA cannot be verified, stop mechanically.
 
-## After prompt-cache
+## After Prompt Cache R1
 
-Next decode-focused checkpoint: paging/I/O attribution. Measure where S24 decode time is spent before preregistering expert prefetch/overlap work inspired by mini-SGLang concepts.
+Next decode-focused checkpoint: paging/I/O attribution. Measure expert paging cost before source-level prefetch/overlap work inspired by mini-SGLang.
 
-Acceleration goal: protect the 4.39–4.40 tok/s validated baseline, reach 5+ first, then investigate 6–9 tok/s without unacceptable quality or memory cost.
+Acceleration goal: protect ~4.39–4.40 tok/s, reach 5+ first, then investigate 6–9 tok/s without unacceptable quality/memory cost.
