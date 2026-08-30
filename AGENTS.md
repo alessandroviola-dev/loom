@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.82
+Version: 3.83
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired for the current push.
@@ -14,7 +14,9 @@ ChatGPT: scientific direction, macro-package definition/review, canonical Git/Gi
 GitHub is canonical. Active clone:
 `<repository-root>`.
 
-Pi must not commit/push/PR.
+Default rule: Pi must not commit/push/PR.
+
+Narrow exception: at a completed macro-work-package boundary, ChatGPT may explicitly authorize one bounded persistence commit/push containing only reviewed package implementation/result/docs. This exception never includes `.loom/`, `results-local/`, personal/home-directory config, secrets, caches, model artifacts, generated databases, or unrelated working-tree changes. Pi must inspect and report the exact included file list before committing and must stop if unrelated or ambiguous changes cannot be separated safely.
 
 ## Operating rule
 
@@ -41,7 +43,7 @@ Do not begin a later macro package until it is explicitly authorized.
 7. do not disable SIP/change host security settings;
 8. do not delete unrelated user data;
 9. project-local dependencies/environments are allowed when required and recorded;
-10. Pi does not commit/push.
+10. Pi Git persistence is allowed only under the narrow explicit macro-boundary exception above.
 
 ## Canonical DEEP — WP1 validated
 
@@ -99,75 +101,43 @@ Canonical result:
 Evidence:
 `results-local/runtime-productization-wp1/20260830T124040Z/`
 
-Pi is already configured against the local server and completed a real offline model request.
+Pi is configured against the local server and completed a real offline model request.
 
-Current provider/model label `loom-local/loom-deep-30b-s24` is stale naming only. WP2 is authorized to rename it safely to `loom-local/loom-deep-30b-s32` or preserve a compatibility alias after backing up config.
+## WP2 — COMPLETE LOCALLY / GO — PERSISTENCE PENDING
 
-## Current checkpoint — WP2 Context Intelligence
-
-Checkpoint:
-`LOOM_CONTEXT_INTELLIGENCE_WP2`
-
-Status: **AUTHORIZED / ACTIVE**.
+Classification reported by the completed local macro package:
+`LOOM_CONTEXT_INTELLIGENCE_WP2_GO`.
 
 Authoritative contract:
 `research/integration/loom-context-intelligence-wp2.md`
 
-Permanent mechanisms only:
-- **Caveman-derived deterministic context compression/packing/recovery**;
-- **Cavemem-derived progressive local project memory/retrieval**.
+Local final report:
+`research/integration/loom-context-intelligence-wp2-result.md`
+
+Local evidence:
+`results-local/context-intelligence-wp2/20260830T133259Z/`
+
+Reported validated outcome:
+- deterministic Caveman packing/recovery implemented;
+- Cavemem SQLite/FTS5 project memory implemented;
+- Pi integration through `.pi/extensions/loom-context.ts` `before_provider_request` hook;
+- no model-visible tools or extra LLMs;
+- provider/model label safely renamed to `loom-local/loom-deep-30b-s32`;
+- A/B/C all `6/7` objective successes; shared JSON-cap miss baseline-equivalent;
+- combined heavy-context median provider-input reduction `23.24%`;
+- no-op overhead `0%`;
+- exact recovery `6/6`, SHA-verified;
+- real Pi combined-path task passed;
+- disable/rollback control passed;
+- canonical S32 server remains healthy.
+
+Permanent WP2 mechanisms:
+- Caveman-derived deterministic context compression/packing/recovery;
+- Cavemem-derived progressive local project memory/retrieval.
 
 Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems.
 
-### WP2 architecture rules
-
-Cavemem:
-- project-scoped local memory;
-- compact observations in SQLite/FTS5-first storage;
-- cheap lexical/BM25 retrieval first;
-- exact bodies/evidence only on demand;
-- decisions/results/failures/constraints/checkpoints prioritized over raw transcript;
-- privacy/redaction before durable write;
-- no mandatory embeddings in v0.
-
-Caveman:
-- deterministic local scoring/selection under token budget;
-- typed compression for real LOOM/Pi output classes;
-- preserve exact machine-critical values;
-- errors/warnings receive priority;
-- selection by value, then restore chronology for presentation;
-- every omitted exact item remains recoverable by stable local handle;
-- small/no-op contexts must bypass compression when overhead would outweigh savings.
-
-Integration:
-- no extra LLM for compression/ranking/memory by default;
-- no new monolithic agent framework;
-- avoid large permanent model-facing tool schemas;
-- prefer host-side retrieval/context preparation immediately before provider calls;
-- preserve the WP1 S32 server/runtime and a disable/rollback path.
-
-### WP2 benchmark
-
-Final frozen comparison arms:
-- A: current WP1 baseline;
-- B: Caveman packer/compression only;
-- C: Caveman + Cavemem progressive retrieval.
-
-Required workload mix includes context-heavy logs/search/JSON/code/diffs, earlier-project-decision recovery, and small/already concise negative cases.
-
-GO requires, among the full contract gates:
-- non-inferior objective task success;
-- exact recovery/provenance;
-- safe project memory/privacy behavior;
-- target >=20% median provider-input reduction on context-heavy cases;
-- target <=5% provider-input overhead on small/no-op cases with no correctness regression;
-- packing/retrieval cost small relative to saved prefill/E2E;
-- safe RAM/swap with canonical S32;
-- no accepted wrong result caused by stale/incorrect memory;
-- real Pi local-model task through the combined path;
-- WP2 layer remains disableable for rollback.
-
-Do not return after individual compressor/retrieval failures. Revert/disable net-negative subfeatures and continue according to the WP2 stopping rule.
+WP2 implementation/result files are currently local and must be persisted through the explicit macro-boundary Git exception before WP3 begins. Do not begin WP3 until persistence and ChatGPT canonical review are complete.
 
 ## Later macro packages
 
@@ -193,4 +163,4 @@ Assemble the best validated outputs from WP1-WP3 and run end-to-end acceptance.
 
 ## Current state
 
-WP1 is complete. WP2 is now the only authorized active macro package. Do not begin WP3.
+WP1 is complete and canonical. WP2 is scientifically complete locally with GO but Git persistence is pending. Do not begin WP3 until WP2 files are safely persisted and reviewed.
