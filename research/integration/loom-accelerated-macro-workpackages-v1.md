@@ -11,7 +11,7 @@ Scientific gates remain internal. Pi records failures, reverts regressions and c
 
 A work package ends only when its substantial deliverable is complete or a genuine blocker requires user action, credentials, destructive/security-sensitive host changes, unavailable storage/hardware, or a project-direction choice not resolvable from existing goals/evidence.
 
-## WP1 — Runtime + Product Serving
+## WP1 — Runtime + Product Serving — COMPLETE / GO
 
 Checkpoint:
 `LOOM_RUNTIME_PRODUCTIZATION_WP1`
@@ -19,26 +19,26 @@ Checkpoint:
 Authoritative contract:
 `research/integration/loom-runtime-productization-wp1.md`
 
-Goal:
-leave the canonical 30B DEEP model reliably usable through the best validated local runtime, persistent localhost serving/API, an **existing** privacy-respecting local WebUI, and Pi.
+Canonical result:
+`research/integration/loom-runtime-productization-wp1-result.md`
 
-Key constraints:
-- target >=5 tok/s decode first, with bounded evidence-based optimization;
-- keep canonical S24 as rollback baseline;
-- validated prompt/prefix caching retained where the serving path directly supports and verifies it;
-- prefer `llama-server` from the provenance-controlled Apple MoE source when compatible;
-- **do not build a custom LOOM WebUI from scratch**;
-- prefer the native `llama-server` WebUI;
-- fallback only to an existing open-source local WebUI after verifying no required external conversation/model-data egress and no mandatory telemetry for the selected configuration;
-- Pi must be configured and tested against the same final local model path;
-- health/start/stop/logging and final decode/prefill/E2E/RAM/swap evidence required.
+Outcome:
+- canonical S32 runtime at 5.596 tok/s median matched decode;
+- S24 retained as rollback;
+- persistent localhost `llama-server`;
+- existing embedded WebUI;
+- OpenAI-compatible local API;
+- Pi connected/tested;
+- serving-path prompt/KV reuse verified;
+- operational start/status/health/stop workflow.
 
-WP1 does not implement WP2 context/memory or WP3 behavioral editing.
-
-## WP2 — Context Intelligence
+## WP2 — Context Intelligence — ACTIVE
 
 Checkpoint:
 `LOOM_CONTEXT_INTELLIGENCE_WP2`
+
+Authoritative contract:
+`research/integration/loom-context-intelligence-wp2.md`
 
 Goal:
 improve effective local-model/Pi context efficiency and continuity with only the two highest-priority mechanisms selected by the user.
@@ -49,27 +49,35 @@ Primary engineering inputs only:
 Use for:
 - deterministic type-aware compression;
 - token-budget context selection/packing;
-- relevance/recency/priority scoring where useful;
+- lexical/BM25-style relevance + recency + priority + error/pin preservation;
 - recovery handles for omitted evidence;
-- preserving chronology after selection.
+- restoring chronology after relevance-based selection;
+- bypassing compression on small/no-op inputs when overhead would be negative.
 
 Primary expected benefit:
-less input context, lower prefill cost/memory pressure, and more targeted use of the 30B model.
+less provider-facing input context, lower prefill cost/memory pressure, and more targeted use of the 30B model.
 
 ### 2. Cavemem
 Use for:
 - project-scoped progressive local memory;
-- compact searchable observations;
+- SQLite/FTS5-first compact searchable observations;
 - retrieving only relevant prior facts/decisions/evidence;
-- exact body/evidence retrieval on demand.
+- exact body/evidence retrieval on demand;
+- privacy/redaction before durable writes;
+- no mandatory embeddings in v0.
 
 Cavemem decides what prior information should be recovered; Caveman decides what should actually enter the prompt and how compactly.
 
-Do **not** integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems in WP2. Small implementation ideas may be borrowed later only when they are necessary to support Caveman/Cavemem and have negligible overhead.
+Do **not** integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems in WP2. Small implementation ideas may be borrowed only when they are necessary to support Caveman/Cavemem and have negligible overhead.
 
-WP2 completion requires measured net benefit in token use/task utility, not mere feature presence.
+WP2 final comparison:
+- A: WP1 baseline;
+- B: Caveman only;
+- C: Caveman + Cavemem.
 
-## WP3 — Behavioral Transform
+WP2 completion requires measured net benefit in token use/task utility, exact recovery/provenance, safe memory/privacy behavior and easy rollback.
+
+## WP3 — Behavioral Transform — PLANNED / NOT AUTHORIZED
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
@@ -88,11 +96,9 @@ The criterion is not project popularity. Select the method that gives the strong
 Preferred final artifact:
 a small reversible/runtime-loadable adapter or equivalent artifact usable by the final llama.cpp serving path, rather than a second full model copy, when technically valid.
 
-WP3 is intentionally separate because upstream behavioral-edit tooling is generally Transformers/PEFT/CUDA-oriented while canonical DEEP is GGUF on Apple Metal MoE paging.
-
 Require provenance, frozen behavioral evaluation, capability preservation, resource/throughput delta and exact artifact hashes.
 
-## WP4 — Final Integration + Acceptance
+## WP4 — Final Integration + Acceptance — PLANNED
 
 Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
@@ -129,4 +135,4 @@ Required acceptance:
 
 ## Current work package
 
-`LOOM_RUNTIME_PRODUCTIZATION_WP1`
+`LOOM_CONTEXT_INTELLIGENCE_WP2`
