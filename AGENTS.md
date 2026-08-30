@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.81
+Version: 3.82
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired for the current push.
@@ -78,6 +78,16 @@ S32 resource evidence:
 Final S32 flags include:
 `--ctx-size 4096 --parallel 1 --moe-n-slots 32 --moe-n-layers 48 --no-mmap --no-warmup --cpu-moe -b 4096 -ub 1 --cache-ram 512`
 
+Operational path:
+- start: `scripts/loom-deep-server start`;
+- status: `scripts/loom-deep-server status`;
+- health: `scripts/loom-deep-server health`;
+- stop: `scripts/loom-deep-server stop`;
+- WebUI: `http://127.0.0.1:18080/`;
+- API base: `http://127.0.0.1:18080/v1`.
+
+Serving-path prompt/KV reuse is directly validated under bounded `--cache-ram 512`.
+
 ## WP1 — COMPLETE / GO
 
 Classification:
@@ -89,40 +99,79 @@ Canonical result:
 Evidence:
 `results-local/runtime-productization-wp1/20260830T124040Z/`
 
-Operational path:
-- start: `scripts/loom-deep-server start`;
-- status: `scripts/loom-deep-server status`;
-- health: `scripts/loom-deep-server health`;
-- stop: `scripts/loom-deep-server stop`;
-- WebUI: `http://127.0.0.1:18080/`;
-- API: `http://127.0.0.1:18080/v1/chat/completions`;
-- health endpoint: `http://127.0.0.1:18080/health`.
+Pi is already configured against the local server and completed a real offline model request.
 
-The existing embedded `llama-server` WebUI is selected. No custom LOOM WebUI was built. Final server is localhost-only and offline-configured.
+Current provider/model label `loom-local/loom-deep-30b-s24` is stale naming only. WP2 is authorized to rename it safely to `loom-local/loom-deep-30b-s32` or preserve a compatibility alias after backing up config.
 
-Serving-path cache reuse is directly validated with bounded `--cache-ram 512`: cold 136 prompt tokens / 27.809 s; reuse 134 cached + 2 evaluated tokens / 280.389 ms; reuse E2E 0.332 s.
-
-Pi is configured against `http://127.0.0.1:18080/v1` and completed a real offline local-model request successfully.
-
-Current configured provider/model id is `loom-local/loom-deep-30b-s24`. This label is stale relative to the now-canonical S32 runtime. Treat it as naming debt only; do not infer S24 execution from the id. Rename during a later authorized configuration/integration pass.
-
-## Macro work-package plan
-
-Authoritative plan:
-`research/integration/loom-accelerated-macro-workpackages-v1.md`
-
-### WP2 — Context Intelligence — PLANNED / NOT YET AUTHORIZED
+## Current checkpoint — WP2 Context Intelligence
 
 Checkpoint:
 `LOOM_CONTEXT_INTELLIGENCE_WP2`
 
-Primary permanent mechanisms only:
-- Caveman for deterministic compression/context packing/recovery handles;
-- Cavemem for progressive local project memory/retrieval.
+Status: **AUTHORIZED / ACTIVE**.
 
-Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems. Small implementation ideas may be borrowed only where they support Caveman/Cavemem with negligible overhead.
+Authoritative contract:
+`research/integration/loom-context-intelligence-wp2.md`
 
-### WP3 — Behavioral Transform — PLANNED
+Permanent mechanisms only:
+- **Caveman-derived deterministic context compression/packing/recovery**;
+- **Cavemem-derived progressive local project memory/retrieval**.
+
+Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems.
+
+### WP2 architecture rules
+
+Cavemem:
+- project-scoped local memory;
+- compact observations in SQLite/FTS5-first storage;
+- cheap lexical/BM25 retrieval first;
+- exact bodies/evidence only on demand;
+- decisions/results/failures/constraints/checkpoints prioritized over raw transcript;
+- privacy/redaction before durable write;
+- no mandatory embeddings in v0.
+
+Caveman:
+- deterministic local scoring/selection under token budget;
+- typed compression for real LOOM/Pi output classes;
+- preserve exact machine-critical values;
+- errors/warnings receive priority;
+- selection by value, then restore chronology for presentation;
+- every omitted exact item remains recoverable by stable local handle;
+- small/no-op contexts must bypass compression when overhead would outweigh savings.
+
+Integration:
+- no extra LLM for compression/ranking/memory by default;
+- no new monolithic agent framework;
+- avoid large permanent model-facing tool schemas;
+- prefer host-side retrieval/context preparation immediately before provider calls;
+- preserve the WP1 S32 server/runtime and a disable/rollback path.
+
+### WP2 benchmark
+
+Final frozen comparison arms:
+- A: current WP1 baseline;
+- B: Caveman packer/compression only;
+- C: Caveman + Cavemem progressive retrieval.
+
+Required workload mix includes context-heavy logs/search/JSON/code/diffs, earlier-project-decision recovery, and small/already concise negative cases.
+
+GO requires, among the full contract gates:
+- non-inferior objective task success;
+- exact recovery/provenance;
+- safe project memory/privacy behavior;
+- target >=20% median provider-input reduction on context-heavy cases;
+- target <=5% provider-input overhead on small/no-op cases with no correctness regression;
+- packing/retrieval cost small relative to saved prefill/E2E;
+- safe RAM/swap with canonical S32;
+- no accepted wrong result caused by stale/incorrect memory;
+- real Pi local-model task through the combined path;
+- WP2 layer remains disableable for rollback.
+
+Do not return after individual compressor/retrieval failures. Revert/disable net-negative subfeatures and continue according to the WP2 stopping rule.
+
+## Later macro packages
+
+### WP3 — Behavioral Transform — PLANNED / NOT AUTHORIZED
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
@@ -144,4 +193,4 @@ Assemble the best validated outputs from WP1-WP3 and run end-to-end acceptance.
 
 ## Current state
 
-WP1 is complete. Do not begin WP2 until user authorization.
+WP1 is complete. WP2 is now the only authorized active macro package. Do not begin WP3.
