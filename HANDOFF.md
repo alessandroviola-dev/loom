@@ -1,107 +1,115 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — accelerated macro-work-package mode. Current work is `LOOM_RUNTIME_PRODUCTIZATION_WP1`. Later packages are Context Intelligence (Caveman + Cavemem only), Behavioral Transform, and Final Acceptance.
+Status: ACTIVE — accelerated macro-work-package mode. WP1 Runtime + Product Serving completed GO. Canonical DEEP runtime is now S32 on persistent localhost `llama-server`; S24 is rollback. Next planned package is WP2 Context Intelligence (Caveman + Cavemem only), but it is not yet authorized.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Pi context: `/AGENTS.md` v3.80.
+Pi context: `/AGENTS.md` v3.81.
 Plan: `research/integration/loom-accelerated-macro-workpackages-v1.md`.
-Current WP1 contract: `research/integration/loom-runtime-productization-wp1.md`.
 
-## Canonical starting point
+## Canonical DEEP after WP1
 
-DEEP model:
+Model:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
 SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
 
-Runtime baseline:
+Source:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
 
-Validated frontend SHA256:
-`38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
+Canonical server binary:
+`llama-server`
+SHA256 `58aec7b9a924ce0bc7910b889d91cc6d55064991459ddddea70a5c8f3ca08506`.
 
-Profile: S24.
-Validated fresh-process decode baseline: ~4.39–4.40 tok/s.
+Canonical runtime profile: **S32**.
+Rollback: S24.
 
-## Validated prompt-cache optimization
+Matched deterministic S24/S32 3x96-token A/B with byte-identical outputs:
+- S24 median decode `4.382 tok/s`, E2E `29.185 s`;
+- S32 median decode `5.596 tok/s`, E2E `23.849 s`;
+- decode ratio `1.2768x`;
+- E2E ratio `0.8172`.
 
-`LOOM_30B_ACCEL_PROMPT_CACHE_R2_GO`.
+S32 resources:
+- peak RSS `3914.6 MiB`;
+- peak sampled swap `1651.88 MiB`;
+- minimum sampled free memory `10%`;
+- no crash/OOM/corruption/critical pressure indication.
+
+Final flags include:
+`--ctx-size 4096 --parallel 1 --moe-n-slots 32 --moe-n-layers 48 --no-mmap --no-warmup --cpu-moe -b 4096 -ub 1 --cache-ram 512`.
+
+## WP1 — COMPLETE / GO
+
+Classification:
+`LOOM_RUNTIME_PRODUCTIZATION_WP1_GO`
+
+Canonical result:
+`research/integration/loom-runtime-productization-wp1-result.md`
 
 Evidence:
-`results-local/research/30b-accel-prompt-cache-r2-001/20260830T105738Z/`
+`results-local/runtime-productization-wp1/20260830T124040Z/`
 
-Validated stable-prefix measurements:
+Operational commands:
+```bash
+scripts/loom-deep-server start
+scripts/loom-deep-server status
+scripts/loom-deep-server health
+scripts/loom-deep-server stop
+```
+
+WebUI:
+`http://127.0.0.1:18080/`
+
+API:
+`http://127.0.0.1:18080/v1/chat/completions`
+
+Health:
+`http://127.0.0.1:18080/health`
+
+Selected UI is the existing embedded `llama-server` WebUI. No custom LOOM frontend was built. Final server uses offline/local-only configuration and loopback binding.
+
+Serving-path prompt/KV reuse is directly validated with `--cache-ram 512`:
+- cold: 136 prompt tokens, 27.809 s;
+- reuse: 134 cached / 2 evaluated tokens, 280.389 ms;
+- reuse E2E: 0.332 s.
+
+Pi local integration is operational through `http://127.0.0.1:18080/v1`; final offline Pi request completed coherently.
+
+Current provider/model id remains `loom-local/loom-deep-30b-s24`. This is stale naming relative to the S32 runtime and should be renamed in a later authorized configuration/integration pass. It does not invalidate WP1.
+
+## Historical acceleration retained
+
+Prompt Cache R2 remains validated:
+`LOOM_30B_ACCEL_PROMPT_CACHE_R2_GO`.
+
+Earlier completion-mode stable-prefix result:
 - median C/B prompt-eval ratio `0.04025`;
 - median C/B E2E ratio `0.10751`;
 - decode preservation `99.43%`.
 
-Prompt cache is canonical for reusable stable-prefix prefill/E2E acceleration.
+The final persistent server now separately validates prompt/KV reuse in serving mode.
 
-## Paging/I/O context
-
-External non-mutating tracing preflight:
-`LOOM_30B_ACCEL_PAGING_IO_ATTRIBUTION_PREFLIGHT_NO_GO`.
-
-Evidence:
-`results-local/research/30b-accel-paging-io-attribution-preflight-001/20260830T111709Z/`
-
-Meaning:
-current unprivileged external tracing did not expose validated high-value per-process read measurements. This does not refute paging as a bottleneck.
-
-Pinned source inspection established internal hit/miss counters and the `pread_pool(...)` read path. Minimal isolated source-level measurement is authorized inside WP1.
-
-## Current — WP1 Runtime + Product Serving
+## Next planned macro package — WP2 Context Intelligence
 
 Checkpoint:
-`LOOM_RUNTIME_PRODUCTIZATION_WP1`
+`LOOM_CONTEXT_INTELLIGENCE_WP2`
 
-Authoritative contract:
-`research/integration/loom-runtime-productization-wp1.md`
+Status: **PLANNED / NOT YET AUTHORIZED**.
 
-Pi works autonomously across internal substeps and returns only when WP1 is complete or a genuine user-action blocker exists.
-
-WP1 deliverables:
-1. best validated practical 30B runtime;
-2. bounded source-level paging/decode attribution and evidence-backed acceleration attempts handled internally;
-3. target >=5 tok/s decode first, with canonical S24 preserved as rollback;
-4. persistent localhost serving/API, preferably OpenAI-compatible;
-5. validated serving-path prompt/prefix caching where directly supported and verified;
-6. **existing** privacy-respecting local WebUI — prefer native `llama-server` WebUI; no custom LOOM frontend from scratch;
-7. fallback WebUI only if existing/open-source/local and verified to require no conversation/model-data egress or mandatory telemetry in selected configuration;
-8. Pi configured and tested against the same final local model path;
-9. operational health/start/stop/logging/tracing;
-10. final decode/prefill/E2E/RAM/swap evidence.
-
-Runtime micro-optimization stopping rule:
-after three materially different evidence-backed interventions fail to beat the best validated runtime, stop optimization and finish serving/integration. A final result below 5 tok/s does not invalidate WP1 if this stopping rule is legitimately exhausted and the product stack is complete.
-
-Do not return after routine internal NO_GO results; record/revert and continue.
-
-## Approved later macro packages
-
-### WP2 — Context Intelligence
-Checkpoint: `LOOM_CONTEXT_INTELLIGENCE_WP2`.
-
-Permanent mechanisms only:
+Permanent mechanisms selected:
 - Caveman — deterministic context compression/packing/recovery handles;
-- Cavemem — progressive local project memory and relevant retrieval.
+- Cavemem — progressive local project memory/retrieval.
 
-Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems. Borrow only small ideas if required to support Caveman/Cavemem with negligible overhead.
+Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems. Borrow only negligible-overhead ideas when required to support Caveman/Cavemem.
 
-### WP3 — Behavioral Transform
-Checkpoint: `LOOM_BEHAVIORAL_TRANSFORM_WP3`.
+WP2 should be measured against real Pi/LOOM token use and task quality.
 
-Technical priority:
-1. Abliterix-derived MoE-aware method adapted to LOOM;
-2. Heretic;
-3. Senbonzakura-style multi-direction methods;
-4. clean LOOM-native equivalent when upstream stacks are incompatible.
+## Later
 
-Criterion: best technically valid route for canonical GGUF/llama.cpp/Apple Silicon. Prefer a small runtime-loadable adapter when technically valid. Prompt-only behavior does not count.
+WP3 — Behavioral Transform:
+priority Abliterix-derived MoE-aware approach -> Heretic -> Senbonzakura-style methods -> clean LOOM-native equivalent, chosen by technical fit to GGUF/llama.cpp/Apple Silicon.
 
-### WP4 — Final Integration + Acceptance
-Checkpoint: `LOOM_FINAL_ACCEPTANCE_WP4`.
-
-Assemble best validated outputs from WP1–WP3 and perform final end-to-end acceptance with exact hashes, provenance, resource evidence and operational documentation.
+WP4 — Final Integration + Acceptance:
+assemble best validated outputs and perform final end-to-end acceptance.
 
 Pi must not commit/push. ChatGPT persists canonical Git state at macro-work-package boundaries.
