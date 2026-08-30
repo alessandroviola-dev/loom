@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.70
+Version: 3.71
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -27,16 +27,12 @@ GitHub is canonical. Active clone: `<repository-root>`.
 
 **Big models. Small machines.**
 - BALANCED: Qwen3-8B 3-bit/group64 Direct MLX, ~13 tok/s, provisional primary.
-- DEEP: historical custom MLX path ~1.4 tok/s. Apple Metal MoE paging Stage1R2 reached 4.40 tok/s and is now the leading DEEP candidate, but checkpoint identity differs from historical MLX so Stage2 must be a product-candidate comparison rather than strict runtime parity.
+- DEEP: historical custom MLX path ~1.4 tok/s. Apple Metal MoE paging Stage1R2 reached 4.40 tok/s and is the leading DEEP candidate, but the candidate checkpoint differs from historical MLX.
 - FAST: concept retained; legacy 4B parked.
-- LOOM AUTO validator-first work remains valid but PAUSED during this runtime investigation.
+- LOOM AUTO validator-first work remains valid but PAUSED during 30B runtime investigation.
 - LOOM Heretic remains fundamental/non-optional after initial runtime/capability optimization.
 
-## Validator track — PAUSED cleanly
-
-VERIFY_RULE Validator Hardening 001 completed **GO**: 24/24, FP/FN 0/0, contradiction reject 2/2, forbidden-heuristic reject 2/2, p95 0.006542 ms. Planned sanitized guided-repair work is paused, not cancelled.
-
-## Apple MoE paging Stage1R2 — COMPLETE / GO
+## Stage1R2 — COMPLETE / GO
 
 Canonical result:
 `research/architecture/loom-30b-apple-moe-paging-stage1r2-001-result.md`
@@ -44,30 +40,26 @@ Canonical result:
 Classification:
 **`LOOM_30B_APPLE_MOE_PAGING_STAGE1R2_GO`**.
 
-Best safe profile S24:
-- 4.40 generation tok/s
-- 3.95 prompt tok/s
-- load 14.426 s
-- E2E 37.704 s
-- RSS 2935.766 MiB
-- wired 5032.297 MiB
-- compressed 1567.734 MiB
-- swap 1125.94 MiB
-- minimum headroom 13%
-- no critical pressure/OOM/corruption/runaway
+Best safe S24:
+- generation 4.40 tok/s;
+- prompt 3.95 tok/s;
+- load 14.426 s;
+- E2E 37.704 s;
+- RSS 2935.766 MiB;
+- swap 1125.94 MiB;
+- minimum headroom 13%;
+- no critical pressure/OOM/corruption/runaway.
 
-Verified candidate:
+New candidate artifact:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
-SHA256:
-`c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
-
-Correct frontend:
-`llama-completion -no-cnv`
-SHA256:
-`38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
+SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`.
 
 Frozen source:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
+
+Frontend:
+`llama-completion -no-cnv`
+SHA256 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
 
 ## Stage2 comparability audit — COMPLETE
 
@@ -77,38 +69,45 @@ Canonical result:
 Classification:
 **`LOOM_30B_STAGE2_COMPARABILITY_ARCHITECTURE_MATCH_CHECKPOINT_DIFFERENT`**.
 
-Historical custom MLX artifact:
+Historical MLX:
 `Qwen/Qwen3-30B-A3B-MLX-4bit@4e2776a4cc73a8a251d0b797010a5b07fd541a3e`
-Declared upstream base:
-`Qwen/Qwen3-30B-A3B`
-Representation: MLX affine Q4/group128.
+Declared upstream `Qwen/Qwen3-30B-A3B`; MLX affine Q4/group128.
 
-New GGUF identity:
-`Qwen/Qwen3-30B-A3B-Instruct-2507`
-ByteShape Q3_K_S-3.25bpw.
+New candidate upstream identity:
+`Qwen/Qwen3-30B-A3B-Instruct-2507`; ByteShape Q3_K_S-3.25bpw.
 
-Shared architecture:
-48 layers, 128 experts, top-8 routing, hidden size 2048.
+Core architecture matches 48 layers / 128 experts / top-8 / hidden 2048, but checkpoint/version, RoPE/context, quantization and chat-template text differ. Historical 1.402 and 1.229233 tok/s remain contextual references only.
 
-Checkpoint/version, RoPE/context configuration, quantization and chat-template text differ. Tokenizer family aligns but byte-identical tokenizer identity is unproven.
+## Current checkpoint — Stage2 product-candidate validation 001
 
-Historical 1.402 tok/s and 1.229233 tok/s references both belong to the historical MLX lineage but different workloads. They remain contextual product references only.
+Preregistration:
+`research/architecture/loom-30b-stage2-product-candidate-validation-001-preregistration.md`
 
-## Current checkpoint — Stage2 product-candidate validation design
+Stage2 compares the historical MLX and Apple MoE candidates as different-checkpoint products, not as a strict runtime-only experiment.
 
-Next preregister a fresh Stage2 that treats historical MLX and Apple MoE paging as different checkpoint product candidates.
+Frozen plan:
+- Block A: Apple S24 reproducibility, 3 fresh processes on the Stage1R2 prompt;
+- Block B: 7 fresh matched practical tasks on historical MLX and Apple S24;
+- temperature 0, same semantic prompts, own canonical tokenizer/chat template per candidate;
+- exact provenance and durable telemetry/output evidence;
+- objective tasks T1–T5 plus frozen rubrics T6–T7;
+- no prompt tuning/retry after results begin.
 
-Stage2 must establish:
-- S24 reproducibility across fresh processes;
-- fresh matched practical-task comparison;
-- decode/prompt throughput and E2E latency;
-- load/TTFT where observable;
-- memory/wired/compressed/swap stability;
-- quality/correctness on fresh tasks;
-- explicit product-selection gate.
+Promotion gate requires, among other frozen conditions:
+- S24 reproducibility median >=4.0 tok/s, no run <3.5;
+- new candidate objective score >=4/5 and at most one PASS below historical;
+- rubric total at most one point below historical;
+- matched generation throughput >=2.0x historical;
+- median matched E2E <=0.80x historical;
+- no critical memory/OOM/corruption/runaway and peak swap <=3.5 GiB.
 
-Stage2 may support promotion of Apple MoE paging to canonical DEEP on product utility grounds, but must not claim same-checkpoint runtime-only parity.
+GO classification:
+`LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
 
-After Stage2 validation, begin a separate 30B acceleration funnel. Primary architectural reference from the repository research bundle is mini-SGLang concepts: persistent/prefix caching, chunked prefill, overlap scheduling, and expert/I/O prefetch. Do not port CUDA-specific code blindly to Apple Silicon.
+A GO may promote Apple MoE paging to canonical DEEP on product-utility grounds, but may not claim same-checkpoint runtime-only parity.
 
-No product-default replacement before Stage2 result.
+No model download, package install, runtime/source/model modification, slot tuning, mini-SGLang acceleration, Heretic integration, provider/UI work or Git action by Pi during Stage2.
+
+## After Stage2
+
+Open a separate 30B acceleration funnel if Stage2 validates the candidate. Primary architectural reference from repository research bundle: mini-SGLang concepts — persistent/prefix caching, chunked prefill, overlap scheduling and expert/I/O prefetch — independently adapted for Apple Silicon. Caveman-style context packing is secondary end-to-end optimization.
