@@ -1,11 +1,11 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache 001 closed MECHANICAL_NO_GO because the frozen output budget/validator invalidated otherwise clean cache measurements. R1 then stopped before inference because its preregistration required reuse of an unchanged wrapper that hard-coded the very conditions R1 needed to change. Current checkpoint is preregistered Prompt Cache R2 recovery.
+Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache R2 completed GO and is now a validated canonical prefill/E2E optimization for stable-prefix workloads. Current checkpoint is Paging/I/O Attribution Preflight 001, which must prove a non-mutating observation path before the real decode attribution run.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_ACCEL_PROMPT_CACHE_R2_001`
-Pi context: `/AGENTS.md` v3.75.
+Current checkpoint: `LOOM_30B_ACCEL_PAGING_IO_ATTRIBUTION_PREFLIGHT_001`
+Pi context: `/AGENTS.md` v3.76.
 
 ## Canonical DEEP
 
@@ -24,7 +24,7 @@ Stage2 product result:
 `LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
 Apple S24 is canonical DEEP.
 
-## Prompt Cache 001 — MECHANICAL_NO_GO
+## Prompt Cache 001 — historical MECHANICAL_NO_GO
 
 Canonical result:
 `research/architecture/loom-30b-accel-prompt-cache-001-result.md`
@@ -32,23 +32,9 @@ Canonical result:
 Evidence:
 `results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/`
 
-Observed diagnostic evidence:
-- cache-disabled prompt eval ~71–74 s;
-- warm-cache prompt eval ~2.95–3.07 s;
-- median C/B prompt-eval ratio 0.04174;
-- median C/B E2E ratio 0.08973;
-- decode preservation 96.98%;
-- fresh 26,449,272-byte cache files created/reused with matching hashes;
-- runtime reported 262/269 prompt-token match;
-- memory/swap safe.
+Diagnostic cache acceleration was observed but the frozen functional validator invalidated all invocations. Do not promote its ratios as scientific results.
 
-These are diagnostic only, not a scientific GO, because every invocation failed the frozen functional validator.
-
-Mechanical cause:
-- `-n 8` truncated `4317` to `...porta 4`;
-- warm answer semantically included `ambra` but exact-string validation rejected explanatory text.
-
-## Prompt Cache R1 — MECHANICAL_NO_GO before inference
+## Prompt Cache R1 — historical MECHANICAL_NO_GO before inference
 
 Canonical result:
 `research/architecture/loom-30b-accel-prompt-cache-r1-001-result.md`
@@ -56,47 +42,75 @@ Canonical result:
 Evidence:
 `results-local/research/30b-accel-prompt-cache-r1-001/20260830T105237Z/`
 
-Blocker artifact:
-`mechanical-blocker.json`.
+R1 stopped correctly because its wrapper-freeze contract was internally incompatible with its authorized recovery deltas. No inference and no performance evidence occurred.
 
-Frozen parent wrapper verified:
-`results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/prompt_cache_runner.py`
-SHA256 `1c62f4ab53e0c31bf3c725991d1f87a3f81cd75ab91d6da2e1b05bf8a499ba5e`.
+## Prompt Cache R2 — GO
 
-R1 correctly stopped because the unchanged wrapper hard-coded:
-- `-n 8`;
-- exact-string validation;
-- Prompt Cache 001 evidence/classification handling.
+Canonical result:
+`research/architecture/loom-30b-accel-prompt-cache-r2-001-result.md`
 
-R1 simultaneously required the wrapper unchanged and required `-n 24` plus semantic validation, so the contract was mechanically unexecutable. No inference occurred and R1 contributes no new performance evidence.
+Evidence:
+`results-local/research/30b-accel-prompt-cache-r2-001/20260830T105738Z/`
 
-## Exact next action — Prompt Cache R2
+Preflight:
+- parent wrapper SHA verified/preserved: `1c62f4ab53e0c31bf3c725991d1f87a3f81cd75ab91d6da2e1b05bf8a499ba5e`;
+- derived R2 wrapper frozen before inference: `3550d56e0fee1adcf08ae95fcb1ae8fcf50c740147bae036745ab28f0db68ccd`;
+- 13 synthetic validator/harness checks passed without GGUF access.
+
+Validated measurements:
+- 9/9 cleaned outputs passed the frozen semantic validator;
+- prompt-eval C/B ratios: `0.04013`, `0.04031`, `0.04025`; median **`0.04025`**;
+- E2E C/B ratios: `0.10193`, `0.10932`, `0.10751`; median **`0.10751`**;
+- median B/C generation: `3.49 / 3.47 tok/s`;
+- decode preservation: **`99.43%`**;
+- every W created and every C reused its round cache;
+- cache size `26,449,272` bytes;
+- cache SHA256 `f96f9fb61f6e2302fb206932a4ca497c8a1ccbe7346c22b20bc0678094dd5a99`;
+- C loaded 269-token sessions and matched 262/269 prompt tokens;
+- peak RSS `2948.83 MiB`;
+- peak swap `1267.56 MiB`;
+- all 14 frozen gates passed.
+
+Classification:
+**`LOOM_30B_ACCEL_PROMPT_CACHE_R2_GO`**.
+
+Scientific interpretation:
+prompt cache is now validated for canonical DEEP stable-prefix prompt/prefill and E2E acceleration. It is not a decode-throughput optimization and does not change the canonical ~4.39–4.40 tok/s decode baseline.
+
+## Exact next action — Paging/I/O Attribution Preflight 001
 
 Preregistration:
-`research/architecture/loom-30b-accel-prompt-cache-r2-001-preregistration.md`
+`research/architecture/loom-30b-accel-paging-io-attribution-preflight-001-preregistration.md`
 
-Scientific design unchanged:
-- same exact prompts;
-- canonical S24 only;
-- generation budget `-n 24`;
-- semantic validator frozen: W contains standalone `ambra`; B/C contain standalone `4317`;
-- three independent B -> W -> C rounds;
-- fresh cache per round;
-- prompt-cache reuse is the sole scientific factor;
-- primary GO threshold median C/B prompt-eval wall <=0.70;
-- lower E2E, decode >=90%, safe memory and complete evidence required.
+Purpose:
+validate a non-mutating observation path before spending a model run on paging/I/O attribution.
 
-R2 mechanical wrapper recovery:
-- verify parent wrapper exact SHA `1c62f4ab53e0c31bf3c725991d1f87a3f81cd75ab91d6da2e1b05bf8a499ba5e`;
-- leave parent unchanged;
-- derive a separate R2 wrapper before inference;
-- only preregistered mechanical changes are authorized;
-- synthetic-test validator/harness without opening GGUF;
-- persist and freeze derived-wrapper SHA before first inference;
-- no wrapper changes after inference begins.
+Pinned-source facts:
+- `llama_moe_offloader::resolve(...)` tracks LRU hits/misses;
+- an expert miss schedules one `pread_pool(...)` task for each bound pool;
+- `pread_pool(...)` performs synchronous `pread(...)` until the expert-pool stride is fully read;
+- multiple tasks may run through `dispatch_apply`;
+- sidecar completion is signaled only after `resolve(...)` completes;
+- `total_hits` / `total_misses` exist internally but are not exposed by the inspected public interface.
 
-## After R2
+Preflight requirements:
+- do not open the GGUF;
+- do not run inference;
+- inspect already-installed native macOS instrumentation only;
+- use a frozen deterministic synthetic `os.pread` process to validate candidate tracing;
+- require per-process isolation, durable raw evidence and deterministic parsing;
+- at least one high-value observable among direct read count/bytes/timing/offset must validate against synthetic ground truth;
+- freeze one selected observation method for the later actual attribution run;
+- no source patch, rebuild, package install, dynamic interposition or security-setting change.
 
-Proceed to paging/I/O attribution for direct decode acceleration. Then preregister expert-prefetch/overlap intervention if attribution supports it.
+## After preflight
 
-Target: 5+ decode tok/s first, then investigate 6–9 tok/s. Caveman-style context packing remains later end-to-end work.
+If GO:
+preregister the actual canonical S24 paging/I/O inference attribution using the validated method.
+
+If NO_GO:
+preregister a separate instrumentation strategy before any source-level measurement patch/rebuild is permitted.
+
+Only after actual attribution demonstrates a meaningful expert-I/O bottleneck should LOOM preregister expert prefetch/overlap work.
+
+Acceleration target remains: 5+ decode tok/s first, then investigate 6–9 tok/s. Caveman-style context packing remains later end-to-end work.
