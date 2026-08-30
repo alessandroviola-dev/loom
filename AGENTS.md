@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.74
+Version: 3.75
 Mode: `TOKEN_EFFICIENT / BOUNDED_EXECUTION`
 
 Pi reads this file as persistent context. WP prompts carry only the active delta.
@@ -59,7 +59,7 @@ Apple S24 is canonical DEEP on product-utility grounds.
 `LOOM_30B_ACCEL_PERSISTENT_CACHE_FEASIBILITY_GO`.
 No built `llama-server`; canonical `llama-completion` supports explicit `--prompt-cache`.
 
-## Prompt cache 001 — CLOSED MECHANICALLY
+## Prompt Cache 001 — CLOSED MECHANICALLY
 
 Canonical result:
 `research/architecture/loom-30b-accel-prompt-cache-001-result.md`
@@ -82,27 +82,57 @@ Mechanical cause:
 - frozen `-n 8` truncated target answer `4317` to `...porta 4`;
 - warm answer contained correct `ambra` but exact-string validator rejected explanatory prose.
 
-## Current checkpoint — Prompt Cache R1 001
+## Prompt Cache R1 001 — CLOSED MECHANICALLY BEFORE INFERENCE
+
+Canonical result:
+`research/architecture/loom-30b-accel-prompt-cache-r1-001-result.md`
+
+Classification:
+**`LOOM_30B_ACCEL_PROMPT_CACHE_R1_MECHANICAL_NO_GO`**.
+
+Evidence:
+`results-local/research/30b-accel-prompt-cache-r1-001/20260830T105237Z/`
+
+R1 correctly stopped before inference.
+
+Verified parent wrapper:
+`results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/prompt_cache_runner.py`
+SHA256:
+`1c62f4ab53e0c31bf3c725991d1f87a3f81cd75ab91d6da2e1b05bf8a499ba5e`
+
+Mechanical defect:
+- R1 required that wrapper unchanged;
+- the wrapper hard-coded `-n 8`, exact-string validation and Prompt Cache 001 evidence/classification handling;
+- therefore it could not implement the preregistered R1 mechanical deltas without violating its own freeze rule.
+
+No inference and no new performance evidence occurred.
+
+## Current checkpoint — Prompt Cache R2 001
 
 Preregistration:
-`research/architecture/loom-30b-accel-prompt-cache-r1-001-preregistration.md`
+`research/architecture/loom-30b-accel-prompt-cache-r2-001-preregistration.md`
 
-Recovery deltas only:
-- `-n 24` instead of `-n 8`;
-- frozen semantic validator: warm must contain `ambra`; target must contain standalone `4317`.
-
-Everything else remains scientifically frozen:
+Scientific design remains frozen:
 - canonical model/runtime/S24;
 - exact stable prefix and suffixes;
+- `-n 24`;
+- frozen semantic validator: W contains standalone `ambra`, B/C contain standalone `4317`;
 - 3 rounds B -> W -> C;
 - fresh cache per round;
 - only scientific factor is prompt-cache reuse;
 - same primary threshold: median C/B prompt-eval wall <=0.70;
 - E2E lower, decode >=90%, safe memory, complete evidence.
 
-Reuse the already-frozen research wrapper unchanged; if its exact SHA cannot be verified, stop mechanically.
+R2 harness repair only:
+- verify frozen parent wrapper SHA above;
+- preserve parent unchanged;
+- derive a separate R2 wrapper before inference;
+- only preregistered mechanical wrapper changes are allowed;
+- synthetic-test without opening GGUF;
+- freeze and persist derived-wrapper SHA before inference;
+- no wrapper edits after inference begins.
 
-## After Prompt Cache R1
+## After Prompt Cache R2
 
 Next decode-focused checkpoint: paging/I/O attribution. Measure expert paging cost before source-level prefetch/overlap work inspired by mini-SGLang.
 
