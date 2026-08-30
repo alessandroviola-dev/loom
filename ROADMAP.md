@@ -1,9 +1,10 @@
 # LOOM Roadmap
 
 Last updated: 2026-08-30
-Current: accelerated macro-work-package mode. WP1 Runtime + Product Serving completed GO. Canonical DEEP runtime is now S32 at 5.596 tok/s median decode on the validated 3x96-token A/B; S24 remains rollback. Next planned package is WP2 Context Intelligence (Caveman + Cavemem only), not yet authorized.
-Canonical context: `/AGENTS.md` v3.81.
+Current: accelerated macro-work-package mode. WP1 Runtime + Product Serving completed GO. Canonical DEEP runtime is S32 at 5.596 tok/s median decode on persistent localhost `llama-server`; S24 remains rollback. WP2 Context Intelligence is now authorized and active with Caveman + Cavemem only.
+Canonical context: `/AGENTS.md` v3.82.
 Plan: `research/integration/loom-accelerated-macro-workpackages-v1.md`.
+WP2 contract: `research/integration/loom-context-intelligence-wp2.md`.
 
 ## 1. Product direction
 
@@ -47,11 +48,8 @@ S32 resource result:
 - minimum sampled free memory `10%`;
 - no crash/OOM/corruption/critical pressure indication.
 
-Final flags include:
-`--ctx-size 4096 --parallel 1 --moe-n-slots 32 --moe-n-layers 48 --no-mmap --no-warmup --cpu-moe -b 4096 -ub 1 --cache-ram 512`.
-
 Operational stack:
-- embedded existing `llama-server` WebUI at `http://127.0.0.1:18080/`;
+- existing embedded `llama-server` WebUI at `http://127.0.0.1:18080/`;
 - OpenAI-compatible API at `http://127.0.0.1:18080/v1/chat/completions`;
 - Pi connected to `http://127.0.0.1:18080/v1` and verified with a real offline request;
 - localhost-only/offline configuration;
@@ -62,35 +60,63 @@ Serving-path stable-prefix cache reuse directly validated:
 - reuse 134 cached + 2 evaluated / 280.389 ms;
 - reuse E2E 0.332 s.
 
-Current provider/model id still says `loom-deep-30b-s24`; this is naming debt only and should be renamed in a later authorized config/integration pass.
+Provider/model label cleanup from `loom-deep-30b-s24` to S32 naming is authorized mechanically inside WP2 if compatibility is preserved.
 
-## 3. Historical prompt-cache result
-
-`LOOM_30B_ACCEL_PROMPT_CACHE_R2_GO` remains valid for completion-mode stable-prefix caching:
-- median prompt-eval C/B `0.04025`;
-- median E2E C/B `0.10751`;
-- decode preservation `99.43%`.
-
-The final persistent server now independently validates serving-path cache reuse.
-
-## 4. WP2 — Context Intelligence
+## 3. WP2 — Context Intelligence — ACTIVE
 
 Checkpoint:
 `LOOM_CONTEXT_INTELLIGENCE_WP2`
 
-Status: **PLANNED / NOT YET AUTHORIZED**.
+Contract:
+`research/integration/loom-context-intelligence-wp2.md`
+
+Goal:
+reduce provider-facing context and improve long-running project continuity without adding a heavy agent framework or permanent model/tool overhead.
 
 Permanent mechanisms selected:
-- **Caveman** — deterministic typed compression, context packing, token-budget selection and recovery handles;
-- **Cavemem** — progressive local project memory, compact searchable observations and exact retrieval on demand.
 
-Cavemem selects relevant prior information; Caveman decides what enters the active prompt and how compactly.
+### Caveman-derived context layer
+- deterministic lexical/BM25-style relevance scoring;
+- explicit priority + recency + error/warning + pin preservation;
+- select under token budget, then restore chronology;
+- deterministic typed compression for real LOOM/Pi logs/search/JSON/code/diffs;
+- exact machine-critical values preserved;
+- every omission exactly recoverable through local handles;
+- small/no-op content bypasses compression when net-negative.
 
-Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems. Borrow only small negligible-overhead ideas if required to support Caveman/Cavemem.
+### Cavemem-derived memory layer
+- project-scoped local SQLite/FTS5-first memory;
+- compact observations rather than raw transcript replay;
+- persist decisions/results/failures/constraints/checkpoints with source provenance;
+- cheap compact retrieval first, exact detail only on demand;
+- privacy/redaction before persistence;
+- no mandatory embedding model in v0.
 
-WP2 requires measured net token/task benefit on representative Pi/LOOM work.
+Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems.
 
-## 5. WP3 — Behavioral Transform
+## 4. WP2 validation
+
+Frozen final comparison arms:
+- A: WP1 baseline;
+- B: Caveman packer/compression only;
+- C: Caveman + Cavemem progressive retrieval.
+
+Representative benchmark must cover context-heavy real LOOM/Pi evidence and negative small/no-op cases.
+
+Promotion targets/gates include:
+- objective task quality non-inferior to baseline;
+- target >=20% median provider-input reduction on context-heavy cases;
+- target <=5% provider-input overhead on small/no-op cases with no correctness regression;
+- exact recovery and source verification;
+- no accepted wrong result from stale/incorrect memory;
+- packing/retrieval CPU overhead smaller than the saved prefill/E2E benefit;
+- safe RAM/swap alongside S32;
+- real Pi request through final combined path;
+- simple disable/rollback to WP1 baseline.
+
+If an individual compressor/retrieval idea is net-negative, revert/disable it and continue inside WP2. Do not stop for routine sub-NO_GO outcomes.
+
+## 5. WP3 — Behavioral Transform — PLANNED / NOT AUTHORIZED
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
@@ -113,7 +139,7 @@ Prompt-only behavior does not count as WP3 completion.
 Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
 
-Assemble best validated outputs from WP1–WP3.
+Assemble best validated outputs from WP1-WP3.
 
 Required:
 - reliable clean startup;
@@ -130,8 +156,8 @@ Required:
 ## 7. Current research inputs
 
 Use mechanisms selectively from:
-- mini-SGLang — KV/prefix reuse and scheduling/prefetch/overlap concepts already informing WP1;
-- Caveman + Cavemem for WP2;
-- Abliterix/Heretic/Senbonzakura concepts for WP3.
+- mini-SGLang — runtime concepts already informing WP1;
+- Caveman + Cavemem for active WP2;
+- Abliterix/Heretic/Senbonzakura concepts for later WP3.
 
-Other repository papers remain available research references but are not current permanent integration requirements.
+Other repository papers remain research references, not current permanent integration requirements.
