@@ -1,0 +1,385 @@
+#!/usr/bin/env python3
+"""LOOM WP2 deterministic Caveman/Cavemem context utility.
+
+No network, LLM, embeddings, or background process is used.  This command owns
+project-local memory, redacted exact artifacts, typed compression, recovery, and
+provider-payload packing for the Pi extension.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable
+
+ROOT = Path(__file__).resolve().parent.parent
+LOOM = ROOT / ".loom"
+ARTIFACTS = LOOM / "artifacts"
+DB = LOOM / "memory.sqlite"
+SCHEMA_VERSION = 1
+TOKEN_RE = re.compile(r"\w+|[^\w\s]", re.UNICODE)
+WORD_RE = re.compile(r"[A-Za-z0-9_./:-]{2,}")
+SECRET_PATTERNS = (
+    re.compile(r"(?i)\b(authorization\s*:\s*bearer\s+)([^\s]+)"),
+    re.compile(r"(?i)\b(api[_-]?key|token|secret|password)\s*([=:])\s*([^\s'\"]+)"),
+    re.compile(r"\b(sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_-]{12,})\b"),
+)
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def canon_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def estimate_tokens(text: str) -> int:
+    # Conservative, tokenizer-independent estimate used only for deterministic budgeting.
+    return max(1, len(TOKEN_RE.findall(text))) if text else 0
+
+
+def project_scope() -> str:
+    return hashlib.sha256(str(ROOT.resolve()).encode()).hexdigest()[:16]
+
+
+def redact(text: str) -> tuple[str, str]:
+    """Remove durable secrets before hashes/artifacts/SQLite.  Never retain originals."""
+    changed = False
+
+    def replacement(match: re.Match[str]) -> str:
+        nonlocal changed
+        changed = True
+        value = match.group(match.lastindex or 0)
+        marker = hashlib.sha256(value.encode()).hexdigest()[:12]
+        if match.re is SECRET_PATTERNS[0]:
+            return f"{match.group(1)}[REDACTED:{marker}]"
+        if match.re is SECRET_PATTERNS[1]:
+            return f"{match.group(1)}{match.group(2)}[REDACTED:{marker}]"
+        return f"[REDACTED:{marker}]"
+
+    for pattern in SECRET_PATTERNS:
+        text = pattern.sub(replacement, text)
+    # Avoid durable personal email addresses while retaining a stable indication.
+    def email(match: re.Match[str]) -> str:
+        nonlocal changed
+        changed = True
+        return f"[REDACTED_EMAIL:{hashlib.sha256(match.group(0).encode()).hexdigest()[:12]}]"
+    text = re.sub(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", email, text)
+    return text, "redacted" if changed else "public-project"
+
+
+def ensure_db() -> sqlite3.Connection:
+    LOOM.mkdir(mode=0o700, exist_ok=True)
+    ARTIFACTS.mkdir(mode=0o700, exist_ok=True)
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS observations (
+      id TEXT PRIMARY KEY, scope TEXT NOT NULL, created_at TEXT NOT NULL, kind TEXT NOT NULL,
+      summary TEXT NOT NULL, keywords TEXT NOT NULL, importance INTEGER NOT NULL,
+      source_ref TEXT NOT NULL, artifact_ref TEXT, content_hash TEXT NOT NULL,
+      privacy_class TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS observations_scope_time ON observations(scope, created_at);
+    CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(summary, keywords, tokenize='unicode61');
+    """)
+    conn.execute("INSERT OR REPLACE INTO metadata(key,value) VALUES('schema_version',?)", (str(SCHEMA_VERSION),))
+    conn.commit()
+    return conn
+
+
+def artifact(text: str, suffix: str = "txt") -> tuple[str, str, str]:
+    clean, privacy = redact(text)
+    digest = hashlib.sha256(clean.encode()).hexdigest()
+    target = ARTIFACTS / f"{digest}.{suffix}"
+    if not target.exists():
+        fd, name = tempfile.mkstemp(prefix=".tmp-", dir=ARTIFACTS)
+        try:
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(clean)
+            os.replace(name, target)
+        finally:
+            if os.path.exists(name): os.unlink(name)
+    return f"loom://artifact/{digest}", digest, privacy
+
+
+def stable_id(kind: str, summary: str, source: str) -> str:
+    return "mem-" + hashlib.sha256((project_scope() + "\0" + kind + "\0" + summary + "\0" + source).encode()).hexdigest()[:16]
+
+
+def compact_lines(text: str, limit: int = 8) -> str:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    chosen = [line for line in lines if re.search(r"(?i)\b(error|warning|failed|failure|decision|constraint|checkpoint|sha256|revert|GO|NO_GO)\b", line)]
+    chosen.extend(lines[:2])
+    result: list[str] = []
+    for line in chosen:
+        if line not in result:
+            result.append(line)
+        if len(result) >= limit: break
+    return "\n".join(result)[:1600]
+
+
+def record(observation: str, source: str, kind: str = "observation", importance: int = 5, keywords: str = "") -> dict[str, Any]:
+    exact_ref, digest, privacy = artifact(observation)
+    summary, summary_privacy = redact(compact_lines(observation))
+    privacy = "redacted" if "redacted" in (privacy, summary_privacy) else privacy
+    keyset = sorted(set(WORD_RE.findall((keywords + " " + summary).lower())))[:48]
+    keytext = " ".join(keyset)
+    oid = stable_id(kind, summary, source)
+    conn = ensure_db()
+    conn.execute("""INSERT OR REPLACE INTO observations
+      (id,scope,created_at,kind,summary,keywords,importance,source_ref,artifact_ref,content_hash,privacy_class)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?)""", (oid, project_scope(), now(), kind, summary, keytext, max(0, min(10, importance)), source, exact_ref, digest, privacy))
+    rowid = conn.execute("SELECT rowid FROM observations WHERE id=?", (oid,)).fetchone()[0]
+    conn.execute("DELETE FROM observations_fts WHERE rowid=?", (rowid,))
+    conn.execute("INSERT INTO observations_fts(rowid,summary,keywords) VALUES(?,?,?)", (rowid, summary, keytext))
+    conn.commit(); conn.close()
+    return {"id": oid, "artifact_ref": exact_ref, "privacy_class": privacy, "content_hash": digest}
+
+
+def fts_query(query: str) -> str:
+    terms = sorted(set(WORD_RE.findall(query.lower())))[:16]
+    return " OR ".join(f'"{term.replace(chr(34), "")}"' for term in terms) or '"__no_match__"'
+
+
+def search(query: str, limit: int = 5) -> list[dict[str, Any]]:
+    conn = ensure_db()
+    sql = """SELECT o.*, bm25(observations_fts, 1.0, 0.4) AS rank
+      FROM observations_fts JOIN observations o ON o.rowid=observations_fts.rowid
+      WHERE observations_fts MATCH ? AND o.scope=?
+      ORDER BY rank ASC, o.importance DESC, o.created_at DESC LIMIT ?"""
+    rows = conn.execute(sql, (fts_query(query), project_scope(), limit)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_memory(oid: str) -> dict[str, Any] | None:
+    conn = ensure_db(); row = conn.execute("SELECT * FROM observations WHERE id=? AND scope=?", (oid, project_scope())).fetchone(); conn.close()
+    return dict(row) if row else None
+
+
+def timeline(limit: int = 20) -> list[dict[str, Any]]:
+    conn = ensure_db(); rows = conn.execute("SELECT * FROM observations WHERE scope=? ORDER BY created_at,id LIMIT ?", (project_scope(), limit)).fetchall(); conn.close()
+    return [dict(row) for row in rows]
+
+
+def query_terms(query: str) -> set[str]:
+    return set(term.lower() for term in WORD_RE.findall(query))
+
+
+def memory_candidates(query: str) -> list[dict[str, Any]]:
+    """Progressive retrieval only for explicit durable-project recall, never generic terms."""
+    lowered = query.lower()
+    triggers = ("decision", "benchmark", "constraint", "rollback", "runtime", "earlier project", "wp1", "s24")
+    if not any(trigger in lowered for trigger in triggers) and not ("canonical" in lowered and "decode" in lowered):
+        return []
+    stop = {"the", "and", "with", "what", "from", "that", "this", "only", "exact", "respond", "project"}
+    terms = query_terms(query) - stop
+    output = []
+    for item in search(query, 3):
+        haystack = (item["summary"] + " " + item["keywords"]).lower()
+        if len([term for term in terms if term in haystack]) >= 2:
+            output.append(item)
+    return output
+
+
+def matching_lines(lines: list[str], query: str) -> list[str]:
+    terms = query_terms(query)
+    if not terms: return []
+    return [line for line in lines if terms.intersection(set(term.lower() for term in WORD_RE.findall(line)))]
+
+
+def collapse_repeated(lines: Iterable[str]) -> list[str]:
+    output: list[str] = []; previous = None; count = 0
+    def flush() -> None:
+        nonlocal previous, count
+        if previous is not None:
+            output.append(previous if count == 1 else f"{previous}\n[LOOM collapsed {count - 1} exact repeated lines]")
+    for line in lines:
+        if line == previous: count += 1
+        else: flush(); previous = line; count = 1
+    flush(); return output
+
+
+def type_of(text: str) -> str:
+    stripped = text.lstrip()
+    if stripped.startswith("diff --git ") or "\n@@ " in text: return "diff"
+    if stripped.startswith(("{", "[")):
+        try: json.loads(stripped); return "json"
+        except Exception: pass
+    if re.search(r"(?m)^\S[^\n]*:\d+(?::\d+)?(?::|\s|$)", text): return "search"
+    if re.search(r"(?m)^\s*(?:def|class|function|const|let|var|import|from)\b|^\S+\.(?:py|ts|js|md|json|sh|yaml|yml|c|h)", text): return "code"
+    if re.search(r"(?im)\b(error|warning|traceback|exception|failed|exit code)\b", text) or len(text.splitlines()) > 10: return "log"
+    return "text"
+
+
+def compress(text: str, query: str, source_type: str = "auto") -> tuple[str, str, bool]:
+    """Typed structural compressor. Returned content always points to a redacted artifact."""
+    raw_tokens = estimate_tokens(text)
+    if raw_tokens <= 80:
+        return text, source_type if source_type != "auto" else type_of(text), True
+    clean, _ = redact(text)
+    kind = type_of(clean) if source_type == "auto" else source_type
+    ref, digest, _ = artifact(clean)
+    lines = clean.splitlines()
+    matches = matching_lines(lines, query)
+    kept: list[str]
+    if kind == "json":
+        try:
+            value = json.loads(clean)
+            if isinstance(value, dict):
+                shape = {key: (type(val).__name__ if not isinstance(val, (str,int,float,bool,type(None))) else val) for key,val in list(value.items())[:40]}
+                kept = ["JSON shape (exact top-level keys/primitive values):", canon_json(shape)]
+            elif isinstance(value, list):
+                kept = [f"JSON array length={len(value)}", "first-item-shape=" + (canon_json(value[0])[:800] if value else "null")]
+            else: kept = [canon_json(value)[:1200]]
+            kept.extend(matches[:16])
+        except Exception: kept = lines[:8] + matches[:16] + lines[-4:]
+    elif kind == "diff":
+        kept = [line for line in lines if line.startswith(("diff --git", "index ", "--- ", "+++ ", "@@", "+", "-"))]
+    elif kind == "search":
+        # Paths are self-identifying; retain the leading hit and only a few query-near hits.
+        kept = lines[:1] + matches[:4]
+    elif kind == "code":
+        # Preserve the declaration enclosing a query-near code line (e.g. a return).
+        indices = [i for i, line in enumerate(lines) if line in matches]
+        declarations: list[str] = []
+        for index in indices[:12]:
+            for prior in range(index, max(-1, index - 80), -1):
+                if re.match(r"\s*(?:def|class|function|[A-Za-z_$][\w$<>]*\s+[A-Za-z_$][\w$]*\s*\()", lines[prior]):
+                    declarations.append(lines[prior]); break
+        signatures = [line for line in lines if re.match(r"\s*(?:def|class|function)\b", line) or re.match(r"\s*return\b", line)]
+        kept = lines[:8] + signatures + declarations + matches[:16] + lines[-6:]
+    elif kind == "log":
+        critical = [line for line in lines if re.search(r"(?i)\b(error|warning|traceback|exception|failed|fatal|assert|exit code)\b", line)]
+        kept = lines[:6] + critical[:24] + matches[:16] + lines[-6:]
+    else:
+        kept = lines[:10] + matches[:16] + lines[-4:]
+    unique: list[str] = []
+    for line in collapse_repeated(kept):
+        if line not in unique: unique.append(line)
+    body = "\n".join(unique)
+    result = f"[LOOM {kind} compressed; exact={ref}]\n{body}"
+    return result, kind, False
+
+
+def content_text(content: Any) -> str:
+    if isinstance(content, str): return content
+    if isinstance(content, list): return "\n".join(str(item.get("text", "")) for item in content if isinstance(item, dict) and item.get("type") == "text")
+    return ""
+
+
+def content_like(original: Any, text: str) -> Any:
+    return text if isinstance(original, str) else [{"type": "text", "text": text}]
+
+
+def recency(timestamp: Any, newest: float) -> float:
+    try: value = float(timestamp) / 1000.0
+    except Exception: value = newest
+    return max(0.0, min(2.0, (value / newest) * 2.0)) if newest else 0.0
+
+
+def pack_payload(payload: dict[str, Any], query: str, enabled_memory: bool = True, budget: int = 3000) -> tuple[dict[str, Any], dict[str, Any]]:
+    messages = payload.get("messages")
+    if not isinstance(messages, list): return payload, {"bypassed": True, "reason": "no_messages"}
+    before_text = canon_json(messages); before = estimate_tokens(before_text)
+    # Exact current request and all system instructions remain untouched; only historical text/tool outputs are candidates.
+    latest_user = max((i for i,m in enumerate(messages) if isinstance(m,dict) and m.get("role") == "user"), default=-1)
+    newest = max((float(m.get("timestamp", 0)) for m in messages if isinstance(m,dict)), default=1.0)
+    candidates: list[dict[str, Any]] = []
+    for index, message in enumerate(messages):
+        if not isinstance(message, dict) or index == latest_user or message.get("role") == "system": continue
+        text = content_text(message.get("content"))
+        if estimate_tokens(text) <= 80: continue
+        lower = text.lower(); terms = query_terms(query)
+        relevance = sum(lower.count(term) for term in terms)
+        error = bool(re.search(r"(?i)\b(error|warning|failed|fatal|exception|traceback)\b", text))
+        pinned = message.get("role") == "tool" and bool(message.get("isError"))
+        priority = 4 if error else 0
+        score = relevance * 3 + priority + recency(message.get("timestamp"), newest) + (8 if error else 0) + (1000 if pinned else 0)
+        candidates.append({"index":index,"text":text,"score":score,"error":error,"pinned":pinned,"timestamp":message.get("timestamp",index),"tokens":estimate_tokens(text)})
+    # No-op clause: leave concise requests structurally identical, avoiding a wrapper marker.
+    if not candidates or before <= budget:
+        return payload, {"bypassed": True, "reason": "small_or_within_budget", "tokens_before":before,"tokens_after":before,"saved":0,"selected":0,"deferred":0,"packing_ms":0,"recovery_refs":[]}
+    # Selection by score, then chronological presentation. Budget is allocated to high value full/compressed candidates.
+    available = max(0, budget - (before - sum(c["tokens"] for c in candidates)))
+    selected: set[int] = set()
+    for candidate in sorted(candidates, key=lambda c:(-c["score"], c["index"])):
+        compressed, _, _ = compress(candidate["text"], query)
+        cost = estimate_tokens(compressed)
+        # Query-near evidence is never discarded merely because the approximate budget
+        # is tighter than its deterministic structural representation.
+        if candidate["pinned"] or candidate["score"] >= 3 or cost <= available:
+            selected.add(candidate["index"]); available = max(0, available - cost)
+    result = json.loads(json.dumps(payload))
+    refs: list[str] = []; deferred = 0
+    for candidate in sorted(candidates, key=lambda c:c["index"]):
+        message = result["messages"][candidate["index"]]
+        ref, digest, _ = artifact(candidate["text"])
+        refs.append(ref)
+        if candidate["index"] in selected:
+            compact, _, _ = compress(candidate["text"], query)
+        else:
+            deferred += 1
+            compact = f"[LOOM deferred historical evidence; exact={ref}]"
+        message["content"] = content_like(message.get("content"), compact)
+    memories: list[dict[str, Any]] = memory_candidates(query) if enabled_memory and query.strip() else []
+    if memories:
+        injection = "[LOOM progressive project memory — compact candidates; retrieve exact source only if needed]\n" + "\n".join(
+            f"- {m['id']} kind={m['kind']} source={m['source_ref']} exact={m['artifact_ref']}: {m['summary']}" for m in memories)
+        # System role avoids a permanent model-facing tool schema and keeps memory separate from user intent.
+        result["messages"].insert(max(0, latest_user), {"role":"system", "content":injection})
+    after = estimate_tokens(canon_json(result["messages"]))
+    return result, {"bypassed":False,"tokens_before":before,"tokens_after":after,"saved":before-after,"selected":len(selected),"deferred":deferred,"packing_ms":0,"recovery_refs":refs,"memory_ids":[m["id"] for m in memories]}
+
+
+def durable(text: str) -> bool:
+    return bool(re.search(r"(?i)\b(decision|constraint|checkpoint|failed|failure|revert(?:ed)?|benchmark|sha256|\bGO\b|\bNO_GO\b|error|warning)\b", text))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest="command", required=True)
+    p_record = sub.add_parser("record"); p_record.add_argument("--text", required=True); p_record.add_argument("--source", required=True); p_record.add_argument("--kind", default="observation"); p_record.add_argument("--importance", type=int, default=5); p_record.add_argument("--keywords", default="")
+    p_obs = sub.add_parser("observe"); p_obs.add_argument("--text", required=True); p_obs.add_argument("--source", required=True); p_obs.add_argument("--kind", default="auto")
+    p_search = sub.add_parser("search"); p_search.add_argument("query"); p_search.add_argument("--limit", type=int, default=5)
+    p_get = sub.add_parser("get"); p_get.add_argument("id")
+    p_timeline = sub.add_parser("timeline"); p_timeline.add_argument("--limit", type=int, default=20)
+    p_recover = sub.add_parser("recover"); p_recover.add_argument("reference")
+    p_compress = sub.add_parser("compress"); p_compress.add_argument("--input", required=True); p_compress.add_argument("--query", default=""); p_compress.add_argument("--type", default="auto")
+    p_pack = sub.add_parser("pack-payload"); p_pack.add_argument("--input", required=True); p_pack.add_argument("--query", default=""); p_pack.add_argument("--budget", type=int, default=3000); p_pack.add_argument("--no-memory", action="store_true")
+    args = parser.parse_args()
+    if args.command == "record": out = record(args.text,args.source,args.kind,args.importance,args.keywords)
+    elif args.command == "observe": out = record(args.text,args.source, "failure" if re.search(r"(?i)\b(error|failed|warning|revert)\b",args.text) else "observation", 8 if re.search(r"(?i)\b(error|failed|warning|revert)\b",args.text) else 6) if durable(args.text) else {"skipped":True,"reason":"not_durable"}
+    elif args.command == "search": out = search(args.query,args.limit)
+    elif args.command == "get": out = get_memory(args.id) or {"error":"not_found"}
+    elif args.command == "timeline": out = timeline(args.limit)
+    elif args.command == "recover":
+        match = re.fullmatch(r"loom://artifact/([0-9a-f]{64})(?:#L(\d+)-L(\d+))?", args.reference)
+        if not match: raise SystemExit("invalid loom artifact reference")
+        path = ARTIFACTS / f"{match.group(1)}.txt"
+        if not path.exists(): raise SystemExit("artifact not found")
+        lines = path.read_text(encoding="utf-8").splitlines()
+        start = int(match.group(2) or 1); end = int(match.group(3) or len(lines))
+        out = {"reference":args.reference,"content":"\n".join(lines[start-1:end]),"line_count":len(lines),"privacy_filtered":True}
+    elif args.command == "compress":
+        text = Path(args.input).read_text(encoding="utf-8"); compressed, kind, bypass = compress(text,args.query,args.type); out={"kind":kind,"bypassed":bypass,"tokens_before":estimate_tokens(text),"tokens_after":estimate_tokens(compressed),"text":compressed}
+    else:
+        payload = json.loads(Path(args.input).read_text(encoding="utf-8")); started=time.perf_counter(); packed, accounting=pack_payload(payload,args.query,not args.no_memory,args.budget); accounting["packing_ms"]=round((time.perf_counter()-started)*1000,3); out={"payload":packed,"accounting":accounting}
+    print(json.dumps(out,ensure_ascii=False,sort_keys=True))
+    return 0
+
+if __name__ == "__main__": raise SystemExit(main())

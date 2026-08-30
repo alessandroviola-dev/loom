@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "frozen_at": "2026-08-30T13:40:00Z",
+  "policy": "Expected strings and corpus were frozen before final-arm measurement; packer constants were not tuned against them.",
+  "cases": [
+    {"id":"logs","class":"verbose_logs","target":"config/loom-deep-server.env","query":"From the historical log, respond only with the exact failing path.","expected":"config/loom-deep-server.env"},
+    {"id":"search","class":"repository_search","target":"research/integration/loom-runtime-productization-wp1-result.md","query":"From the historical search output, respond only with the exact result path.","expected":"research/integration/loom-runtime-productization-wp1-result.md"},
+    {"id":"json","class":"structured_json","target":"41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892","query":"From the historical JSON, respond only with the exact source_commit value.","expected":"41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892"},
+    {"id":"code","class":"code_read","target":"selected_policy","query":"From the historical code, respond only with the exact function name that returns S32.","expected":"selected_policy"},
+    {"id":"diff","class":"diff","target":"LOOM_CONTEXT_INTELLIGENCE=0","query":"From the historical diff, respond only with the exact rollback environment assignment.","expected":"LOOM_CONTEXT_INTELLIGENCE=0"},
+    {"id":"decision","class":"earlier_project_decision","target":"5.596","query":"What is the canonical S32 median decode value? Respond only with the number.","expected":"5.596"},
+    {"id":"noop","class":"small_noop","target":"4","query":"Respond only with the result of 2+2.","expected":"4"}
+  ]
+}

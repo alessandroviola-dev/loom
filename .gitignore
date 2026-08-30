@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 .env
+.loom/
 results-local/
 models/
 *.gguf
