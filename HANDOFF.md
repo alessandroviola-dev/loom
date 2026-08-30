@@ -1,11 +1,11 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache R2 completed GO and is now a validated canonical prefill/E2E optimization for stable-prefix workloads. Current checkpoint is Paging/I/O Attribution Preflight 001, which must prove a non-mutating observation path before the real decode attribution run.
+Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache R2 is validated GO for stable-prefix prefill/E2E. External non-mutating paging/I/O tracing preflight completed scientific NO_GO because the current macOS session could not validate a high-value per-process read observable. Current checkpoint is source-level paging/I/O instrumentation design only; no source patch/build/model run is yet authorized.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_ACCEL_PAGING_IO_ATTRIBUTION_PREFLIGHT_001`
-Pi context: `/AGENTS.md` v3.76.
+Current checkpoint: `LOOM_30B_ACCEL_PAGING_IO_INSTRUMENTATION_DESIGN_001`
+Pi context: `/AGENTS.md` v3.77.
 
 ## Canonical DEEP
 
@@ -18,31 +18,11 @@ Runtime:
 with `llama-completion -no-cnv` SHA256 `38a8446fe0e34e22b7c6e9cffa563167992f46c65fe3387db95bbf5a151cc73f`.
 
 Profile: S24.
-Validated decode baseline: ~4.39–4.40 tok/s.
+Validated fresh-process decode baseline: ~4.39–4.40 tok/s.
 
 Stage2 product result:
 `LOOM_30B_STAGE2_PRODUCT_CANDIDATE_GO`.
 Apple S24 is canonical DEEP.
-
-## Prompt Cache 001 — historical MECHANICAL_NO_GO
-
-Canonical result:
-`research/architecture/loom-30b-accel-prompt-cache-001-result.md`
-
-Evidence:
-`results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/`
-
-Diagnostic cache acceleration was observed but the frozen functional validator invalidated all invocations. Do not promote its ratios as scientific results.
-
-## Prompt Cache R1 — historical MECHANICAL_NO_GO before inference
-
-Canonical result:
-`research/architecture/loom-30b-accel-prompt-cache-r1-001-result.md`
-
-Evidence:
-`results-local/research/30b-accel-prompt-cache-r1-001/20260830T105237Z/`
-
-R1 stopped correctly because its wrapper-freeze contract was internally incompatible with its authorized recovery deltas. No inference and no performance evidence occurred.
 
 ## Prompt Cache R2 — GO
 
@@ -52,65 +32,83 @@ Canonical result:
 Evidence:
 `results-local/research/30b-accel-prompt-cache-r2-001/20260830T105738Z/`
 
-Preflight:
-- parent wrapper SHA verified/preserved: `1c62f4ab53e0c31bf3c725991d1f87a3f81cd75ab91d6da2e1b05bf8a499ba5e`;
-- derived R2 wrapper frozen before inference: `3550d56e0fee1adcf08ae95fcb1ae8fcf50c740147bae036745ab28f0db68ccd`;
-- 13 synthetic validator/harness checks passed without GGUF access.
-
 Validated measurements:
-- 9/9 cleaned outputs passed the frozen semantic validator;
-- prompt-eval C/B ratios: `0.04013`, `0.04031`, `0.04025`; median **`0.04025`**;
-- E2E C/B ratios: `0.10193`, `0.10932`, `0.10751`; median **`0.10751`**;
-- median B/C generation: `3.49 / 3.47 tok/s`;
-- decode preservation: **`99.43%`**;
-- every W created and every C reused its round cache;
-- cache size `26,449,272` bytes;
-- cache SHA256 `f96f9fb61f6e2302fb206932a4ca497c8a1ccbe7346c22b20bc0678094dd5a99`;
-- C loaded 269-token sessions and matched 262/269 prompt tokens;
+- all 14 frozen gates passed;
+- 9/9 functionally valid invocations;
+- median C/B prompt-eval ratio `0.04025`;
+- median C/B E2E ratio `0.10751`;
+- median B/C generation `3.49 / 3.47 tok/s`;
+- decode preservation `99.43%`;
+- cache reuse directly confirmed;
 - peak RSS `2948.83 MiB`;
-- peak swap `1267.56 MiB`;
-- all 14 frozen gates passed.
-
-Classification:
-**`LOOM_30B_ACCEL_PROMPT_CACHE_R2_GO`**.
+- peak swap `1267.56 MiB`.
 
 Scientific interpretation:
-prompt cache is now validated for canonical DEEP stable-prefix prompt/prefill and E2E acceleration. It is not a decode-throughput optimization and does not change the canonical ~4.39–4.40 tok/s decode baseline.
+prompt cache is a validated canonical DEEP prefill/E2E optimization for stable-prefix workloads. It is not direct decode acceleration and does not change the canonical ~4.39–4.40 tok/s decode baseline.
 
-## Exact next action — Paging/I/O Attribution Preflight 001
+Historical Prompt Cache 001 and R1 remain MECHANICAL_NO_GO and must not be promoted as scientific results.
+
+## Paging/I/O Attribution Preflight 001 — NO_GO
+
+Canonical result:
+`research/architecture/loom-30b-accel-paging-io-attribution-preflight-001-result.md`
+
+Evidence:
+`results-local/research/30b-accel-paging-io-attribution-preflight-001/20260830T111709Z/`
+
+Classification:
+**`LOOM_30B_ACCEL_PAGING_IO_ATTRIBUTION_PREFLIGHT_NO_GO`**.
+
+Frozen synthetic probe:
+- 5 deterministic `os.pread` reads;
+- offsets `0`, `4096`, `16384`, `32768`, `49152`;
+- aggregate requested/returned bytes `15,872`;
+- probe SHA256 `0ee66ce40e5865c6288a9ea259b02d7e46d58d3086ca4cc99dd6253c623e095d`;
+- deterministic parser SHA256 `46e996b911b177a0695b8d70edd816b7b606ec1c3c5fef5bb37bf5ff0883797c`.
+
+Result:
+- provenance/no-GGUF/no-mutation/evidence/cleanup gates passed;
+- tested native tracers did not yield usable read observations under the current session constraints;
+- no high-value direct read observable A-C was validated;
+- no method was selected for inference attribution.
+
+Scientific meaning:
+external non-mutating tracing is not sufficient in the current environment. This result makes no claim about whether expert paging is a decode bottleneck.
+
+## Current — Paging/I/O Instrumentation Design 001
 
 Preregistration:
-`research/architecture/loom-30b-accel-paging-io-attribution-preflight-001-preregistration.md`
+`research/architecture/loom-30b-accel-paging-io-instrumentation-design-001-preregistration.md`
 
 Purpose:
-validate a non-mutating observation path before spending a model run on paging/I/O attribution.
+design, without implementing, the minimum source-level measurement instrumentation needed for later canonical S24 paging/I/O attribution.
 
-Pinned-source facts:
-- `llama_moe_offloader::resolve(...)` tracks LRU hits/misses;
-- an expert miss schedules one `pread_pool(...)` task for each bound pool;
-- `pread_pool(...)` performs synchronous `pread(...)` until the expert-pool stride is fully read;
-- multiple tasks may run through `dispatch_apply`;
-- sidecar completion is signaled only after `resolve(...)` completes;
-- `total_hits` / `total_misses` exist internally but are not exposed by the inspected public interface.
+Pinned source facts:
+- `moe_layer` already contains `total_hits` / `total_misses`;
+- `resolve(...)` updates LRU hit/miss state;
+- misses schedule one `pread_pool(...)` task per bound expert pool;
+- `pread_pool(...)` loops on `pread(...)` until the pool stride is transferred;
+- read tasks may execute concurrently via `dispatch_apply`;
+- sidecar completion is signaled after `resolve(...)` completes.
 
-Preflight requirements:
-- do not open the GGUF;
-- do not run inference;
-- inspect already-installed native macOS instrumentation only;
-- use a frozen deterministic synthetic `os.pread` process to validate candidate tracing;
-- require per-process isolation, durable raw evidence and deterministic parsing;
-- at least one high-value observable among direct read count/bytes/timing/offset must validate against synthetic ground truth;
-- freeze one selected observation method for the later actual attribution run;
-- no source patch, rebuild, package install, dynamic interposition or security-setting change.
+The design checkpoint must freeze:
+- exact minimal source locations;
+- exact direct counters and timing semantics;
+- race-free atomic/non-atomic update policy;
+- one final non-hot-path statistics emission point;
+- deterministic machine-readable output schema;
+- exact direct claims vs forbidden interpretations;
+- overhead-validation policy for a later instrumented binary.
 
-## After preflight
+No GGUF, inference, source edit, rebuild, package install, runtime mutation or prefetch implementation is allowed in this checkpoint.
 
-If GO:
-preregister the actual canonical S24 paging/I/O inference attribution using the validated method.
+## Planned sequence after design
 
-If NO_GO:
-preregister a separate instrumentation strategy before any source-level measurement patch/rebuild is permitted.
+If instrumentation design GO:
+1. preregister measurement-only instrumentation implementation/build;
+2. produce a separate instrumented binary with frozen diff and SHA;
+3. preregister canonical-vs-instrumented overhead calibration;
+4. only if perturbation is acceptable, run instrumented canonical S24 paging/I/O attribution;
+5. only if attribution demonstrates a material I/O bottleneck with overlap headroom, preregister expert-prefetch/overlap intervention.
 
-Only after actual attribution demonstrates a meaningful expert-I/O bottleneck should LOOM preregister expert prefetch/overlap work.
-
-Acceleration target remains: 5+ decode tok/s first, then investigate 6–9 tok/s. Caveman-style context packing remains later end-to-end work.
+Acceleration target remains: protect ~4.39–4.40 tok/s, reach 5+ first, then investigate 6–9 tok/s. Caveman context packing remains later work.
