@@ -1,11 +1,11 @@
 # LOOM — Active Handoff
 
 Last updated: 2026-08-30
-Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache 001 closed MECHANICAL_NO_GO because the frozen output budget/validator invalidated otherwise clean cache measurements. Current checkpoint is preregistered Prompt Cache R1 recovery.
+Status: ACTIVE — Apple Metal MoE paging S24 is canonical `loom-deep`. Prompt Cache 001 closed MECHANICAL_NO_GO because the frozen output budget/validator invalidated otherwise clean cache measurements. R1 then stopped before inference because its preregistration required reuse of an unchanged wrapper that hard-coded the very conditions R1 needed to change. Current checkpoint is preregistered Prompt Cache R2 recovery.
 Repository: `Ilcoach/loom`
 Branch: `research/stretch-015-divergence-attribution`
-Current checkpoint: `LOOM_30B_ACCEL_PROMPT_CACHE_R1_001`
-Pi context: `/AGENTS.md` v3.74.
+Current checkpoint: `LOOM_30B_ACCEL_PROMPT_CACHE_R2_001`
+Pi context: `/AGENTS.md` v3.75.
 
 ## Canonical DEEP
 
@@ -48,27 +48,54 @@ Mechanical cause:
 - `-n 8` truncated `4317` to `...porta 4`;
 - warm answer semantically included `ambra` but exact-string validation rejected explanatory text.
 
-## Exact next action — Prompt Cache R1
+## Prompt Cache R1 — MECHANICAL_NO_GO before inference
+
+Canonical result:
+`research/architecture/loom-30b-accel-prompt-cache-r1-001-result.md`
+
+Evidence:
+`results-local/research/30b-accel-prompt-cache-r1-001/20260830T105237Z/`
+
+Blocker artifact:
+`mechanical-blocker.json`.
+
+Frozen parent wrapper verified:
+`results-local/research/30b-accel-prompt-cache-001/20260830T120000Z/prompt_cache_runner.py`
+SHA256 `1c62f4ab53e0c31bf3c725991d1f87a3f81cd75ab91d6da2e1b05bf8a499ba5e`.
+
+R1 correctly stopped because the unchanged wrapper hard-coded:
+- `-n 8`;
+- exact-string validation;
+- Prompt Cache 001 evidence/classification handling.
+
+R1 simultaneously required the wrapper unchanged and required `-n 24` plus semantic validation, so the contract was mechanically unexecutable. No inference occurred and R1 contributes no new performance evidence.
+
+## Exact next action — Prompt Cache R2
 
 Preregistration:
-`research/architecture/loom-30b-accel-prompt-cache-r1-001-preregistration.md`
-
-Recovery only:
-- generation budget `-n 24`;
-- semantic validator frozen before execution: W contains `ambra`; B/C contain standalone `4317`.
+`research/architecture/loom-30b-accel-prompt-cache-r2-001-preregistration.md`
 
 Scientific design unchanged:
 - same exact prompts;
 - canonical S24 only;
+- generation budget `-n 24`;
+- semantic validator frozen: W contains standalone `ambra`; B/C contain standalone `4317`;
 - three independent B -> W -> C rounds;
 - fresh cache per round;
 - prompt-cache reuse is the sole scientific factor;
 - primary GO threshold median C/B prompt-eval wall <=0.70;
 - lower E2E, decode >=90%, safe memory and complete evidence required.
 
-Reuse the frozen Prompt Cache 001 wrapper unchanged and verify its exact SHA before inference.
+R2 mechanical wrapper recovery:
+- verify parent wrapper exact SHA `1c62f4ab53e0c31bf3c725991d1f87a3f81cd75ab91d6da2e1b05bf8a499ba5e`;
+- leave parent unchanged;
+- derive a separate R2 wrapper before inference;
+- only preregistered mechanical changes are authorized;
+- synthetic-test validator/harness without opening GGUF;
+- persist and freeze derived-wrapper SHA before first inference;
+- no wrapper changes after inference begins.
 
-## After R1
+## After R2
 
 Proceed to paging/I/O attribution for direct decode acceleration. Then preregister expert-prefetch/overlap intervention if attribution supports it.
 
