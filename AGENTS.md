@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.83
+Version: 3.84
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired for the current push.
@@ -16,7 +16,7 @@ GitHub is canonical. Active clone:
 
 Default rule: Pi must not commit/push/PR.
 
-Narrow exception: at a completed macro-work-package boundary, ChatGPT may explicitly authorize one bounded persistence commit/push containing only reviewed package implementation/result/docs. This exception never includes `.loom/`, `results-local/`, personal/home-directory config, secrets, caches, model artifacts, generated databases, or unrelated working-tree changes. Pi must inspect and report the exact included file list before committing and must stop if unrelated or ambiguous changes cannot be separated safely.
+Narrow exception: at a completed macro-work-package boundary, ChatGPT may explicitly authorize one bounded persistence commit/push containing only reviewed package implementation/result/docs. Never include `.loom/`, `results-local/`, personal/home-directory config, secrets, caches, model artifacts, generated databases, or unrelated working-tree changes.
 
 ## Operating rule
 
@@ -27,8 +27,6 @@ Inside an authorized macro work package:
 - continue to the next justified action;
 - preserve frozen scientific gates;
 - keep one known-good runnable baseline.
-
-Return only when the macro deliverable is substantially complete or a genuine blocker requires user action, credentials, destructive/security-sensitive host changes, unavailable hardware/storage, or a project-direction choice not resolvable from existing goals/evidence.
 
 Do not begin a later macro package until it is explicitly authorized.
 
@@ -43,9 +41,9 @@ Do not begin a later macro package until it is explicitly authorized.
 7. do not disable SIP/change host security settings;
 8. do not delete unrelated user data;
 9. project-local dependencies/environments are allowed when required and recorded;
-10. Pi Git persistence is allowed only under the narrow explicit macro-boundary exception above.
+10. Pi Git persistence only under the explicit bounded exception above.
 
-## Canonical DEEP — WP1 validated
+## Canonical DEEP runtime — WP1 GO
 
 Model:
 `Qwen3-30B-A3B-Instruct-2507-Q3_K_S-3.25bpw.gguf`
@@ -56,88 +54,84 @@ Model SHA256:
 Source:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`
 
-Canonical serving binary:
-`llama-server`
-SHA256:
+Canonical `llama-server` SHA256:
 `58aec7b9a924ce0bc7910b889d91cc6d55064991459ddddea70a5c8f3ca08506`
 
-Canonical runtime profile: **S32**.
-Rollback profile: S24.
+Canonical runtime profile: **S32**. Rollback: S24.
 
-Matched deterministic S24/S32 3x96-token A/B:
+Validated matched S24/S32 3x96-token A/B:
 - S24 median decode `4.382 tok/s`, E2E `29.185 s`;
 - S32 median decode `5.596 tok/s`, E2E `23.849 s`;
-- S32/S24 decode `1.2768x`;
-- S32/S24 E2E `0.8172`;
+- decode ratio `1.2768x`;
+- E2E ratio `0.8172`;
 - byte-identical outputs.
 
-S32 resource evidence:
+S32 resources:
 - peak RSS `3914.6 MiB`;
 - peak sampled swap `1651.88 MiB`;
 - minimum sampled free memory `10%`;
 - no crash/OOM/corruption/critical pressure indication.
 
-Final S32 flags include:
+Final flags include:
 `--ctx-size 4096 --parallel 1 --moe-n-slots 32 --moe-n-layers 48 --no-mmap --no-warmup --cpu-moe -b 4096 -ub 1 --cache-ram 512`
 
-Operational path:
-- start: `scripts/loom-deep-server start`;
-- status: `scripts/loom-deep-server status`;
-- health: `scripts/loom-deep-server health`;
-- stop: `scripts/loom-deep-server stop`;
-- WebUI: `http://127.0.0.1:18080/`;
-- API base: `http://127.0.0.1:18080/v1`.
+Operational target:
+- `scripts/loom-deep-server start|status|health|stop`;
+- WebUI `http://127.0.0.1:18080/`;
+- API base `http://127.0.0.1:18080/v1`.
 
-Serving-path prompt/KV reuse is directly validated under bounded `--cache-ram 512`.
-
-## WP1 — COMPLETE / GO
-
-Classification:
-`LOOM_RUNTIME_PRODUCTIZATION_WP1_GO`
-
-Canonical result:
+WP1 result:
 `research/integration/loom-runtime-productization-wp1-result.md`
 
 Evidence:
 `results-local/runtime-productization-wp1/20260830T124040Z/`
 
-Pi is configured against the local server and completed a real offline model request.
+## WP2 — COMPLETE / GO / PERSISTED
 
-## WP2 — COMPLETE LOCALLY / GO — PERSISTENCE PENDING
-
-Classification reported by the completed local macro package:
+Classification:
 `LOOM_CONTEXT_INTELLIGENCE_WP2_GO`.
 
-Authoritative contract:
+Canonical implementation commit:
+`0e249f8f5cfaf89398d01e2ee50281fb75b86cd7`
+
+Contract:
 `research/integration/loom-context-intelligence-wp2.md`
 
-Local final report:
+Canonical result:
 `research/integration/loom-context-intelligence-wp2-result.md`
 
-Local evidence:
+Evidence:
 `results-local/context-intelligence-wp2/20260830T133259Z/`
 
-Reported validated outcome:
-- deterministic Caveman packing/recovery implemented;
-- Cavemem SQLite/FTS5 project memory implemented;
-- Pi integration through `.pi/extensions/loom-context.ts` `before_provider_request` hook;
-- no model-visible tools or extra LLMs;
-- provider/model label safely renamed to `loom-local/loom-deep-30b-s32`;
-- A/B/C all `6/7` objective successes; shared JSON-cap miss baseline-equivalent;
-- combined heavy-context median provider-input reduction `23.24%`;
-- no-op overhead `0%`;
-- exact recovery `6/6`, SHA-verified;
-- real Pi combined-path task passed;
-- disable/rollback control passed;
-- canonical S32 server remains healthy.
+Canonical permanent layer:
+- Caveman-derived deterministic context packing/compression/recovery;
+- Cavemem-derived progressive project memory via SQLite/FTS5;
+- Pi integration at `.pi/extensions/loom-context.ts` using `before_provider_request` for `loom-local` only;
+- no extra LLM, embedding model, daemon, or model-visible tool schema;
+- fail-open rollback path preserved.
 
-Permanent WP2 mechanisms:
-- Caveman-derived deterministic context compression/packing/recovery;
-- Cavemem-derived progressive local project memory/retrieval.
+Validated final benchmark:
+- A/B/C objective success `6/7` each; shared JSON cap miss baseline-equivalent;
+- combined heavy-context median provider-input reduction `23.24%`;
+- no-op provider-input overhead `0%`;
+- recovery verification `6/6`, `100%` SHA-verified;
+- no accepted wrong result from stale/incorrect memory;
+- real Pi local-model combined-path request passed;
+- canonical provider/model label is now `loom-local/loom-deep-30b-s32`;
+- S32 server remained healthy.
+
+Rollback:
+`LOOM_CONTEXT_INTELLIGENCE=0 pi --model loom-local/loom-deep-30b-s32`
 
 Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems.
 
-WP2 implementation/result files are currently local and must be persisted through the explicit macro-boundary Git exception before WP3 begins. Do not begin WP3 until persistence and ChatGPT canonical review are complete.
+## Repository persistence audit — OPEN MECHANICAL ITEM
+
+The WP2 commit is reviewed and persisted. However, the validated WP1 lifecycle script `scripts/loom-deep-server` is still present only as an untracked local file and is absent from GitHub.
+
+Before WP3 begins, persist **only** the exact validated `scripts/loom-deep-server` file through an explicitly authorized bounded commit. Do not sweep in the many unrelated/historical untracked scripts.
+
+`config/loom-deep-server.env` is already persisted by the WP2 commit.
 
 ## Later macro packages
 
@@ -163,4 +157,6 @@ Assemble the best validated outputs from WP1-WP3 and run end-to-end acceptance.
 
 ## Current state
 
-WP1 is complete and canonical. WP2 is scientifically complete locally with GO but Git persistence is pending. Do not begin WP3 until WP2 files are safely persisted and reviewed.
+WP1: GO.
+WP2: GO and persisted.
+Current action: persist the single missing validated WP1 lifecycle script. Do not begin WP3 yet.
