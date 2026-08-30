@@ -56,7 +56,7 @@ Outcome:
 
 Do not integrate LoopX, Observal or pi-dynamic-workflows as separate permanent systems.
 
-## WP3 — Behavioral Transform — ACTIVE
+## WP3 — Behavioral Transform — COMPLETE LOCALLY / NO_GO — PERSISTENCE PENDING
 
 Checkpoint:
 `LOOM_BEHAVIORAL_TRANSFORM_WP3`
@@ -64,32 +64,32 @@ Checkpoint:
 Contract:
 `research/integration/loom-behavioral-transform-wp3.md`
 
-Goal:
-produce and validate an actual model/adapter-level behavioral transform for canonical LOOM DEEP. Prompt-only behavior does not count.
+Local result:
+`research/integration/loom-behavioral-transform-wp3-result.md`
 
-Method/reference order:
-1. LOOM-native Heretic/projected single-direction low-rank adapter;
-2. Abliterix-derived MoE-aware refinement when measured evidence supports it;
-3. Senbonzakura-derived multi-direction/subspace when single-direction remains materially insufficient;
-4. clean low-rank alternative if required by representation/toolchain constraints.
+Evidence:
+`results-local/behavioral-transform-wp3/20260830T144523Z/`
 
-Preferred final artifact:
-a small reversible **GGUF LoRA adapter** loaded separately by canonical `llama-server`, rather than a second full model copy.
+Classification:
+`LOOM_BEHAVIORAL_TRANSFORM_WP3_NO_GO`.
 
-Preferred technical path:
+Validated bounded outcome:
+- actual GGUF LoRA adapters were constructed and loaded through canonical `llama-server`;
+- rank-1 directional candidate tested;
+- MoE-router candidate tested;
+- rank-4 subspace/multi-direction candidate tested;
+- frozen held-out refusal remained `6/6` for all tested transformed candidates;
+- target-behavior reduction remained `0%`;
+- frozen behavior promotion gate therefore failed;
+- no behavioral adapter is promoted;
+- base S32 + WP2 was restored, hash-verified, health-checked and rollback-tested.
 
-`frozen contrast/evaluation sets -> streamed residual statistics -> stable direction/subspace -> low-rank delta -> GGUF adapter -> llama-server -> frozen base/transformed behavior/capability/resource A/B`
+Interpretation:
+WP3 is scientific NO_GO rather than physical block: the host/toolchain can produce and serve the transforms, but the bounded validated methods did not produce a useful behavior improvement.
 
-Important constraints:
-- preserve canonical S32 and WP2 rollback paths;
-- avoid a full resident BF16/FP16 30B representation when selected-tensor streaming can avoid it;
-- use FP32/FP64 for sensitive geometric accumulation;
-- start with deterministic/searchless rank-1 / attention-output candidates;
-- do not begin with broad TPE;
-- escalate to MoE-specific or multi-direction methods only when evidence supports it;
-- do not copy AGPL implementation code without explicit license review.
+Do not weaken the frozen gate, relabel prompt-only behavior, or retry the same method families merely under different names.
 
-WP3 completion requires an actual runtime-loadable transform, material frozen target-behavior improvement, capability preservation, safe resources/throughput, real Pi transformed-profile validation, exact hashes and successful rollback.
+Before WP4, persist the bounded WP3 reproducibility package: result, frozen evaluation specs and reusable small source/scripts/configs. Exclude generated adapter/model artifacts and `results-local/`.
 
 ## WP4 — Final Integration + Acceptance — PLANNED / NOT AUTHORIZED
 
@@ -97,7 +97,13 @@ Checkpoint:
 `LOOM_FINAL_ACCEPTANCE_WP4`
 
 Goal:
-assemble the best validated outputs of WP1-WP3 into the final practical LOOM system.
+assemble the strongest validated outputs into the final practical LOOM system.
+
+Final candidate should use:
+- S32 runtime/server/WebUI/API;
+- validated serving-path prompt/prefix cache reuse;
+- Caveman + Cavemem;
+- **no behavioral adapter enabled**, because WP3 completed valid NO_GO.
 
 Required acceptance:
 - reliable clean startup;
@@ -107,11 +113,13 @@ Required acceptance:
 - S32 or later better validated runtime active;
 - validated serving-path prompt/prefix caching active;
 - Caveman + Cavemem active in validated form;
-- behavioral-transform profile loaded and validated, or exact evidenced blocker classified;
+- WP3 NO_GO explicitly retained with exact evidence and no hidden behavioral transform;
 - representative capability smoke tests pass;
 - final decode/prefill/E2E/RAM/swap recorded;
 - simple documented start/stop/health flow;
 - exact artifact/config/source hashes and evidence roots retained.
+
+WP4 may classify GO with WP3 remaining NO_GO, provided all final product acceptance gates pass.
 
 ## Global execution rules
 
@@ -126,6 +134,6 @@ Required acceptance:
 9. Intermediate evidence remains under `results-local/`.
 10. A macro work package returns one bounded end report with deliverables, measurements, failed/reverted attempts, changed files, commands and evidence roots.
 
-## Current work package
+## Current action
 
-`LOOM_BEHAVIORAL_TRANSFORM_WP3`
+Persist the bounded WP3 reproducibility package. WP4 remains not authorized until that persistence is reviewed.
