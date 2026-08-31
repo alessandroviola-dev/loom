@@ -1,113 +1,90 @@
 # LOOM — Active Handoff
 
-Last updated: 2026-08-30
-Status: WP1 GO/persisted; WP2 GO/persisted; WP3 original adapter families valid NO_GO; WP3-R2 Behavioral Unlock GO/persisted; **WP4 Final Integration + Acceptance completed locally with GO and awaits one bounded final persistence commit**.
+Last updated: 2026-08-31
+Status: LOOM final product GO/persisted; **UOPT-001 UNLOCKED speed optimization authorized and active**.
 Repository: `Ilcoach/loom`
-Branch: `research/stretch-015-divergence-attribution`
-Pi context: `/AGENTS.md` v3.90.
-WP4 contract: `research/integration/loom-final-acceptance-wp4.md`.
+Branch: `research/unlocked-speed-001`
+Pi context: `/AGENTS.md` v3.91.
+Active contract: `research/integration/loom-unlocked-speed-optimization-001.md`.
 
-## Final product
+## Finished product baseline
 
-LOOM is now a two-profile local product with one active 30B at a time and one stable serving endpoint.
+Final product persistence commit:
+`98949e77863c93a7d9dba266204a911ab85db09c`.
 
-### FAST / default
-
-Pi label:
-`loom-local/loom-deep-30b-s32`
-
-Stable local model:
-`models/loom-deep-30b-fast.gguf`
-
-SHA256:
-`c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`
-
-Final WP4 snapshot:
-- decode `6.209 tok/s`;
-- prefill `3.438 tok/s`;
-- E2E `7.131 s`;
-- RSS `4.00->4.01 GiB`;
-- swap `1269->1308 MiB`.
-
-### UNLOCKED
-
-Pi label:
-`loom-local/loom-deep-30b-unlocked`
-
-Stable local model:
-`models/loom-deep-30b-unlocked.gguf`
-
-SHA256:
-`734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
-
-Final frozen reproduction:
-- explicit refusals `0/6`;
-- held-out degeneration `0/6`;
-- benign capability `8/8`.
-
-Final WP4 snapshot:
-- decode `2.963 tok/s`;
-- prefill `1.673 tok/s`;
-- E2E `9.129 s`;
-- RSS `4.13->4.16 GiB`;
-- swap `1667->1708 MiB`.
-
-UNLOCKED remains slower and more swap-constrained; disposition drift remains explicit.
-
-## Operator UX
+Operator UX:
 
 ```text
 scripts/loom-deep use fast|unlocked
 scripts/loom-deep start|stop|status|health|current
 ```
 
-Normal endpoints for whichever profile is active:
-- WebUI `http://127.0.0.1:18080/`;
-- API `http://127.0.0.1:18080/v1`.
+Normal endpoint:
+`127.0.0.1:18080` loopback only.
 
-FAST remains default.
+### FAST / default
 
-## Final acceptance — COMPLETE LOCALLY / GO
+Label:
+`loom-local/loom-deep-30b-s32`
 
-Classification:
-`LOOM_FINAL_ACCEPTANCE_WP4_GO`.
+Model:
+`models/loom-deep-30b-fast.gguf`
 
-Local result:
-`research/integration/loom-final-acceptance-wp4-result.md`
+SHA256:
+`c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`
 
-Evidence:
-`results-local/final-acceptance-wp4/20260830T182958Z/`
+Historical S32 matched decode: `5.596 tok/s`; WP4 operational snapshot: `6.209 tok/s`.
 
-Passed:
-- FAST -> UNLOCKED -> FAST switching twice;
-- no intentional concurrent 30B residency;
-- previous profile PID verified stopped before replacement;
-- loopback-only serving;
-- API/WebUI/health/models for both;
-- real Pi + WP2 requests for both labels;
-- Context Intelligence disable rollback;
-- KV/prompt reuse for both, repeated 1,149-token prefix reduced to one evaluated token;
-- hashes before/after stable hard-link placement;
-- final rollback to FAST + WP2.
+### UNLOCKED / optimization baseline
 
-Stable local models and runtime remain ignored/private:
-- `models/loom-deep-30b-fast.gguf`;
-- `models/loom-deep-30b-unlocked.gguf`;
-- `.loom/runtime/loom-llama-server`.
+Label:
+`loom-local/loom-deep-30b-unlocked`
 
-## Current exact action
+Model:
+`models/loom-deep-30b-unlocked.gguf`
 
-Create one bounded final persistence commit containing only reviewed WP4 product files:
-- `config/loom-deep-profiles.env`;
-- `config/loom-deep-server.env`;
-- `config/loom-deep-r2-abliterated-q3ks.env`;
-- `scripts/loom-deep`;
-- `scripts/loom_wp4_probe.py`;
-- `docs/LOOM_OPERATIONS.md`;
-- `research/integration/loom-final-acceptance-wp4-result.md`.
+SHA256:
+`734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
 
-May additionally include `research/integration/loom-behavioral-transform-wp3-result.md` for archival completeness if it contains only the reviewed WP3 NO_GO result.
+WP4 operational baseline:
+- decode `2.963 tok/s`;
+- prefill `1.673 tok/s`;
+- RSS `4.13->4.16 GiB`;
+- swap `1667->1708 MiB`.
 
-Exclude `models/`, `.loom/`, `results-local/`, home Pi config, caches/secrets and all unrelated historical untracked scripts.
+Frozen behavior/capability baseline:
+- explicit refusal `0/6`;
+- held-out degeneration `0/6`;
+- benign capability `8/8`.
 
-After that commit is pushed and reviewed, LOOM can be marked FINAL / GO / FULLY PERSISTED.
+Final runtime flags include:
+`--ctx-size 4096 --parallel 1 --moe-n-slots 32 --moe-n-layers 48 --no-mmap --no-warmup --cpu-moe -b 4096 -ub 1 --cache-ram 512`.
+
+WP2 Caveman + Cavemem remains required for final integration and has independent `LOOM_CONTEXT_INTELLIGENCE=0` rollback.
+
+## Current macro — UOPT-001
+
+Checkpoint:
+`LOOM_UNLOCKED_SPEED_UOPT_001`
+
+Objective:
+maximize UNLOCKED throughput on Apple M1 8 GiB while preserving the finished product and frozen behavior/capability gates.
+
+Primary target:
+**>= 5.0 tok/s matched fresh decode median**.
+
+Stretch target:
+exceed FAST historical `5.596 tok/s` if feasible.
+
+Optimization order:
+1. current exact-model runtime frontier (slots/residency/mmap/placement/batch and relevant Metal/thread knobs);
+2. newer evidence-backed MoE residency/paging runtimes, including audit of recent bounded-residency approaches;
+3. if runtime alone is insufficient, a small exact-lineage quantization frontier of the validated Huihui derivative;
+4. combine only independently validated winners.
+
+Do not trade away `0/6`, `8/8`, `0/6` to gain speed.
+
+Evidence root:
+`results-local/unlocked-speed-uopt-001/<timestamp>/`.
+
+Pi does not commit/push during execution. Return only at UOPT completion or a genuine user-action blocker.
