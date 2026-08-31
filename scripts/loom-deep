@@ -20,8 +20,8 @@ selected_profile() {
 profile_values() {
   PROFILE="$(selected_profile)"
   case "$PROFILE" in
-    fast) MODEL="$LOOM_DEEP_FAST_MODEL"; ALIAS="$LOOM_DEEP_FAST_ALIAS";;
-    unlocked) MODEL="$LOOM_DEEP_UNLOCKED_MODEL"; ALIAS="$LOOM_DEEP_UNLOCKED_ALIAS";;
+    fast) MODEL="$LOOM_DEEP_FAST_MODEL"; ALIAS="$LOOM_DEEP_FAST_ALIAS"; UBATCH="$LOOM_DEEP_FAST_UBATCH";;
+    unlocked) MODEL="$LOOM_DEEP_UNLOCKED_MODEL"; ALIAS="$LOOM_DEEP_UNLOCKED_ALIAS"; UBATCH="$LOOM_DEEP_UNLOCKED_UBATCH";;
   esac
 }
 running() { [[ -s "$PID_FILE" ]] && kill -0 "$(<"$PID_FILE")" 2>/dev/null; }
@@ -70,7 +70,7 @@ case "${1:-status}" in
       exec "$ROOT/$LOOM_DEEP_BIN" --offline --host "$LOOM_DEEP_HOST" --port "$LOOM_DEEP_PORT" --alias "$ALIAS" \
         --ctx-size "$LOOM_DEEP_CTX" --parallel "$LOOM_DEEP_PARALLEL" \
         --moe-n-slots "$LOOM_DEEP_SLOTS" --moe-n-layers "$LOOM_DEEP_MOE_LAYERS" \
-        --no-mmap --no-warmup --cpu-moe -b "$LOOM_DEEP_CTX" -ub 1 --cache-ram "$LOOM_DEEP_CACHE_RAM" --no-ui-mcp-proxy \
+        --no-mmap --no-warmup --cpu-moe -b "$LOOM_DEEP_CTX" -ub "$UBATCH" --cache-ram "$LOOM_DEEP_CACHE_RAM" --no-ui-mcp-proxy \
         --model "$ROOT/$MODEL" --log-file "$LOG_FILE"
     ) >>"$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"; printf '%s\n' "$PROFILE" > "$RUN_PROFILE_FILE"
