@@ -3,7 +3,7 @@
 Date: 2026-08-31
 Branch: `research/unlocked-speed-001`
 Checkpoint: `LOOM_UNLOCKED_SPEED_UOPT_002`
-Status: AUTHORIZED
+Status: COMPLETE / GO (promoted; see `loom-unlocked-speed-optimization-002-result.md`)
 
 ## Objective
 

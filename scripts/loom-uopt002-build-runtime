@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Rebuild the isolated UOPT-002 runtime; it never replaces the UOPT-001 binary.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REV="41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892"
+REMOTE="https://github.com/kisasexypantera94/llama.cpp.git"
+SOURCE="${LOOM_UOPT002_SOURCE_DIR:-$ROOT/.loom/src/llama.cpp-uopt002}"
+BUILD="$ROOT/.loom/build/llama.cpp-uopt002"
+DEST="$ROOT/.loom/runtime/loom-uopt002"
+PATCH="$ROOT/patches/loom-uopt002-expert-major-sidecar.patch"
+
+[[ -f "$PATCH" ]] || { echo "missing patch: $PATCH" >&2; exit 1; }
+if [[ ! -d "$SOURCE/.git" ]]; then
+  mkdir -p "$(dirname "$SOURCE")"
+  git clone "$REMOTE" "$SOURCE"
+fi
+git -C "$SOURCE" fetch --quiet origin "$REV"
+git -C "$SOURCE" checkout --detach --force "$REV"
+git -C "$SOURCE" clean -ffdqx
+( cd "$SOURCE" && patch --batch --forward -p1 < "$PATCH" )
+cmake -S "$SOURCE" -B "$BUILD" -DCMAKE_BUILD_TYPE=Release -DGGML_METAL=ON
+cmake --build "$BUILD" --config Release -j "$(sysctl -n hw.ncpu)"
+[[ -x "$BUILD/bin/llama-server" ]] || { echo "build did not produce llama-server" >&2; exit 1; }
+rm -rf "$DEST.new"
+mkdir -p "$DEST.new"
+cp -a "$BUILD/bin/." "$DEST.new/"
+rm -rf "$DEST"
+mv "$DEST.new" "$DEST"
+shasum -a 256 "$DEST/llama-server"
+echo "installed isolated UOPT-002 runtime: $DEST/llama-server"

@@ -20,8 +20,14 @@ selected_profile() {
 profile_values() {
   PROFILE="$(selected_profile)"
   case "$PROFILE" in
-    fast) MODEL="$LOOM_DEEP_FAST_MODEL"; ALIAS="$LOOM_DEEP_FAST_ALIAS"; UBATCH="$LOOM_DEEP_FAST_UBATCH";;
-    unlocked) MODEL="$LOOM_DEEP_UNLOCKED_MODEL"; ALIAS="$LOOM_DEEP_UNLOCKED_ALIAS"; UBATCH="$LOOM_DEEP_UNLOCKED_UBATCH";;
+    fast)
+      MODEL="$LOOM_DEEP_FAST_MODEL"; ALIAS="$LOOM_DEEP_FAST_ALIAS"; UBATCH="$LOOM_DEEP_FAST_UBATCH"
+      BIN="$LOOM_DEEP_FAST_BIN"; SIDECAR=""; RUNTIME_LIB_DIR=""
+      ;;
+    unlocked)
+      MODEL="$LOOM_DEEP_UNLOCKED_MODEL"; ALIAS="$LOOM_DEEP_UNLOCKED_ALIAS"; UBATCH="$LOOM_DEEP_UNLOCKED_UBATCH"
+      BIN="$LOOM_DEEP_UNLOCKED_BIN"; SIDECAR="$LOOM_DEEP_UNLOCKED_SIDECAR"; RUNTIME_LIB_DIR="$LOOM_DEEP_UNLOCKED_RUNTIME_LIB_DIR"
+      ;;
   esac
 }
 running() { [[ -s "$PID_FILE" ]] && kill -0 "$(<"$PID_FILE")" 2>/dev/null; }
@@ -62,16 +68,31 @@ case "${1:-status}" in
     profile_values
     if running; then echo "already running: $(<"$PID_FILE") $URL ($(<"$RUN_PROFILE_FILE"))"; exit 0; fi
     rm -f "$PID_FILE" "$RUN_PROFILE_FILE"
-    [[ -x "$ROOT/$LOOM_DEEP_BIN" ]] || { echo "missing executable: $LOOM_DEEP_BIN" >&2; exit 1; }
+    [[ -x "$ROOT/$BIN" ]] || { echo "missing executable: $BIN" >&2; exit 1; }
     [[ -f "$ROOT/$MODEL" ]] || { echo "missing model: $MODEL" >&2; exit 1; }
+    if [[ -n "$SIDECAR" ]]; then
+      [[ -f "$ROOT/$SIDECAR" ]] || { echo "missing UOPT-002 sidecar: $SIDECAR" >&2; exit 1; }
+      SIDECAR_REAL="$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).resolve())' "$ROOT/$SIDECAR")"
+      [[ "$SIDECAR_REAL" != /Volumes/* ]] || { echo "refusing external-volume sidecar" >&2; exit 1; }
+      [[ -d "$ROOT/$RUNTIME_LIB_DIR" ]] || { echo "missing UOPT-002 runtime libraries: $RUNTIME_LIB_DIR" >&2; exit 1; }
+    fi
     port_free
     (
       cd "$ROOT"
-      exec "$ROOT/$LOOM_DEEP_BIN" --offline --host "$LOOM_DEEP_HOST" --port "$LOOM_DEEP_PORT" --alias "$ALIAS" \
-        --ctx-size "$LOOM_DEEP_CTX" --parallel "$LOOM_DEEP_PARALLEL" \
-        --moe-n-slots "$LOOM_DEEP_SLOTS" --moe-n-layers "$LOOM_DEEP_MOE_LAYERS" \
-        --no-mmap --no-warmup --cpu-moe -b "$LOOM_DEEP_CTX" -ub "$UBATCH" --cache-ram "$LOOM_DEEP_CACHE_RAM" --no-ui-mcp-proxy \
-        --model "$ROOT/$MODEL" --log-file "$LOG_FILE"
+      if [[ -n "$SIDECAR" ]]; then
+        exec env DYLD_LIBRARY_PATH="$ROOT/$RUNTIME_LIB_DIR${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" \
+          LOOM_EXPERT_MAJOR_SIDECAR="$ROOT/$SIDECAR" "$ROOT/$BIN" --offline --host "$LOOM_DEEP_HOST" --port "$LOOM_DEEP_PORT" --alias "$ALIAS" \
+          --ctx-size "$LOOM_DEEP_CTX" --parallel "$LOOM_DEEP_PARALLEL" \
+          --moe-n-slots "$LOOM_DEEP_SLOTS" --moe-n-layers "$LOOM_DEEP_MOE_LAYERS" \
+          --no-mmap --no-warmup --cpu-moe -b "$LOOM_DEEP_CTX" -ub "$UBATCH" --cache-ram "$LOOM_DEEP_CACHE_RAM" --no-ui-mcp-proxy \
+          --model "$ROOT/$MODEL" --log-file "$LOG_FILE"
+      else
+        exec env -u LOOM_EXPERT_MAJOR_SIDECAR "$ROOT/$BIN" --offline --host "$LOOM_DEEP_HOST" --port "$LOOM_DEEP_PORT" --alias "$ALIAS" \
+          --ctx-size "$LOOM_DEEP_CTX" --parallel "$LOOM_DEEP_PARALLEL" \
+          --moe-n-slots "$LOOM_DEEP_SLOTS" --moe-n-layers "$LOOM_DEEP_MOE_LAYERS" \
+          --no-mmap --no-warmup --cpu-moe -b "$LOOM_DEEP_CTX" -ub "$UBATCH" --cache-ram "$LOOM_DEEP_CACHE_RAM" --no-ui-mcp-proxy \
+          --model "$ROOT/$MODEL" --log-file "$LOG_FILE"
+      fi
     ) >>"$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"; printf '%s\n' "$PROFILE" > "$RUN_PROFILE_FILE"
     for _ in $(seq 1 180); do
@@ -88,6 +109,10 @@ case "${1:-status}" in
     else rm -f "$PID_FILE" "$RUN_PROFILE_FILE"; echo "not running; selected: $PROFILE ($ALIAS)"; exit 1; fi
     ;;
   health) curl -fsS "$URL/health";;
-  current) profile_values; printf 'selected: %s (%s)\nendpoint: %s\nmodel: %s\n' "$PROFILE" "$ALIAS" "$URL" "$MODEL";;
+  current)
+    profile_values
+    printf 'selected: %s (%s)\nendpoint: %s\nmodel: %s\nruntime: %s\n' "$PROFILE" "$ALIAS" "$URL" "$MODEL" "$BIN"
+    [[ -z "$SIDECAR" ]] || printf 'expert-major-sidecar: %s\n' "$SIDECAR"
+    ;;
   *) echo "usage: $0 {use fast|unlocked|start|stop|status|health|current}" >&2; exit 64;;
 esac

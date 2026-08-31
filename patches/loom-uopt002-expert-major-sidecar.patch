@@ -1,0 +1,133 @@
+--- a/src/llama-moe-offloader.cpp
++++ b/src/llama-moe-offloader.cpp
+@@ -8,0 +9,3 @@
++#include <sys/stat.h>
++#include <sys/uio.h>
++#include <fcntl.h>
+@@ -14,0 +18 @@
++#include <chrono>
+@@ -19,0 +24,8 @@
++    fprintf(stderr, "LOOM_MOE_TELEMETRY layer=%d slots=%lld pools=%zu requested=%llu hits=%llu misses=%llu pread_calls=%llu pread_bytes=%llu resolve_ns=%llu\n",
++            layer_idx, (long long) n_slots, pools.size(),
++            (unsigned long long) total_requested, (unsigned long long) total_hits,
++            (unsigned long long) total_misses, (unsigned long long) total_pread_calls,
++            (unsigned long long) total_pread_bytes, (unsigned long long) total_resolve_ns);
++    if (packed_fd >= 0) {
++        close(packed_fd);
++    }
+@@ -134,0 +147,22 @@
++    // The full sidecar is layer-major, then expert-major, with pool bytes in
++    // this exact graph bind order. It is an opt-in isolated-runtime path;
++    // invalid activation aborts rather than silently falling back to source.
++    const char * packed_path = getenv("LOOM_EXPERT_MAJOR_SIDECAR");
++    if (packed_path && packed_path[0] && layer.packed_fd < 0 && layer.pools.size() == 3) {
++        size_t packed_stride = 0;
++        for (const auto & candidate : layer.pools) {
++            packed_stride += candidate.stride;
++        }
++        struct stat st {};
++        const uint64_t expected = (uint64_t) (layer.layer_idx + 1) * (uint64_t) layer.n_expert * packed_stride;
++        if (layer.n_expert != 128 || packed_stride == 0 || stat(packed_path, &st) != 0 || (uint64_t) st.st_size < expected) {
++            GGML_ABORT("moe_offloader: invalid LOOM_EXPERT_MAJOR_SIDECAR for layer %d", layer.layer_idx);
++        }
++        layer.packed_fd = open(packed_path, O_RDONLY);
++        if (layer.packed_fd < 0) {
++            GGML_ABORT("moe_offloader: cannot open LOOM_EXPERT_MAJOR_SIDECAR");
++        }
++        layer.packed_stride = packed_stride;
++        fprintf(stderr, "LOOM_EXPERT_MAJOR enabled layer=%d pools=%zu stride=%zu\n", layer.layer_idx, layer.pools.size(), packed_stride);
++    }
++
+@@ -197,0 +232,30 @@
++        if (r < 0 && errno == EINTR) {
++            continue;
++        }
++        if (r <= 0) {
++            return false;
++        }
++        got += (size_t) r;
++    }
++    return true;
++}
++
++bool llama_moe_offloader::pread_packed(moe_layer & layer, int32_t expert_id, int64_t dst_slot) {
++    if (layer.packed_fd < 0 || layer.packed_stride == 0) {
++        return false;
++    }
++    // One vectored read scatters the contiguous packed expert directly into
++    // the unchanged three pool destinations. This removes transient 2 MiB
++    // allocations and memcpy while retaining one physical sidecar request.
++    const uint64_t off = ((uint64_t) layer.layer_idx * (uint64_t) layer.n_expert + (uint64_t) expert_id) * layer.packed_stride;
++    struct iovec iov[3] {};
++    GGML_ASSERT(layer.pools.size() == 3);
++    for (size_t i = 0; i < layer.pools.size(); ++i) {
++        auto & p = layer.pools[i];
++        iov[i].iov_base = (uint8_t *) p.tensor->data + (size_t) dst_slot * p.stride;
++        iov[i].iov_len  = p.stride;
++    }
++    size_t got = 0;
++    int first = 0;
++    while (got < layer.packed_stride) {
++        const ssize_t r = preadv(layer.packed_fd, iov + first, (int) layer.pools.size() - first, (off_t) (off + got));
+@@ -204,0 +269,9 @@
++        size_t advanced = (size_t) r;
++        while (first < (int) layer.pools.size() && advanced >= iov[first].iov_len) {
++            advanced -= iov[first].iov_len;
++            ++first;
++        }
++        if (advanced && first < (int) layer.pools.size()) {
++            iov[first].iov_base = (uint8_t *) iov[first].iov_base + advanced;
++            iov[first].iov_len -= advanced;
++        }
+@@ -213,0 +287 @@
++    bool        packed;
+@@ -216,0 +291,2 @@
++    const auto started = std::chrono::steady_clock::now();
++    layer.total_requested += (uint64_t) n;
+@@ -250,2 +326,6 @@
+-            for (size_t pi = 0; pi < layer.pools.size(); ++pi) {
+-                tasks.push_back({ &layer, pi, e, victim });
++            if (layer.packed_fd >= 0) {
++                tasks.push_back({ &layer, 0, e, victim, true });
++            } else {
++                for (size_t pi = 0; pi < layer.pools.size(); ++pi) {
++                    tasks.push_back({ &layer, pi, e, victim, false });
++                }
+@@ -259,0 +340 @@
++        layer.total_resolve_ns += (uint64_t) std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - started).count();
+@@ -262,0 +344,5 @@
++    for (const auto & task : tasks) {
++        layer.total_pread_calls++;
++        layer.total_pread_bytes += task.packed ? task.layer->packed_stride : task.layer->pools[task.pool_idx].stride;
++    }
++
+@@ -264 +350,2 @@
+-        if (!pread_pool(*tasks[0].layer, tasks[0].pool_idx, tasks[0].expert_id, tasks[0].dst_slot)) {
++        const auto & t = tasks[0];
++        if (!(t.packed ? pread_packed(*t.layer, t.expert_id, t.dst_slot) : pread_pool(*t.layer, t.pool_idx, t.expert_id, t.dst_slot))) {
+@@ -271 +358 @@
+-            if (!pread_pool(*t.layer, t.pool_idx, t.expert_id, t.dst_slot)) {
++            if (!(t.packed ? pread_packed(*t.layer, t.expert_id, t.dst_slot) : pread_pool(*t.layer, t.pool_idx, t.expert_id, t.dst_slot))) {
+@@ -280,0 +368 @@
++    layer.total_resolve_ns += (uint64_t) std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - started).count();
+--- a/src/llama-moe-offloader.h
++++ b/src/llama-moe-offloader.h
+@@ -62,2 +62,8 @@
+-    uint64_t total_hits   = 0;
+-    uint64_t total_misses = 0;
++    // UOPT-002 diagnostic counters: sidecar-owned, emitted once at teardown.
++    // They do not alter routing, the LRU policy, or the pread schedule.
++    uint64_t total_hits         = 0;
++    uint64_t total_misses       = 0;
++    uint64_t total_requested    = 0;
++    uint64_t total_pread_calls  = 0;
++    uint64_t total_pread_bytes  = 0;
++    uint64_t total_resolve_ns   = 0;
+@@ -64,0 +71,5 @@
++    // Optional UOPT-002 lossless expert-major sidecar. It is activated only
++    // by LOOM_EXPERT_MAJOR_SIDECAR and leaves routing/LRU semantics unchanged.
++    int                 packed_fd     = -1;
++    size_t              packed_stride = 0;
++
+@@ -86,0 +98 @@
++    static bool pread_packed(moe_layer & layer, int32_t expert_id, int64_t dst_slot);
