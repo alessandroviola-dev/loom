@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.91
+Version: 3.92
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired.
@@ -101,6 +101,8 @@ WP4 operational snapshot:
 - swap `1667->1708 MiB`;
 - free-memory signal `8->9%`.
 
+WP4 also measured a severe cold-prefix latency signal on the `1,149`-token cache test: UNLOCKED cold prompt evaluation `~373.774 s` versus FAST `~184.269 s`; after prefix reuse UNLOCKED reuse E2E fell to `~0.242 s`. Therefore cold prompt/TTFT latency is a real product bottleneck, not merely subjective perception.
+
 Its behavioral/disposition drift remains explicit; openness is not a safety improvement.
 
 ### Runtime / Context Intelligence
@@ -145,17 +147,27 @@ Contract:
 `research/integration/loom-unlocked-speed-optimization-001.md`
 
 Objective:
-maximize UNLOCKED decode performance on this Apple M1 8 GiB host without losing its frozen behavioral/capability result or finished LOOM interfaces.
+maximize **interactive UNLOCKED performance** on this Apple M1 8 GiB host without losing its frozen behavioral/capability result or finished LOOM interfaces.
 
-Primary promotion target:
-**>= 5.0 tok/s matched fresh decode median**.
+Co-primary promotion targets:
+1. **>= 5.0 tok/s matched fresh decode median**;
+2. **materially reduce initial response latency / TTFT**, explicitly separating service startup, cold prompt/prefill, first-token latency, warm/cache-reuse latency and steady-state decode.
 
-Stretch target:
+A candidate that reaches `5.0 tok/s` but leaves avoidable multi-minute first-token waits is not a full GO.
+
+Latency guidance:
+- no short-prompt TTFT regression;
+- materially improve medium/long cold TTFT versus measured UOPT baseline;
+- for the existing ~`1,149`-token cold path, at minimum approach/beat current FAST cold prompt latency (~`184 s`) if physically achievable;
+- stretch target: below `120 s` for that long cold path while preserving all gates;
+- lower is better; continue through justified optimization rather than stopping at the first threshold.
+
+Stretch decode target:
 exceed FAST historical `5.596 tok/s` if possible without gate regression.
 
 Optimization ladder:
-1. exact-current-model runtime/slot/residency/mmap/placement frontier;
-2. newer evidence-backed llama.cpp / bounded MoE residency implementations, including audit of recent `oversized-moe-runtime`-style approaches;
+1. exact-current-model runtime/slot/residency/mmap/placement frontier, measuring startup + TTFT + prefill + decode independently;
+2. newer evidence-backed llama.cpp / bounded MoE residency implementations, including audit of recent `oversized-moe-runtime`-style approaches and their cold-prefill implications;
 3. only if needed, a small exact-lineage quantization frontier of the validated Huihui derivative;
 4. combine only independently validated winners.
 
