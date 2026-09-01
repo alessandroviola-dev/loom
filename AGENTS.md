@@ -56,30 +56,23 @@ Latest UNLOCKED performance/product persistence commit:
 Operator UX:
 
 ```text
-scripts/loom-deep use fast|unlocked
+scripts/loom-deep use unlocked
 scripts/loom-deep start|stop|status|health|current
 ```
 
-Both profiles serve loopback only:
+The locally runnable UOPT-002 UNLOCKED profile serves loopback only:
 - WebUI `http://127.0.0.1:18080/`;
 - API `http://127.0.0.1:18080/v1`.
 
-Only one 30B profile is resident at a time. FAST remains default.
+### FAST — archived and unavailable locally
 
-### FAST
-
-Alias/Pi label:
-`loom-deep-30b-s32` / `loom-local/loom-deep-30b-s32`.
-
-Model:
-`models/loom-deep-30b-fast.gguf`
+The verified FAST GGUF was archived at:
+`<external-archive>/archived-models/loom-deep-30b-fast.gguf`
 
 SHA256:
 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`
 
-Historical validated S32 median decode `5.596 tok/s`; WP4 operational snapshot `6.209 tok/s`.
-
-FAST retains `-ub 1` and the pinned product runtime `.loom/runtime/loom-llama-server`.
+Historical validated S32 median decode `5.596 tok/s`; WP4 operational snapshot `6.209 tok/s`. It is not selectable or a local rollback profile. The pinned `.loom/runtime/loom-llama-server` remains for UOPT-001 source rollback.
 
 ### UNLOCKED — UOPT-002 promoted profile
 
@@ -130,7 +123,7 @@ The expert-major transform is lossless and does not change routed top-k, router 
 
 ### Runtime / Context Intelligence
 
-Pinned FAST/UOPT-001 rollback runtime:
+Pinned UOPT-001 source rollback runtime:
 `.loom/runtime/loom-llama-server`
 
 SHA256:
@@ -139,7 +132,7 @@ SHA256:
 Pinned source lineage:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
 
-Historical WP2 Caveman/Cavemem provenance remains available through `scripts/loom-context`. Its retired project-local Pi bridge has been superseded by the global Pi2 Context Intelligence implementation, which serves both profiles without a LOOM-specific extension. The frozen WP2 result remains: heavy-context provider-input reduction `23.24%` median; no-op overhead `0%`; exact recovery `6/6`.
+Historical WP2 Caveman/Cavemem provenance remains available through `scripts/loom-context`. Its retired project-local Pi bridge has been superseded by the global Pi2 Context Intelligence implementation, which serves the local UNLOCKED profile without a LOOM-specific extension. The frozen WP2 result remains: heavy-context provider-input reduction `23.24%` median; no-op overhead `0%`; exact recovery `6/6`.
 
 Global Pi2 Context Intelligence rollback:
 `PI2_CONTEXT_INTELLIGENCE=0`.
@@ -205,6 +198,6 @@ Outcome:
 
 ## Current state
 
-No research macro is currently authorized after UOPT-002 closure. Treat the promoted UOPT-002 UNLOCKED path as the current optimized product profile and FAST plus UOPT-001 source UNLOCKED as rollback baselines.
+No research macro is currently authorized after UOPT-002 closure. Treat the promoted UOPT-002 UNLOCKED path as the sole locally runnable product profile. The UOPT-001 source UNLOCKED runtime remains the local rollback baseline; FAST is externally archived and unavailable locally.
 
 Do not begin a new optimization branch without a new explicit macro contract.

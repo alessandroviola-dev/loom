@@ -1,6 +1,6 @@
 # LOOM — Active Handoff
 
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 Status: LOOM final product GO/persisted; UOPT-001 PARTIAL_GO/persisted; **UOPT-002 GO/persisted and promoted behind the normal UNLOCKED profile**.
 Repository: `Ilcoach/loom`
 Branch: `research/unlocked-speed-001`
@@ -11,18 +11,17 @@ Latest optimization commit: `07223f99e75a44f559270af976ab2d8b52b5edb4`.
 
 Operator UX:
 ```text
-scripts/loom-deep use fast|unlocked
+scripts/loom-deep use unlocked
 scripts/loom-deep start|stop|status|health|current
 ```
 
 Loopback endpoint: `127.0.0.1:18080`.
 
-### FAST / default
-- model `models/loom-deep-30b-fast.gguf`;
+### FAST / archived
+- archived model `<external-archive>/archived-models/loom-deep-30b-fast.gguf`;
 - SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`;
-- historical matched decode `5.596 tok/s`;
-- FAST `-ub 1`;
-- unchanged rollback/default path.
+- historical matched decode `5.596 tok/s` and FAST `-ub 1` remain provenance only;
+- unavailable locally and not selectable by the profile manager.
 
 ### UNLOCKED / optimized UOPT-002
 - source/rollback GGUF `models/loom-deep-30b-unlocked.gguf`;
@@ -94,10 +93,10 @@ Historical LOOM material was archived under:
 
 The external disk is archive/backup only and is not required for normal inference.
 
-FAST is retained locally for rollback during the completed optimization lineage. It may be archived later only under a separate explicit storage/product decision.
+FAST was archived on 2026-09-01 at `archived-models/loom-deep-30b-fast.gguf` after byte-size and SHA256 verification. It is unavailable locally.
 
 ## Current exact action
 
-No active research macro. Normal operation may use the optimized UNLOCKED profile. FAST remains default and both FAST plus UOPT-001 source UNLOCKED remain rollback baselines.
+No active research macro. Normal operation uses the promoted UOPT-002 UNLOCKED profile. The UOPT-001 source UNLOCKED runtime remains the local rollback baseline; FAST is externally archived.
 
 Any further optimization should start as a new explicitly authorized macro rather than silently extending UOPT-002.

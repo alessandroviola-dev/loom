@@ -1,20 +1,17 @@
 # LOOM Roadmap
 
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 Current: LOOM final product GO/fully persisted; UOPT-001 PARTIAL_GO/persisted; **UOPT-002 GO/persisted and promoted**.
 Canonical context: `/AGENTS.md` v3.94.
 Latest optimization commit: `07223f99e75a44f559270af976ab2d8b52b5edb4`.
 
 ## 1. Current product profiles
 
-### FAST / default
-- label `loom-deep-30b-s32`;
-- stable model `models/loom-deep-30b-fast.gguf`;
+### FAST / archived
+- archive `archived-models/loom-deep-30b-fast.gguf` on `<external-archive>`;
 - SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`;
-- historical matched decode `5.596 tok/s`;
-- WP4 operational snapshot `6.209 tok/s`;
-- FAST `-ub 1`;
-- WP2 enabled by default.
+- historical matched decode `5.596 tok/s`, WP4 snapshot `6.209 tok/s`, and `-ub 1` remain provenance only;
+- unavailable locally and not a rollback profile.
 
 ### UNLOCKED / UOPT-002
 - label `loom-deep-30b-unlocked`;
@@ -29,12 +26,12 @@ Latest optimization commit: `07223f99e75a44f559270af976ab2d8b52b5edb4`.
 - final promoted matched decode `6.903 tok/s` (validated candidate median `7.359`);
 - final 1,155-token cold TTFT `162.726 s` (validated candidate `156.949 s`).
 
-FAST remains default. Only one 30B profile is resident at a time.
+UOPT-002 UNLOCKED is the sole locally runnable 30B profile.
 
 ## 2. Operator interface
 
 ```text
-scripts/loom-deep use fast|unlocked
+scripts/loom-deep use unlocked
 scripts/loom-deep start|stop|status|health|current
 ```
 

@@ -13,17 +13,13 @@ URL="http://${LOOM_DEEP_HOST}:${LOOM_DEEP_PORT}"
 mkdir -p "$STATE" "$(dirname "$PROFILE_FILE")"
 
 selected_profile() {
-  local profile="fast"
+  local profile="unlocked"
   [[ -s "$PROFILE_FILE" ]] && profile="$(<"$PROFILE_FILE")"
-  case "$profile" in fast|unlocked) printf '%s\n' "$profile";; *) echo "invalid selected profile: $profile" >&2; exit 64;; esac
+  case "$profile" in unlocked) printf '%s\n' "$profile";; *) echo "only the local unlocked profile is available; FAST is archived" >&2; exit 64;; esac
 }
 profile_values() {
   PROFILE="$(selected_profile)"
   case "$PROFILE" in
-    fast)
-      MODEL="$LOOM_DEEP_FAST_MODEL"; ALIAS="$LOOM_DEEP_FAST_ALIAS"; UBATCH="$LOOM_DEEP_FAST_UBATCH"
-      BIN="$LOOM_DEEP_FAST_BIN"; SIDECAR=""; RUNTIME_LIB_DIR=""
-      ;;
     unlocked)
       MODEL="$LOOM_DEEP_UNLOCKED_MODEL"; ALIAS="$LOOM_DEEP_UNLOCKED_ALIAS"; UBATCH="$LOOM_DEEP_UNLOCKED_UBATCH"
       BIN="$LOOM_DEEP_UNLOCKED_BIN"; SIDECAR="$LOOM_DEEP_UNLOCKED_SIDECAR"; RUNTIME_LIB_DIR="$LOOM_DEEP_UNLOCKED_RUNTIME_LIB_DIR"
@@ -45,7 +41,6 @@ stop_managed() {
 # Compatibility helpers can have been used before WP4. Stop only their recorded LOOM PIDs;
 # never touch an unowned listener.
 stop_legacy() {
-  "$ROOT/scripts/loom-deep-server" stop >/dev/null 2>&1 || true
   "$ROOT/scripts/loom-deep-r2-abliterated-q3ks-server" stop >/dev/null 2>&1 || true
 }
 port_free() {
@@ -57,7 +52,7 @@ port_free() {
 }
 case "${1:-status}" in
   use)
-    [[ $# -eq 2 && ( "$2" == fast || "$2" == unlocked ) ]] || { echo "usage: $0 use {fast|unlocked}" >&2; exit 64; }
+    [[ $# -eq 2 && "$2" == unlocked ]] || { echo "usage: $0 use unlocked (FAST is archived)" >&2; exit 64; }
     stop_managed
     stop_legacy
     printf '%s\n' "$2" > "$PROFILE_FILE"
@@ -114,5 +109,5 @@ case "${1:-status}" in
     printf 'selected: %s (%s)\nendpoint: %s\nmodel: %s\nruntime: %s\n' "$PROFILE" "$ALIAS" "$URL" "$MODEL" "$BIN"
     [[ -z "$SIDECAR" ]] || printf 'expert-major-sidecar: %s\n' "$SIDECAR"
     ;;
-  *) echo "usage: $0 {use fast|unlocked|start|stop|status|health|current}" >&2; exit 64;;
+  *) echo "usage: $0 {use unlocked|start|stop|status|health|current}" >&2; exit 64;;
 esac
