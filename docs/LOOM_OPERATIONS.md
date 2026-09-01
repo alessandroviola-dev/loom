@@ -27,6 +27,22 @@ If no local selection state exists, `unlocked` is selected. Serving is always:
 
 The server is started with `--offline --host 127.0.0.1` and never intentionally binds publicly.
 
+## WebUI Context Intelligence gateway
+
+`LOOM_CONTEXT_WEBUI_001` keeps the llama.cpp WebUI and OpenAI-compatible API at `127.0.0.1:18080`. By default, `scripts/loom-deep start` runs the UOPT-002 llama-server privately on `127.0.0.1:18081` and a lightweight loopback gateway on `18080`. The gateway passes static, health, and model requests through unchanged; for JSON chat/completion requests it imports the canonical global Pi2 Context Intelligence core and only packs eligible historical tool evidence.
+
+Independent rollback controls apply on the next lifecycle start:
+
+```bash
+# Direct llama-server on 18080; no gateway and no Context Intelligence.
+LOOM_CONTEXT_WEBUI_GATEWAY=0 scripts/loom-deep start
+
+# Retain the loopback gateway but bypass Context Intelligence.
+LOOM_CONTEXT_WEBUI_CI=0 scripts/loom-deep start
+```
+
+Both modes remain loopback-only. The gateway has no `external archive` dependency; its optional redacted recovery artifacts and accounting live under `.loom/runtime/loom-deep/context-webui-ci/`.
+
 ## Pi and Context Intelligence
 
 Use the local endpoint through Pi:

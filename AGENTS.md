@@ -137,6 +137,8 @@ Historical WP2 Caveman/Cavemem provenance remains available through `scripts/loo
 Global Pi2 Context Intelligence rollback:
 `PI2_CONTEXT_INTELLIGENCE=0`.
 
+`LOOM_CONTEXT_WEBUI_001` reuses that canonical global Pi2 core in a loopback-only gateway: public WebUI/API remains `127.0.0.1:18080`, while the UOPT-002 backend is private on `127.0.0.1:18081`. Set `LOOM_CONTEXT_WEBUI_GATEWAY=0` for direct backend rollback or `LOOM_CONTEXT_WEBUI_CI=0` for gateway passthrough; neither path uses `external archive`.
+
 ## Historical research state
 
 WP1 Runtime/Product Serving: GO / persisted.
@@ -196,8 +198,10 @@ Outcome:
 - no `external archive` runtime dependency;
 - final machine state after acceptance: FAST + WP2 healthy on `127.0.0.1:18080`.
 
+## LOOM_CONTEXT_WEBUI_001 — COMPLETE / KEEP / LOCAL VALIDATION
+
+The UOPT-002 backend is privately loopback-bound on `127.0.0.1:18081`; the lightweight public `127.0.0.1:18080` gateway imports the canonical global Pi2 Context Intelligence core. Matched eligible-tool-evidence A/B preserved the selected output, reduced model-visible prompt tokens `2,386 -> 319`, and measured `0.737 ms` median static-health passthrough overhead. Gateway and CI bypasses passed; result evidence is local at `results-local/loom-context-webui-001-result.md`. No global Pi2 modification was required. This implementation is pending reviewed persistence.
+
 ## Current state
 
-No research macro is currently authorized after UOPT-002 closure. Treat the promoted UOPT-002 UNLOCKED path as the sole locally runnable product profile. The UOPT-001 source UNLOCKED runtime remains the local rollback baseline; FAST is externally archived and unavailable locally.
-
-Do not begin a new optimization branch without a new explicit macro contract.
+Treat the promoted UOPT-002 UNLOCKED path as the sole locally runnable product profile, with the WebUI Context Intelligence gateway enabled by default. The UOPT-001 source UNLOCKED runtime remains the local rollback baseline; FAST is externally archived and unavailable locally. Do not begin a further optimization branch without a new explicit macro contract.

@@ -39,6 +39,8 @@ Stable normal endpoints:
 - WebUI `http://127.0.0.1:18080/`;
 - API `http://127.0.0.1:18080/v1`.
 
+`LOOM_CONTEXT_WEBUI_001` is locally validated and pending persistence. Default serving places the UOPT-002 backend on private `127.0.0.1:18081` behind a loopback-only `18080` gateway that imports canonical global Pi2 Context Intelligence. `LOOM_CONTEXT_WEBUI_CI=0` bypasses CI; `LOOM_CONTEXT_WEBUI_GATEWAY=0` restores direct backend serving.
+
 The external backup volume is not required for runtime operation.
 
 ## 3. Completed work

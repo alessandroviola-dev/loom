@@ -17,6 +17,8 @@ scripts/loom-deep start|stop|status|health|current
 
 Loopback endpoint: `127.0.0.1:18080`.
 
+`LOOM_CONTEXT_WEBUI_001` is locally validated and pending persistence: the public WebUI/API endpoint is a loopback-only gateway to UOPT-002 on private `127.0.0.1:18081`, importing the canonical global Pi2 Context Intelligence core. `LOOM_CONTEXT_WEBUI_CI=0` bypasses CI; `LOOM_CONTEXT_WEBUI_GATEWAY=0` restores direct backend serving. Evidence: `results-local/loom-context-webui-001-result.md`.
+
 ### FAST / archived
 - archived model `<external-archive>/archived-models/loom-deep-30b-fast.gguf`;
 - SHA256 `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`;
