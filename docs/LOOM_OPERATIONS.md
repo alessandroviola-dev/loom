@@ -41,10 +41,10 @@ pi --model loom-local/loom-deep-30b-s32
 pi --model loom-local/loom-deep-30b-unlocked
 ```
 
-WP2 Caveman+Cavemem is enabled by default for `loom-local`. Its independent rollback leaves serving intact:
+The global Pi2 Context Intelligence implementation is enabled by default and serves `loom-local` without a LOOM-specific project extension. Historical WP2 Caveman+Cavemem provenance remains available through `scripts/loom-context`. Its independent rollback leaves serving intact:
 
 ```bash
-LOOM_CONTEXT_INTELLIGENCE=0 pi --model loom-local/loom-deep-30b-s32
+PI2_CONTEXT_INTELLIGENCE=0 pi --model loom-local/loom-deep-30b-s32
 ```
 
 The local Pi model entries pin deterministic `max_tokens=256`, `temperature=0`, and `top_p=1` request parameters for this llama.cpp path.

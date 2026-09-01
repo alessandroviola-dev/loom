@@ -139,10 +139,10 @@ SHA256:
 Pinned source lineage:
 `kisasexypantera94/llama.cpp@41ec4c4e94fd5ff6c258691f35f2fcd0d3dde892`.
 
-WP2 Caveman deterministic packing/recovery + Cavemem SQLite/FTS5 memory remains enabled for both profiles. Heavy-context provider-input reduction `23.24%` median; no-op overhead `0%`; exact recovery `6/6`.
+Historical WP2 Caveman/Cavemem provenance remains available through `scripts/loom-context`. Its retired project-local Pi bridge has been superseded by the global Pi2 Context Intelligence implementation, which serves both profiles without a LOOM-specific extension. The frozen WP2 result remains: heavy-context provider-input reduction `23.24%` median; no-op overhead `0%`; exact recovery `6/6`.
 
-Context Intelligence rollback:
-`LOOM_CONTEXT_INTELLIGENCE=0`.
+Global Pi2 Context Intelligence rollback:
+`PI2_CONTEXT_INTELLIGENCE=0`.
 
 ## Historical research state
 
