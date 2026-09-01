@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
 Last updated: 2026-09-01
-Current: LOOM final product GO/fully persisted; UOPT-001 PARTIAL_GO/persisted; **UOPT-002 GO/persisted and promoted**.
-Canonical context: `/AGENTS.md` v3.94.
+Current: LOOM final product GO/fully persisted; UOPT-001 PARTIAL_GO/persisted; UOPT-002 GO/persisted; **UOPT-003 GO locally promoted as normal UNLOCKED S40, pending persistence review**.
+Canonical context: `/AGENTS.md` v3.95.
 Latest optimization commit: `07223f99e75a44f559270af976ab2d8b52b5edb4`.
 
 ## 1. Current product profiles
@@ -13,7 +13,7 @@ Latest optimization commit: `07223f99e75a44f559270af976ab2d8b52b5edb4`.
 - historical matched decode `5.596 tok/s`, WP4 snapshot `6.209 tok/s`, and `-ub 1` remain provenance only;
 - unavailable locally and not a rollback profile.
 
-### UNLOCKED / UOPT-002
+### UNLOCKED / UOPT-003 S40
 - label `loom-deep-30b-unlocked`;
 - source/rollback GGUF `models/loom-deep-30b-unlocked.gguf`;
 - source SHA256 `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`;
@@ -21,10 +21,11 @@ Latest optimization commit: `07223f99e75a44f559270af976ab2d8b52b5edb4`.
 - sidecar SHA256 `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`;
 - isolated patched runtime `.loom/runtime/loom-uopt002/llama-server`;
 - runtime SHA256 `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`;
-- UNLOCKED `-ub 4`;
+- default `unlocked`: S40 / CPU-MoE / no-mmap / cache RAM 512 / `-ub 4`, with UOPT-002 sidecar/runtime/LRU/async resolver unchanged;
+- managed S32 rollback: `scripts/loom-deep use unlocked-s32`;
 - frozen refusal `0/6`, held-out degeneration `0/6`, benign `8/8`;
-- final promoted matched decode `6.903 tok/s` (validated candidate median `7.359`);
-- final 1,155-token cold TTFT `162.726 s` (validated candidate `156.949 s`).
+- matched S32 -> S40 decode `6.660 -> 7.557 tok/s` (+13.46%);
+- matched 1,155-token cold TTFT `161.676 -> 102.242 s` (-36.76%).
 
 UOPT-002 UNLOCKED is the sole locally runnable 30B profile.
 
@@ -95,8 +96,15 @@ Acceptance:
 - FAST rollback and UOPT-001 source rollback: PASS;
 - no crash/OOM/corruption and no external-drive runtime dependency.
 
+### UOPT-003 — GO / LOCAL PROMOTION PENDING PERSISTENCE
+
+Result:
+`research/integration/loom-unlocked-speed-optimization-003-result.md`
+
+S40 is the validated resident-expert frontier winner: hit rate `81.745% -> 89.831%`, misses `90,229 -> 50,260`, and frozen/integration gates passed. S48 failed with Metal GPU timeout; the frequency-aware cache experiment was not promoted. Evidence is local at `results-local/unlocked-speed-uopt-003/20260901T130729Z/`.
+
 ## 4. Current roadmap state
 
 The UOPT speed branch is complete. There is no active optimization macro.
 
-Any future work should be opened as a new explicit package. Possible future directions, only if separately authorized, include further cold-TTFT reduction below the UOPT-002 ~157–163 s range, packaging/rebuild automation hardening, or later archival of FAST if rollback policy is intentionally changed.
+Any future work should be opened as a new explicit package. The next material speed direction requires a different representation (for example expert-only mixed quantization), rather than extending the exhausted S32/S40/cache/prefetch frontier.

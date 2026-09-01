@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.94
+Version: 3.95
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired.
@@ -60,7 +60,7 @@ scripts/loom-deep use unlocked
 scripts/loom-deep start|stop|status|health|current
 ```
 
-The locally runnable UOPT-002 UNLOCKED profile serves loopback only:
+The locally runnable UOPT-003 UNLOCKED S40 profile serves loopback only:
 - WebUI `http://127.0.0.1:18080/`;
 - API `http://127.0.0.1:18080/v1`.
 
@@ -74,7 +74,7 @@ SHA256:
 
 Historical validated S32 median decode `5.596 tok/s`; WP4 operational snapshot `6.209 tok/s`. It is not selectable or a local rollback profile. The pinned `.loom/runtime/loom-llama-server` remains for UOPT-001 source rollback.
 
-### UNLOCKED — UOPT-002 promoted profile
+### UNLOCKED — UOPT-003 promoted S40 profile
 
 Alias/Pi label:
 `loom-deep-30b-unlocked` / `loom-local/loom-deep-30b-unlocked`.
@@ -106,7 +106,7 @@ Committed runtime patch:
 Patch SHA256:
 `3aac3cf3043b11d5f78a7e25dc5b4edce7bdb9e1f8907cec1ce64a7d2132b775`.
 
-UOPT-002 uses S32 / CPU-MoE / no-mmap / `-ub 4`. The original UOPT-001 source rollback remains S32 / CPU-MoE / no-mmap / `-ub 2` and is unchanged.
+UOPT-003 promotes S40 / CPU-MoE / no-mmap / cache RAM 512 / `-ub 4`, retaining the UOPT-002 sidecar, patched runtime, LRU and asynchronous resolver unchanged. `scripts/loom-deep use unlocked-s32` retains the UOPT-002 S32 configuration as a managed same-runtime/sidecar rollback. The original UOPT-001 source rollback remains S32 / CPU-MoE / no-mmap / `-ub 2` and is unchanged.
 
 Final promoted matched confirmation:
 - fresh decode median `6.903 tok/s`;
@@ -198,10 +198,26 @@ Outcome:
 - no `external archive` runtime dependency;
 - final machine state after acceptance: FAST + WP2 healthy on `127.0.0.1:18080`.
 
+## UOPT-003 — COMPLETE / GO / LOCAL PROMOTION PENDING PERSISTENCE
+
+Checkpoint:
+`LOOM_UNLOCKED_SPEED_UOPT_003`
+
+Durable result:
+`research/integration/loom-unlocked-speed-optimization-003-result.md`
+
+Outcome:
+- S40 is the promoted normal `unlocked` residency; S32 is retained as managed `unlocked-s32` rollback;
+- matched decode `6.660 -> 7.557 tok/s` (+13.46%); 1,155-token cold TTFT `161.676 -> 102.242 s` (-36.76%); cold prefill `7.147 -> 11.306 tok/s`;
+- hit rate `81.745% -> 89.831%`, misses/sidecar reads `90,229 -> 50,260`;
+- frozen `0/6`, `0/6`, `8/8` and loopback/API/WebUI/Pi2 verification passed;
+- S48 failed with Metal GPU timeout; experimental frequency-aware policy was not promoted;
+- model/sidecar/runtime hashes unchanged; experimental build/runtime removed; evidence remains local under `results-local/unlocked-speed-uopt-003/20260901T130729Z/`.
+
 ## LOOM_CONTEXT_WEBUI_001 — COMPLETE / KEEP / LOCAL VALIDATION
 
 The UOPT-002 backend is privately loopback-bound on `127.0.0.1:18081`; the lightweight public `127.0.0.1:18080` gateway imports the canonical global Pi2 Context Intelligence core. Matched eligible-tool-evidence A/B preserved the selected output, reduced model-visible prompt tokens `2,386 -> 319`, and measured `0.737 ms` median static-health passthrough overhead. Gateway and CI bypasses passed; result evidence is local at `results-local/loom-context-webui-001-result.md`. No global Pi2 modification was required. This implementation is pending reviewed persistence.
 
 ## Current state
 
-Treat the promoted UOPT-002 UNLOCKED path as the sole locally runnable product profile, with the WebUI Context Intelligence gateway enabled by default. The UOPT-001 source UNLOCKED runtime remains the local rollback baseline; FAST is externally archived and unavailable locally. Do not begin a further optimization branch without a new explicit macro contract.
+Treat the promoted UOPT-003 S40 UNLOCKED path as the sole locally runnable product profile, with the WebUI Context Intelligence gateway enabled by default. `unlocked-s32` is the managed UOPT-002 same-runtime/sidecar rollback; the UOPT-001 source UNLOCKED runtime remains the deeper local rollback baseline. FAST is externally archived and unavailable locally. Do not begin a further optimization branch without a new explicit macro contract.

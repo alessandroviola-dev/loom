@@ -1,17 +1,18 @@
 # LOOM DEEP local operation
 
-The sole locally runnable 30B profile is the promoted UOPT-002 UNLOCKED profile. It serves one loopback-only endpoint.
+The sole locally runnable 30B product is the promoted UOPT-003 UNLOCKED S40 profile. It serves one loopback-only endpoint.
 
 | Selection | Pi model label | Purpose |
 | --- | --- | --- |
-| `unlocked` (default) | `loom-local/loom-deep-30b-unlocked` | Promoted UOPT-002 profile, using its lossless expert-major sidecar and isolated runtime. |
+| `unlocked` (default) | `loom-local/loom-deep-30b-unlocked` | Promoted UOPT-003 S40 profile: UOPT-002 lossless sidecar/runtime, CPU-MoE/no-mmap, cache RAM 512, ubatch 4 and LRU. |
+| `unlocked-s32` | `loom-local/loom-deep-30b-unlocked` | Known-good UOPT-002 S32 residency rollback using the identical model, sidecar and runtime. |
 
 ## Normal commands
 
 Run these from the repository root:
 
 ```bash
-scripts/loom-deep use unlocked
+scripts/loom-deep use unlocked       # S40 product default
 scripts/loom-deep start
 scripts/loom-deep stop
 scripts/loom-deep status
@@ -25,7 +26,19 @@ If no local selection state exists, `unlocked` is selected. Serving is always:
 - OpenAI-compatible API base: `http://127.0.0.1:18080/v1`
 - Health: `http://127.0.0.1:18080/health`
 
-The server is started with `--offline --host 127.0.0.1` and never intentionally binds publicly.
+The server is started with `--offline --host 127.0.0.1` and never intentionally binds publicly. The default S40 path uses `--moe-n-slots 40`; all other promoted runtime settings remain CPU-MoE, no-mmap, context 4096, cache RAM 512 and ubatch 4.
+
+## S32 residency rollback
+
+S32 remains a managed, local known-good rollback; it does not alter model or sidecar bytes:
+
+```bash
+scripts/loom-deep stop
+scripts/loom-deep use unlocked-s32
+scripts/loom-deep start
+```
+
+Confirm `moe-slots: 32` with `scripts/loom-deep current`. Return to the promoted S40 product by selecting `unlocked` and restarting; `current` will report `moe-slots: 40`.
 
 ## WebUI Context Intelligence gateway
 
@@ -78,6 +91,6 @@ Model data is local-only and ignored by Git:
 | `models/loom-deep-30b-unlocked.gguf` | `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c` |
 | `models/unlocked-expert-major-v1.bin` | `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e` |
 
-The promoted runtime is `.loom/runtime/loom-uopt002/llama-server`, SHA256 `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`. The pinned `.loom/runtime/loom-llama-server` remains the UOPT-001 rollback runtime.
+The promoted runtime is `.loom/runtime/loom-uopt002/llama-server`, SHA256 `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`. UOPT-003 changes only S32 to S40 residency; the managed `unlocked-s32` selection remains its same-runtime rollback. The pinned `.loom/runtime/loom-llama-server` remains the UOPT-001 rollback runtime.
 
 UNLOCKED reproduced its frozen WP3-R2 result (0/6 explicit refusals and 8/8 benign controls), but that behavioral openness is not a safety improvement.
