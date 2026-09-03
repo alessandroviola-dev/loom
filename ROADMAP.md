@@ -1,8 +1,8 @@
 # LOOM Roadmap
 
-Last updated: 2026-09-01
-Current: LOOM final product GO/fully persisted; UOPT-001 PARTIAL_GO/persisted; UOPT-002 GO/persisted; **UOPT-003 GO locally promoted as normal UNLOCKED S40, pending persistence review**.
-Canonical context: `/AGENTS.md` v3.95.
+Last updated: 2026-09-03
+Current: LOOM final product GO/fully persisted; UOPT-001 PARTIAL_GO/persisted; UOPT-002 GO/persisted; **UOPT-003 GO locally promoted as normal UNLOCKED S40; UOPT-004 NO_GO; UOPT-005 Candidate A NO_GO, Candidate B next**.
+Canonical context: `/AGENTS.md` v3.96.
 Latest optimization commit: `07223f99e75a44f559270af976ab2d8b52b5edb4`.
 
 ## 1. Current product profiles
@@ -103,8 +103,18 @@ Result:
 
 S40 is the validated resident-expert frontier winner: hit rate `81.745% -> 89.831%`, misses `90,229 -> 50,260`, and frozen/integration gates passed. S48 failed with Metal GPU timeout; the frequency-aware cache experiment was not promoted. Evidence is local at `results-local/unlocked-speed-uopt-003/20260901T130729Z/`.
 
+### UOPT-004 — NO_GO
+
+Result: `research/integration/loom-unlocked-speed-optimization-004-result.md`.
+
+Expert-only `Q2_K` from BF16 reduced expert footprint `23.636%` and passed frozen gates, but failed functional quality (`3/4`) and arithmetic (`414` vs expected `410`). Temporary artifacts were removed; production S40 is unchanged.
+
+### UOPT-005 — Candidate A NO_GO; Candidate B next
+
+Result: `research/integration/loom-unlocked-speed-optimization-005-result.md`.
+
+BF16 source verification (`13/13`), HF→BF16 GGUF validation, imatrix construction, and Candidate A expert `IQ3_XXS` construction completed. external archive sidecar placement was the initial performance bottleneck: storage isolation changed decode `0.69 -> 9.63 tok/s`, prefill `0.24 -> 6.31 tok/s`, and TTFT `148.277 -> 5.605 s`. Candidate A passed frozen refusal `0/6`, degeneration `0/6`, and benign `8/8`, but failed functional (`3/4`) and arithmetic (`400` vs expected `410`), so it is NO_GO. Production S40 is unchanged.
+
 ## 4. Current roadmap state
 
-The UOPT speed branch is complete. There is no active optimization macro.
-
-Any future work should be opened as a new explicit package. The next material speed direction requires a different representation (for example expert-only mixed quantization), rather than extending the exhausted S32/S40/cache/prefetch frontier.
+Proceed with UOPT-005 Candidate B: mixed Q3/IQ3 expert quantization chosen by layer sensitivity. Do not alter the promoted UOPT-003 S40 production profile.

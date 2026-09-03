@@ -1,6 +1,6 @@
 # LOOM — Pi Agent Protocol
 
-Version: 3.95
+Version: 3.96
 Mode: `ACCELERATED_MACRO_WORKPACKAGES / EVIDENCE_GATED`
 
 Pi reads this file as persistent context. User-facing micro-checkpoints are retired.
@@ -214,10 +214,24 @@ Outcome:
 - S48 failed with Metal GPU timeout; experimental frequency-aware policy was not promoted;
 - model/sidecar/runtime hashes unchanged; experimental build/runtime removed; evidence remains local under `results-local/unlocked-speed-uopt-003/20260901T130729Z/`.
 
+## UOPT-004 — COMPLETE / NO_GO
+
+Durable result:
+`research/integration/loom-unlocked-speed-optimization-004-result.md`
+
+Expert-only `Q2_K` from BF16 reduced expert footprint by `23.636%` and passed frozen gates, but failed functional quality (`3/4`) and arithmetic (`414` vs expected `410`). Temporary artifacts were removed. Production S40 is unchanged.
+
+## UOPT-005 — ACTIVE / CANDIDATE A NO_GO
+
+Durable result:
+`research/integration/loom-unlocked-speed-optimization-005-result.md`
+
+BF16 source verification (`13/13`), HF→BF16 GGUF validation, imatrix completion, and Candidate A expert `IQ3_XXS` construction completed. The initial performance pathology was a sidecar placed on external archive; storage isolation changed decode `0.69 -> 9.63 tok/s`, prefill `0.24 -> 6.31 tok/s`, and TTFT `148.277 -> 5.605 s`, identifying external archive as the bottleneck. Candidate A passed frozen refusal `0/6`, degeneration `0/6`, and benign capability `8/8`, but failed functional quality (`3/4`) and arithmetic (`400` vs expected `410`), so it is NO_GO. Next: Candidate B mixed Q3/IQ3 by layer sensitivity. Production S40 is unchanged.
+
 ## LOOM_CONTEXT_WEBUI_001 — COMPLETE / KEEP / LOCAL VALIDATION
 
 The UOPT-002 backend is privately loopback-bound on `127.0.0.1:18081`; the lightweight public `127.0.0.1:18080` gateway imports the canonical global Pi2 Context Intelligence core. Matched eligible-tool-evidence A/B preserved the selected output, reduced model-visible prompt tokens `2,386 -> 319`, and measured `0.737 ms` median static-health passthrough overhead. Gateway and CI bypasses passed; result evidence is local at `results-local/loom-context-webui-001-result.md`. No global Pi2 modification was required. This implementation is pending reviewed persistence.
 
 ## Current state
 
-Treat the promoted UOPT-003 S40 UNLOCKED path as the sole locally runnable product profile, with the WebUI Context Intelligence gateway enabled by default. `unlocked-s32` is the managed UOPT-002 same-runtime/sidecar rollback; the UOPT-001 source UNLOCKED runtime remains the deeper local rollback baseline. FAST is externally archived and unavailable locally. Do not begin a further optimization branch without a new explicit macro contract.
+Treat the promoted UOPT-003 S40 UNLOCKED path as the sole locally runnable product profile, with the WebUI Context Intelligence gateway enabled by default. `unlocked-s32` is the managed UOPT-002 same-runtime/sidecar rollback; the UOPT-001 source UNLOCKED runtime remains the deeper local rollback baseline. FAST is externally archived and unavailable locally. The authorized UOPT-005 continuation is Candidate B mixed Q3/IQ3 by layer sensitivity; Candidate A is rejected and production S40 must remain unchanged.

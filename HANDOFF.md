@@ -1,10 +1,10 @@
 # LOOM — Active Handoff
 
-Last updated: 2026-09-01
-Status: LOOM final product GO/persisted; UOPT-001 PARTIAL_GO/persisted; UOPT-002 GO/persisted; **UOPT-003 GO locally promoted as the normal UNLOCKED S40 profile, pending persistence review**.
+Last updated: 2026-09-03
+Status: LOOM final product GO/persisted; UOPT-001 PARTIAL_GO/persisted; UOPT-002 GO/persisted; **UOPT-003 GO locally promoted as the normal UNLOCKED S40 profile; UOPT-004 NO_GO; UOPT-005 Candidate A NO_GO, Candidate B next**.
 Repository: `Ilcoach/loom`
 Branch: `research/unlocked-speed-001`
-Pi context: `/AGENTS.md` v3.95.
+Pi context: `/AGENTS.md` v3.96.
 Latest optimization commit: `07223f99e75a44f559270af976ab2d8b52b5edb4`.
 
 ## Current product
@@ -99,6 +99,20 @@ Evidence:
 
 S40 was the sole stable residency winner. S48 was rejected after Metal GPU timeout; a frequency-aware cache policy did not show a reproducible net gain; existing route-known async sidecar resolution remains unchanged. Frozen `0/6`, `0/6`, `8/8` and API/WebUI/Pi2 passed. Experimental frequency source/build/runtime were removed after evidence retention.
 
+### UOPT-004 — COMPLETE / NO_GO
+
+Result:
+`research/integration/loom-unlocked-speed-optimization-004-result.md`
+
+Expert-only `Q2_K` quantization from BF16 reduced the expert footprint by `23.636%` and passed frozen gates, but failed functional quality (`3/4`) and arithmetic (`414` versus expected `410`). Temporary artifacts were removed. Production S40 is unchanged.
+
+### UOPT-005 — ACTIVE / CANDIDATE A NO_GO
+
+Result:
+`research/integration/loom-unlocked-speed-optimization-005-result.md`
+
+The `13/13` BF16 source verification, HF→BF16 GGUF validation, imatrix build, and Candidate A expert `IQ3_XXS` build completed. Its initial performance pathology was isolated to a sidecar on external archive: storage isolation improved decode `0.69 -> 9.63 tok/s`, prefill `0.24 -> 6.31 tok/s`, and TTFT `148.277 -> 5.605 s`. Candidate A passed refusal `0/6`, degeneration `0/6`, and benign capability `8/8`, but failed functional quality (`3/4`) and arithmetic (`400` versus expected `410`), so it is NO_GO. Next: Candidate B mixed Q3/IQ3 by layer sensitivity. Production S40 is unchanged.
+
 ## Storage / archive state
 
 Historical LOOM material was archived under:
@@ -110,6 +124,6 @@ FAST was archived on 2026-09-01 at `archived-models/loom-deep-30b-fast.gguf` aft
 
 ## Current exact action
 
-No active research macro. Normal operation uses the promoted UOPT-003 S40 UNLOCKED profile. `unlocked-s32` is the managed prior UOPT-002 rollback; the UOPT-001 source runtime remains the deeper local rollback baseline; FAST is externally archived.
+Production operation remains the promoted UOPT-003 S40 UNLOCKED profile. `unlocked-s32` is the managed prior UOPT-002 rollback; the UOPT-001 source runtime remains the deeper local rollback baseline; FAST is externally archived.
 
-Any further optimization should start as a new explicitly authorized macro rather than silently extending UOPT-003.
+UOPT-005 continues only with Candidate B mixed Q3/IQ3 quantization selected by layer sensitivity. Candidate A is rejected; production S40 remains unchanged.
