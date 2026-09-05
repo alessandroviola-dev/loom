@@ -1,7 +1,7 @@
 # LOOM Roadmap
 
-Last updated: 2026-09-03
-Current: LOOM final product GO/fully persisted; UOPT-001 PARTIAL_GO/persisted; UOPT-002 GO/persisted; **UOPT-003 GO locally promoted as normal UNLOCKED S40; UOPT-004 NO_GO; UOPT-005 Candidate A NO_GO, Candidate B next**.
+Last updated: 2026-09-04
+Current: LOOM final product GO/fully persisted; UOPT-001 PARTIAL_GO/persisted; UOPT-002 GO/persisted; **UOPT-003 GO locally promoted as normal UNLOCKED S40; UOPT-004 NO_GO; UOPT-005 COMPLETE / NO_GO**.
 Canonical context: `/AGENTS.md` v3.96.
 Latest optimization commit: `07223f99e75a44f559270af976ab2d8b52b5edb4`.
 
@@ -109,12 +109,12 @@ Result: `research/integration/loom-unlocked-speed-optimization-004-result.md`.
 
 Expert-only `Q2_K` from BF16 reduced expert footprint `23.636%` and passed frozen gates, but failed functional quality (`3/4`) and arithmetic (`414` vs expected `410`). Temporary artifacts were removed; production S40 is unchanged.
 
-### UOPT-005 — Candidate A NO_GO; Candidate B next
+### UOPT-005 — COMPLETE / NO_GO
 
 Result: `research/integration/loom-unlocked-speed-optimization-005-result.md`.
 
-BF16 source verification (`13/13`), HF→BF16 GGUF validation, imatrix construction, and Candidate A expert `IQ3_XXS` construction completed. external archive sidecar placement was the initial performance bottleneck: storage isolation changed decode `0.69 -> 9.63 tok/s`, prefill `0.24 -> 6.31 tok/s`, and TTFT `148.277 -> 5.605 s`. Candidate A passed frozen refusal `0/6`, degeneration `0/6`, and benign `8/8`, but failed functional (`3/4`) and arithmetic (`400` vs expected `410`), so it is NO_GO. Production S40 is unchanged.
+BF16 source verification (`13/13`), HF→BF16 GGUF validation, imatrix construction, and Candidate A expert `IQ3_XXS` construction completed. external archive sidecar placement was the initial smoke bottleneck: storage isolation changed decode `0.69 -> 9.63 tok/s`, prefill `0.24 -> 6.31 tok/s`, and TTFT `148.277 -> 5.605 s`. Candidate A passed frozen refusal `0/6`, degeneration `0/6`, and benign `8/8`, but failed functional (`3/4`) and arithmetic (`400` vs required `410`). B.1 Q3 `40–47` returned `400`; B.2 Q3 `36–47` and B.3 Q3 `32–47` returned `414`. The layer frontier identified 37 and 39 as causal (36/38 noncausal); 11 losslessly validated tensor splices exhausted causal set `{up37, down37, down39}` (nonempty subsets `414`, empty `400`) without reaching `410`. Expert-by-expert selection was not pursued because it needs a new format/runtime (estimated 1–3 days) with unproven benefit. UOPT-005 is closed NO_GO; production S40 is unchanged.
 
 ## 4. Current roadmap state
 
-Proceed with UOPT-005 Candidate B: mixed Q3/IQ3 expert quantization chosen by layer sensitivity. Do not alter the promoted UOPT-003 S40 production profile.
+UOPT-005 is closed NO_GO. Do not alter the promoted UOPT-003 S40 production profile.

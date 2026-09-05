@@ -221,12 +221,12 @@ Durable result:
 
 Expert-only `Q2_K` from BF16 reduced expert footprint by `23.636%` and passed frozen gates, but failed functional quality (`3/4`) and arithmetic (`414` vs expected `410`). Temporary artifacts were removed. Production S40 is unchanged.
 
-## UOPT-005 — ACTIVE / CANDIDATE A NO_GO
+## UOPT-005 — COMPLETE / NO_GO
 
 Durable result:
 `research/integration/loom-unlocked-speed-optimization-005-result.md`
 
-BF16 source verification (`13/13`), HF→BF16 GGUF validation, imatrix completion, and Candidate A expert `IQ3_XXS` construction completed. The initial performance pathology was a sidecar placed on external archive; storage isolation changed decode `0.69 -> 9.63 tok/s`, prefill `0.24 -> 6.31 tok/s`, and TTFT `148.277 -> 5.605 s`, identifying external archive as the bottleneck. Candidate A passed frozen refusal `0/6`, degeneration `0/6`, and benign capability `8/8`, but failed functional quality (`3/4`) and arithmetic (`400` vs expected `410`), so it is NO_GO. Next: Candidate B mixed Q3/IQ3 by layer sensitivity. Production S40 is unchanged.
+BF16 source verification (`13/13`), HF→BF16 GGUF validation, imatrix completion, and Candidate A expert `IQ3_XXS` construction completed. Storage isolation identified external archive as the initial smoke bottleneck: decode `0.69 -> 9.63 tok/s`, prefill `0.24 -> 6.31 tok/s`, and TTFT `148.277 -> 5.605 s`. Candidate A passed frozen refusal `0/6`, degeneration `0/6`, and benign capability `8/8`, but failed functional quality (`3/4`) and arithmetic (`400` vs required `410`). B.1 Q3 `40–47` returned `400`; B.2 Q3 `36–47` and B.3 Q3 `32–47` returned `414`. The layer frontier found 37 and 39 causal (36/38 noncausal); 11 losslessly validated tensor splices exhausted causal set `{up37, down37, down39}` (all nonempty subsets `414`, empty `400`) without reaching `410`. Expert-by-expert selection was not pursued: it would require a new format/runtime (estimated 1–3 days) with unproven benefit. Production S40 is unchanged.
 
 ## LOOM_CONTEXT_WEBUI_001 — COMPLETE / KEEP / LOCAL VALIDATION
 
@@ -234,4 +234,4 @@ The UOPT-002 backend is privately loopback-bound on `127.0.0.1:18081`; the light
 
 ## Current state
 
-Treat the promoted UOPT-003 S40 UNLOCKED path as the sole locally runnable product profile, with the WebUI Context Intelligence gateway enabled by default. `unlocked-s32` is the managed UOPT-002 same-runtime/sidecar rollback; the UOPT-001 source UNLOCKED runtime remains the deeper local rollback baseline. FAST is externally archived and unavailable locally. The authorized UOPT-005 continuation is Candidate B mixed Q3/IQ3 by layer sensitivity; Candidate A is rejected and production S40 must remain unchanged.
+Treat the promoted UOPT-003 S40 UNLOCKED path as the sole locally runnable product profile, with the WebUI Context Intelligence gateway enabled by default. `unlocked-s32` is the managed UOPT-002 same-runtime/sidecar rollback; the UOPT-001 source UNLOCKED runtime remains the deeper local rollback baseline; FAST is externally archived and unavailable locally. UOPT-005 is closed NO_GO; production S40 must remain unchanged.
