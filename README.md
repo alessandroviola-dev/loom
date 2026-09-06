@@ -1,46 +1,35 @@
 # LOOM
 
-**Big models. Small machines.**
+**Status: CLOSED / ARCHIVED — 2026-09-06**
 
-LOOM is a research project focused on making capable local AI — including self-hosted coding agents and larger language models — practical on constrained consumer hardware.
+LOOM was a research project focused on making capable local AI practical on constrained consumer hardware, with an Apple Silicon M1 Mac with 8 GB unified memory as the reference platform.
 
-The initial reference platform is an Apple Silicon M1 Mac with 8 GB unified memory.
+The project is now concluded. The final decision is not a runtime failure: the 30B UNLOCKED model was made materially more usable, but its practical capability remained below the level required for the intended real workloads. Further speed work therefore no longer justified additional engineering effort.
 
-## Project objective
+## Final retained product
 
-LOOM targets the strongest practical **full-parameter-count** local model that can be made usable on small hardware while jointly optimizing four axes:
+The last stable local product is the **UNLOCKED UOPT-003 S40** profile:
 
-1. memory / residency;
-2. speed / usability;
-3. practical capability;
-4. behavioral freedom / decensoring.
+- source GGUF SHA256: `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
+- expert-major sidecar SHA256: `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`
+- patched runtime SHA256: `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
+- matched S40 decode: `7.557 tok/s`
+- matched 1,155-token cold TTFT: `102.242 s`
+- frozen behavior/capability gates: refusal `0/6`, degeneration `0/6`, benign `8/8`
 
-A model is not considered fully promoted as a final LOOM-produced LLM until it also has a validated decensored behavioral profile. That profile may be produced with the Heretic approach or with a LOOM-native independently implemented equivalent, and must be evaluated for collateral capability/resource damage rather than treated as a prompt-only jailbreak.
+Operator commands remain documented in `docs/LOOM_OPERATIONS.md` for historical/recovery use.
 
-Frozen requirement:
-`research/behavior/decensoring-requirement-v1.md`
+## Final optimization outcome
 
-## Research directions
+- UOPT-001: PARTIAL_GO
+- UOPT-002: GO
+- UOPT-003: GO — final retained S40 profile
+- UOPT-004: NO_GO — Q2 expert quality loss
+- UOPT-005: NO_GO — selective IQ3 quality frontier exhausted
+- UOPT-006: NO_GO — draftless n-gram speculative decoding produced 0 drafted / 0 accepted tokens and no useful speedup
 
-- Local self-hosted coding agents
-- Ollama and MLX inference
-- Direct MLX execution
-- llama.cpp and aggressive GGUF quantization
-- CPU/GPU hybrid offload
-- Memory compression and swap behavior
-- SSD-backed inference and expert/layer streaming
-- Mixture-of-Experts (MoE)
-- Colibrì experiments
-- Reproducible benchmarks for quality, speed and memory pressure
-- Contrastive residual-direction analysis and reversible low-rank behavioral editing
-- Decensored / behavioral-freedom model profiles with preservation benchmarks
+See `HANDOFF.md`, `ROADMAP.md`, `research/integration/loom-unlocked-speed-optimization-006-result.md`, and `research/integration/loom-project-closure-20260906.md`.
 
-## Current checkpoint
+## Archive rule
 
-The active branch is currently characterizing and reducing fixed and per-layer costs in exact real-M1 partial-residency execution. See `HANDOFF.md` for the canonical checkpoint and `ROADMAP.md` for the ordered research path.
-
-The behavioral-editing requirement does not interrupt the active memory/runtime sequence; it is a later model-promotion requirement unless a frozen experiment explicitly enters that research axis.
-
-## Project rule
-
-`HANDOFF.md` is the canonical active state of the project and must be updated after every meaningful project step.
+There is no active LOOM roadmap. No agent or automation should resume experiments, modify the production profile, or begin a new optimization work package unless the project is explicitly reopened by the owner.
