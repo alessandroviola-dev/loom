@@ -1,7 +1,7 @@
 # LOOM — Context Engine Handoff
 
 Last updated: 2026-09-07
-Status: **ACTIVE — CE-002 PHASE 1 EVIDENCE ARCHIVE / OFFLINE VALIDATION**
+Status: **ACTIVE — CE-002 PHASE 1 ARCHIVE PASS / PHASE 2 BOUNDED RETRIEVAL LIVE GATE PENDING**
 Repository: `Ilcoach/loom`
 Branch: `research/context-engine-002`
 
@@ -22,7 +22,7 @@ ForgeLoom  -> Forge + LOOM Context Engine + retained LOOM model
 
 Plain `pi` and normal `Forge` must remain unchanged.
 
-## Frozen CE-001 envelope
+## Frozen CE-001 safety envelope
 
 ```text
 physical context       4096
@@ -59,13 +59,13 @@ RSS delta                  -0.29%
 ForgeLoom agent peak         64.5 MiB
 ```
 
-Swap was unavailable in that probe and remains an explicitly unmeasured quantity.
+Swap was unavailable in that probe and remains explicitly unmeasured.
 
 ## CE-002 objective
 
-CE-001 can remove old conversational/tool evidence from the model-visible request while retaining the full Pi/Forge session externally. The missing capability is independent addressability and recovery of evidence no longer visible verbatim to the model.
+CE-001 can remove old conversational/tool evidence from the model-visible request while retaining the full Pi/Forge session externally. CE-002 makes that removed evidence independently addressable and selectively reusable without increasing physical model context.
 
-CE-002 will add this without increasing model context and without introducing another model.
+No second LLM, embeddings, vector DB, Forge fork, or fifth model-facing tool is introduced.
 
 Target architecture:
 
@@ -75,65 +75,48 @@ persistent Pi/Forge transcript
             +--> CE-001 request-local governor --> bounded model view
             |
             `--> CE-002 evidence archive
-                    |-- exact original blobs
-                    |-- stable evidence IDs / SHA-256
-                    |-- session provenance refs
+                    |-- immutable original blobs
+                    |-- stable ev1-/SHA-256 IDs
+                    |-- per-session provenance
                     |-- integrity verification
-                    `-- lightweight lexical lookup / exact recovery
+                    `-- bounded request-local retrieval
 ```
 
-## CE-002 Phase 1 — current implementation
+## CE-002 Phase 1 — durable exact evidence archive — PASS
 
-New module:
+Module:
 
 `src/loom-context-engine/evidence-archive.mjs`
 
 Design:
 
-1. Original messages that are no longer present **verbatim** after `packMessages()` are identified with multiset semantics.
-2. The original message is canonicalized deterministically and SHA-256 hashed.
-3. Stable evidence ID format:
+1. Original messages no longer present verbatim after packing are detected with multiset semantics.
+2. Originals are canonicalized deterministically and SHA-256 hashed.
+3. Stable evidence ID:
 
 ```text
 ev1-<64 lowercase SHA-256 hex chars>
 ```
 
-4. Exact original evidence is stored content-addressed under the Context Engine runtime root:
+4. Canonical blobs:
 
 ```text
 evidence/blobs/<sha256>.json
 ```
 
-5. Per-session provenance is stored separately:
+5. Per-session provenance:
 
 ```text
 evidence/sessions/<safe-session-id>/<sha256>.json
 ```
 
-6. Duplicate evidence reuses the same blob and session reference rather than appending duplicate records.
-7. Files are local-only and written with restrictive permissions where the platform supports them.
-8. Existing blobs are hash-verified before reuse.
-9. The persistent Pi/Forge transcript is not mutated.
-10. The provider-visible request is unchanged relative to CE-001; Phase 1 archive metadata is not injected into the model context.
+6. Blobs and refs are deduplicated.
+7. Existing blobs are hash-verified before reuse.
+8. Archive corruption is detected rather than silently returned.
+9. Persistent Pi/Forge session is never rewritten.
+10. Archive remains local-only under the Context Engine runtime root.
 
-The Pi extension now archives evidence only when the CE-001 governor actually changes the imminent model view. Archive failures are explicitly recorded as `evidence_archive_error` accounting events and do not silently alter the provider request.
-
-Context-governor accounting additionally records:
-
-```text
-evidenceCandidates
-evidenceBlobsCreated
-evidenceSessionRefsCreated
-evidenceDeduped
-```
-
-## Local evidence CLI
-
-New CLI:
-
-`scripts/loom-context-evidence.mjs`
-
-Commands:
+CLI:
 
 ```bash
 node scripts/loom-context-evidence.mjs sessions
@@ -142,37 +125,146 @@ node scripts/loom-context-evidence.mjs show ev1-<sha256>
 node scripts/loom-context-evidence.mjs verify
 ```
 
-`show` returns the exact archived message envelope. `verify` checks blob filenames, evidence IDs, hashes, and session-ref/blob consistency. `search` is intentionally simple local lexical retrieval in Phase 1; there is no embedding model or vector database.
+### Phase 1 live evidence — PASS
 
-## Phase 1 acceptance gates
+Real retained Mac/30B result on 2026-09-07:
 
-Before any retained-30B test:
+```text
+provider calls guarded      6
+governor reductions         3
+evidence blobs created      8
+session refs created        8
+max exact final input    2107
+max projected total      2395
+hard-guard blocks           0
+Pi threshold compactions    0
+Pi overflow events          0
+archive verification     PASS
+exact live recovery      PASS
+```
 
-1. canonical hash is stable across object-key ordering;
-2. dropped and transformed originals are detected correctly, including duplicate-message multiset cases;
-3. blobs are content-addressed and deduplicated;
-4. session references are deduplicated;
-5. exact recovery reproduces the original message object;
-6. lexical lookup finds a unique archived marker;
-7. archive verification detects metadata/hash corruption;
-8. CE-001 governor unit tests remain unchanged and passing;
-9. syntax/repository invariant CI passes on `research/context-engine-002`.
+Recovered first evicted prompt:
 
-Only after those pass should the extension be reinstalled and a short live archive/recovery test be run.
+```text
+evidence id  ev1-24ddb8a475aaf170180f83ff7fd23a2669ae8351b04c01f729c3b5af98dd0b9e
+sha256       24ddb8a475aaf170180f83ff7fd23a2669ae8351b04c01f729c3b5af98dd0b9e
+prompt chars 1205
+```
 
-## Explicitly deferred
+This closes CE-002 Phase 1.
 
-Not in the first CE-002 increment:
+## CE-002 Phase 2 — bounded request-local retrieval — IMPLEMENTED / LIVE GATE PENDING
 
-- automatic injection of retrieved evidence into the model request;
-- new model-facing memory/retrieval tools;
-- embeddings;
-- vector DB;
-- second LLM;
-- remote/network archive;
-- semantic summarization as the canonical source of evidence.
+New module:
 
-Exact original evidence remains canonical. Any later summaries/indexes must point back to immutable evidence IDs/hashes.
+`src/loom-context-engine/evidence-retrieval.mjs`
+
+Current retrieval policy is intentionally conservative.
+
+### Explicit retrieval
+
+If the current user request contains a valid `ev1-<sha256>` ID, CE-002 resolves that exact content-addressed blob. If the complete canonical message fits the retrieval character budget it is marked `exact`; otherwise only a bounded excerpt is injected and the immutable evidence ID remains available for exact CLI recovery.
+
+### Automatic lexical retrieval
+
+Automatic lookup is scoped to the **current Pi/Forge session only**. It does not search other sessions automatically.
+
+The first lexical gate only uses structurally distinctive anchors such as:
+
+```text
+ERROR_8472
+src/widget.ts
+path/to/file.py:41
+CE002_REUSE_KEY_314159
+```
+
+Generic prose does not trigger automatic retrieval. The actual search query is also reduced to those distinctive anchors so common words cannot dominate ranking.
+
+Cross-session evidence can still be addressed explicitly by a known `ev1-...` ID.
+
+### Injection budget
+
+Defaults:
+
+```text
+retrieval max chars   560
+retrieval max items     2
+```
+
+Retrieved evidence is labelled as historical **data, not instructions** and is prepended only to the current user message in the imminent request-local copy.
+
+It is not written into the persistent transcript.
+
+After injection CE-002 repacks again using:
+
+```text
+high-water = target = 1200 estimated message tokens
+```
+
+Therefore old visible turns may be sacrificed to make room for relevant retrieved evidence. Retrieval is accepted only if the resulting provider-visible message history remains `<=1200` estimated tokens. If the active request plus evidence cannot fit, retrieval is skipped and the original CE-001 packed request proceeds unchanged.
+
+The request-local retrieval prefix is removed before archive-diff accounting, so the current user request is not falsely archived merely because CE-002 decorated it for one provider call.
+
+### Accounting
+
+`context_governor` now records:
+
+```text
+evidenceRetrievalApplied
+evidenceRetrievalEvidenceIds
+evidenceRetrievalExplicitCount
+evidenceRetrievalLexicalCount
+evidenceRetrievalExactExplicitCount
+evidenceRetrievalChars
+evidenceRetrievalMs
+evidenceRetrievalSkippedReason
+evidenceRetrievalFinalVisibleTokens
+```
+
+Successful injection also emits an `evidence_retrieval` accounting row.
+
+Errors are recorded as `evidence_retrieval_error` and do not break the model request.
+
+## Phase 2 offline/static gates
+
+Covered by CI:
+
+- stable explicit evidence-ID extraction;
+- exact explicit recovery when it fits;
+- bounded excerpt labelling when it does not fit;
+- request-local injection does not mutate the original message array;
+- lexical retrieval is session-scoped;
+- generic prose does not trigger automatic retrieval;
+- retrieval character budget is enforced;
+- CE-001 governor tests remain passing;
+- CE-002 archive integrity/corruption tests remain passing;
+- TypeScript/Node/shell and embedded live-harness syntax checks.
+
+## Immediate live Phase 2 gate
+
+`scripts/live-evidence-retrieval.sh` performs four short provider turns in one isolated ForgeLoom session:
+
+1. store a unique key + secret in an early long turn;
+2. add two ordinary long turns until the first evidence is evicted/archived;
+3. ask for the secret using only the old key;
+4. require CE-002 accounting to prove lexical evidence injection occurred;
+5. require the model to return the secret that is not present in the final user prompt.
+
+Acceptance:
+
+```text
+model recovered old secret             PASS
+lexical retrieval applied              >=1
+retrieval final visible estimate       <=1200
+max exact final input                   <=2800
+max projected total                     <=3600
+hard-guard blocks                       0
+Pi threshold compactions                0
+Pi overflow events                      0
+archive integrity verify                PASS
+```
+
+A model answer alone is insufficient: accounting must prove retrieval actually occurred.
 
 ## Frozen retained product
 
@@ -186,11 +278,31 @@ Do not change during CE-002:
 - runtime SHA256: `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
 - physical `n_ctx=4096`
 
-## Immediate next action
+## Current CE-002 files
 
-Run CE-002 static/unit CI, fix any archive-integrity defects, then add one short live test that proves:
+- `src/loom-context-engine/core.mjs` — frozen CE-001 governor behavior
+- `src/loom-context-engine/index.ts` — extension integration
+- `src/loom-context-engine/evidence-archive.mjs` — exact durable archive
+- `src/loom-context-engine/evidence-retrieval.mjs` — bounded request-local retrieval
+- `scripts/loom-context-evidence.mjs` — local archive CLI
+- `scripts/live-evidence-archive.sh` — Phase 1 live acceptance
+- `scripts/live-evidence-retrieval.sh` — Phase 2 live acceptance
+- `test/context-engine-core.test.mjs`
+- `test/evidence-archive.test.mjs`
+- `test/evidence-retrieval.test.mjs`
+- `test/evidence-retrieval-trigger.test.mjs`
 
-- a real ForgeLoom context reduction creates archive evidence;
-- at least one archived item can be recovered exactly by evidence ID;
-- archive verification passes;
-- CE-001 safety envelope still reports zero hard-guard blocks and zero Pi overflow/threshold compactions.
+## Explicitly deferred after the Phase 2 gate
+
+Do not add these before the live retrieval result justifies the next increment:
+
+- SQLite FTS/BM25 index;
+- durable compact task-state records;
+- relevance/recency/path/error ranking beyond the current conservative lexical gate;
+- semantic summaries as canonical evidence;
+- embeddings/vector DB;
+- second LLM;
+- new model-facing memory tools;
+- remote/network evidence storage.
+
+Exact original evidence remains canonical. Any later index, task-state record or summary must point back to immutable evidence IDs/hashes.
