@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { packMessages } from "./core.mjs";
+import { archiveEvictedEvidence } from "./evidence-archive.mjs";
 
 const CLAIMS_KEY = Symbol.for("loom.context-engine.claims");
 
@@ -33,10 +34,13 @@ function forgeContextConflict(): boolean {
   return enabled(process.env.FORGE_CONTEXT_INTELLIGENCE, true);
 }
 
-function sessionRuntimeDir(sessionId: string): string {
+function contextRuntimeRoot(): string {
   const agentDir = process.env.PI_CODING_AGENT_DIR ?? join(process.env.HOME ?? homedir(), ".pi", "agent");
-  const root = process.env.LOOM_CONTEXT_RUNTIME_DIR ?? join(agentDir, "loom-context-engine");
-  return join(resolve(root), sessionId.replace(/[^a-zA-Z0-9_-]/g, "_"));
+  return resolve(process.env.LOOM_CONTEXT_RUNTIME_DIR ?? join(agentDir, "loom-context-engine"));
+}
+
+function sessionRuntimeDir(sessionId: string): string {
+  return join(contextRuntimeRoot(), sessionId.replace(/[^a-zA-Z0-9_-]/g, "_"));
 }
 
 function record(sessionId: string, row: Record<string, unknown>): void {
@@ -65,7 +69,9 @@ function minimalSystemPrompt(): string {
 }
 
 /**
- * CE-001: request-local preventive governor for the retained LOOM 30B.
+ * CE-001 remains the request-local preventive governor for the retained LOOM 30B.
+ * CE-002 adds a local content-addressed archive for original evidence that is no
+ * longer present verbatim in the imminent provider view.
  *
  * The Pi session remains untouched: the context event receives a copy and the
  * returned messages apply only to the imminent LLM request.
@@ -77,6 +83,7 @@ export default function loomContextEngine(pi: ExtensionAPI): void {
   const targetTokens = Math.min(positiveInt(process.env.LOOM_CONTEXT_TARGET_TOKENS, 1200), highWaterTokens);
   const toolTextChars = positiveInt(process.env.LOOM_CONTEXT_TOOL_TEXT_CHARS, 1800);
   const assistantTextChars = positiveInt(process.env.LOOM_CONTEXT_ASSISTANT_TEXT_CHARS, 900);
+  const evidenceArchiveEnabled = enabled(process.env.LOOM_CONTEXT_EVIDENCE_ARCHIVE, true);
   let sessionId = "unknown";
   let conflictWarned = false;
 
@@ -87,6 +94,7 @@ export default function loomContextEngine(pi: ExtensionAPI): void {
       event: "session_start",
       highWaterTokens,
       targetTokens,
+      evidenceArchiveEnabled,
       forgeContextConflict: conflict,
     });
     if (conflict && ctx.hasUI) {
@@ -123,11 +131,42 @@ export default function loomContextEngine(pi: ExtensionAPI): void {
       assistantTextChars,
     });
 
+    let archiveMetrics = {
+      evidenceCandidates: 0,
+      evidenceBlobsCreated: 0,
+      evidenceSessionRefsCreated: 0,
+      evidenceDeduped: 0,
+    };
+
+    if (evidenceArchiveEnabled && result.changed) {
+      try {
+        const archived = archiveEvictedEvidence({
+          rootDir: contextRuntimeRoot(),
+          sessionId,
+          originalMessages: event.messages,
+          visibleMessages: result.messages,
+          cwd: process.cwd(),
+        });
+        archiveMetrics = {
+          evidenceCandidates: archived.candidates,
+          evidenceBlobsCreated: archived.blobsCreated,
+          evidenceSessionRefsCreated: archived.sessionRefsCreated,
+          evidenceDeduped: archived.deduped,
+        };
+      } catch (error) {
+        record(sessionId, {
+          event: "evidence_archive_error",
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
     record(sessionId, {
       event: "context_governor",
       messageCountBefore: event.messages.length,
       messageCountAfter: result.messages.length,
       changed: result.changed,
+      ...archiveMetrics,
       ...result.accounting,
     });
 
