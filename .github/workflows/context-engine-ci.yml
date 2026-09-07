@@ -27,6 +27,7 @@ jobs:
           node --experimental-strip-types --check src/loom-context-engine/index.ts
           bash -n scripts/install-forge-loom.sh
           bash -n scripts/verify-context-engine.sh
+          bash -n scripts/smoke-context-engine.sh
       - name: Governor tests
         run: node --test test/context-engine-core.test.mjs
       - name: Repository invariants
