@@ -1,7 +1,7 @@
 # LOOM — Context Engine Handoff
 
 Last updated: 2026-09-07
-Status: **ACTIVE — CE-001 REALISTIC GATE NO-GO / ACTIVE-TURN FIX UNDER VALIDATION**
+Status: **ACTIVE — CE-001 REALISTIC TRANSCRIPT REPLAY PASS / LIVE TOOL-HEAVY GATE PENDING**
 Repository: `Ilcoach/loom`
 Branch: `research/context-engine-001`
 
@@ -23,9 +23,11 @@ ForgeLoom  -> Forge + LOOM Context Engine + retained LOOM UNLOCKED model
 
 ## Current checkpoint
 
-CE-001 passed the real one-shot smoke and 12-turn synthetic long-context stress, but the first frozen realistic coding benchmark exposed **one genuine gateway hard-guard block**. Therefore CE-001 is **NOT final GO yet**.
+CE-001 passed the real one-shot smoke and 12-turn synthetic long-context stress. The first frozen realistic coding benchmark then exposed one genuine gateway hard-guard block, so CE-001 was correctly held at NO-GO.
 
-The physical 4096 ceiling remained protected: the hard guard blocked the unsafe request before forwarding it. Pi never performed threshold or overflow compaction. The failure is specifically that Layer A did not compact the active coding turn enough before Layer B was needed.
+That real transcript has now been replayed offline through the updated governor at every reconstructed provider-attempt boundary. The updated governor bounded all 24/24 reconstructed realistic views to the `1200` working target, with zero target or high-water misses.
+
+The active-turn fix is therefore **offline validated against the exact transcript that previously failed**. CE-001 is still not final GO until the corrected extension passes one short live tool-heavy ForgeLoom regression.
 
 Do **not** proceed to CE-002 yet.
 
@@ -72,7 +74,7 @@ Pi overflow compactions    0
 
 This proved the basic sliding-window invariant for long inert multi-turn history.
 
-### Frozen realistic coding benchmark — COMPLETED / CE-001 NO-GO
+### Frozen realistic coding benchmark — COMPLETED / ORIGINAL CE-001 NO-GO
 
 Recovered from the completed six-task ForgeLoom RPC run after the harness timed out only on final `get_state` telemetry.
 
@@ -123,64 +125,81 @@ tokenCountMargin          32
 tokenCountMethod        apply-template+tokenize
 ```
 
-This is a CE-001 failure even though projected total remained below 4096 and below safe-total: the configured final-input ceiling is 2800, and Layer A must normally prevent Layer B from blocking.
+The physical 4096 ceiling remained protected: Layer B blocked the request before model forwarding. The model-quality score (60/100) is recorded separately from this context-engine failure.
 
-The model-quality score (60/100) is recorded separately from the context-engine safety failure. Do not change benchmark prompts/tests to hide model-quality mistakes.
+## Root cause and active-turn fix
 
-## Root cause identified
-
-The original governor compacted old complete user turns and `toolResult` text, but did **not** compact large historical `toolCall.arguments` inside the still-active coding turn.
-
-Real coding calls such as `write`, `edit`, and `bash` can retain large code/command strings in assistant tool-call history. Several completed tool exchanges inside one user turn can therefore remain far above the `1200` working target even after tool-result compaction.
-
-The old per-tool-result cap (`1800` chars each) also allowed multiple individually moderate results to accumulate above target.
-
-## Active-turn fix implemented — validation pending
+The original governor compacted old complete user turns and `toolResult` text, but did not sufficiently bound structurally large active coding turns containing many completed tool exchanges and large historical `toolCall.arguments`.
 
 Updated `src/loom-context-engine/core.mjs` now:
 
-1. still drops oldest complete user turns first;
-2. still preserves the current user instruction;
+1. drops oldest complete user turns first;
+2. preserves the current user instruction;
 3. compacts oversized tool-result text and assistant narration;
-4. additionally compacts large strings nested inside historical `toolCall.arguments`;
+4. compacts large strings nested inside historical `toolCall.arguments`;
 5. preserves tool-call IDs, names and matching tool-result IDs;
-6. when the active turn is still oversized, compacts **completed call/result exchanges together**, oldest first;
+6. compacts completed call/result exchanges together, oldest first;
 7. initially preserves the newest completed tool exchange at higher fidelity;
-8. performs a second aggressive completed-exchange pass only if required;
-9. records `toolCallArgumentsCompacted` and `activeTurnEmergencyPasses` accounting.
+8. performs a second aggressive completed-exchange pass when needed;
+9. as a last resort, evicts the oldest **completed assistant tool-call + matching tool-result group as one coherent unit** until the low-water target is met;
+10. never truncates the current user request in this fallback;
+11. records tool-argument, emergency-pass and completed-exchange-drop accounting.
 
-A new unit test simulates five completed coding-style tool exchanges in one active turn with large command arguments and asserts:
+Unit tests cover repeated coding-style active-turn exchanges and assert target bounding, call/result coherence, and persistent-session immutability.
 
-- final governor estimate `<=1200`;
-- all call/result IDs remain paired;
-- persistent input is not mutated.
+### Offline replay of failed realistic transcript — PASS
 
-GitHub Actions passes this test.
+The exact `rpc.jsonl` from the failed realistic run was replayed through the corrected governor without model inference.
 
-## Immediate next gate — offline replay of the failed transcript
+```text
+provider attempts           24
+max raw estimate            8557
+max replay visible          1196
+governor reductions         20
+tool-arg compactions        59
+emergency passes            11
+target misses (>1200)       0
+high-water misses (>1600)   0
+```
 
-Do **not** rerun the 30B benchmark yet.
+Result:
 
-`scripts/replay-context-engine-rpc.mjs` reconstructs every provider-attempt boundary from the already-generated realistic `rpc.jsonl` and passes the same transcript states through the updated governor. It performs no model inference.
+```text
+CE-001 REPLAY PASS
+```
 
-Operator command:
+This is the strongest offline regression evidence available because it uses the same real coding transcript that previously produced the hard-guard block.
+
+## Immediate next gate — short live tool-heavy regression
+
+Do **not** rerun the full six-task benchmark yet.
+
+`scripts/live-tool-heavy-context-engine.sh` creates an isolated workspace and runs one real ForgeLoom turn that requires multiple reads, one edit, bash verification and a final read inside the same user turn. It then verifies only that session's Context Engine accounting and only gateway rows created during the run.
+
+Before running it, reinstall the updated extension so `~/.pi/agent/extensions/loom-context-engine/core.mjs` matches the branch.
+
+Operator commands:
 
 ```bash
 git switch research/context-engine-001
 git pull --ff-only origin research/context-engine-001
-node scripts/replay-context-engine-rpc.mjs
+bash scripts/install-forge-loom.sh
+bash scripts/live-tool-heavy-context-engine.sh
 ```
 
-Replay acceptance:
+Live acceptance:
 
-```text
-provider attempts         24
-max replay visible        <= 1200
-target misses             0
-high-water misses         0
-```
+- real ForgeLoom tool chain completes;
+- governor active-turn logic is actually exercised;
+- every changed governor view is `<=1200`;
+- no `best-effort-active-turn-too-large` result;
+- exact final input remains `<=2800`;
+- projected total remains `<=3600`;
+- zero hard-guard blocks;
+- zero Pi actual compactions;
+- zero Pi overflow events.
 
-Only if this replay passes should the updated extension be reinstalled and a short live tool-heavy validation be run. Do not repeat the full six-task benchmark until the fix passes both offline replay and a bounded live tool-loop test.
+If this passes, review whether the already-completed realistic benchmark plus exact transcript replay and live regression provide sufficient CE-001 closure evidence before spending time on a full six-task rerun.
 
 ## Core invariant
 
@@ -254,7 +273,7 @@ CE-001 counting order:
 5. add a conservative 32-token legacy margin;
 6. fail closed if counting cannot be demonstrated safely.
 
-The legacy-safe path passed the real smoke and synthetic long-context stress and correctly blocked the one oversized realistic request.
+The legacy-safe path passed the real smoke and synthetic long-context stress and correctly blocked the one oversized realistic request before forwarding.
 
 ## Pi native compaction
 
@@ -297,26 +316,26 @@ Historical retained UOPT-003 baseline:
 - `scripts/realistic-context-engine-benchmark.sh` — operator launcher
 - `scripts/recover-realistic-context-engine-benchmark.py` — score/safety recovery after telemetry timeout
 - `scripts/replay-context-engine-rpc.mjs` — offline replay of real RPC transcript through current governor
+- `scripts/live-tool-heavy-context-engine.sh` — short isolated real ForgeLoom active-turn regression
 - `test/context-engine-core.test.mjs` — governor unit tests
 
 ## Final CE-001 acceptance sequence
 
 Current order:
 
-1. offline replay of the already-failed realistic transcript;
+1. realistic transcript replay — **PASS**;
 2. reinstall updated extension;
 3. short live tool-heavy validation with zero hard-guard blocks;
-4. only then decide whether a full six-task benchmark rerun is necessary for final closure.
+4. review whether a full six-task benchmark rerun is necessary for final closure.
 
 Final CE-001 GO requires:
 
-- zero hard-guard blocks in the acceptance workload;
+- zero hard-guard blocks in the final live acceptance workload;
 - zero Pi threshold/overflow compactions;
 - no context-window termination;
 - model-visible input kept safely below physical 4096;
 - session survival;
-- no material RAM/swap regression;
-- coding quality reported honestly and separately.
+- coding-quality mistakes reported honestly and separately.
 
 Do not begin CE-002 archive/task-state/retrieval work until CE-001 final GO.
 
