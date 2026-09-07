@@ -1,5 +1,5 @@
-const DEFAULT_HIGH_WATER_TOKENS = 2200;
-const DEFAULT_TARGET_TOKENS = 1700;
+const DEFAULT_HIGH_WATER_TOKENS = 1600;
+const DEFAULT_TARGET_TOKENS = 1200;
 const DEFAULT_TOOL_TEXT_CHARS = 1800;
 const DEFAULT_ASSISTANT_TEXT_CHARS = 900;
 
@@ -58,7 +58,8 @@ export function estimateMessageTokens(message) {
   }
 
   // Deliberately conservative for the governor. Exact final accounting is done
-  // by the llama.cpp gateway guard.
+  // by the llama.cpp gateway guard. The working thresholds intentionally leave
+  // room for system/template/tool-schema overhead measured outside messages.
   return Math.max(1, Math.ceil(chars / 3) + 4);
 }
 
