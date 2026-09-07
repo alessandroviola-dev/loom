@@ -25,9 +25,12 @@ jobs:
           node --check src/loom-context-engine/core.mjs
           node --check scripts/loom-context-webui-gateway.mjs
           node --experimental-strip-types --check src/loom-context-engine/index.ts
+          python3 -m py_compile scripts/realistic-context-engine-benchmark.py
           bash -n scripts/install-forge-loom.sh
           bash -n scripts/verify-context-engine.sh
           bash -n scripts/smoke-context-engine.sh
+          bash -n scripts/stress-context-engine.sh
+          bash -n scripts/realistic-context-engine-benchmark.sh
       - name: Governor tests
         run: node --test test/context-engine-core.test.mjs
       - name: Repository invariants
