@@ -2,9 +2,10 @@
 /**
  * LOOM loopback-only llama.cpp WebUI/API gateway.
  *
- * CE-001 adds an exact final chat-input token guard. The historical Pi2 Context
- * Intelligence import remains available only for rollback/compatibility and is
- * disabled by the ForgeLoom launcher.
+ * CE-001 adds an exact final chat-input token guard plus a bounded output
+ * reserve so the operating envelope stays deliberately below physical n_ctx.
+ * The historical Pi2 Context Intelligence import remains only for rollback and
+ * is disabled by the ForgeLoom launcher.
  */
 import http from "node:http";
 import { appendFileSync, mkdirSync } from "node:fs";
@@ -32,7 +33,12 @@ const positiveInt = (value, fallback) => {
 const ciEnabled = enabled(env.LOOM_CONTEXT_WEBUI_CI) && enabled(env.PI2_CONTEXT_INTELLIGENCE);
 const hardGuardEnabled = enabled(env.LOOM_CONTEXT_WEBUI_HARD_GUARD ?? "0");
 const guardFailClosed = enabled(env.LOOM_CONTEXT_WEBUI_GUARD_FAIL_CLOSED ?? "1");
-const safeInputTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS, 3000);
+const safeTotalTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_SAFE_TOTAL_TOKENS, 3600);
+const safeInputTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS, 2800);
+const maxOutputTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS, 800);
+if (safeTotalTokens >= 4096 || safeInputTokens >= safeTotalTokens || maxOutputTokens >= safeTotalTokens || safeInputTokens + maxOutputTokens > safeTotalTokens) {
+  throw new Error("invalid CE-001 token envelope: require safeInput + maxOutput <= safeTotal < 4096");
+}
 const runtimeDir = env.LOOM_CONTEXT_WEBUI_RUNTIME_DIR ?? join(env.PI_CODING_AGENT_DIR ?? join(env.HOME ?? homedir(), ".pi", "agent"), "context-intelligence", "loom-webui");
 const accountingPath = join(runtimeDir, "accounting.jsonl");
 const corePath = env.LOOM_PI2_CONTEXT_CORE ?? join(env.HOME ?? homedir(), ".pi", "agent", "extensions", "pi-minimal-plus", "pi2-context-intelligence-core.mjs");
@@ -129,6 +135,26 @@ async function exactChatInputTokens(payload) {
   if (!Number.isInteger(tokens) || tokens < 0) throw new Error("backend token count response has no valid input_tokens");
   return tokens;
 }
+function boundedPositiveInt(value, fallback, ceiling) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, ceiling);
+}
+function capChatOutput(payload) {
+  const next = { ...payload };
+  const hasMaxTokens = Object.prototype.hasOwnProperty.call(next, "max_tokens");
+  const hasMaxCompletionTokens = Object.prototype.hasOwnProperty.call(next, "max_completion_tokens");
+  const requestedMaxTokens = hasMaxTokens ? boundedPositiveInt(next.max_tokens, maxOutputTokens, maxOutputTokens) : undefined;
+  const requestedMaxCompletionTokens = hasMaxCompletionTokens ? boundedPositiveInt(next.max_completion_tokens, maxOutputTokens, maxOutputTokens) : undefined;
+
+  if (hasMaxTokens) next.max_tokens = requestedMaxTokens;
+  if (hasMaxCompletionTokens) next.max_completion_tokens = requestedMaxCompletionTokens;
+  if (!hasMaxTokens && !hasMaxCompletionTokens) next.max_tokens = maxOutputTokens;
+
+  const reserves = [requestedMaxTokens, requestedMaxCompletionTokens].filter((value) => Number.isInteger(value));
+  const outputReserve = reserves.length > 0 ? Math.max(...reserves) : maxOutputTokens;
+  return { payload: next, outputReserve };
+}
 
 const server = http.createServer(async (request, response) => {
   const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
@@ -137,7 +163,11 @@ const server = http.createServer(async (request, response) => {
     return response.end(JSON.stringify({
       contextEngineGateway: true,
       hardGuardEnabled,
+      safeTotalTokens,
       safeInputTokens,
+      maxOutputTokens,
+      physicalContextTokens: 4096,
+      forbiddenReserveTokens: 4096 - safeTotalTokens,
       guardFailClosed,
       ciStatus: coreStatus,
     }));
@@ -156,7 +186,6 @@ const server = http.createServer(async (request, response) => {
       const packed = packPayload(payload, { runtimeDir, query: lastUserText(payload.messages) });
       accounting = packed.accounting;
       outgoingPayload = packed.payload;
-      if (packed.payload !== payload) outgoing = Buffer.from(JSON.stringify(packed.payload));
     } else if (ciEnabled && !packPayload) accounting.reason = "canonical-core-unavailable";
     else if (Array.isArray(payload?.messages)) accounting.reason = "ci-disabled";
   } catch {
@@ -165,31 +194,46 @@ const server = http.createServer(async (request, response) => {
 
   if (hardGuardEnabled && outgoingPayload && isChat(pathname, outgoingPayload)) {
     try {
+      const bounded = capChatOutput(outgoingPayload);
+      outgoingPayload = bounded.payload;
+      const outputReserve = bounded.outputReserve;
+      const requestInputCeiling = Math.min(safeInputTokens, safeTotalTokens - outputReserve);
+      if (requestInputCeiling <= 0) throw new Error("configured output reserve leaves no safe input budget");
       const finalInputTokens = await exactChatInputTokens(outgoingPayload);
+      const projectedTotalTokens = finalInputTokens + outputReserve;
+      const blocked = finalInputTokens > requestInputCeiling || projectedTotalTokens > safeTotalTokens;
       accounting = {
         ...accounting,
         guardChecked: true,
-        guardBlocked: finalInputTokens > safeInputTokens,
+        guardBlocked: blocked,
         finalInputTokens,
+        outputReserve,
+        projectedTotalTokens,
+        requestInputCeiling,
         safeInputTokens,
+        safeTotalTokens,
+        maxOutputTokens,
       };
-      if (finalInputTokens > safeInputTokens) {
+      if (blocked) {
         const gatewayPreparationMs = Math.round((performance.now() - started) * 1000) / 1000;
         record({ event: "hard_guard_block", path: pathname, ciEnabled: Boolean(packPayload), coreStatus, gatewayPreparationMs, ...accounting });
         response.writeHead(413, { "content-type": "application/json" });
         return response.end(JSON.stringify({
           error: {
-            message: `LOOM Context Engine blocked an unsafe request (${finalInputTokens} input tokens > safe ceiling ${safeInputTokens}).`,
+            message: `LOOM Context Engine blocked an unsafe request (${finalInputTokens} input + ${outputReserve} reserved output = ${projectedTotalTokens}; safe total ${safeTotalTokens}).`,
             type: "context_guard_error",
           },
         }));
       }
+      outgoing = Buffer.from(JSON.stringify(outgoingPayload));
     } catch (error) {
       accounting = {
         ...accounting,
         guardChecked: false,
         guardBlocked: guardFailClosed,
         safeInputTokens,
+        safeTotalTokens,
+        maxOutputTokens,
         guardError: error instanceof Error ? error.message : String(error),
       };
       if (guardFailClosed) {
@@ -198,12 +242,14 @@ const server = http.createServer(async (request, response) => {
         response.writeHead(503, { "content-type": "application/json" });
         return response.end(JSON.stringify({
           error: {
-            message: `LOOM Context Engine could not verify final input tokens; request not forwarded (${accounting.guardError}).`,
+            message: `LOOM Context Engine could not verify the safe token envelope; request not forwarded (${accounting.guardError}).`,
             type: "context_guard_error",
           },
         }));
       }
     }
+  } else if (outgoingPayload && outgoingPayload !== undefined) {
+    outgoing = Buffer.from(JSON.stringify(outgoingPayload));
   }
 
   const gatewayPreparationMs = Math.round((performance.now() - started) * 1000) / 1000;
@@ -211,4 +257,4 @@ const server = http.createServer(async (request, response) => {
   proxy(request, response, outgoing);
 });
 server.on("clientError", (_error, socket) => socket.end("HTTP/1.1 400 Bad Request\r\n\r\n"));
-server.listen({ host, port, exclusive: true }, () => console.log(`LOOM Context WebUI gateway listening on http://${host}:${port}; backend=http://${backendHost}:${backendPort}; ci=${coreStatus}; hard-guard=${hardGuardEnabled ? `on/${safeInputTokens}` : "off"}`));
+server.listen({ host, port, exclusive: true }, () => console.log(`LOOM Context WebUI gateway listening on http://${host}:${port}; backend=http://${backendHost}:${backendPort}; ci=${coreStatus}; hard-guard=${hardGuardEnabled ? `on/${safeInputTokens}+${maxOutputTokens}<=${safeTotalTokens}` : "off"}`));
