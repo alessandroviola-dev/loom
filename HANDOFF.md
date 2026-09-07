@@ -1,7 +1,7 @@
 # LOOM — Context Engine Handoff
 
 Last updated: 2026-09-07
-Status: **ACTIVE — CE-001 IMPLEMENTED / RUNTIME SMOKE PENDING**
+Status: **ACTIVE — CE-001 SMOKE GO / MULTI-TURN STRESS PENDING**
 Repository: `Ilcoach/loom`
 Branch: `research/context-engine-001`
 
@@ -13,16 +13,39 @@ This is not a restart of UOPT speed/model optimization.
 
 ## Current checkpoint
 
-CE-001 code is implemented on this branch, but **CE-001 is not GO yet**. The next required gate is the real local runtime smoke on the retained Mac/30B stack.
+CE-001 repository implementation and the first real local Mac/30B smoke have passed. **Do not proceed to CE-002 yet.** The next gate is the calibrated multi-turn RPC stress test.
 
-Repository-side pieces now present:
+Real smoke result on 2026-09-07:
+
+```text
+Pi                         0.85.1
+one-shot ForgeLoom         PASS
+live gateway               PASS
+model marker               PASS
+final input                926
+input ceiling              2800
+output reserve             256
+projected total            1214
+safe total                 3600
+headroom to safe           2386
+headroom to physical 4096  2882
+gateway prep               128.767 ms
+governor estimate          28 -> 28
+Pi threshold compactions   0
+Pi overflow compactions    0
+```
+
+The smoke exposed ~900 tokens of provider-visible fixed/template/tool overhead not represented in the governor's message-only estimate. Therefore the working thresholds were recalibrated from `2200/1700` to **`1600/1200`** before stress testing.
+
+Repository-side pieces:
 
 - `src/loom-context-engine/core.mjs` — request-local governor;
 - `src/loom-context-engine/index.ts` — Pi/ForgeLoom extension hooks;
 - `scripts/install-forge-loom.sh` — isolated installer + `ForgeLoom` launcher;
-- `scripts/loom-context-webui-gateway.mjs` — exact final token/output hard guard;
+- `scripts/loom-context-webui-gateway.mjs` — final token/output hard guard;
 - `scripts/verify-context-engine.sh` — static/invariant verification;
 - `scripts/smoke-context-engine.sh` — one-shot local runtime calibration/smoke;
+- `scripts/stress-context-engine.sh` — single-session multi-turn RPC stress;
 - `test/context-engine-core.test.mjs` — governor unit coverage.
 
 Required next operator sequence:
@@ -31,11 +54,10 @@ Required next operator sequence:
 git switch research/context-engine-001
 git pull --ff-only origin research/context-engine-001
 bash scripts/install-forge-loom.sh
-bash scripts/verify-context-engine.sh
-bash scripts/smoke-context-engine.sh
+bash scripts/stress-context-engine.sh
 ```
 
-Do not proceed to CE-002 until the smoke passes and its exact gateway accounting has been reviewed.
+Do not proceed to CE-002 until the stress passes and its gateway/governor accounting has been reviewed.
 
 ## Frozen retained product
 
@@ -94,9 +116,7 @@ The original Pi session remains intact because `context` event transforms are re
 
 4096 is the physical hard limit, not an operating target. CE-001 must enforce preventive backpressure before every LLM request and reduce the visible working set before Pi/Forge or llama.cpp reaches an overflow condition.
 
-### Initial CE-001 operating envelope
-
-These values are deliberately conservative starting points and must be calibrated from live accounting; they are not final performance targets:
+### Calibrated CE-001 operating envelope
 
 ```text
 physical context       4096
@@ -104,17 +124,32 @@ forbidden reserve       496
 safe total             3600
 final input ceiling    2800
 maximum output          800
-working high-water     2200   (conservative estimate, messages only)
-working target         1700   (after governor compaction)
+working high-water     1600   (message-only conservative estimate)
+working target         1200   (after governor compaction)
+measured fixed overhead ~900  (smoke observation, includes conservative counting path)
 ```
+
+The working high-water is intentionally below the final input ceiling by enough room to absorb the measured fixed provider/template/tool overhead before Layer B is needed.
 
 Hard invariant at the final gateway:
 
 ```text
-exact final input + reserved output <= 3600 < 4096
+final counted input + reserved output <= 3600 < 4096
 ```
 
-The gateway caps/injects the chat output limit to at most 800 for ForgeLoom and obtains exact final chat input tokens from llama.cpp `/v1/chat/completions/input_tokens`. If it cannot verify the envelope, it fails closed and does not forward the request.
+## Exact counting compatibility
+
+The retained patched llama.cpp runtime does **not** expose the newer `/v1/chat/completions/input_tokens` endpoint; the first guarded smoke correctly failed closed with HTTP 503 rather than forwarding an unverifiable request.
+
+CE-001 now uses this order:
+
+1. try `/v1/chat/completions/input_tokens` when available;
+2. on the retained legacy runtime, render with `/apply-template` and tokenize the rendered model input with `/tokenize`;
+3. verify that provider-visible tool schemas are represented in the rendered template when tools are present;
+4. add a conservative `32`-token legacy counting margin;
+5. fail closed if safe counting cannot be demonstrated.
+
+The fallback passed the real retained-runtime smoke.
 
 ## Fixed-overhead reduction
 
@@ -126,18 +161,18 @@ This does not modify normal Forge behavior.
 
 ## CE-001 scope
 
-Implement only the preventive governor:
+CE-001 implements only the preventive governor:
 
 1. separate opt-in LOOM extension;
 2. Pi `context` interception before each LLM call;
-3. conservative token accounting for the transform decision;
+3. conservative message-token estimate for the transform decision;
 4. whole-turn eviction of oldest history while retaining the newest active turn;
 5. deterministic compaction of oversized tool-result text inside the active turn only when whole-turn eviction is insufficient;
 6. minimal ForgeLoom-only system prompt to reduce fixed overhead;
-7. exact final request token count + output-reserve guard in the existing LOOM gateway;
+7. final request token count + output-reserve guard in the existing LOOM gateway;
 8. local JSONL accounting;
 9. dedicated `ForgeLoom` launcher/install path;
-10. frozen long-session validation workload.
+10. frozen multi-turn validation workload.
 
 No second LLM, embeddings, vector DB, new model-facing tools, durable task-state intelligence, BM25/FTS, or semantic retrieval in CE-001.
 
@@ -147,16 +182,16 @@ No second LLM, embeddings, vector DB, new model-facing tools, durable task-state
 
 Runs on Pi's `context` event before every LLM call and returns a bounded message list. It evicts whole old turns first; if the active turn itself is oversized it deterministically compacts large tool outputs/assistant narration without mutating the persistent session.
 
-### Layer B — exact gateway envelope guard
+### Layer B — final gateway envelope guard
 
 Runs on the final OpenAI-compatible chat payload after Pi/Forge has assembled provider material. It:
 
 - caps/reserves output;
-- obtains exact final input tokens from llama.cpp;
+- counts final model input using the supported exact/legacy-safe tokenizer path;
 - verifies the configured safe-total envelope;
 - refuses the request rather than forwarding an unsafe/unverifiable payload.
 
-Layer B is a last-resort invariant check, not the normal compaction mechanism.
+Layer B is a last-resort invariant check, not the normal compaction mechanism. A gateway block during the normal frozen workload is a CE-001 failure even though the physical 4096 invariant was protected.
 
 ## Pi native compaction interaction
 
@@ -166,11 +201,28 @@ Manual `/compact` remains available. Overflow compaction remains enabled only as
 
 A cancelled `session_before_compact(reason="threshold")` attempt is accounting evidence, not an actual compaction. Actual `session_compact` events are the failure signal for the acceptance gate.
 
-## CE-001 acceptance gate
+## Next gate — automated multi-turn RPC stress
 
-Use a frozen realistic coding workload that produces substantially more than 4096 cumulative session activity.
+`scripts/stress-context-engine.sh` runs one ForgeLoom process in Pi RPC mode and keeps a single in-memory session alive across multiple turns. Default stress is 12 controlled turns with enough inert payload for the **raw uncompressed session estimate to exceed 4096**, while the model-visible request is repeatedly repacked.
 
-Record at minimum:
+Stress PASS requires:
+
+- all RPC turns complete in the same session;
+- persistent message count continues growing;
+- raw session estimate exceeds 4096;
+- governor performs at least one real request-local compaction and drops old whole turns;
+- post-compaction estimate returns to <=1200 except an explicitly detected oversized active-turn case;
+- every final request remains <=2800 input and <=3600 projected total;
+- hard-guard blocks = 0;
+- actual Pi threshold compactions = 0;
+- Pi overflow compactions = 0;
+- session survives through the final turn.
+
+This test validates the core sliding-window invariant. It does **not** yet validate recovery of facts intentionally evicted from the visible window; that belongs to later archive/task-state/retrieval phases.
+
+## CE-001 final acceptance after stress
+
+After the synthetic stress passes, run a frozen realistic coding workload and record at minimum:
 
 - cumulative session activity;
 - visible messages/estimated tokens before and after governor;
@@ -178,8 +230,7 @@ Record at minimum:
 - exact final request input tokens;
 - reserved output and projected safe total;
 - gateway guard rejections;
-- Pi `session_before_compact` attempts/cancellations by reason;
-- actual Pi `session_compact` events by reason;
+- Pi compaction attempts/actual events;
 - session survival;
 - task completion/correctness;
 - RAM/swap;
@@ -188,8 +239,8 @@ Record at minimum:
 GO requires:
 
 - every forwarded request satisfies the configured safe-total envelope;
-- no gateway unsafe request is forwarded;
-- zero actual Pi threshold/overflow compactions during the frozen workload;
+- no gateway hard-guard blocks during normal operation;
+- zero actual Pi threshold/overflow compactions;
 - zero context-window session termination;
 - task completes correctly;
 - no material RAM/swap or throughput regression.
