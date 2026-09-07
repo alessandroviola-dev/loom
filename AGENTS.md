@@ -1,68 +1,63 @@
-# LOOM — Agent Protocol (Archived)
+# LOOM — Agent Protocol
 
-Version: 4.00
-Status: **PROJECT CLOSED / READ-ONLY BY DEFAULT**
+Version: 5.00
+Status: **ACTIVE — CONTEXT ENGINE RESEARCH ONLY**
 
-LOOM is no longer an active research project.
+The owner explicitly reopened LOOM on 2026-09-07 for one purpose: build a host-side Context Engine that lets the retained local 30B UNLOCKED model operate safely with a physical 4096-token context window over long Forge sessions.
 
-## Archive rule
+## Scope
 
-No agent, automation, or coding assistant should:
+Current research branch: `research/context-engine-001`.
 
-- start a new LOOM work package;
-- continue UOPT research;
-- mutate the retained production profile;
-- download/build replacement models;
-- change runtime patches;
-- commit or push new LOOM work;
+Allowed work is limited to the external LOOM Context Engine, its launcher/integration, tests, accounting, and documentation.
 
-unless the owner explicitly reopens the project.
-
-## Canonical final state
-
-Repository: `Ilcoach/loom`
-
-Final retained local product: **UNLOCKED UOPT-003 S40**.
-
-Operator commands:
-
-```text
-scripts/loom-deep use unlocked
-scripts/loom-deep start|stop|status|health|current
-```
-
-Retained artifacts:
+The retained model/runtime product remains frozen:
 
 - `models/loom-deep-30b-unlocked.gguf`
-  - SHA256 `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
-- `models/unlocked-expert-major-v1.bin`
-  - SHA256 `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`
-- `.loom/runtime/loom-uopt002/llama-server`
-  - SHA256 `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
+- UOPT-003 S40 profile
+- expert-major sidecar
+- patched llama-server runtime
+- physical `n_ctx = 4096`
 
-Default profile remains S40 / CPU-MoE / no-mmap / cache RAM 512 / `-ub 4`.
+Do not resume UOPT speed/quantization/speculation research, download/build replacement models, mutate runtime patches, or alter the retained production profile unless the owner explicitly authorizes it.
 
-## Final research verdicts
+## Architectural invariants
 
-- UOPT-001 — PARTIAL_GO
-- UOPT-002 — GO
-- UOPT-003 — GO / final retained production profile
-- UOPT-004 — NO_GO
-- UOPT-005 — NO_GO
-- UOPT-006 — NO_GO
+1. **Do not modify Forge.** `Ilcoach/forge-for-pi` remains the canonical general-purpose Forge.
+2. LOOM Context Engine is a separate extension owned by this repository and is opt-in only.
+3. Normal `Forge` behavior must remain unchanged. LOOM-specific behavior activates only through the dedicated `ForgeLoom` mode/launcher.
+4. In `ForgeLoom`, Forge Context Intelligence may be disabled for that process only so that a single component owns context transformation.
+5. The 30B physical context remains exactly **4096**. The engine must solve continuity through bounded working context, not by increasing `n_ctx`.
+6. **4096 is a forbidden operational boundary, not a target.** Preventive compaction/pruning must run before every LLM call and keep the visible context well below the physical limit.
+7. Everything removed from the model-visible context must remain in the original Pi/Forge session; later phases may add explicit durable evidence storage/recovery.
+8. CE-001 must stay deterministic and lightweight: no second LLM, embeddings, vector database, or new model-facing tools.
+9. Preserve Forge's four-tool surface: `read`, `bash`, `edit`, `write`.
+10. Make small reversible commits and record measured evidence before claiming a GO.
 
-UOPT-006 draftless speculative decoding produced no useful speculation:
+## CE-001 goal
 
-- `ngram-simple`: drafted `0`, accepted `0`, decode `+0.52%`
-- `ngram-mod`: drafted `0`, accepted `0`, decode `-0.45%`
+Implement and validate the preventive Context Governor only:
 
-No phase 2 and no UOPT-007 are authorized.
+- Pi `context` event interception before every model call;
+- bounded sliding-window view over the full session;
+- whole-turn eviction first, preserving current tool-call/result coherence;
+- deterministic compaction of oversized current-turn tool outputs only when necessary;
+- high-water trigger and lower post-compaction target;
+- exact final request token guard at the LOOM gateway using llama.cpp token counting;
+- local accounting/telemetry;
+- dedicated `ForgeLoom` launcher/profile that enables the engine without changing normal Forge.
 
-## Final decision rationale
+CE-001 is a GO only if a frozen long-running workload can exceed 4096 cumulative session tokens while:
 
-The project is closed because the 30B model's practical capability does not meet the intended workload requirements. Additional speed optimization would not address that limitation.
+- no request approaches/exceeds the configured safe ceiling;
+- Pi/Forge threshold or overflow compaction is never needed;
+- the session remains alive;
+- the task still completes correctly;
+- RAM/swap and throughput do not materially regress.
 
-## Git hygiene retained for any future reopen
+Do not add durable task state, BM25/FTS retrieval, semantic memory, or archive/recovery sophistication until CE-001 proves the governor itself.
+
+## Git hygiene
 
 Never commit:
 
@@ -75,4 +70,4 @@ Never commit:
 - secrets
 - unrelated untracked scripts
 
-If the project is ever explicitly reopened, read `HANDOFF.md`, `ROADMAP.md`, and `research/integration/loom-project-closure-20260906.md` first.
+Read `HANDOFF.md` before work. Treat older closure/UOPT documents as historical evidence, not as instructions to resume optimization.
