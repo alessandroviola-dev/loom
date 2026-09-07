@@ -2,6 +2,7 @@ const DEFAULT_HIGH_WATER_TOKENS = 1600;
 const DEFAULT_TARGET_TOKENS = 1200;
 const DEFAULT_TOOL_TEXT_CHARS = 1800;
 const DEFAULT_ASSISTANT_TEXT_CHARS = 900;
+const DEFAULT_TOOL_ARGUMENT_TEXT_CHARS = 480;
 
 function positiveInt(value, fallback) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
@@ -150,6 +151,105 @@ function compactAssistantNarration(message, maxChars) {
   return changed ? { message: { ...message, content }, changed: true } : { message, changed: false };
 }
 
+function compactArgumentValue(value, maxChars, label) {
+  if (typeof value === "string") {
+    const result = compactText(value, maxChars, label);
+    return { value: result.text, changed: result.changed };
+  }
+  if (Array.isArray(value)) {
+    let changed = false;
+    const next = value.map((item, index) => {
+      const result = compactArgumentValue(item, maxChars, `${label}[${index}]`);
+      changed ||= result.changed;
+      return result.value;
+    });
+    return { value: changed ? next : value, changed };
+  }
+  if (value && typeof value === "object") {
+    let changed = false;
+    const next = {};
+    for (const [key, item] of Object.entries(value)) {
+      const result = compactArgumentValue(item, maxChars, `${label}.${key}`);
+      changed ||= result.changed;
+      next[key] = result.value;
+    }
+    return { value: changed ? next : value, changed };
+  }
+  return { value, changed: false };
+}
+
+function compactToolCallArguments(message, maxChars, eligibleIds = null) {
+  if (message?.role !== "assistant" || !Array.isArray(message.content)) return { message, changed: false, partsChanged: 0 };
+  let changed = false;
+  let partsChanged = 0;
+  const content = message.content.map((part) => {
+    if (!part || typeof part !== "object" || part.type !== "toolCall") return part;
+    const id = String(part.id ?? "");
+    if (eligibleIds && !eligibleIds.has(id)) return part;
+    const result = compactArgumentValue(part.arguments, maxChars, `tool call ${part.name ?? "unknown"} arguments`);
+    if (!result.changed) return part;
+    changed = true;
+    partsChanged += 1;
+    return { ...part, arguments: result.value };
+  });
+  return changed ? { message: { ...message, content }, changed: true, partsChanged } : { message, changed: false, partsChanged: 0 };
+}
+
+function completedToolCallIds(messages) {
+  const ids = [];
+  const seen = new Set();
+  for (const message of messages) {
+    if (message?.role !== "toolResult") continue;
+    const id = String(message.toolCallId ?? "");
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
+function compactCompletedToolHistory(messages, options = {}) {
+  const protectedCount = Math.max(0, Number(options.protectedCount ?? 1));
+  const toolTextChars = positiveInt(options.toolTextChars, 320);
+  const toolArgumentChars = positiveInt(options.toolArgumentChars, 320);
+  const assistantTextChars = positiveInt(options.assistantTextChars, 260);
+  const completed = completedToolCallIds(messages);
+  const eligible = new Set(completed.slice(0, Math.max(0, completed.length - protectedCount)));
+  if (eligible.size === 0) {
+    return { messages, toolResultsCompacted: 0, assistantMessagesCompacted: 0, toolCallArgumentsCompacted: 0 };
+  }
+
+  let toolResultsCompacted = 0;
+  let assistantMessagesCompacted = 0;
+  let toolCallArgumentsCompacted = 0;
+  let next = messages.map((message) => {
+    if (message?.role === "toolResult" && eligible.has(String(message.toolCallId ?? ""))) {
+      const result = compactToolResult(message, toolTextChars);
+      if (result.changed) toolResultsCompacted += 1;
+      return result.message;
+    }
+    if (message?.role === "assistant" && Array.isArray(message.content)) {
+      const hasEligibleCall = message.content.some((part) => part?.type === "toolCall" && eligible.has(String(part.id ?? "")));
+      if (!hasEligibleCall) return message;
+      let updated = message;
+      const args = compactToolCallArguments(updated, toolArgumentChars, eligible);
+      if (args.changed) {
+        updated = args.message;
+        toolCallArgumentsCompacted += args.partsChanged;
+      }
+      const narration = compactAssistantNarration(updated, assistantTextChars);
+      if (narration.changed) {
+        updated = narration.message;
+        assistantMessagesCompacted += 1;
+      }
+      return updated;
+    }
+    return message;
+  });
+
+  return { messages: next, toolResultsCompacted, assistantMessagesCompacted, toolCallArgumentsCompacted };
+}
+
 function flatten(turns) {
   return turns.flatMap((turn) => turn);
 }
@@ -159,6 +259,7 @@ export function packMessages(messages, options = {}) {
   const targetTokens = Math.min(positiveInt(options.targetTokens, DEFAULT_TARGET_TOKENS), highWaterTokens);
   const toolTextChars = positiveInt(options.toolTextChars, DEFAULT_TOOL_TEXT_CHARS);
   const assistantTextChars = positiveInt(options.assistantTextChars, DEFAULT_ASSISTANT_TEXT_CHARS);
+  const toolArgumentTextChars = positiveInt(options.toolArgumentTextChars, DEFAULT_TOOL_ARGUMENT_TEXT_CHARS);
   const beforeTokens = estimateMessagesTokens(messages);
 
   if (beforeTokens <= highWaterTokens) {
@@ -174,6 +275,8 @@ export function packMessages(messages, options = {}) {
         turnsDropped: 0,
         toolResultsCompacted: 0,
         assistantMessagesCompacted: 0,
+        toolCallArgumentsCompacted: 0,
+        activeTurnEmergencyPasses: 0,
         targetMet: beforeTokens <= targetTokens,
         highWaterMet: true,
       },
@@ -184,6 +287,8 @@ export function packMessages(messages, options = {}) {
   let turnsDropped = 0;
   let toolResultsCompacted = 0;
   let assistantMessagesCompacted = 0;
+  let toolCallArgumentsCompacted = 0;
+  let activeTurnEmergencyPasses = 0;
 
   while (turns.length > 1 && estimateMessagesTokens(flatten(turns)) > targetTokens) {
     turns.shift();
@@ -219,6 +324,50 @@ export function packMessages(messages, options = {}) {
     }
   }
 
+  if (estimateMessagesTokens(packed) > targetTokens) {
+    for (let index = 0; index < packed.length; index += 1) {
+      if (estimateMessagesTokens(packed) <= targetTokens) break;
+      const result = compactToolCallArguments(packed[index], toolArgumentTextChars);
+      if (result.changed) {
+        packed = packed.map((message, position) => (position === index ? result.message : message));
+        toolCallArgumentsCompacted += result.partsChanged;
+      }
+    }
+  }
+
+  // Real coding turns can contain several completed read/edit/bash exchanges.
+  // Preserve the newest exchange first, but compact older completed call/result
+  // pairs together so provider sequencing remains coherent.
+  if (estimateMessagesTokens(packed) > targetTokens) {
+    const result = compactCompletedToolHistory(packed, {
+      protectedCount: 1,
+      toolTextChars: 360,
+      toolArgumentChars: 300,
+      assistantTextChars: 260,
+    });
+    packed = result.messages;
+    toolResultsCompacted += result.toolResultsCompacted;
+    assistantMessagesCompacted += result.assistantMessagesCompacted;
+    toolCallArgumentsCompacted += result.toolCallArgumentsCompacted;
+    activeTurnEmergencyPasses += 1;
+  }
+
+  // If the active turn is still too large, compact every completed exchange more
+  // aggressively. The current user request is never truncated here.
+  if (estimateMessagesTokens(packed) > targetTokens) {
+    const result = compactCompletedToolHistory(packed, {
+      protectedCount: 0,
+      toolTextChars: 180,
+      toolArgumentChars: 160,
+      assistantTextChars: 160,
+    });
+    packed = result.messages;
+    toolResultsCompacted += result.toolResultsCompacted;
+    assistantMessagesCompacted += result.assistantMessagesCompacted;
+    toolCallArgumentsCompacted += result.toolCallArgumentsCompacted;
+    activeTurnEmergencyPasses += 1;
+  }
+
   const afterTokens = estimateMessagesTokens(packed);
   return {
     messages: packed,
@@ -232,6 +381,8 @@ export function packMessages(messages, options = {}) {
       turnsDropped,
       toolResultsCompacted,
       assistantMessagesCompacted,
+      toolCallArgumentsCompacted,
+      activeTurnEmergencyPasses,
       targetMet: afterTokens <= targetTokens,
       highWaterMet: afterTokens <= highWaterTokens,
     },
