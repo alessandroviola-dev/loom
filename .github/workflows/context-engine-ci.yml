@@ -33,6 +33,7 @@ jobs:
           bash -n scripts/smoke-context-engine.sh
           bash -n scripts/stress-context-engine.sh
           bash -n scripts/realistic-context-engine-benchmark.sh
+          bash -n scripts/live-tool-heavy-context-engine.sh
       - name: Governor tests
         run: node --test test/context-engine-core.test.mjs
       - name: Repository invariants
