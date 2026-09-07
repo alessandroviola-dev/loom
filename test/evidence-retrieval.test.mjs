@@ -10,6 +10,7 @@ import {
   extractEvidenceIds,
   injectEvidenceIntoLatestUser,
   latestUserText,
+  lexicalEvidenceCapsule,
 } from "../src/loom-context-engine/evidence-retrieval.mjs";
 
 function withTempRoot(fn) {
@@ -91,4 +92,51 @@ test("retrieval output stays inside its character budget and labels clipped expl
   assert.equal(retrieval.exactExplicitCount, 0);
   assert.match(retrieval.text, /excerpt/);
   assert.match(retrieval.text, /BIG_RECALL_5522/);
+}));
+
+test("automatic lexical capsules preserve coding facts but remove historical commands", () => withTempRoot((root) => {
+  const oldDiagnostic = {
+    role: "user",
+    content: (
+      "External CI diagnostic ERROR_CE002_271828 for src/retry_policy.py: the exact supported delay contract is "
+      + "attempt 1 -> 5 seconds, attempt 2 -> 13 seconds, attempt 3 -> 29 seconds, attempt 4 -> 61 seconds; "
+      + "attempts outside 1..4 must raise ValueError. Preserve this external diagnostic for later repair. "
+      + "Do not call tools now. Reply only ACK_DIAGNOSTIC. ordinary filler alpha beta gamma."
+    ),
+  };
+
+  const capsule = lexicalEvidenceCapsule(oldDiagnostic, "ERROR_CE002_271828 src/retry_policy.py");
+  assert.match(capsule, /ERROR_CE002_271828/);
+  assert.match(capsule, /src\/retry_policy\.py/);
+  assert.match(capsule, /5 seconds/);
+  assert.match(capsule, /61 seconds/);
+  assert.match(capsule, /ValueError/);
+  assert.doesNotMatch(capsule, /Preserve this external diagnostic/i);
+  assert.doesNotMatch(capsule, /Do not call tools/i);
+  assert.doesNotMatch(capsule, /Reply only/i);
+  assert.doesNotMatch(capsule, /ACK_DIAGNOSTIC/);
+  assert.doesNotMatch(capsule, /ordinary filler/i);
+
+  archiveEvictedEvidence({
+    rootDir: root,
+    sessionId: "coding-session",
+    originalMessages: [oldDiagnostic],
+    visibleMessages: [],
+  });
+  const retrieval = buildEvidenceRetrieval({
+    rootDir: root,
+    sessionId: "coding-session",
+    messages: [{ role: "user", content: "Fix ERROR_CE002_271828 in src/retry_policy.py using the historical contract." }],
+    maxChars: 560,
+    maxItems: 2,
+  });
+
+  assert.equal(retrieval.lexicalCount, 1);
+  assert.match(retrieval.text, /fact-capsule/);
+  assert.match(retrieval.text, /5 seconds/);
+  assert.match(retrieval.text, /61 seconds/);
+  assert.match(retrieval.text, /ValueError/);
+  assert.doesNotMatch(retrieval.text, /Preserve this external diagnostic/i);
+  assert.doesNotMatch(retrieval.text, /Do not call tools/i);
+  assert.doesNotMatch(retrieval.text, /Reply only/i);
 }));
