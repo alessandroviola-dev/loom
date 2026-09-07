@@ -24,6 +24,7 @@ jobs:
         run: |
           node --check src/loom-context-engine/core.mjs
           node --check src/loom-context-engine/evidence-archive.mjs
+          node --check src/loom-context-engine/evidence-retrieval.mjs
           node --check scripts/loom-context-webui-gateway.mjs
           node --check scripts/replay-context-engine-rpc.mjs
           node --check scripts/loom-context-evidence.mjs
@@ -83,5 +84,7 @@ jobs:
         run: node --test test/context-engine-core.test.mjs
       - name: Evidence archive tests
         run: node --test test/evidence-archive.test.mjs
+      - name: Evidence retrieval tests
+        run: node --test test/evidence-retrieval.test.mjs
       - name: Repository invariants
         run: bash scripts/verify-context-engine.sh
