@@ -1,7 +1,7 @@
 # LOOM — Context Engine Handoff
 
 Last updated: 2026-09-07
-Status: **ACTIVE — CE-002 PHASE 1 ARCHIVE PASS / PHASE 2 BOUNDED RETRIEVAL LIVE GATE PENDING**
+Status: **ACTIVE — CE-002 PHASE 1 ARCHIVE PASS / PHASE 2 RETRIEVAL PASS / REALISTIC CODING GATE PENDING**
 Repository: `Ilcoach/loom`
 Branch: `research/context-engine-002`
 
@@ -10,7 +10,7 @@ CE-001 rollback/reference branch: `research/context-engine-001`
 
 ## Decision
 
-CE-001 is frozen and remains **FINAL GO / CLOSED**. CE-002 is a separate change set layered on top of the accepted sliding-window governor.
+CE-001 is frozen and remains **FINAL GO / CLOSED**. CE-002 is a separate layer on top of the accepted sliding-window governor.
 
 Operator modes remain:
 
@@ -153,9 +153,9 @@ prompt chars 1205
 
 This closes CE-002 Phase 1.
 
-## CE-002 Phase 2 — bounded request-local retrieval — IMPLEMENTED / LIVE GATE PENDING
+## CE-002 Phase 2 — bounded request-local retrieval — PASS
 
-New module:
+Module:
 
 `src/loom-context-engine/evidence-retrieval.mjs`
 
@@ -169,7 +169,7 @@ If the current user request contains a valid `ev1-<sha256>` ID, CE-002 resolves 
 
 Automatic lookup is scoped to the **current Pi/Forge session only**. It does not search other sessions automatically.
 
-The first lexical gate only uses structurally distinctive anchors such as:
+The lexical gate uses only structurally distinctive anchors such as:
 
 ```text
 ERROR_8472
@@ -178,7 +178,7 @@ path/to/file.py:41
 CE002_REUSE_KEY_314159
 ```
 
-Generic prose does not trigger automatic retrieval. The actual search query is also reduced to those distinctive anchors so common words cannot dominate ranking.
+Generic prose does not trigger automatic retrieval. The actual search query is reduced to those distinctive anchors so common words cannot dominate ranking.
 
 Cross-session evidence can still be addressed explicitly by a known `ev1-...` ID.
 
@@ -201,13 +201,43 @@ After injection CE-002 repacks again using:
 high-water = target = 1200 estimated message tokens
 ```
 
-Therefore old visible turns may be sacrificed to make room for relevant retrieved evidence. Retrieval is accepted only if the resulting provider-visible message history remains `<=1200` estimated tokens. If the active request plus evidence cannot fit, retrieval is skipped and the original CE-001 packed request proceeds unchanged.
+Old visible turns may be sacrificed to make room for relevant retrieved evidence. Retrieval is accepted only if the resulting provider-visible message history remains `<=1200` estimated tokens. If the active request plus evidence cannot fit, retrieval is skipped and the original CE-001 packed request proceeds unchanged.
 
 The request-local retrieval prefix is removed before archive-diff accounting, so the current user request is not falsely archived merely because CE-002 decorated it for one provider call.
 
-### Accounting
+### Phase 2 live evidence — PASS
 
-`context_governor` now records:
+Real retained Mac/30B result on 2026-09-07:
+
+```text
+provider calls guarded       4
+retrieval applications       2
+final lexical evidence       ev1-2814824cd285bc80ecf58cc8fffab99c95e22d9d476a93713af79b1992e5c5f2
+retrieval chars             426
+retrieval visible tokens    862
+max exact final input      1575
+max projected total        1863
+hard-guard blocks             0
+Pi threshold compactions     0
+Pi overflow events           0
+archive integrity         PASS
+model archive recall      PASS
+```
+
+Synthetic key/value test:
+
+```text
+key       CE002_REUSE_KEY_314159
+secret    ORCHID_7391
+```
+
+The secret was absent from the final user prompt. Accounting proved that CE-002 injected archived evidence into the request-local view, and the model returned the correct secret without a fifth tool.
+
+This closes the basic Phase 2 archive-to-model retrieval gate.
+
+## Phase 2 accounting
+
+`context_governor` records:
 
 ```text
 evidenceRetrievalApplied
@@ -225,38 +255,36 @@ Successful injection also emits an `evidence_retrieval` accounting row.
 
 Errors are recorded as `evidence_retrieval_error` and do not break the model request.
 
-## Phase 2 offline/static gates
+## Current acceptance gate — realistic coding retrieval
 
-Covered by CI:
+New harness:
 
-- stable explicit evidence-ID extraction;
-- exact explicit recovery when it fits;
-- bounded excerpt labelling when it does not fit;
-- request-local injection does not mutate the original message array;
-- lexical retrieval is session-scoped;
-- generic prose does not trigger automatic retrieval;
-- retrieval character budget is enforced;
-- CE-001 governor tests remain passing;
-- CE-002 archive integrity/corruption tests remain passing;
-- TypeScript/Node/shell and embedded live-harness syntax checks.
+`scripts/live-coding-evidence-retrieval.sh`
 
-## Immediate live Phase 2 gate
+This is intentionally much smaller than the frozen 6-task coding benchmark.
 
-`scripts/live-evidence-retrieval.sh` performs four short provider turns in one isolated ForgeLoom session:
+It creates an isolated workspace with `src/retry_policy.py`. The exact external retry-delay contract is **not** stored in the workspace.
 
-1. store a unique key + secret in an early long turn;
-2. add two ordinary long turns until the first evidence is evicted/archived;
-3. ask for the secret using only the old key;
-4. require CE-002 accounting to prove lexical evidence injection occurred;
-5. require the model to return the secret that is not present in the final user prompt.
+Flow:
+
+1. an early external CI diagnostic gives `ERROR_CE002_271828`, target path `src/retry_policy.py`, exact delays `5, 13, 29, 61`, and invalid-attempt behavior;
+2. unrelated long turns force that diagnostic out of the normal CE-001 visible window and into the CE-002 archive;
+3. the final request says only to fix `ERROR_CE002_271828` in `src/retry_policy.py` using the historical external-CI contract;
+4. CE-002 must retrieve the old diagnostic by the error/path anchors;
+5. ForgeLoom must inspect/edit the file using its ordinary four-tool interface;
+6. a host-side hidden verifier checks exact outputs `[5, 13, 29, 61]` and `ValueError` outside attempts 1..4;
+7. only `src/retry_policy.py` may remain modified;
+8. accounting must prove that one of the final retrieval evidence IDs points to the archived external diagnostic;
+9. CE-001 safety invariants remain mandatory.
 
 Acceptance:
 
 ```text
-model recovered old secret             PASS
-lexical retrieval applied              >=1
-retrieval final visible estimate       <=1200
-max exact final input                   <=2800
+hidden coding contract                  PASS
+only target file changed                PASS
+retrieval evidence matches old CI       PASS
+retrieval final visible estimate        <=1200
+max exact final input                    <=2800
 max projected total                     <=3600
 hard-guard blocks                       0
 Pi threshold compactions                0
@@ -264,7 +292,7 @@ Pi overflow events                      0
 archive integrity verify                PASS
 ```
 
-A model answer alone is insufficient: accounting must prove retrieval actually occurred.
+If this passes, CE-002 will have demonstrated not only synthetic recall but retrieval applied to a real edit/verification workflow.
 
 ## Frozen retained product
 
@@ -286,15 +314,16 @@ Do not change during CE-002:
 - `src/loom-context-engine/evidence-retrieval.mjs` — bounded request-local retrieval
 - `scripts/loom-context-evidence.mjs` — local archive CLI
 - `scripts/live-evidence-archive.sh` — Phase 1 live acceptance
-- `scripts/live-evidence-retrieval.sh` — Phase 2 live acceptance
+- `scripts/live-evidence-retrieval.sh` — Phase 2 synthetic live acceptance
+- `scripts/live-coding-evidence-retrieval.sh` — realistic coding retrieval acceptance
 - `test/context-engine-core.test.mjs`
 - `test/evidence-archive.test.mjs`
 - `test/evidence-retrieval.test.mjs`
 - `test/evidence-retrieval-trigger.test.mjs`
 
-## Explicitly deferred after the Phase 2 gate
+## Deferred until realistic coding retrieval passes
 
-Do not add these before the live retrieval result justifies the next increment:
+Do not add these before the current live gate justifies the next increment:
 
 - SQLite FTS/BM25 index;
 - durable compact task-state records;
