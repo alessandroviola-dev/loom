@@ -40,6 +40,7 @@ jobs:
           bash -n scripts/resource-context-engine.sh
           bash -n scripts/live-evidence-archive.sh
           bash -n scripts/live-evidence-retrieval.sh
+          bash -n scripts/live-coding-evidence-retrieval.sh
       - name: Embedded live harness syntax
         run: |
           python3 - <<'PY'
@@ -84,6 +85,7 @@ jobs:
 
           check("scripts/live-evidence-archive.sh")
           check("scripts/live-evidence-retrieval.sh")
+          check("scripts/live-coding-evidence-retrieval.sh")
           PY
       - name: Governor tests
         run: node --test test/context-engine-core.test.mjs
