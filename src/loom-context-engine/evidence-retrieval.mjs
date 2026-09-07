@@ -38,7 +38,10 @@ function hasDistinctiveLexicalAnchor(text) {
     .split(/\s+/)
     .map((token) => token.replace(/^[^A-Za-z0-9_./:-]+|[^A-Za-z0-9_./:-]+$/g, ""))
     .filter(Boolean);
-  return tokens.some((token) => token.length >= 8 || /[_./:\d]/.test(token));
+  // Phase-2 retrieval is deliberately conservative: generic prose must not
+  // trigger memory injection. Paths, identifiers, error codes, hashes and
+  // numbered markers are distinctive enough for the first lexical gate.
+  return tokens.some((token) => /[_./:\d]/.test(token));
 }
 
 function appendBounded(lines, line, budget) {
