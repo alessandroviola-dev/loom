@@ -2,10 +2,11 @@
 /**
  * LOOM loopback-only llama.cpp WebUI/API gateway.
  *
- * CE-001 adds an exact final chat-input token guard plus a bounded output
- * reserve so the operating envelope stays deliberately below physical n_ctx.
- * The historical Pi2 Context Intelligence import remains only for rollback and
- * is disabled by the ForgeLoom launcher.
+ * CE-001 enforces a bounded final token envelope before forwarding chat
+ * requests to the retained n_ctx=4096 model. Modern llama.cpp builds expose a
+ * direct input-token endpoint. Older retained LOOM builds fall back to the
+ * server's own chat-template renderer plus tokenizer, with conservative guard
+ * margin and tool-schema verification.
  */
 import http from "node:http";
 import { appendFileSync, mkdirSync } from "node:fs";
@@ -16,29 +17,37 @@ import { pathToFileURL } from "node:url";
 const env = process.env;
 const args = new Map();
 for (let index = 2; index < process.argv.length; index += 2) {
-  if (!process.argv[index]?.startsWith("--") || process.argv[index + 1] === undefined) throw new Error("usage: loom-context-webui-gateway.mjs --host 127.0.0.1 --port PORT --backend-host 127.0.0.1 --backend-port PORT");
+  if (!process.argv[index]?.startsWith("--") || process.argv[index + 1] === undefined) {
+    throw new Error("usage: loom-context-webui-gateway.mjs --host 127.0.0.1 --port PORT --backend-host 127.0.0.1 --backend-port PORT");
+  }
   args.set(process.argv[index].slice(2), process.argv[index + 1]);
 }
+
 const host = args.get("host") ?? "127.0.0.1";
 const port = Number(args.get("port"));
 const backendHost = args.get("backend-host") ?? "127.0.0.1";
 const backendPort = Number(args.get("backend-port"));
-if (host !== "127.0.0.1" || backendHost !== "127.0.0.1" || !Number.isInteger(port) || !Number.isInteger(backendPort) || port < 1 || backendPort < 1) throw new Error("gateway and backend must use valid 127.0.0.1 ports");
+if (host !== "127.0.0.1" || backendHost !== "127.0.0.1" || !Number.isInteger(port) || !Number.isInteger(backendPort) || port < 1 || backendPort < 1) {
+  throw new Error("gateway and backend must use valid 127.0.0.1 ports");
+}
 
 const enabled = (value) => !["0", "false", "off", "no"].includes(String(value ?? "1").trim().toLowerCase());
 const positiveInt = (value, fallback) => {
   const parsed = Number.parseInt(String(value ?? ""), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
+
 const ciEnabled = enabled(env.LOOM_CONTEXT_WEBUI_CI) && enabled(env.PI2_CONTEXT_INTELLIGENCE);
 const hardGuardEnabled = enabled(env.LOOM_CONTEXT_WEBUI_HARD_GUARD ?? "0");
 const guardFailClosed = enabled(env.LOOM_CONTEXT_WEBUI_GUARD_FAIL_CLOSED ?? "1");
 const safeTotalTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_SAFE_TOTAL_TOKENS, 3600);
 const safeInputTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS, 2800);
 const maxOutputTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS, 800);
+const legacyCountMarginTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_LEGACY_COUNT_MARGIN_TOKENS, 32);
 if (safeTotalTokens >= 4096 || safeInputTokens >= safeTotalTokens || maxOutputTokens >= safeTotalTokens || safeInputTokens + maxOutputTokens > safeTotalTokens) {
   throw new Error("invalid CE-001 token envelope: require safeInput + maxOutput <= safeTotal < 4096");
 }
+
 const runtimeDir = env.LOOM_CONTEXT_WEBUI_RUNTIME_DIR ?? join(env.PI_CODING_AGENT_DIR ?? join(env.HOME ?? homedir(), ".pi", "agent"), "context-intelligence", "loom-webui");
 const accountingPath = join(runtimeDir, "accounting.jsonl");
 const corePath = env.LOOM_PI2_CONTEXT_CORE ?? join(env.HOME ?? homedir(), ".pi", "agent", "extensions", "pi-minimal-plus", "pi2-context-intelligence-core.mjs");
@@ -60,7 +69,9 @@ function textOf(content) {
   return content.filter((part) => part?.type === "text" && typeof part.text === "string").map((part) => part.text).join("\n");
 }
 function lastUserText(messages) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) if (messages[index]?.role === "user") return textOf(messages[index].content);
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "user") return textOf(messages[index].content);
+  }
   return "";
 }
 function record(row) {
@@ -68,7 +79,9 @@ function record(row) {
   try {
     mkdirSync(runtimeDir, { recursive: true, mode: 0o700 });
     appendFileSync(accountingPath, `${JSON.stringify(row)}\n`, { encoding: "utf8", mode: 0o600 });
-  } catch { /* Accounting is optional and must never affect the client request. */ }
+  } catch {
+    // Accounting is optional and must never affect the client request.
+  }
 }
 function relevant(pathname) {
   return pathname === "/v1/chat/completions" || pathname === "/chat/completions" || pathname === "/v1/completions" || pathname === "/completion";
@@ -94,8 +107,17 @@ function proxy(request, response, body) {
 }
 function readBody(request, limit = 16 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
-    const chunks = []; let size = 0;
-    request.on("data", (chunk) => { size += chunk.length; if (size > limit) { reject(new Error("request body exceeds 16 MiB gateway limit")); request.destroy(); } else chunks.push(chunk); });
+    const chunks = [];
+    let size = 0;
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(new Error("request body exceeds 16 MiB gateway limit"));
+        request.destroy();
+      } else {
+        chunks.push(chunk);
+      }
+    });
     request.on("end", () => resolve(Buffer.concat(chunks)));
     request.on("error", reject);
   });
@@ -103,38 +125,90 @@ function readBody(request, limit = 16 * 1024 * 1024) {
 function postBackendJson(pathname, payload, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const body = Buffer.from(JSON.stringify(payload));
-    const request = http.request({
+    const upstream = http.request({
       host: backendHost,
       port: backendPort,
       method: "POST",
       path: pathname,
-      headers: {
-        "content-type": "application/json",
-        "content-length": String(body.length),
-      },
+      headers: { "content-type": "application/json", "content-length": String(body.length) },
     }, (response) => {
       const chunks = [];
       response.on("data", (chunk) => chunks.push(chunk));
       response.on("end", () => {
         const raw = Buffer.concat(chunks).toString("utf8");
-        if ((response.statusCode ?? 500) < 200 || (response.statusCode ?? 500) >= 300) {
-          reject(new Error(`backend token count HTTP ${response.statusCode ?? 500}: ${raw.slice(0, 300)}`));
+        const status = response.statusCode ?? 500;
+        if (status < 200 || status >= 300) {
+          const error = new Error(`backend token count HTTP ${status}: ${raw.slice(0, 300)}`);
+          error.statusCode = status;
+          reject(error);
           return;
         }
-        try { resolve(JSON.parse(raw)); } catch { reject(new Error("backend token count returned invalid JSON")); }
+        try {
+          resolve(JSON.parse(raw));
+        } catch {
+          reject(new Error("backend token count returned invalid JSON"));
+        }
       });
     });
-    request.setTimeout(timeoutMs, () => request.destroy(new Error("backend token count timed out")));
-    request.on("error", reject);
-    request.end(body);
+    upstream.setTimeout(timeoutMs, () => upstream.destroy(new Error("backend token count timed out")));
+    upstream.on("error", reject);
+    upstream.end(body);
   });
 }
-async function exactChatInputTokens(payload) {
-  const counted = await postBackendJson("/v1/chat/completions/input_tokens", payload);
-  const tokens = Number(counted?.input_tokens);
-  if (!Number.isInteger(tokens) || tokens < 0) throw new Error("backend token count response has no valid input_tokens");
-  return tokens;
+
+function templatePayloadFromChat(payload, includeTools) {
+  const result = {
+    messages: payload.messages,
+    add_generation_prompt: true,
+  };
+  if (includeTools && Array.isArray(payload.tools) && payload.tools.length > 0) result.tools = payload.tools;
+  if (includeTools && payload.tool_choice !== undefined) result.tool_choice = payload.tool_choice;
+  if (payload.chat_template_kwargs && typeof payload.chat_template_kwargs === "object") result.chat_template_kwargs = payload.chat_template_kwargs;
+  return result;
 }
+function toolNames(payload) {
+  if (!Array.isArray(payload?.tools)) return [];
+  return payload.tools
+    .map((tool) => tool?.function?.name)
+    .filter((name) => typeof name === "string" && name.length > 0);
+}
+async function legacyTemplateTokenCount(payload) {
+  const withTools = await postBackendJson("/apply-template", templatePayloadFromChat(payload, true));
+  if (typeof withTools?.prompt !== "string") throw new Error("legacy /apply-template response has no prompt");
+
+  const names = toolNames(payload);
+  if (names.length > 0) {
+    const withoutTools = await postBackendJson("/apply-template", templatePayloadFromChat(payload, false));
+    if (typeof withoutTools?.prompt !== "string") throw new Error("legacy /apply-template tool probe has no prompt");
+    if (withoutTools.prompt === withTools.prompt) throw new Error("legacy /apply-template did not incorporate tool schemas");
+    const missing = names.filter((name) => !withTools.prompt.includes(name));
+    if (missing.length > 0) throw new Error(`legacy /apply-template omitted tool names: ${missing.join(", ")}`);
+  }
+
+  const tokenized = await postBackendJson("/tokenize", {
+    content: withTools.prompt,
+    add_special: false,
+    parse_special: true,
+  });
+  if (!Array.isArray(tokenized?.tokens)) throw new Error("legacy /tokenize response has no tokens array");
+  return {
+    tokens: tokenized.tokens.length,
+    guardMarginTokens: legacyCountMarginTokens,
+    method: "apply-template+tokenize",
+  };
+}
+async function exactChatInputTokens(payload) {
+  try {
+    const counted = await postBackendJson("/v1/chat/completions/input_tokens", payload);
+    const tokens = Number(counted?.input_tokens);
+    if (!Number.isInteger(tokens) || tokens < 0) throw new Error("backend token count response has no valid input_tokens");
+    return { tokens, guardMarginTokens: 0, method: "chat-input-tokens" };
+  } catch (error) {
+    if (error?.statusCode !== 404) throw error;
+    return legacyTemplateTokenCount(payload);
+  }
+}
+
 function boundedPositiveInt(value, fallback, ceiling) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
@@ -146,14 +220,11 @@ function capChatOutput(payload) {
   const hasMaxCompletionTokens = Object.prototype.hasOwnProperty.call(next, "max_completion_tokens");
   const requestedMaxTokens = hasMaxTokens ? boundedPositiveInt(next.max_tokens, maxOutputTokens, maxOutputTokens) : undefined;
   const requestedMaxCompletionTokens = hasMaxCompletionTokens ? boundedPositiveInt(next.max_completion_tokens, maxOutputTokens, maxOutputTokens) : undefined;
-
   if (hasMaxTokens) next.max_tokens = requestedMaxTokens;
   if (hasMaxCompletionTokens) next.max_completion_tokens = requestedMaxCompletionTokens;
   if (!hasMaxTokens && !hasMaxCompletionTokens) next.max_tokens = maxOutputTokens;
-
   const reserves = [requestedMaxTokens, requestedMaxCompletionTokens].filter((value) => Number.isInteger(value));
-  const outputReserve = reserves.length > 0 ? Math.max(...reserves) : maxOutputTokens;
-  return { payload: next, outputReserve };
+  return { payload: next, outputReserve: reserves.length > 0 ? Math.max(...reserves) : maxOutputTokens };
 }
 
 const server = http.createServer(async (request, response) => {
@@ -166,6 +237,7 @@ const server = http.createServer(async (request, response) => {
       safeTotalTokens,
       safeInputTokens,
       maxOutputTokens,
+      legacyCountMarginTokens,
       physicalContextTokens: 4096,
       forbiddenReserveTokens: 4096 - safeTotalTokens,
       guardFailClosed,
@@ -173,8 +245,15 @@ const server = http.createServer(async (request, response) => {
     }));
   }
   if (request.method !== "POST" || !relevant(pathname)) return proxy(request, response);
+
   let original;
-  try { original = await readBody(request); } catch (error) { response.writeHead(413, { "content-type": "application/json" }); return response.end(JSON.stringify({ error: { message: String(error.message ?? error), type: "invalid_request_error" } })); }
+  try {
+    original = await readBody(request);
+  } catch (error) {
+    response.writeHead(413, { "content-type": "application/json" });
+    return response.end(JSON.stringify({ error: { message: String(error.message ?? error), type: "invalid_request_error" } }));
+  }
+
   let outgoing = original;
   let outgoingPayload;
   let accounting = { processed: false, bypassed: true, reason: "non-json-or-non-chat", tokensBefore: 0, tokensAfter: 0, tokensRemoved: 0, wallDurationMs: 0 };
@@ -186,8 +265,11 @@ const server = http.createServer(async (request, response) => {
       const packed = packPayload(payload, { runtimeDir, query: lastUserText(payload.messages) });
       accounting = packed.accounting;
       outgoingPayload = packed.payload;
-    } else if (ciEnabled && !packPayload) accounting.reason = "canonical-core-unavailable";
-    else if (Array.isArray(payload?.messages)) accounting.reason = "ci-disabled";
+    } else if (ciEnabled && !packPayload) {
+      accounting.reason = "canonical-core-unavailable";
+    } else if (Array.isArray(payload?.messages)) {
+      accounting.reason = "ci-disabled";
+    }
   } catch {
     accounting = { ...accounting, reason: "invalid-json-fail-open" };
   }
@@ -199,14 +281,20 @@ const server = http.createServer(async (request, response) => {
       const outputReserve = bounded.outputReserve;
       const requestInputCeiling = Math.min(safeInputTokens, safeTotalTokens - outputReserve);
       if (requestInputCeiling <= 0) throw new Error("configured output reserve leaves no safe input budget");
-      const finalInputTokens = await exactChatInputTokens(outgoingPayload);
-      const projectedTotalTokens = finalInputTokens + outputReserve;
-      const blocked = finalInputTokens > requestInputCeiling || projectedTotalTokens > safeTotalTokens;
+
+      const counted = await exactChatInputTokens(outgoingPayload);
+      const finalInputTokens = counted.tokens;
+      const guardInputTokens = finalInputTokens + counted.guardMarginTokens;
+      const projectedTotalTokens = guardInputTokens + outputReserve;
+      const blocked = guardInputTokens > requestInputCeiling || projectedTotalTokens > safeTotalTokens;
       accounting = {
         ...accounting,
         guardChecked: true,
         guardBlocked: blocked,
+        tokenCountMethod: counted.method,
+        tokenCountMargin: counted.guardMarginTokens,
         finalInputTokens,
+        guardInputTokens,
         outputReserve,
         projectedTotalTokens,
         requestInputCeiling,
@@ -214,13 +302,14 @@ const server = http.createServer(async (request, response) => {
         safeTotalTokens,
         maxOutputTokens,
       };
+
       if (blocked) {
         const gatewayPreparationMs = Math.round((performance.now() - started) * 1000) / 1000;
         record({ event: "hard_guard_block", path: pathname, ciEnabled: Boolean(packPayload), coreStatus, gatewayPreparationMs, ...accounting });
         response.writeHead(413, { "content-type": "application/json" });
         return response.end(JSON.stringify({
           error: {
-            message: `LOOM Context Engine blocked an unsafe request (${finalInputTokens} input + ${outputReserve} reserved output = ${projectedTotalTokens}; safe total ${safeTotalTokens}).`,
+            message: `LOOM Context Engine blocked an unsafe request (${finalInputTokens} counted input + ${counted.guardMarginTokens} guard margin + ${outputReserve} reserved output = ${projectedTotalTokens}; safe total ${safeTotalTokens}).`,
             type: "context_guard_error",
           },
         }));
@@ -248,7 +337,7 @@ const server = http.createServer(async (request, response) => {
         }));
       }
     }
-  } else if (outgoingPayload && outgoingPayload !== undefined) {
+  } else if (outgoingPayload !== undefined) {
     outgoing = Buffer.from(JSON.stringify(outgoingPayload));
   }
 
@@ -256,5 +345,8 @@ const server = http.createServer(async (request, response) => {
   record({ event: "pack", path: pathname, ciEnabled: Boolean(packPayload), coreStatus, hardGuardEnabled, gatewayPreparationMs, ...accounting });
   proxy(request, response, outgoing);
 });
+
 server.on("clientError", (_error, socket) => socket.end("HTTP/1.1 400 Bad Request\r\n\r\n"));
-server.listen({ host, port, exclusive: true }, () => console.log(`LOOM Context WebUI gateway listening on http://${host}:${port}; backend=http://${backendHost}:${backendPort}; ci=${coreStatus}; hard-guard=${hardGuardEnabled ? `on/${safeInputTokens}+${maxOutputTokens}<=${safeTotalTokens}` : "off"}`));
+server.listen({ host, port, exclusive: true }, () => {
+  console.log(`LOOM Context WebUI gateway listening on http://${host}:${port}; backend=http://${backendHost}:${backendPort}; ci=${coreStatus}; hard-guard=${hardGuardEnabled ? `on/${safeInputTokens}+${maxOutputTokens}<=${safeTotalTokens}` : "off"}`);
+});
