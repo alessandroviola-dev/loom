@@ -73,8 +73,8 @@ function minimalSystemPrompt(): string {
 export default function loomContextEngine(pi: ExtensionAPI): void {
   if (!enabled(process.env.LOOM_CONTEXT_ENGINE, false) || !claim(pi)) return;
 
-  const highWaterTokens = positiveInt(process.env.LOOM_CONTEXT_HIGH_WATER_TOKENS, 2200);
-  const targetTokens = Math.min(positiveInt(process.env.LOOM_CONTEXT_TARGET_TOKENS, 1700), highWaterTokens);
+  const highWaterTokens = positiveInt(process.env.LOOM_CONTEXT_HIGH_WATER_TOKENS, 1600);
+  const targetTokens = Math.min(positiveInt(process.env.LOOM_CONTEXT_TARGET_TOKENS, 1200), highWaterTokens);
   const toolTextChars = positiveInt(process.env.LOOM_CONTEXT_TOOL_TEXT_CHARS, 1800);
   const assistantTextChars = positiveInt(process.env.LOOM_CONTEXT_ASSISTANT_TEXT_CHARS, 900);
   let sessionId = "unknown";
