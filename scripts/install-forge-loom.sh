@@ -52,17 +52,23 @@ set -euo pipefail
 HEADER
   printf 'ROOT=%q\n' "$ROOT"
   cat <<'BODY'
-SAFE_INPUT="${LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS:-3000}"
-HIGH_WATER="${LOOM_CONTEXT_HIGH_WATER_TOKENS:-2400}"
-TARGET="${LOOM_CONTEXT_TARGET_TOKENS:-1900}"
+SAFE_TOTAL="${LOOM_CONTEXT_WEBUI_SAFE_TOTAL_TOKENS:-3600}"
+SAFE_INPUT="${LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS:-2800}"
+MAX_OUTPUT="${LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS:-800}"
+HIGH_WATER="${LOOM_CONTEXT_HIGH_WATER_TOKENS:-2200}"
+TARGET="${LOOM_CONTEXT_TARGET_TOKENS:-1700}"
 MODEL="${LOOM_FORGE_MODEL:-loom-deep-30b-unlocked}"
 STATUS_URL="http://127.0.0.1:18080/loom/context-engine/status"
 
-case "$SAFE_INPUT:$HIGH_WATER:$TARGET" in
+case "$SAFE_TOTAL:$SAFE_INPUT:$MAX_OUTPUT:$HIGH_WATER:$TARGET" in
   *[!0-9:]*|*::*|:*|*:) echo "ForgeLoom token thresholds must be positive integers." >&2; exit 64 ;;
 esac
-if (( TARGET > HIGH_WATER || HIGH_WATER >= SAFE_INPUT || SAFE_INPUT >= 4096 )); then
-  echo "ForgeLoom requires TARGET <= HIGH_WATER < SAFE_INPUT < 4096." >&2
+if (( TARGET > HIGH_WATER || HIGH_WATER >= SAFE_INPUT )); then
+  echo "ForgeLoom requires TARGET <= HIGH_WATER < SAFE_INPUT." >&2
+  exit 64
+fi
+if (( SAFE_INPUT + MAX_OUTPUT > SAFE_TOTAL || SAFE_TOTAL >= 4096 )); then
+  echo "ForgeLoom requires SAFE_INPUT + MAX_OUTPUT <= SAFE_TOTAL < 4096." >&2
   exit 64
 fi
 
@@ -78,18 +84,23 @@ done
 gateway_safe() {
   local status
   status="$(curl -fsS --max-time 2 "$STATUS_URL" 2>/dev/null)" || return 1
-  python3 - "$SAFE_INPUT" "$status" <<'PY'
+  python3 - "$SAFE_TOTAL" "$SAFE_INPUT" "$MAX_OUTPUT" "$status" <<'PY'
 import json, sys
-safe = int(sys.argv[1])
+safe_total = int(sys.argv[1])
+safe_input = int(sys.argv[2])
+max_output = int(sys.argv[3])
 try:
-    data = json.loads(sys.argv[2])
+    data = json.loads(sys.argv[4])
 except Exception:
     raise SystemExit(1)
 ok = (
     data.get("contextEngineGateway") is True
     and data.get("hardGuardEnabled") is True
     and data.get("guardFailClosed") is True
-    and data.get("safeInputTokens") == safe
+    and data.get("safeTotalTokens") == safe_total
+    and data.get("safeInputTokens") == safe_input
+    and data.get("maxOutputTokens") == max_output
+    and data.get("physicalContextTokens") == 4096
     and data.get("ciStatus") == "disabled"
 )
 raise SystemExit(0 if ok else 1)
@@ -102,7 +113,9 @@ if ! gateway_safe; then
     LOOM_CONTEXT_WEBUI_CI=0 \
     LOOM_CONTEXT_WEBUI_HARD_GUARD=1 \
     LOOM_CONTEXT_WEBUI_GUARD_FAIL_CLOSED=1 \
+    LOOM_CONTEXT_WEBUI_SAFE_TOTAL_TOKENS="$SAFE_TOTAL" \
     LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS="$SAFE_INPUT" \
+    LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS="$MAX_OUTPUT" \
     "$ROOT/scripts/loom-deep" start
 fi
 
@@ -122,4 +135,5 @@ mv -f "$TEMP" "$LAUNCHER"
 
 echo "Installed LOOM Context Engine to $TARGET_DIR"
 echo "Installed launcher: $LAUNCHER"
+echo "Default CE-001 envelope: working ${1700}->${2200}; final input <=2800; output <=800; total <=3600 < 4096"
 echo "Use: ForgeLoom"
