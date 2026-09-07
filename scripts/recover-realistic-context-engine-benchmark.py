@@ -115,6 +115,24 @@ def latest_recoverable_run() -> Path:
     raise AssertionError
 
 
+def block_diagnostic(row: dict) -> dict[str, object]:
+    keys = (
+        "event",
+        "guardChecked",
+        "guardBlocked",
+        "tokenCountMethod",
+        "finalInputTokens",
+        "guardInputTokens",
+        "tokenCountMargin",
+        "outputReserve",
+        "projectedTotalTokens",
+        "requestInputCeiling",
+        "safeTotalTokens",
+        "guardError",
+    )
+    return {key: row.get(key) for key in keys if row.get(key) is not None}
+
+
 run = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) > 1 else latest_recoverable_run()
 bench = run / "benchmarks" / "coding" / "v1"
 rpc_log = run / "rpc.jsonl"
@@ -142,7 +160,7 @@ assistant_calls = sum(
 if len(accepted_tasks) < 6 or agent_ends < 6:
     fail(f"run did not complete all six tasks: accepted={len(accepted_tasks)}, agent_end={agent_ends}")
 if assistant_calls <= 0:
-    fail("could not infer provider-call count from RPC log")
+    fail("could not infer successful assistant-call count from RPC log")
 
 # Persisted benchmark copy may only differ from the frozen source in each task's
 # explicitly editable file. Transient workspace caches are intentionally ignored.
@@ -203,30 +221,35 @@ pi_overflow = [
 if not governors:
     fail("no governor evidence found for recovered run")
 
-# Gateway rows have no timestamps in CE-001. One chat accounting row is emitted
-# per provider call, so the current run is reconstructed from the tail using the
-# assistant message_start count from its RPC log. This is safe only while no newer
-# ForgeLoom inference has been run after the failed benchmark.
+# Gateway rows have no timestamps in CE-001. The timestamped context_governor is
+# emitted once before every LLM attempt, including attempts that the gateway may
+# subsequently block. Therefore governor count, not assistant message_start count,
+# is the correct cardinality for reconstructing the run from the gateway tail.
+# This remains safe only while no newer ForgeLoom inference has run after the
+# failed benchmark.
+provider_attempts = len(governors)
 gateway_all = [
     row for row in parse_jsonl(GATEWAY_ACCOUNTING)
     if row.get("path") in {"/v1/chat/completions", "/chat/completions"}
 ]
-if len(gateway_all) < assistant_calls:
-    fail(f"gateway accounting has fewer rows ({len(gateway_all)}) than RPC provider calls ({assistant_calls})")
-gateway_rows = gateway_all[-assistant_calls:]
+if len(gateway_all) < provider_attempts:
+    fail(f"gateway accounting has fewer rows ({len(gateway_all)}) than governor attempts ({provider_attempts})")
+gateway_rows = gateway_all[-provider_attempts:]
 blocks = [row for row in gateway_rows if row.get("guardBlocked") is True or row.get("event") in {"hard_guard_block", "hard_guard_unavailable"}]
 guards = [row for row in gateway_rows if row.get("guardChecked") is True]
-if len(guards) != assistant_calls:
-    fail(f"not every recovered provider call has exact guard evidence: {len(guards)}/{assistant_calls}")
-if blocks:
-    fail(f"recovered run contains {len(blocks)} gateway block/unavailable rows")
+unavailable = [row for row in gateway_rows if row.get("event") == "hard_guard_unavailable"]
+if len(guards) + len(unavailable) != provider_attempts:
+    fail(
+        "gateway reconstruction cardinality mismatch: "
+        f"checked={len(guards)}, unavailable={len(unavailable)}, attempts={provider_attempts}"
+    )
 if pi_actual:
     fail(f"Pi performed {len(pi_actual)} actual compactions")
 if pi_overflow:
     fail(f"Pi overflow activity observed: {len(pi_overflow)}")
 
-# Recover backend throughput by matching the same number of most recent provider
-# calls. Peak RSS and swap-before were process-local samples and cannot be rebuilt.
+# Recover backend throughput from successful assistant calls. Blocked attempts do
+# not reach llama.cpp generation and therefore have no matching eval timing row.
 prompt_rates: list[float] = []
 decode_rates: list[float] = []
 if BACKEND_LOG.exists():
@@ -235,6 +258,8 @@ if BACKEND_LOG.exists():
     decode_rates = [float(x) for x in re.findall(r"(?<!prompt )eval time[^\n]*?\(([0-9.]+) tokens per second\)", text, flags=re.I)][-assistant_calls:]
 
 persistent_lower_bound = max((int(row.get("messageCountBefore", 0) or 0) for row in governors), default=0)
+checked_inputs = [int(row.get("finalInputTokens", 0) or 0) for row in guards]
+checked_totals = [int(row.get("projectedTotalTokens", 0) or 0) for row in guards]
 summary = {
     "recovered_from": str(run),
     "recovery_note": "Final get_state timed out after all six agent_end events; no model inference was repeated.",
@@ -242,7 +267,8 @@ summary = {
     "rpc": {
         "accepted_tasks": len(accepted_tasks),
         "agent_end_events": agent_ends,
-        "provider_calls": assistant_calls,
+        "successful_assistant_calls": assistant_calls,
+        "provider_attempts_from_governor": provider_attempts,
         "persistent_message_count_lower_bound": persistent_lower_bound,
     },
     "scope": {
@@ -257,12 +283,13 @@ summary = {
         "max_turns_dropped": max(int(row.get("turnsDropped", 0) or 0) for row in governors),
     },
     "gateway": {
-        "reconstruction": f"tail {assistant_calls} chat accounting rows matched to RPC assistant message_start count",
+        "reconstruction": f"tail {provider_attempts} chat accounting rows matched to timestamped governor attempt count",
         "checked_requests": len(guards),
         "blocks": len(blocks),
-        "max_final_input": max(int(row.get("finalInputTokens", 0) or 0) for row in guards),
-        "max_projected_total": max(int(row.get("projectedTotalTokens", 0) or 0) for row in guards),
-        "min_headroom_to_4096": min(4096 - int(row.get("projectedTotalTokens", 0) or 0) for row in guards),
+        "block_diagnostics": [block_diagnostic(row) for row in blocks],
+        "max_final_input": max(checked_inputs, default=0),
+        "max_projected_total": max(checked_totals, default=0),
+        "min_headroom_to_4096": min((4096 - value for value in checked_totals), default=4096),
     },
     "pi": {"actual_compactions": len(pi_actual), "overflow_events": len(pi_overflow)},
     "timings": {"prompt_eval_tok_s": stats(prompt_rates), "decode_tok_s": stats(decode_rates)},
@@ -277,7 +304,8 @@ for task in benchmark.get("tasks", []):
     print(f"  {task.get('id')}                       : {task.get('tests_passed')}/{task.get('tests_total')} tests; {task.get('points_earned')}/{task.get('points_available')} pts")
 print(f"  RPC accepted tasks       : {len(accepted_tasks)}")
 print(f"  RPC agent_end events     : {agent_ends}")
-print(f"  provider calls           : {assistant_calls}")
+print(f"  successful assistant msg : {assistant_calls}")
+print(f"  provider attempts        : {provider_attempts}")
 print(f"  persistent msg lower bd  : {persistent_lower_bound}")
 print(f"  governor calls           : {len(governors)}")
 print(f"  governor compactions     : {len(changed_governors)}")
@@ -287,6 +315,8 @@ print(f"  max exact final input    : {summary['gateway']['max_final_input']}")
 print(f"  max projected total      : {summary['gateway']['max_projected_total']}")
 print(f"  min headroom to 4096     : {summary['gateway']['min_headroom_to_4096']}")
 print(f"  hard-guard blocks        : {len(blocks)}")
+for index, row in enumerate(blocks, 1):
+    print(f"  block {index} detail         : {json.dumps(block_diagnostic(row), sort_keys=True)}")
 print(f"  Pi actual compactions    : {len(pi_actual)}")
 print(f"  Pi overflow events       : {len(pi_overflow)}")
 print(f"  persisted scope issues   : {len(scope_violations)}")
@@ -297,4 +327,6 @@ print(f"  recovered summary        : {summary_path}")
 
 if scope_violations:
     fail(f"persisted benchmark copy contains out-of-scope edits: {scope_violations}")
+if blocks:
+    fail(f"recovered run contains {len(blocks)} genuine gateway block/unavailable attempt(s); details printed above")
 print("CE-001 RECOVERY PASS: objective score and safety evidence recovered without rerunning ForgeLoom")
