@@ -1,35 +1,75 @@
 # LOOM
 
-**Status: CLOSED / ARCHIVED — 2026-09-06**
+**Status: ACTIVE — CONTEXT ENGINE RESEARCH ONLY — 2026-09-07**
 
-LOOM was a research project focused on making capable local AI practical on constrained consumer hardware, with an Apple Silicon M1 Mac with 8 GB unified memory as the reference platform.
+LOOM is a local-AI research project for constrained consumer hardware. The retained inference product remains the previously frozen **UNLOCKED UOPT-003 S40** 30B profile; model/runtime optimization is still closed.
 
-The project is now concluded. The final decision is not a runtime failure: the 30B UNLOCKED model was made materially more usable, but its practical capability remained below the level required for the intended real workloads. Further speed work therefore no longer justified additional engineering effort.
+The project is reopened only for the external **LOOM Context Engine**: a host-side layer that lets Forge run long sessions against the retained physical `n_ctx=4096` model while exposing only a bounded sliding working window to each model request.
 
-## Final retained product
+## Current branch
 
-The last stable local product is the **UNLOCKED UOPT-003 S40** profile:
+`research/context-engine-001`
+
+Current phase: **CE-001 preventive Context Governor**.
+
+Operator modes are intentionally isolated:
+
+```text
+pi         -> vanilla Pi
+Forge      -> normal Forge, unchanged
+ForgeLoom  -> Forge + LOOM Context Engine + retained LOOM UNLOCKED model
+```
+
+Install/update the LOOM extension and launcher from the repository with:
+
+```bash
+bash scripts/install-forge-loom.sh
+```
+
+Then use:
+
+```bash
+ForgeLoom
+```
+
+Static/local verification:
+
+```bash
+bash scripts/verify-context-engine.sh
+```
+
+## CE-001 safety envelope
+
+Initial conservative values, subject to measured calibration:
+
+```text
+physical context       4096
+target working view    1700
+working high-water     2200
+final input ceiling    2800
+maximum output          800
+safe total             3600
+forbidden reserve       496
+```
+
+The final gateway invariant is:
+
+```text
+exact final input + reserved output <= 3600 < 4096
+```
+
+The full Pi/Forge session stays persistent; the model receives a request-local bounded view. Normal Forge is not modified.
+
+## Frozen retained inference product
+
+Do not mutate during Context Engine work:
 
 - source GGUF SHA256: `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
-- expert-major sidecar SHA256: `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`
+- expert-major sidecar SHA256: `4df9602bd09c74afe2df6a721ac8d74834564f95831dd488b19873f45034451e`
 - patched runtime SHA256: `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
-- matched S40 decode: `7.557 tok/s`
-- matched 1,155-token cold TTFT: `102.242 s`
-- frozen behavior/capability gates: refusal `0/6`, degeneration `0/6`, benign `8/8`
+- UOPT-003 S40 matched decode: `7.557 tok/s`
+- physical context: `4096`
 
-Operator commands remain documented in `docs/LOOM_OPERATIONS.md` for historical/recovery use.
+Historical UOPT verdicts remain archived and valid: UOPT-001 PARTIAL_GO, UOPT-002 GO, UOPT-003 GO, UOPT-004/005/006 NO_GO.
 
-## Final optimization outcome
-
-- UOPT-001: PARTIAL_GO
-- UOPT-002: GO
-- UOPT-003: GO — final retained S40 profile
-- UOPT-004: NO_GO — Q2 expert quality loss
-- UOPT-005: NO_GO — selective IQ3 quality frontier exhausted
-- UOPT-006: NO_GO — draftless n-gram speculative decoding produced 0 drafted / 0 accepted tokens and no useful speedup
-
-See `HANDOFF.md`, `ROADMAP.md`, `research/integration/loom-unlocked-speed-optimization-006-result.md`, and `research/integration/loom-project-closure-20260906.md`.
-
-## Archive rule
-
-There is no active LOOM roadmap. No agent or automation should resume experiments, modify the production profile, or begin a new optimization work package unless the project is explicitly reopened by the owner.
+Read `AGENTS.md` and `HANDOFF.md` for the current rules, implementation state, and CE-001 acceptance gate.
