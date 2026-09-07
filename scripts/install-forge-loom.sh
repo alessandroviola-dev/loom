@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-EXPECTED_PI_VERSION="0.84.4"
+SUPPORTED_PI_VERSIONS="0.84.4 0.85.1"
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
 SOURCE_DIR="$ROOT/src/loom-context-engine"
@@ -18,12 +18,20 @@ is_managed_launcher() {
   [ -f "$1" ] && [ ! -L "$1" ] && grep -Fqx '# Managed by LOOM Context Engine' "$1"
 }
 
+pi_version_supported() {
+  local candidate="$1" supported
+  for supported in $SUPPORTED_PI_VERSIONS; do
+    [ "$candidate" = "$supported" ] && return 0
+  done
+  return 1
+}
+
 command -v pi >/dev/null 2>&1 || fail "ForgeLoom requires pi on PATH."
 command -v Forge >/dev/null 2>&1 || fail "ForgeLoom requires Forge to be installed first."
 command -v curl >/dev/null 2>&1 || fail "ForgeLoom requires curl."
 command -v python3 >/dev/null 2>&1 || fail "ForgeLoom requires python3."
 PI_VERSION="$(pi --version 2>/dev/null | tr -d '[:space:]')"
-[ "$PI_VERSION" = "$EXPECTED_PI_VERSION" ] || fail "CE-001 is validated against Pi $EXPECTED_PI_VERSION via Forge; found ${PI_VERSION:-unknown}."
+pi_version_supported "$PI_VERSION" || fail "CE-001 supports Pi versions: $SUPPORTED_PI_VERSIONS; found ${PI_VERSION:-unknown}."
 [ -f "$SOURCE_DIR/index.ts" ] || fail "Missing Context Engine source: $SOURCE_DIR/index.ts"
 [ -f "$SOURCE_DIR/core.mjs" ] || fail "Missing Context Engine source: $SOURCE_DIR/core.mjs"
 [ -f "$ROOT/scripts/loom-deep" ] || fail "Missing LOOM lifecycle manager: $ROOT/scripts/loom-deep"
@@ -135,5 +143,6 @@ mv -f "$TEMP" "$LAUNCHER"
 
 echo "Installed LOOM Context Engine to $TARGET_DIR"
 echo "Installed launcher: $LAUNCHER"
+echo "Pi compatibility accepted: $PI_VERSION"
 echo "Default CE-001 envelope: target 1700; high-water 2200; final input <=2800; output <=800; total <=3600 < 4096"
 echo "Use: ForgeLoom"
