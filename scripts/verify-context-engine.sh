@@ -14,6 +14,7 @@ command -v python3 >/dev/null 2>&1 || fail "python3 not found"
 node --check src/loom-context-engine/core.mjs
 node --check scripts/loom-context-webui-gateway.mjs
 bash -n scripts/install-forge-loom.sh
+bash -n scripts/smoke-context-engine.sh
 pass "static syntax"
 
 node --test test/context-engine-core.test.mjs
@@ -26,6 +27,7 @@ core = Path("src/loom-context-engine/core.mjs").read_text()
 ext = Path("src/loom-context-engine/index.ts").read_text()
 installer = Path("scripts/install-forge-loom.sh").read_text()
 gateway = Path("scripts/loom-context-webui-gateway.mjs").read_text()
+smoke = Path("scripts/smoke-context-engine.sh").read_text()
 profile = Path("config/loom-deep-profiles.env").read_text()
 
 checks = {
@@ -41,6 +43,8 @@ checks = {
     "fail closed": 'LOOM_CONTEXT_WEBUI_GUARD_FAIL_CLOSED=1' in installer,
     "minimal system prompt": 'before_agent_start' in ext and 'minimalSystemPrompt' in ext,
     "threshold compaction cancelled": 'event.reason === "threshold"' in ext and 'cancel: true' in ext,
+    "one-shot smoke uses ForgeLoom": 'ForgeLoom --no-session -p' in smoke,
+    "smoke checks exact guard": 'guardChecked' in smoke and 'projectedTotalTokens' in smoke,
 }
 failed = [name for name, ok in checks.items() if not ok]
 if failed:
