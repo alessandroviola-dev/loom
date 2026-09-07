@@ -85,6 +85,6 @@ jobs:
       - name: Evidence archive tests
         run: node --test test/evidence-archive.test.mjs
       - name: Evidence retrieval tests
-        run: node --test test/evidence-retrieval.test.mjs
+        run: node --test test/evidence-retrieval.test.mjs test/evidence-retrieval-trigger.test.mjs
       - name: Repository invariants
         run: bash scripts/verify-context-engine.sh
