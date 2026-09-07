@@ -33,15 +33,18 @@ function clipMiddle(text, maxChars) {
   return { text: `${value.slice(0, head)} … ${value.slice(-tail)}`, clipped: true };
 }
 
-function hasDistinctiveLexicalAnchor(text) {
-  const tokens = String(text ?? "")
+function distinctiveLexicalTokens(text) {
+  return String(text ?? "")
     .split(/\s+/)
     .map((token) => token.replace(/^[^A-Za-z0-9_./:-]+|[^A-Za-z0-9_./:-]+$/g, ""))
-    .filter(Boolean);
-  // Phase-2 retrieval is deliberately conservative: generic prose must not
-  // trigger memory injection. Paths, identifiers, error codes, hashes and
-  // numbered markers are distinctive enough for the first lexical gate.
-  return tokens.some((token) => /[_./:\d]/.test(token));
+    .filter((token) => token && /[_./:\d]/.test(token) && !EVIDENCE_ID_SCAN_RE.test(token));
+}
+
+function distinctiveLexicalQuery(text) {
+  EVIDENCE_ID_SCAN_RE.lastIndex = 0;
+  const tokens = distinctiveLexicalTokens(text);
+  EVIDENCE_ID_SCAN_RE.lastIndex = 0;
+  return [...new Set(tokens)].join(" ");
 }
 
 function appendBounded(lines, line, budget) {
@@ -64,6 +67,7 @@ export function buildEvidenceRetrieval({
 } = {}) {
   const query = latestUserText(messages);
   const explicitIds = extractEvidenceIds(query);
+  const lexicalQuery = distinctiveLexicalQuery(query);
   const selected = [];
   const seen = new Set();
 
@@ -81,9 +85,9 @@ export function buildEvidenceRetrieval({
     seen.add(evidenceId);
   }
 
-  if (allowLexical && selected.length < maxItems && hasDistinctiveLexicalAnchor(query)) {
+  if (allowLexical && selected.length < maxItems && lexicalQuery) {
     const results = searchEvidence(rootDir, {
-      query,
+      query: lexicalQuery,
       sessionId,
       limit: Math.max(maxItems * 3, 6),
     });
@@ -105,6 +109,7 @@ export function buildEvidenceRetrieval({
     return {
       text: "",
       query,
+      lexicalQuery,
       evidenceIds: [],
       explicitCount: 0,
       lexicalCount: 0,
@@ -140,6 +145,7 @@ export function buildEvidenceRetrieval({
   return {
     text,
     query,
+    lexicalQuery,
     evidenceIds: includedIds,
     explicitCount: selected.slice(0, lines.length).filter((item) => item.kind === "explicit").length,
     lexicalCount: selected.slice(0, lines.length).filter((item) => item.kind === "lexical").length,
