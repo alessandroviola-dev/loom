@@ -1,5 +1,5 @@
-const DEFAULT_HIGH_WATER_TOKENS = 2400;
-const DEFAULT_TARGET_TOKENS = 1900;
+const DEFAULT_HIGH_WATER_TOKENS = 2200;
+const DEFAULT_TARGET_TOKENS = 1700;
 const DEFAULT_TOOL_TEXT_CHARS = 1800;
 const DEFAULT_ASSISTANT_TEXT_CHARS = 900;
 
@@ -103,12 +103,14 @@ function compactText(text, maxChars, label) {
   for (const line of lines.slice(-12)) add(line);
 
   const marker = `[LOOM CE-001 compacted ${label}; original remains in persistent session history; ${text.length} chars]`;
-  let compacted = `${marker}\n${selected.join("\n")}`;
+  const joined = selected.join("\n");
+  let compacted = `${marker}\n${joined}`;
   if (compacted.length > maxChars) {
     const room = Math.max(0, maxChars - marker.length - 2);
     const head = Math.ceil(room * 0.6);
     const tail = Math.floor(room * 0.4);
-    compacted = `${marker}\n${selected.join("\n").slice(0, head)}\n…\n${selected.join("\n").slice(-tail)}`;
+    const tailText = tail > 0 ? joined.slice(-tail) : "";
+    compacted = `${marker}\n${joined.slice(0, head)}${tailText ? `\n…\n${tailText}` : ""}`;
   }
   return { text: compacted, changed: true };
 }
