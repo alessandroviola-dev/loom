@@ -31,6 +31,8 @@ jobs:
           node --experimental-strip-types --check src/loom-context-engine/index.ts
           python3 -m py_compile scripts/realistic-context-engine-benchmark.py
           python3 -m py_compile scripts/recover-realistic-context-engine-benchmark.py
+          python3 -m py_compile scripts/live-coding-evidence-retrieval.py
+          python3 -m py_compile scripts/recover-live-coding-evidence-retrieval.py
           bash -n scripts/install-forge-loom.sh
           bash -n scripts/verify-context-engine.sh
           bash -n scripts/smoke-context-engine.sh
@@ -85,7 +87,6 @@ jobs:
 
           check("scripts/live-evidence-archive.sh")
           check("scripts/live-evidence-retrieval.sh")
-          check("scripts/live-coding-evidence-retrieval.sh")
           PY
       - name: Governor tests
         run: node --test test/context-engine-core.test.mjs
