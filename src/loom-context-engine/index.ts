@@ -54,6 +54,16 @@ function record(sessionId: string, row: Record<string, unknown>): void {
   }
 }
 
+function minimalSystemPrompt(): string {
+  return [
+    "You are ForgeLoom, a concise coding agent using only read, bash, edit, and write.",
+    "Inspect before editing. Keep tool calls/results coherent. Prefer small, verifiable changes.",
+    "Project instructions are intentionally not injected into every request to save context; read AGENTS.md and HANDOFF.md from the working tree when relevant.",
+    "Do not guess omitted history: re-read exact files/evidence when needed.",
+    `Current working directory: ${process.cwd()}`,
+  ].join("\n");
+}
+
 /**
  * CE-001: request-local preventive governor for the retained LOOM 30B.
  *
@@ -86,6 +96,15 @@ export default function loomContextEngine(pi: ExtensionAPI): void {
       );
       conflictWarned = true;
     }
+  });
+
+  // Remove Pi's large fixed coding-agent/project-context prompt only in
+  // ForgeLoom. The four tool schemas remain provider-visible, and project state
+  // is read on demand from AGENTS.md/HANDOFF.md instead of paid every request.
+  pi.on("before_agent_start", () => {
+    const systemPrompt = minimalSystemPrompt();
+    record(sessionId, { event: "system_prompt_minimized", chars: systemPrompt.length });
+    return { systemPrompt };
   });
 
   pi.on("context", (event) => {
