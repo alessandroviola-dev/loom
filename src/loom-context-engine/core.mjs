@@ -222,7 +222,7 @@ function compactCompletedToolHistory(messages, options = {}) {
   let toolResultsCompacted = 0;
   let assistantMessagesCompacted = 0;
   let toolCallArgumentsCompacted = 0;
-  let next = messages.map((message) => {
+  const next = messages.map((message) => {
     if (message?.role === "toolResult" && eligible.has(String(message.toolCallId ?? ""))) {
       const result = compactToolResult(message, toolTextChars);
       if (result.changed) toolResultsCompacted += 1;
@@ -248,6 +248,42 @@ function compactCompletedToolHistory(messages, options = {}) {
   });
 
   return { messages: next, toolResultsCompacted, assistantMessagesCompacted, toolCallArgumentsCompacted };
+}
+
+function completedToolExchangeGroups(messages) {
+  const resultIds = new Set(
+    messages
+      .filter((message) => message?.role === "toolResult")
+      .map((message) => String(message.toolCallId ?? ""))
+      .filter(Boolean),
+  );
+  const groups = [];
+  for (let index = 0; index < messages.length; index += 1) {
+    const message = messages[index];
+    if (message?.role !== "assistant" || !Array.isArray(message.content)) continue;
+    const ids = message.content
+      .filter((part) => part?.type === "toolCall")
+      .map((part) => String(part.id ?? ""))
+      .filter(Boolean);
+    if (ids.length === 0 || !ids.every((id) => resultIds.has(id))) continue;
+    groups.push({ assistantIndex: index, ids: new Set(ids) });
+  }
+  return groups;
+}
+
+function dropOldestCompletedToolExchange(messages, protectedCount = 1) {
+  const groups = completedToolExchangeGroups(messages);
+  const eligibleCount = Math.max(0, groups.length - Math.max(0, protectedCount));
+  if (eligibleCount === 0) return { messages, dropped: 0, messagesDropped: 0 };
+  const group = groups[0];
+  let messagesDropped = 0;
+  const next = messages.filter((message, index) => {
+    const dropAssistant = index === group.assistantIndex;
+    const dropResult = message?.role === "toolResult" && group.ids.has(String(message.toolCallId ?? ""));
+    if (dropAssistant || dropResult) messagesDropped += 1;
+    return !dropAssistant && !dropResult;
+  });
+  return { messages: next, dropped: 1, messagesDropped };
 }
 
 function flatten(turns) {
@@ -277,6 +313,8 @@ export function packMessages(messages, options = {}) {
         assistantMessagesCompacted: 0,
         toolCallArgumentsCompacted: 0,
         activeTurnEmergencyPasses: 0,
+        activeTurnToolExchangesDropped: 0,
+        activeTurnMessagesDropped: 0,
         targetMet: beforeTokens <= targetTokens,
         highWaterMet: true,
       },
@@ -289,6 +327,8 @@ export function packMessages(messages, options = {}) {
   let assistantMessagesCompacted = 0;
   let toolCallArgumentsCompacted = 0;
   let activeTurnEmergencyPasses = 0;
+  let activeTurnToolExchangesDropped = 0;
+  let activeTurnMessagesDropped = 0;
 
   while (turns.length > 1 && estimateMessagesTokens(flatten(turns)) > targetTokens) {
     turns.shift();
@@ -368,6 +408,24 @@ export function packMessages(messages, options = {}) {
     activeTurnEmergencyPasses += 1;
   }
 
+  // Last resort for structurally large active turns: evict oldest *completed*
+  // assistant tool-call + matching tool-result groups as whole units. This keeps
+  // provider sequencing coherent and never truncates the current user request.
+  while (estimateMessagesTokens(packed) > targetTokens) {
+    const result = dropOldestCompletedToolExchange(packed, 1);
+    if (!result.dropped) break;
+    packed = result.messages;
+    activeTurnToolExchangesDropped += result.dropped;
+    activeTurnMessagesDropped += result.messagesDropped;
+  }
+  while (estimateMessagesTokens(packed) > targetTokens) {
+    const result = dropOldestCompletedToolExchange(packed, 0);
+    if (!result.dropped) break;
+    packed = result.messages;
+    activeTurnToolExchangesDropped += result.dropped;
+    activeTurnMessagesDropped += result.messagesDropped;
+  }
+
   const afterTokens = estimateMessagesTokens(packed);
   return {
     messages: packed,
@@ -383,6 +441,8 @@ export function packMessages(messages, options = {}) {
       assistantMessagesCompacted,
       toolCallArgumentsCompacted,
       activeTurnEmergencyPasses,
+      activeTurnToolExchangesDropped,
+      activeTurnMessagesDropped,
       targetMet: afterTokens <= targetTokens,
       highWaterMet: afterTokens <= highWaterTokens,
     },
