@@ -1,7 +1,7 @@
 # LOOM — Context Engine Handoff
 
 Last updated: 2026-09-07
-Status: **ACTIVE — CE-001 REALISTIC TRANSCRIPT REPLAY PASS / LIVE TOOL-HEAVY GATE PENDING**
+Status: **ACTIVE — CE-001 FUNCTIONAL/SAFETY GO / RESOURCE REGRESSION GATE PENDING**
 Repository: `Ilcoach/loom`
 Branch: `research/context-engine-001`
 
@@ -23,13 +23,18 @@ ForgeLoom  -> Forge + LOOM Context Engine + retained LOOM UNLOCKED model
 
 ## Current checkpoint
 
-CE-001 passed the real one-shot smoke and 12-turn synthetic long-context stress. The first frozen realistic coding benchmark then exposed one genuine gateway hard-guard block, so CE-001 was correctly held at NO-GO.
+CE-001 has now passed the functional and safety acceptance path on the retained Mac/30B runtime:
 
-That real transcript has now been replayed offline through the updated governor at every reconstructed provider-attempt boundary. The updated governor bounded all 24/24 reconstructed realistic views to the `1200` working target, with zero target or high-water misses.
+- real one-shot smoke — PASS;
+- 12-turn long-context stress — PASS;
+- frozen six-task realistic benchmark completed, revealing one real Layer-A miss while Layer B protected the model;
+- exact failed realistic transcript replayed through the corrected governor — PASS 24/24;
+- corrected extension reinstalled;
+- short real ForgeLoom tool-heavy active-turn regression — PASS.
 
-The active-turn fix is therefore **offline validated against the exact transcript that previously failed**. CE-001 is still not final GO until the corrected extension passes one short live tool-heavy ForgeLoom regression.
+The active-turn defect exposed by the realistic benchmark is therefore fixed both offline against the exact failing transcript and live against a real multi-tool chain.
 
-Do **not** proceed to CE-002 yet.
+CE-001 is **functional/safety GO**. One previously stated acceptance item remains: lightweight RAM/swap regression verification against the frozen retained S40 resource reference. Do not begin CE-002 until this final resource gate is recorded.
 
 ### Real one-shot smoke — PASS
 
@@ -51,7 +56,7 @@ Pi threshold compactions   0
 Pi overflow compactions    0
 ```
 
-The smoke exposed substantial provider-visible fixed/template/tool overhead not represented directly by the governor's message-only estimate. Working thresholds were recalibrated from `2200/1700` to `1600/1200`.
+The smoke exposed provider-visible fixed/template/tool overhead not represented directly by the governor's message-only estimate. Working thresholds were recalibrated from `2200/1700` to `1600/1200`.
 
 ### Multi-turn RPC stress — PASS
 
@@ -127,7 +132,7 @@ tokenCountMethod        apply-template+tokenize
 
 The physical 4096 ceiling remained protected: Layer B blocked the request before model forwarding. The model-quality score (60/100) is recorded separately from this context-engine failure.
 
-## Root cause and active-turn fix
+## Root cause and corrected active-turn governor
 
 The original governor compacted old complete user turns and `toolResult` text, but did not sufficiently bound structurally large active coding turns containing many completed tool exchanges and large historical `toolCall.arguments`.
 
@@ -141,11 +146,11 @@ Updated `src/loom-context-engine/core.mjs` now:
 6. compacts completed call/result exchanges together, oldest first;
 7. initially preserves the newest completed tool exchange at higher fidelity;
 8. performs a second aggressive completed-exchange pass when needed;
-9. as a last resort, evicts the oldest **completed assistant tool-call + matching tool-result group as one coherent unit** until the low-water target is met;
+9. as a last resort, evicts the oldest completed assistant tool-call + matching tool-result group as one coherent unit until the low-water target is met;
 10. never truncates the current user request in this fallback;
 11. records tool-argument, emergency-pass and completed-exchange-drop accounting.
 
-Unit tests cover repeated coding-style active-turn exchanges and assert target bounding, call/result coherence, and persistent-session immutability.
+Unit tests cover repeated coding-style active-turn exchanges and last-resort whole-exchange eviction while asserting target bounding, call/result coherence, and persistent-session immutability.
 
 ### Offline replay of failed realistic transcript — PASS
 
@@ -168,38 +173,69 @@ Result:
 CE-001 REPLAY PASS
 ```
 
-This is the strongest offline regression evidence available because it uses the same real coding transcript that previously produced the hard-guard block.
+This is the strongest offline regression evidence because it uses the same real coding transcript that previously produced the hard-guard block.
 
-## Immediate next gate — short live tool-heavy regression
+### Live tool-heavy active-turn regression — PASS
 
-Do **not** rerun the full six-task benchmark yet.
+Corrected extension was reinstalled and one isolated real ForgeLoom turn exercised a multi-tool chain.
 
-`scripts/live-tool-heavy-context-engine.sh` creates an isolated workspace and runs one real ForgeLoom turn that requires multiple reads, one edit, bash verification and a final read inside the same user turn. It then verifies only that session's Context Engine accounting and only gateway rows created during the run.
+```text
+provider attempts              5
+governor reductions            4
+max raw estimate               9971
+max visible estimate           1199
+tool-arg compactions           0
+emergency passes               5
+active tool exchanges dropped  0
+max exact final input          1972
+max projected total            2260
+min headroom to 4096           1836
+hard-guard blocks              0
+Pi actual compactions          0
+Pi overflow events             0
+```
 
-Before running it, reinstall the updated extension so `~/.pi/agent/extensions/loom-context-engine/core.mjs` matches the branch.
+Result:
 
-Operator commands:
+```text
+CE-001 LIVE TOOL PASS
+```
+
+This live result demonstrates that the corrected active-turn governor can reduce a nearly 10k-token message-only working history to the 1200 target while keeping the provider-visible request well below the final-input ceiling and without invoking Layer B as normal flow control.
+
+## Final remaining gate — resource regression
+
+The frozen retained UOPT handoff records the production S40 runtime at approximately:
+
+```text
+RSS ~4.676 GiB
+no meaningful swap growth
+```
+
+`scripts/resource-context-engine.sh` performs one short warm marker request and samples:
+
+- backend RSS before/peak/after;
+- ForgeLoom agent peak RSS;
+- system swap before/after/delta.
+
+Default acceptance envelope:
+
+```text
+backend peak RSS <= frozen 4.676 GiB reference +15%
+swap delta       <= 512 MiB during the short probe
+```
+
+The thresholds are deliberately broad enough to avoid treating ordinary macOS variance as a regression while still catching a material resource change.
+
+Operator command:
 
 ```bash
 git switch research/context-engine-001
 git pull --ff-only origin research/context-engine-001
-bash scripts/install-forge-loom.sh
-bash scripts/live-tool-heavy-context-engine.sh
+bash scripts/resource-context-engine.sh
 ```
 
-Live acceptance:
-
-- real ForgeLoom tool chain completes;
-- governor active-turn logic is actually exercised;
-- every changed governor view is `<=1200`;
-- no `best-effort-active-turn-too-large` result;
-- exact final input remains `<=2800`;
-- projected total remains `<=3600`;
-- zero hard-guard blocks;
-- zero Pi actual compactions;
-- zero Pi overflow events.
-
-If this passes, review whether the already-completed realistic benchmark plus exact transcript replay and live regression provide sufficient CE-001 closure evidence before spending time on a full six-task rerun.
+If this passes, CE-001 may be marked final GO without repeating the 21-minute six-task benchmark. The benchmark already completed, the exact failing transcript has been replayed 24/24 under the corrected governor, and the fix has passed a real live tool chain.
 
 ## Core invariant
 
@@ -224,7 +260,7 @@ Final gateway invariant:
 final counted input + reserved output <= 3600 < 4096
 ```
 
-Additional operational requirement:
+Operational requirement:
 
 ```text
 Layer A governor should keep ordinary requests below the final-input ceiling;
@@ -273,7 +309,7 @@ CE-001 counting order:
 5. add a conservative 32-token legacy margin;
 6. fail closed if counting cannot be demonstrated safely.
 
-The legacy-safe path passed the real smoke and synthetic long-context stress and correctly blocked the one oversized realistic request before forwarding.
+The legacy-safe path passed the real smoke and long-context stress and correctly blocked the one pre-fix oversized realistic request before forwarding.
 
 ## Pi native compaction
 
@@ -302,6 +338,8 @@ Historical retained UOPT-003 baseline:
 - 1,155-token cold prefill `11.306 tok/s`
 - 1,155-token cold TTFT `102.242 s`
 - refusal `0/6`, degeneration `0/6`, benign `8/8`
+- production S40 RSS reference ~`4.676 GiB`
+- no meaningful swap growth recorded in the retained runtime test.
 
 ## CE-001 files
 
@@ -317,24 +355,24 @@ Historical retained UOPT-003 baseline:
 - `scripts/recover-realistic-context-engine-benchmark.py` — score/safety recovery after telemetry timeout
 - `scripts/replay-context-engine-rpc.mjs` — offline replay of real RPC transcript through current governor
 - `scripts/live-tool-heavy-context-engine.sh` — short isolated real ForgeLoom active-turn regression
+- `scripts/resource-context-engine.sh` — final lightweight RSS/swap regression probe
 - `test/context-engine-core.test.mjs` — governor unit tests
 
 ## Final CE-001 acceptance sequence
 
-Current order:
-
 1. realistic transcript replay — **PASS**;
-2. reinstall updated extension;
-3. short live tool-heavy validation with zero hard-guard blocks;
-4. review whether a full six-task benchmark rerun is necessary for final closure.
+2. corrected extension reinstall — **PASS**;
+3. short live tool-heavy validation — **PASS**;
+4. resource regression probe — **PENDING**.
 
 Final CE-001 GO requires:
 
-- zero hard-guard blocks in the final live acceptance workload;
+- zero hard-guard blocks in final live acceptance;
 - zero Pi threshold/overflow compactions;
 - no context-window termination;
-- model-visible input kept safely below physical 4096;
+- model-visible input safely below physical 4096;
 - session survival;
+- no material RAM/swap regression;
 - coding-quality mistakes reported honestly and separately.
 
 Do not begin CE-002 archive/task-state/retrieval work until CE-001 final GO.
