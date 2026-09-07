@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -105,4 +105,24 @@ test("lexical search finds archived evidence and returns stable evidence id", ()
   assert.equal(results.length, 1);
   assert.equal(results[0].evidenceId, hashEvidenceMessage(original[1]).evidenceId);
   assert.match(results[0].snippet, /UNIQUE_NEEDLE_8472/i);
+}));
+
+test("exact recovery rejects a corrupted content-addressed blob", () => withTempRoot((root) => {
+  const message = { role: "toolResult", toolCallId: "tc-corrupt", content: [{ type: "text", text: "ORIGINAL_INTEGRITY_VALUE" }] };
+  archiveEvictedEvidence({
+    rootDir: root,
+    sessionId: "s-corrupt",
+    originalMessages: [message],
+    visibleMessages: [],
+    capturedAt: "2026-09-07T20:03:00.000Z",
+  });
+
+  const hashed = hashEvidenceMessage(message);
+  const paths = evidencePaths(root, "s-corrupt");
+  const blobPath = join(paths.blobsDir, `${hashed.sha256}.json`);
+  const blob = JSON.parse(readFileSync(blobPath, "utf8"));
+  blob.message.content[0].text = "CORRUPTED_VALUE";
+  writeFileSync(blobPath, `${JSON.stringify(blob, null, 2)}\n`, "utf8");
+
+  assert.throws(() => readEvidenceById(root, hashed.evidenceId), /hash mismatch/);
 }));
