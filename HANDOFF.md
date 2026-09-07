@@ -1,7 +1,7 @@
 # LOOM — Context Engine Handoff
 
 Last updated: 2026-09-07
-Status: **ACTIVE — CE-001 PREVENTIVE CONTEXT GOVERNOR**
+Status: **ACTIVE — CE-001 IMPLEMENTED / RUNTIME SMOKE PENDING**
 Repository: `Ilcoach/loom`
 Branch: `research/context-engine-001`
 
@@ -11,6 +11,32 @@ LOOM was explicitly reopened by the owner for a new research direction only: pre
 
 This is not a restart of UOPT speed/model optimization.
 
+## Current checkpoint
+
+CE-001 code is implemented on this branch, but **CE-001 is not GO yet**. The next required gate is the real local runtime smoke on the retained Mac/30B stack.
+
+Repository-side pieces now present:
+
+- `src/loom-context-engine/core.mjs` — request-local governor;
+- `src/loom-context-engine/index.ts` — Pi/ForgeLoom extension hooks;
+- `scripts/install-forge-loom.sh` — isolated installer + `ForgeLoom` launcher;
+- `scripts/loom-context-webui-gateway.mjs` — exact final token/output hard guard;
+- `scripts/verify-context-engine.sh` — static/invariant verification;
+- `scripts/smoke-context-engine.sh` — one-shot local runtime calibration/smoke;
+- `test/context-engine-core.test.mjs` — governor unit coverage.
+
+Required next operator sequence:
+
+```bash
+git switch research/context-engine-001
+git pull --ff-only origin research/context-engine-001
+bash scripts/install-forge-loom.sh
+bash scripts/verify-context-engine.sh
+bash scripts/smoke-context-engine.sh
+```
+
+Do not proceed to CE-002 until the smoke passes and its exact gateway accounting has been reviewed.
+
 ## Frozen retained product
 
 Do not mutate:
@@ -19,7 +45,9 @@ Do not mutate:
 - model SHA256: `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
 - default profile: UOPT-003 S40 / CPU-MoE / no-mmap / cache RAM 512 / `-ub 4`
 - expert-major sidecar: `models/unlocked-expert-major-v1.bin`
+- expert-major sidecar SHA256: `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`
 - patched runtime: `.loom/runtime/loom-uopt002/llama-server`
+- patched runtime SHA256: `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
 - physical context: `4096`
 
 Retained measured UOPT-003 result remains historical baseline:
