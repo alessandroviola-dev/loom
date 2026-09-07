@@ -64,7 +64,10 @@ function messageEvidenceText(message) {
 function clauses(text) {
   const normalized = String(text ?? "").replace(/\s+/g, " ").trim();
   if (!normalized) return [];
-  return (normalized.match(/[^.!?;]+[.!?;]?/g) ?? [])
+  // Split only at real prose boundaries. Dots inside paths (`file.py`) and
+  // numeric ranges (`1..4`) must remain intact.
+  return normalized
+    .split(/;\s+|(?<=[!?])\s+|(?<=\.)\s+(?=[A-Z])/g)
     .map((value) => value.trim())
     .filter(Boolean);
 }
@@ -134,6 +137,7 @@ export function buildEvidenceRetrieval({
       evidenceId,
       role: blob.message?.role ?? "unknown",
       body,
+      excerptBody: messageEvidenceText(blob.message) || body,
       score: null,
     });
     seen.add(evidenceId);
@@ -161,6 +165,7 @@ export function buildEvidenceRetrieval({
         evidenceId: result.evidenceId,
         role: result.role ?? "unknown",
         body,
+        excerptBody: body,
         score: result.score ?? 0,
       });
       seen.add(result.evidenceId);
@@ -194,12 +199,14 @@ export function buildEvidenceRetrieval({
     const meta = item.kind === "explicit"
       ? `${item.evidenceId} role=${item.role} explicit`
       : `${item.evidenceId} role=${item.role} lexical-score=${item.score}`;
-    const contentBudget = Math.max(24, remaining - meta.length - 3);
-    const clipped = clipMiddle(item.body, contentBudget);
-    const label = item.kind === "explicit" ? (clipped.clipped ? "excerpt" : "exact") : "fact-capsule";
+    const contentBudget = Math.max(24, remaining - meta.length - 20);
+    const exactExplicit = item.kind === "explicit" && item.body.length <= contentBudget;
+    const sourceBody = exactExplicit ? item.body : (item.excerptBody || item.body);
+    const clipped = clipMiddle(sourceBody, contentBudget);
+    const label = item.kind === "explicit" ? (exactExplicit && !clipped.clipped ? "exact" : "excerpt") : "fact-capsule";
     const line = `- ${meta} ${label}: ${clipped.text}`;
     appendBounded(lines, line, bodyBudget);
-    if (item.kind === "explicit" && !clipped.clipped) exactExplicitCount += 1;
+    if (item.kind === "explicit" && exactExplicit && !clipped.clipped) exactExplicitCount += 1;
   }
 
   const text = `${header}\n${lines.join("\n")}\n${footer}`;
