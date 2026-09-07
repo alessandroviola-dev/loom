@@ -1,6 +1,7 @@
 import { canonicalJson, readEvidenceById, searchEvidence } from "./evidence-archive.mjs";
 
 const EVIDENCE_ID_SCAN_RE = /\bev1-[0-9a-f]{64}\b/g;
+const EVIDENCE_ID_EXACT_RE = /^ev1-[0-9a-f]{64}$/;
 
 function textFromContent(content) {
   if (typeof content === "string") return content;
@@ -37,14 +38,11 @@ function distinctiveLexicalTokens(text) {
   return String(text ?? "")
     .split(/\s+/)
     .map((token) => token.replace(/^[^A-Za-z0-9_./:-]+|[^A-Za-z0-9_./:-]+$/g, ""))
-    .filter((token) => token && /[_./:\d]/.test(token) && !EVIDENCE_ID_SCAN_RE.test(token));
+    .filter((token) => token && /[_./:\d]/.test(token) && !EVIDENCE_ID_EXACT_RE.test(token));
 }
 
 function distinctiveLexicalQuery(text) {
-  EVIDENCE_ID_SCAN_RE.lastIndex = 0;
-  const tokens = distinctiveLexicalTokens(text);
-  EVIDENCE_ID_SCAN_RE.lastIndex = 0;
-  return [...new Set(tokens)].join(" ");
+  return [...new Set(distinctiveLexicalTokens(text))].join(" ");
 }
 
 function appendBounded(lines, line, budget) {
