@@ -65,7 +65,7 @@ The full Pi/Forge session stays persistent; the model receives a request-local b
 Do not mutate during Context Engine work:
 
 - source GGUF SHA256: `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
-- expert-major sidecar SHA256: `4df9602bd09c74afe2df6a721ac8d74834564f95831dd488b19873f45034451e`
+- expert-major sidecar SHA256: `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`
 - patched runtime SHA256: `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
 - UOPT-003 S40 matched decode: `7.557 tok/s`
 - physical context: `4096`
