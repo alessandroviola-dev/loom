@@ -124,7 +124,7 @@ pass "six-turn ForgeLoom session completed"
 bash scripts/verify-context-engine.sh
 pass "CE-001 gateway envelope remained valid"
 
-python3 - "$GATEWAY_ACCOUNTING" "$before_gateway_lines" "$ENGINE_RUNTIME" "$EXPECTED_JSON" <<'PY'
+python3 - "$GATEWAY_ACCOUNTING" "$before_gateway_lines" "$ENGINE_RUNTIME" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -132,7 +132,6 @@ from pathlib import Path
 gateway_path = Path(sys.argv[1])
 before_gateway = int(sys.argv[2])
 engine_root = Path(sys.argv[3])
-expected = json.loads(Path(sys.argv[4]).read_text())
 
 if not gateway_path.exists():
     raise SystemExit("gateway accounting missing")
@@ -169,8 +168,7 @@ if not changed:
 new_refs = sum(int(row.get("evidenceSessionRefsCreated", 0) or 0) for row in governors)
 new_blobs = sum(int(row.get("evidenceBlobsCreated", 0) or 0) for row in governors)
 if new_refs <= 0 or new_blobs <= 0:
-    raise SystemExit(f"no archived evidence was created: blobs={new_blobs} refs={new_refs}
-")
+    raise SystemExit(f"no archived evidence was created: blobs={new_blobs} refs={new_refs}")
 threshold = [row for row in accounting if row.get("event") == "pi_compaction_after" and row.get("reason") == "threshold"]
 overflow = [row for row in accounting if row.get("event") in {"pi_compaction_before", "pi_compaction_after"} and row.get("reason") == "overflow"]
 if threshold or overflow:
