@@ -10,6 +10,16 @@ function assistant(text, toolCall) {
   if (toolCall) content.push({ type: "toolCall", id: toolCall, name: "bash", arguments: { command: "x" } });
   return { role: "assistant", content, timestamp: 2 };
 }
+function assistantWithCommand(text, toolCall, command) {
+  return {
+    role: "assistant",
+    content: [
+      { type: "text", text },
+      { type: "toolCall", id: toolCall, name: "bash", arguments: { command } },
+    ],
+    timestamp: 2,
+  };
+}
 function tool(text, id = "t1") {
   return { role: "toolResult", toolCallId: id, toolName: "bash", content: [{ type: "text", text }], isError: false, timestamp: 3 };
 }
@@ -60,4 +70,42 @@ test("compacts oversized tool output inside the active turn", () => {
   assert.match(compacted.content[0].text, /LOOM CE-001 compacted/);
   assert.match(compacted.content[0].text, /ERROR src\/foo\.ts:128 failed/);
   assert.ok(result.accounting.afterTokens < before);
+});
+
+test("bounds a coding-style active turn with repeated completed tool exchanges", () => {
+  const messages = [user("Implement the requested change and verify it.")];
+  for (let index = 1; index <= 5; index += 1) {
+    const id = `tool-${index}`;
+    const command = `python3 - <<'PY'\n${`print(${index})\n`.repeat(220)}PY`;
+    const output = `${`checked line ${index}\n`.repeat(120)}ERROR src/module${index}.py:${index} retained signal\n`;
+    messages.push(assistantWithCommand(`Working on tool exchange ${index}. `.repeat(18), id, command));
+    messages.push(tool(output, id));
+  }
+
+  const original = structuredClone(messages);
+  const before = estimateMessagesTokens(messages);
+  const result = packMessages(messages, {
+    highWaterTokens: 1600,
+    targetTokens: 1200,
+    toolTextChars: 1800,
+    assistantTextChars: 900,
+    toolArgumentTextChars: 480,
+  });
+
+  assert.ok(before > 1600);
+  assert.equal(result.accounting.targetMet, true);
+  assert.ok(result.accounting.afterTokens <= 1200, `after=${result.accounting.afterTokens}`);
+  assert.ok(result.accounting.toolCallArgumentsCompacted > 0);
+  assert.ok(result.accounting.activeTurnEmergencyPasses > 0);
+
+  const callIds = result.messages
+    .flatMap((message) => Array.isArray(message.content) ? message.content : [])
+    .filter((part) => part?.type === "toolCall")
+    .map((part) => part.id);
+  const resultIds = result.messages
+    .filter((message) => message.role === "toolResult")
+    .map((message) => message.toolCallId);
+  assert.deepEqual(callIds, ["tool-1", "tool-2", "tool-3", "tool-4", "tool-5"]);
+  assert.deepEqual(resultIds, callIds, "completed tool call/result pairing must remain coherent");
+  assert.deepEqual(messages, original, "persistent session input must remain untouched");
 });
