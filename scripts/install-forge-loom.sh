@@ -63,12 +63,13 @@ HEADER
 SAFE_TOTAL="${LOOM_CONTEXT_WEBUI_SAFE_TOTAL_TOKENS:-3600}"
 SAFE_INPUT="${LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS:-2800}"
 MAX_OUTPUT="${LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS:-800}"
+LEGACY_MARGIN="${LOOM_CONTEXT_WEBUI_LEGACY_COUNT_MARGIN_TOKENS:-32}"
 HIGH_WATER="${LOOM_CONTEXT_HIGH_WATER_TOKENS:-2200}"
 TARGET="${LOOM_CONTEXT_TARGET_TOKENS:-1700}"
 MODEL="${LOOM_FORGE_MODEL:-loom-deep-30b-unlocked}"
 STATUS_URL="http://127.0.0.1:18080/loom/context-engine/status"
 
-case "$SAFE_TOTAL:$SAFE_INPUT:$MAX_OUTPUT:$HIGH_WATER:$TARGET" in
+case "$SAFE_TOTAL:$SAFE_INPUT:$MAX_OUTPUT:$LEGACY_MARGIN:$HIGH_WATER:$TARGET" in
   *[!0-9:]*|*::*|:*|*:) echo "ForgeLoom token thresholds must be positive integers." >&2; exit 64 ;;
 esac
 if (( TARGET > HIGH_WATER || HIGH_WATER >= SAFE_INPUT )); then
@@ -92,13 +93,14 @@ done
 gateway_safe() {
   local status
   status="$(curl -fsS --max-time 2 "$STATUS_URL" 2>/dev/null)" || return 1
-  python3 - "$SAFE_TOTAL" "$SAFE_INPUT" "$MAX_OUTPUT" "$status" <<'PY'
+  python3 - "$SAFE_TOTAL" "$SAFE_INPUT" "$MAX_OUTPUT" "$LEGACY_MARGIN" "$status" <<'PY'
 import json, sys
 safe_total = int(sys.argv[1])
 safe_input = int(sys.argv[2])
 max_output = int(sys.argv[3])
+legacy_margin = int(sys.argv[4])
 try:
-    data = json.loads(sys.argv[4])
+    data = json.loads(sys.argv[5])
 except Exception:
     raise SystemExit(1)
 ok = (
@@ -108,6 +110,7 @@ ok = (
     and data.get("safeTotalTokens") == safe_total
     and data.get("safeInputTokens") == safe_input
     and data.get("maxOutputTokens") == max_output
+    and data.get("legacyCountMarginTokens") == legacy_margin
     and data.get("physicalContextTokens") == 4096
     and data.get("ciStatus") == "disabled"
 )
@@ -124,6 +127,7 @@ if ! gateway_safe; then
     LOOM_CONTEXT_WEBUI_SAFE_TOTAL_TOKENS="$SAFE_TOTAL" \
     LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS="$SAFE_INPUT" \
     LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS="$MAX_OUTPUT" \
+    LOOM_CONTEXT_WEBUI_LEGACY_COUNT_MARGIN_TOKENS="$LEGACY_MARGIN" \
     "$ROOT/scripts/loom-deep" start
 fi
 
@@ -145,4 +149,5 @@ echo "Installed LOOM Context Engine to $TARGET_DIR"
 echo "Installed launcher: $LAUNCHER"
 echo "Pi compatibility accepted: $PI_VERSION"
 echo "Default CE-001 envelope: target 1700; high-water 2200; final input <=2800; output <=800; total <=3600 < 4096"
+echo "Legacy llama.cpp counting fallback margin: 32 tokens"
 echo "Use: ForgeLoom"
