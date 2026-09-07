@@ -135,5 +135,5 @@ mv -f "$TEMP" "$LAUNCHER"
 
 echo "Installed LOOM Context Engine to $TARGET_DIR"
 echo "Installed launcher: $LAUNCHER"
-echo "Default CE-001 envelope: working ${1700}->${2200}; final input <=2800; output <=800; total <=3600 < 4096"
+echo "Default CE-001 envelope: target 1700; high-water 2200; final input <=2800; output <=800; total <=3600 < 4096"
 echo "Use: ForgeLoom"
