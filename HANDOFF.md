@@ -41,7 +41,7 @@ Forge      -> normal Forge, unchanged
 ForgeLoom  -> Forge + LOOM Context Engine + retained LOOM UNLOCKED model
 ```
 
-`ForgeLoom` must enable Forge normally but disable Forge Context Intelligence only for that process, so the LOOM Context Engine is the single owner of the Pi `context` transformation.
+`ForgeLoom` enables Forge normally but sets `FORGE_CONTEXT_INTELLIGENCE=0` for that process, so LOOM Context Engine is the only owner of Pi's `context` transformation.
 
 The model-visible context is a sliding bounded view over a much larger persistent Pi/Forge session:
 
@@ -66,13 +66,35 @@ The original Pi session remains intact because `context` event transforms are re
 
 4096 is the physical hard limit, not an operating target. CE-001 must enforce preventive backpressure before every LLM request and reduce the visible working set before Pi/Forge or llama.cpp reaches an overflow condition.
 
-Exact threshold values are configuration/measurement outputs, not assumptions. Initial implementation should expose:
+### Initial CE-001 operating envelope
 
-- physical context = 4096
-- safe input ceiling
-- high-water compaction trigger
-- low-water post-compaction target
-- safety reserve
+These values are deliberately conservative starting points and must be calibrated from live accounting; they are not final performance targets:
+
+```text
+physical context       4096
+forbidden reserve       496
+safe total             3600
+final input ceiling    2800
+maximum output          800
+working high-water     2200   (conservative estimate, messages only)
+working target         1700   (after governor compaction)
+```
+
+Hard invariant at the final gateway:
+
+```text
+exact final input + reserved output <= 3600 < 4096
+```
+
+The gateway caps/injects the chat output limit to at most 800 for ForgeLoom and obtains exact final chat input tokens from llama.cpp `/v1/chat/completions/input_tokens`. If it cannot verify the envelope, it fails closed and does not forward the request.
+
+## Fixed-overhead reduction
+
+Pi's normal system prompt, project context and tool instructions can consume a material fraction of a 4096-token window even after conversation pruning.
+
+Therefore, only while `LOOM_CONTEXT_ENGINE=1`, CE-001 replaces the fully assembled per-turn system prompt with a minimal ForgeLoom prompt. Project state is not injected on every request; the agent is instructed to read `AGENTS.md` / `HANDOFF.md` when relevant. Forge's four provider-visible tool schemas remain available.
+
+This does not modify normal Forge behavior.
 
 ## CE-001 scope
 
@@ -83,39 +105,53 @@ Implement only the preventive governor:
 3. conservative token accounting for the transform decision;
 4. whole-turn eviction of oldest history while retaining the newest active turn;
 5. deterministic compaction of oversized tool-result text inside the active turn only when whole-turn eviction is insufficient;
-6. exact final request token count/guard in the existing LOOM gateway using llama.cpp `/v1/chat/completions/input_tokens`;
-7. local JSONL accounting;
-8. dedicated `ForgeLoom` launcher/install path;
-9. frozen long-session validation workload.
+6. minimal ForgeLoom-only system prompt to reduce fixed overhead;
+7. exact final request token count + output-reserve guard in the existing LOOM gateway;
+8. local JSONL accounting;
+9. dedicated `ForgeLoom` launcher/install path;
+10. frozen long-session validation workload.
 
 No second LLM, embeddings, vector DB, new model-facing tools, durable task-state intelligence, BM25/FTS, or semantic retrieval in CE-001.
 
 ## Safety model
 
-Two layers:
-
 ### Layer A — request-local Context Governor
 
-Runs on Pi's `context` event before every LLM call and returns a bounded message list. It should normally keep requests far enough below the physical limit that Pi's own threshold/overflow compaction is never invoked.
+Runs on Pi's `context` event before every LLM call and returns a bounded message list. It evicts whole old turns first; if the active turn itself is oversized it deterministically compacts large tool outputs/assistant narration without mutating the persistent session.
 
-### Layer B — gateway hard guard
+### Layer B — exact gateway envelope guard
 
-Runs on the final OpenAI-compatible chat payload after Pi has assembled system/tool/provider material. It obtains the backend's exact token count and refuses an unsafe request rather than forwarding it to the 30B.
+Runs on the final OpenAI-compatible chat payload after Pi/Forge has assembled provider material. It:
+
+- caps/reserves output;
+- obtains exact final input tokens from llama.cpp;
+- verifies the configured safe-total envelope;
+- refuses the request rather than forwarding an unsafe/unverifiable payload.
 
 Layer B is a last-resort invariant check, not the normal compaction mechanism.
 
+## Pi native compaction interaction
+
+Pi's stock compaction defaults are designed for much larger context windows and can request automatic threshold compaction independently of CE-001. The LOOM extension cancels **threshold** compaction while active so the full persistent transcript is not replaced by Pi's summary.
+
+Manual `/compact` remains available. Overflow compaction remains enabled only as an emergency fallback; if overflow recovery is actually invoked during the frozen workload, CE-001 has failed its primary safety goal.
+
+A cancelled `session_before_compact(reason="threshold")` attempt is accounting evidence, not an actual compaction. Actual `session_compact` events are the failure signal for the acceptance gate.
+
 ## CE-001 acceptance gate
 
-Use a frozen realistic coding workload that produces substantially more than 4096 cumulative session tokens.
+Use a frozen realistic coding workload that produces substantially more than 4096 cumulative session activity.
 
 Record at minimum:
 
 - cumulative session activity;
-- visible messages/tokens before and after governor;
+- visible messages/estimated tokens before and after governor;
 - number of governor compactions;
-- maximum final request input tokens;
+- exact final request input tokens;
+- reserved output and projected safe total;
 - gateway guard rejections;
-- Pi `session_before_compact` / `session_compact` events by reason;
+- Pi `session_before_compact` attempts/cancellations by reason;
+- actual Pi `session_compact` events by reason;
 - session survival;
 - task completion/correctness;
 - RAM/swap;
@@ -123,8 +159,9 @@ Record at minimum:
 
 GO requires:
 
-- no final request reaches the configured safe ceiling;
-- zero Pi threshold/overflow compactions during the frozen workload;
+- every forwarded request satisfies the configured safe-total envelope;
+- no gateway unsafe request is forwarded;
+- zero actual Pi threshold/overflow compactions during the frozen workload;
 - zero context-window session termination;
 - task completes correctly;
 - no material RAM/swap or throughput regression.
