@@ -109,3 +109,35 @@ test("bounds a coding-style active turn with repeated completed tool exchanges",
   assert.deepEqual(resultIds, callIds, "completed tool call/result pairing must remain coherent");
   assert.deepEqual(messages, original, "persistent session input must remain untouched");
 });
+
+test("last-resort eviction drops only whole completed tool exchanges", () => {
+  const messages = [user("Keep this current user request intact while staying within budget.")];
+  for (let index = 1; index <= 7; index += 1) {
+    const id = `compact-${index}`;
+    messages.push(assistantWithCommand(`step ${index}: ${"narration ".repeat(8)}`, id, `echo ${"payload".repeat(10)}`));
+    messages.push(tool(`result ${index}: ${"output ".repeat(10)}`, id));
+  }
+  const original = structuredClone(messages);
+  const result = packMessages(messages, {
+    highWaterTokens: 220,
+    targetTokens: 120,
+    toolTextChars: 1800,
+    assistantTextChars: 900,
+    toolArgumentTextChars: 480,
+  });
+
+  assert.equal(result.accounting.targetMet, true);
+  assert.ok(result.accounting.afterTokens <= 120, `after=${result.accounting.afterTokens}`);
+  assert.ok(result.accounting.activeTurnToolExchangesDropped > 0);
+  assert.match(result.messages[0].content[0].text, /Keep this current user request intact/);
+
+  const callIds = result.messages
+    .flatMap((message) => Array.isArray(message.content) ? message.content : [])
+    .filter((part) => part?.type === "toolCall")
+    .map((part) => part.id);
+  const resultIds = result.messages
+    .filter((message) => message.role === "toolResult")
+    .map((message) => message.toolCallId);
+  assert.deepEqual(resultIds, callIds, "remaining tool call/result pairs must stay coherent after eviction");
+  assert.deepEqual(messages, original, "persistent session input must remain untouched");
+});
