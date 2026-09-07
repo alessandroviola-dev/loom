@@ -15,9 +15,15 @@ command -v sysctl >/dev/null 2>&1 || fail "sysctl not found"
 
 STATE="$ROOT/.loom/runtime/loom-deep"
 BACKEND_PID_FILE="$STATE/llama-server-backend.pid"
-[[ -s "$BACKEND_PID_FILE" ]] || fail "LOOM backend pid file missing; run ForgeLoom --help first"
+
+# The resource gate must be self-contained. A previous test or normal operator
+# shutdown may have left the retained backend stopped, so warm the ForgeLoom
+# lifecycle without inference before attempting to sample its PID/RSS.
+info "ensuring ForgeLoom gateway/backend are warm before resource sampling"
+ForgeLoom --help >/dev/null 2>&1 || fail "ForgeLoom warm-up failed"
+[[ -s "$BACKEND_PID_FILE" ]] || fail "LOOM backend pid file missing after ForgeLoom warm-up"
 BACKEND_PID="$(<"$BACKEND_PID_FILE")"
-kill -0 "$BACKEND_PID" 2>/dev/null || fail "LOOM backend is not running"
+kill -0 "$BACKEND_PID" 2>/dev/null || fail "LOOM backend is not running after ForgeLoom warm-up"
 
 # Historical retained S40 reference from the frozen UOPT handoff.
 BASELINE_RSS_GIB="${LOOM_CE001_BASELINE_RSS_GIB:-4.676}"
