@@ -132,6 +132,16 @@ async function exactChatInputTokens(payload) {
 
 const server = http.createServer(async (request, response) => {
   const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+  if (request.method === "GET" && pathname === "/loom/context-engine/status") {
+    response.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+    return response.end(JSON.stringify({
+      contextEngineGateway: true,
+      hardGuardEnabled,
+      safeInputTokens,
+      guardFailClosed,
+      ciStatus: coreStatus,
+    }));
+  }
   if (request.method !== "POST" || !relevant(pathname)) return proxy(request, response);
   let original;
   try { original = await readBody(request); } catch (error) { response.writeHead(413, { "content-type": "application/json" }); return response.end(JSON.stringify({ error: { message: String(error.message ?? error), type: "invalid_request_error" } })); }
