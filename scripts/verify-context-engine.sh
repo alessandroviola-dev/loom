@@ -56,9 +56,12 @@ print("CE-001 invariant checks: PASS")
 PY
 pass "repository invariants"
 
-STATUS_URL="${LOOM_CONTEXT_STATUS_URL:-http://127.0.0.1:18080/loom/context-engine/status}"
-if command -v curl >/dev/null 2>&1 && status="$(curl -fsS --max-time 2 "$STATUS_URL" 2>/dev/null)"; then
-  python3 - "$status" <<'PY'
+if [[ "${LOOM_CONTEXT_VERIFY_SKIP_LIVE:-0}" == "1" ]]; then
+  echo "CE-001 VERIFY INFO: live gateway check skipped by request."
+else
+  STATUS_URL="${LOOM_CONTEXT_STATUS_URL:-http://127.0.0.1:18080/loom/context-engine/status}"
+  if command -v curl >/dev/null 2>&1 && status="$(curl -fsS --max-time 2 "$STATUS_URL" 2>/dev/null)"; then
+    python3 - "$status" <<'PY'
 import json, sys
 
 data = json.loads(sys.argv[1])
@@ -78,9 +81,10 @@ if bad:
     raise SystemExit("live gateway mismatch: " + repr(bad))
 print("CE-001 live gateway status: PASS")
 PY
-  pass "live gateway envelope"
-else
-  echo "CE-001 VERIFY INFO: live gateway not running; static verification completed."
+    pass "live gateway envelope"
+  else
+    echo "CE-001 VERIFY INFO: live gateway not running; static verification completed."
+  fi
 fi
 
 echo "CE-001 VERIFY COMPLETE"
