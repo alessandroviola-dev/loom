@@ -1,89 +1,136 @@
-# LOOM — Final Handoff
+# LOOM — Context Engine Handoff
 
-Last updated: 2026-09-06
-Status: **PROJECT CLOSED / ARCHIVED**
+Last updated: 2026-09-07
+Status: **ACTIVE — CE-001 PREVENTIVE CONTEXT GOVERNOR**
 Repository: `Ilcoach/loom`
-Final research branch: `research/unlocked-speed-001`
+Branch: `research/context-engine-001`
 
-## Final decision
+## Reopen decision
 
-LOOM is concluded. The project succeeded at making the local 30B UNLOCKED model materially faster and operationally usable, but the model's practical intelligence/capability remained below what was required for the intended workloads. Further speed optimization was therefore stopped by product decision, not by an unresolved runtime defect.
+LOOM was explicitly reopened by the owner for a new research direction only: preserve the retained local 30B UNLOCKED model and its physical 4096-token context while giving Forge long-session continuity through an external host-side Context Engine.
 
-There is no active next action.
+This is not a restart of UOPT speed/model optimization.
 
-## Final retained product
+## Frozen retained product
 
-The retained local product is **UOPT-003 S40 UNLOCKED**.
+Do not mutate:
 
-Operator UX:
+- model: `models/loom-deep-30b-unlocked.gguf`
+- model SHA256: `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
+- default profile: UOPT-003 S40 / CPU-MoE / no-mmap / cache RAM 512 / `-ub 4`
+- expert-major sidecar: `models/unlocked-expert-major-v1.bin`
+- patched runtime: `.loom/runtime/loom-uopt002/llama-server`
+- physical context: `4096`
+
+Retained measured UOPT-003 result remains historical baseline:
+
+- decode `7.557 tok/s`
+- 1,155-token cold prefill `11.306 tok/s`
+- 1,155-token cold TTFT `102.242 s`
+- frozen gates refusal `0/6`, degeneration `0/6`, benign `8/8`
+
+## Architecture decision
+
+Do **not** fork or modify Forge.
+
+Target operator modes:
 
 ```text
-scripts/loom-deep use unlocked
-scripts/loom-deep start|stop|status|health|current
+pi         -> vanilla Pi
+Forge      -> normal Forge, unchanged
+ForgeLoom  -> Forge + LOOM Context Engine + retained LOOM UNLOCKED model
 ```
 
-Stable loopback endpoint:
+`ForgeLoom` must enable Forge normally but disable Forge Context Intelligence only for that process, so the LOOM Context Engine is the single owner of the Pi `context` transformation.
+
+The model-visible context is a sliding bounded view over a much larger persistent Pi/Forge session:
 
 ```text
-http://127.0.0.1:18080/
+full Forge session
+       |
+       v
+LOOM Context Engine
+       |
+       v
+safe working window well below 4096
+       |
+       v
+LOOM 30B / n_ctx=4096
 ```
 
-Final retained artifacts:
+The original Pi session remains intact because `context` event transforms are request-local/ephemeral.
 
-- source GGUF `models/loom-deep-30b-unlocked.gguf`
-- source SHA256 `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
-- expert-major sidecar `models/unlocked-expert-major-v1.bin`
-- sidecar SHA256 `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`
-- patched runtime `.loom/runtime/loom-uopt002/llama-server`
-- runtime SHA256 `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
-- default profile: S40 / CPU-MoE / no-mmap / cache RAM 512 / `-ub 4`
-- managed rollback: `unlocked-s32`
+## Core invariant
 
-Matched UOPT-003 result:
+**The model must never be allowed to approach 4096 tokens.**
 
-- decode `6.660 -> 7.557 tok/s` (+13.46%)
-- 1,155-token cold prefill `7.147 -> 11.306 tok/s`
-- 1,155-token cold TTFT `161.676 -> 102.242 s` (-36.76%)
-- expert hit rate `81.745% -> 89.831%`
-- misses `90,229 -> 50,260`
-- frozen gates remained refusal `0/6`, degeneration `0/6`, benign `8/8`
+4096 is the physical hard limit, not an operating target. CE-001 must enforce preventive backpressure before every LLM request and reduce the visible working set before Pi/Forge or llama.cpp reaches an overflow condition.
 
-## Optimization closure
+Exact threshold values are configuration/measurement outputs, not assumptions. Initial implementation should expose:
 
-### UOPT-001 — PARTIAL_GO
-Retained low-risk runtime tuning and rollback baseline.
+- physical context = 4096
+- safe input ceiling
+- high-water compaction trigger
+- low-water post-compaction target
+- safety reserve
 
-### UOPT-002 — GO
-Lossless expert-major sidecar + patched runtime reduced expert-miss I/O and materially improved decode/cold TTFT.
+## CE-001 scope
 
-### UOPT-003 — GO
-S40 residency was the stable winner and remains the final product profile.
+Implement only the preventive governor:
 
-### UOPT-004 — NO_GO
-Expert-only Q2_K reduced expert footprint by `23.636%` but failed functional arithmetic quality (`414` vs `410`).
+1. separate opt-in LOOM extension;
+2. Pi `context` interception before each LLM call;
+3. conservative token accounting for the transform decision;
+4. whole-turn eviction of oldest history while retaining the newest active turn;
+5. deterministic compaction of oversized tool-result text inside the active turn only when whole-turn eviction is insufficient;
+6. exact final request token count/guard in the existing LOOM gateway using llama.cpp `/v1/chat/completions/input_tokens`;
+7. local JSONL accounting;
+8. dedicated `ForgeLoom` launcher/install path;
+9. frozen long-session validation workload.
 
-### UOPT-005 — NO_GO
-Global and selective IQ3_XXS exploration exhausted layer and tensor frontiers without recovering the required arithmetic reference. Candidate outputs converged to `400` or `414`, never `410`. Expert-by-expert search was rejected as a new multi-day format/runtime project with unproven value.
+No second LLM, embeddings, vector DB, new model-facing tools, durable task-state intelligence, BM25/FTS, or semantic retrieval in CE-001.
 
-### UOPT-006 — NO_GO
-Draftless speculative decoding was tested on production S40:
+## Safety model
 
-- `ngram-simple`: greedy parity PASS, decode `+0.52%`, drafted `0`, accepted `0`
-- `ngram-mod`: greedy parity PASS, decode `-0.45%`, drafted `0`, accepted `0`
-- acceptance N/A (`0/0`)
-- RSS ~`4.676 GiB`
-- no meaningful swap growth or stability issue
+Two layers:
 
-No UOPT-006 phase 2 was justified.
+### Layer A — request-local Context Governor
 
-## Storage / archive
+Runs on Pi's `context` event before every LLM call and returns a bounded message list. It should normally keep requests far enough below the physical limit that Pi's own threshold/overflow compaction is never invoked.
 
-The external external archive volume is archive/staging only and is not required for normal inference. FAST remains externally archived and unavailable as a local profile.
+### Layer B — gateway hard guard
 
-Local experiment evidence under `results-local/`, `.loom/` runtimes, model files, caches, and external-drive artifacts remain intentionally outside Git.
+Runs on the final OpenAI-compatible chat payload after Pi has assembled system/tool/provider material. It obtains the backend's exact token count and refuses an unsafe request rather than forwarding it to the 30B.
 
-## Closure rule
+Layer B is a last-resort invariant check, not the normal compaction mechanism.
 
-Do not resume LOOM optimization, create a new UOPT work package, mutate the retained S40 production profile, or perform new model downloads/builds unless the owner explicitly reopens the project.
+## CE-001 acceptance gate
 
-If LOOM is reopened in the future, start from this document and the final closure record in `research/integration/loom-project-closure-20260906.md` rather than from stale historical roadmap items.
+Use a frozen realistic coding workload that produces substantially more than 4096 cumulative session tokens.
+
+Record at minimum:
+
+- cumulative session activity;
+- visible messages/tokens before and after governor;
+- number of governor compactions;
+- maximum final request input tokens;
+- gateway guard rejections;
+- Pi `session_before_compact` / `session_compact` events by reason;
+- session survival;
+- task completion/correctness;
+- RAM/swap;
+- TTFT and decode tok/s.
+
+GO requires:
+
+- no final request reaches the configured safe ceiling;
+- zero Pi threshold/overflow compactions during the frozen workload;
+- zero context-window session termination;
+- task completes correctly;
+- no material RAM/swap or throughput regression.
+
+If CE-001 fails, do not proceed to memory/retrieval phases. Diagnose the governor first.
+
+## Historical closure
+
+The previous project closure and UOPT records remain valid for model/runtime optimization. They are historical evidence and rollback references only; they no longer prohibit the explicitly authorized Context Engine work on this branch.
