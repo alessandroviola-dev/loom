@@ -15,6 +15,7 @@ node --check src/loom-context-engine/core.mjs
 node --check scripts/loom-context-webui-gateway.mjs
 bash -n scripts/install-forge-loom.sh
 bash -n scripts/smoke-context-engine.sh
+if [[ -f scripts/stress-context-engine.sh ]]; then bash -n scripts/stress-context-engine.sh; fi
 pass "static syntax"
 
 node --test test/context-engine-core.test.mjs
@@ -34,12 +35,13 @@ checks = {
     "physical ctx frozen": 'LOOM_DEEP_CTX="4096"' in profile,
     "Forge CI disabled by ForgeLoom": 'FORGE_CONTEXT_INTELLIGENCE=0' in installer,
     "LOOM engine opt-in": 'LOOM_CONTEXT_ENGINE=1' in installer and 'LOOM_CONTEXT_ENGINE' in ext,
-    "working high-water": '2200' in core and '2200' in installer,
-    "working target": '1700' in core and '1700' in installer,
+    "working high-water": '1600' in core and '1600' in ext and '1600' in installer,
+    "working target": '1200' in core and '1200' in ext and '1200' in installer,
     "safe total": '3600' in installer and '3600' in gateway,
     "safe input": '2800' in installer and '2800' in gateway,
     "max output": '800' in installer and '800' in gateway,
     "exact token endpoint": '/v1/chat/completions/input_tokens' in gateway,
+    "legacy exact fallback": '/apply-template' in gateway and '/tokenize' in gateway,
     "fail closed": 'LOOM_CONTEXT_WEBUI_GUARD_FAIL_CLOSED=1' in installer,
     "minimal system prompt": 'before_agent_start' in ext and 'minimalSystemPrompt' in ext,
     "threshold compaction cancelled": 'event.reason === "threshold"' in ext and 'cancel: true' in ext,
@@ -52,6 +54,8 @@ if failed:
 
 if 2800 + 800 > 3600 or 3600 >= 4096:
     raise SystemExit("unsafe hard-coded CE-001 envelope")
+if 1600 + 900 >= 2800:
+    raise SystemExit("working high-water leaves insufficient measured fixed-overhead headroom")
 print("CE-001 invariant checks: PASS")
 PY
 pass "repository invariants"
