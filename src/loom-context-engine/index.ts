@@ -17,8 +17,8 @@ function positiveInt(value: string | undefined, fallback: number): number {
 }
 
 function claim(pi: ExtensionAPI): boolean {
-  const carrier = pi as ExtensionAPI & { [CLAIMS_KEY]?: Set<string> };
-  let claims = carrier[CLAIMS_KEY];
+  const carrier = pi as ExtensionAPI & { [key: symbol]: unknown };
+  let claims = carrier[CLAIMS_KEY] as Set<string> | undefined;
   if (!claims) {
     claims = new Set<string>();
     carrier[CLAIMS_KEY] = claims;
@@ -63,8 +63,8 @@ function record(sessionId: string, row: Record<string, unknown>): void {
 export default function loomContextEngine(pi: ExtensionAPI): void {
   if (!enabled(process.env.LOOM_CONTEXT_ENGINE, false) || !claim(pi)) return;
 
-  const highWaterTokens = positiveInt(process.env.LOOM_CONTEXT_HIGH_WATER_TOKENS, 2400);
-  const targetTokens = Math.min(positiveInt(process.env.LOOM_CONTEXT_TARGET_TOKENS, 1900), highWaterTokens);
+  const highWaterTokens = positiveInt(process.env.LOOM_CONTEXT_HIGH_WATER_TOKENS, 2200);
+  const targetTokens = Math.min(positiveInt(process.env.LOOM_CONTEXT_TARGET_TOKENS, 1700), highWaterTokens);
   const toolTextChars = positiveInt(process.env.LOOM_CONTEXT_TOOL_TEXT_CHARS, 1800);
   const assistantTextChars = positiveInt(process.env.LOOM_CONTEXT_ASSISTANT_TEXT_CHARS, 900);
   let sessionId = "unknown";
@@ -116,14 +116,20 @@ export default function loomContextEngine(pi: ExtensionAPI): void {
     return { messages: result.messages };
   });
 
-  // CE-001 does not invoke Pi compaction. These hooks exist only to prove that
-  // Pi's own threshold/overflow compaction stayed at zero during validation.
+  // A threshold compaction would destroy the large persistent transcript that
+  // CE-001 intentionally keeps outside the model-visible working window. Cancel
+  // only automatic threshold compaction. Manual compaction remains available,
+  // and overflow recovery is deliberately left intact as an emergency fallback.
   pi.on("session_before_compact", (event) => {
+    const cancelled = event.reason === "threshold";
     record(sessionId, {
       event: "pi_compaction_before",
       reason: event.reason,
       willRetry: event.willRetry,
+      cancelled,
     });
+    if (cancelled) return { cancel: true };
+    return undefined;
   });
 
   pi.on("session_compact", (event) => {
