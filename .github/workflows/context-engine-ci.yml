@@ -24,6 +24,7 @@ jobs:
         run: |
           node --check src/loom-context-engine/core.mjs
           node --check scripts/loom-context-webui-gateway.mjs
+          node --check scripts/replay-context-engine-rpc.mjs
           node --experimental-strip-types --check src/loom-context-engine/index.ts
           python3 -m py_compile scripts/realistic-context-engine-benchmark.py
           python3 -m py_compile scripts/recover-realistic-context-engine-benchmark.py
