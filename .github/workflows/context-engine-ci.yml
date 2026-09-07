@@ -26,6 +26,7 @@ jobs:
           node --check scripts/loom-context-webui-gateway.mjs
           node --experimental-strip-types --check src/loom-context-engine/index.ts
           python3 -m py_compile scripts/realistic-context-engine-benchmark.py
+          python3 -m py_compile scripts/recover-realistic-context-engine-benchmark.py
           bash -n scripts/install-forge-loom.sh
           bash -n scripts/verify-context-engine.sh
           bash -n scripts/smoke-context-engine.sh
