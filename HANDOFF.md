@@ -1,21 +1,33 @@
 # LOOM — Context Engine Handoff
 
 Last updated: 2026-09-07
-Status: **ACTIVE — CE-001 SMOKE GO / MULTI-TURN STRESS PENDING**
+Status: **ACTIVE — CE-001 INFRASTRUCTURE GO / REALISTIC CODING GATE PENDING**
 Repository: `Ilcoach/loom`
 Branch: `research/context-engine-001`
 
-## Reopen decision
+## Scope
 
-LOOM was explicitly reopened by the owner for a new research direction only: preserve the retained local 30B UNLOCKED model and its physical 4096-token context while giving Forge long-session continuity through an external host-side Context Engine.
+LOOM is reopened only for the Context Engine research direction: keep the retained local 30B UNLOCKED model and physical `n_ctx=4096`, while giving Forge long-session continuity through an external host-side working-memory governor.
 
-This is not a restart of UOPT speed/model optimization.
+This is not a restart of UOPT speed/model optimization. Do not fork or modify Forge.
+
+Operator modes remain:
+
+```text
+pi         -> vanilla Pi
+Forge      -> normal Forge, unchanged
+ForgeLoom  -> Forge + LOOM Context Engine + retained LOOM UNLOCKED model
+```
+
+`ForgeLoom` sets `FORGE_CONTEXT_INTELLIGENCE=0`; LOOM Context Engine is therefore the only owner of Pi's request-local `context` transformation.
 
 ## Current checkpoint
 
-CE-001 repository implementation and the first real local Mac/30B smoke have passed. **Do not proceed to CE-002 yet.** The next gate is the calibrated multi-turn RPC stress test.
+CE-001 has passed both the real one-shot Mac/30B smoke and the calibrated multi-turn synthetic stress. The sliding-window infrastructure is **GO**.
 
-Real smoke result on 2026-09-07:
+Do **not** proceed to CE-002 yet. The remaining CE-001 acceptance gate is the frozen realistic coding benchmark in one persistent ForgeLoom session.
+
+### Real one-shot smoke — PASS
 
 ```text
 Pi                         0.85.1
@@ -35,88 +47,34 @@ Pi threshold compactions   0
 Pi overflow compactions    0
 ```
 
-The smoke exposed ~900 tokens of provider-visible fixed/template/tool overhead not represented in the governor's message-only estimate. Therefore the working thresholds were recalibrated from `2200/1700` to **`1600/1200`** before stress testing.
+The smoke exposed roughly 900 provider-visible fixed/template/tool tokens not represented in the governor's message-only estimate. Working thresholds were therefore recalibrated from `2200/1700` to `1600/1200`.
 
-Repository-side pieces:
+### Multi-turn RPC stress — PASS
 
-- `src/loom-context-engine/core.mjs` — request-local governor;
-- `src/loom-context-engine/index.ts` — Pi/ForgeLoom extension hooks;
-- `scripts/install-forge-loom.sh` — isolated installer + `ForgeLoom` launcher;
-- `scripts/loom-context-webui-gateway.mjs` — final token/output hard guard;
-- `scripts/verify-context-engine.sh` — static/invariant verification;
-- `scripts/smoke-context-engine.sh` — one-shot local runtime calibration/smoke;
-- `scripts/stress-context-engine.sh` — single-session multi-turn RPC stress;
-- `test/context-engine-core.test.mjs` — governor unit coverage.
-
-Required next operator sequence:
-
-```bash
-git switch research/context-engine-001
-git pull --ff-only origin research/context-engine-001
-bash scripts/install-forge-loom.sh
-bash scripts/stress-context-engine.sh
-```
-
-Do not proceed to CE-002 until the stress passes and its gateway/governor accounting has been reviewed.
-
-## Frozen retained product
-
-Do not mutate:
-
-- model: `models/loom-deep-30b-unlocked.gguf`
-- model SHA256: `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
-- default profile: UOPT-003 S40 / CPU-MoE / no-mmap / cache RAM 512 / `-ub 4`
-- expert-major sidecar: `models/unlocked-expert-major-v1.bin`
-- expert-major sidecar SHA256: `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`
-- patched runtime: `.loom/runtime/loom-uopt002/llama-server`
-- patched runtime SHA256: `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
-- physical context: `4096`
-
-Retained measured UOPT-003 result remains historical baseline:
-
-- decode `7.557 tok/s`
-- 1,155-token cold prefill `11.306 tok/s`
-- 1,155-token cold TTFT `102.242 s`
-- frozen gates refusal `0/6`, degeneration `0/6`, benign `8/8`
-
-## Architecture decision
-
-Do **not** fork or modify Forge.
-
-Target operator modes:
+Real retained Mac/30B result on 2026-09-07:
 
 ```text
-pi         -> vanilla Pi
-Forge      -> normal Forge, unchanged
-ForgeLoom  -> Forge + LOOM Context Engine + retained LOOM UNLOCKED model
+RPC turns completed        12
+persistent message count   24
+raw user payload chars     16296
+max raw history estimate   5777
+max visible estimate       1430
+governor compactions       9
+max exact final input      2343
+max projected total        2631
+min headroom to 4096       1465
+hard-guard blocks          0
+Pi threshold compactions   0
+Pi overflow compactions    0
 ```
 
-`ForgeLoom` enables Forge normally but sets `FORGE_CONTEXT_INTELLIGENCE=0` for that process, so LOOM Context Engine is the only owner of Pi's `context` transformation.
-
-The model-visible context is a sliding bounded view over a much larger persistent Pi/Forge session:
-
-```text
-full Forge session
-       |
-       v
-LOOM Context Engine
-       |
-       v
-safe working window well below 4096
-       |
-       v
-LOOM 30B / n_ctx=4096
-```
-
-The original Pi session remains intact because `context` event transforms are request-local/ephemeral.
+This is the first direct proof of the target invariant: the persistent session exceeded the physical 4096-equivalent working history while the model-visible window stayed bounded and the session continued normally.
 
 ## Core invariant
 
-**The model must never be allowed to approach 4096 tokens.**
+**4096 is a forbidden physical ceiling, not an operating target.**
 
-4096 is the physical hard limit, not an operating target. CE-001 must enforce preventive backpressure before every LLM request and reduce the visible working set before Pi/Forge or llama.cpp reaches an overflow condition.
-
-### Calibrated CE-001 operating envelope
+Current calibrated envelope:
 
 ```text
 physical context       4096
@@ -124,129 +82,151 @@ forbidden reserve       496
 safe total             3600
 final input ceiling    2800
 maximum output          800
-working high-water     1600   (message-only conservative estimate)
-working target         1200   (after governor compaction)
-measured fixed overhead ~900  (smoke observation, includes conservative counting path)
+working high-water     1600   message-only conservative estimate
+working target         1200   after governor compaction
+measured fixed overhead ~900  smoke observation
+legacy count margin      32
 ```
 
-The working high-water is intentionally below the final input ceiling by enough room to absorb the measured fixed provider/template/tool overhead before Layer B is needed.
-
-Hard invariant at the final gateway:
+Final gateway invariant:
 
 ```text
 final counted input + reserved output <= 3600 < 4096
 ```
 
+Layer A must normally compact before Layer B is needed. A gateway hard-guard block during the frozen workload counts as CE-001 failure even though the physical limit remains protected.
+
+## Architecture
+
+```text
+persistent Pi/Forge session
+          |
+          v
+LOOM Context Engine
+(request-local governor)
+          |
+          v
+bounded working history
+          |
+          v
+Pi provider assembly
+(system + Forge tool schemas)
+          |
+          v
+LOOM gateway hard guard
+          |
+          v
+30B / n_ctx=4096
+```
+
+Pi's original session is not rewritten by the governor; `context` transforms apply only to the imminent model request.
+
+The governor:
+
+1. estimates message-only history;
+2. triggers before the calibrated high-water;
+3. evicts oldest complete user turns first;
+4. preserves tool-call/tool-result coherence;
+5. compacts oversized active-turn tool output only when whole-turn eviction is insufficient;
+6. targets the low-water working set;
+7. records JSONL accounting.
+
+ForgeLoom also replaces Pi's large assembled coding/project system prompt with a minimal profile-only prompt. Project files remain available on disk and are read on demand.
+
 ## Exact counting compatibility
 
-The retained patched llama.cpp runtime does **not** expose the newer `/v1/chat/completions/input_tokens` endpoint; the first guarded smoke correctly failed closed with HTTP 503 rather than forwarding an unverifiable request.
+The retained patched llama.cpp does not expose `/v1/chat/completions/input_tokens`.
 
-CE-001 now uses this order:
+CE-001 counting order:
 
-1. try `/v1/chat/completions/input_tokens` when available;
-2. on the retained legacy runtime, render with `/apply-template` and tokenize the rendered model input with `/tokenize`;
-3. verify that provider-visible tool schemas are represented in the rendered template when tools are present;
-4. add a conservative `32`-token legacy counting margin;
-5. fail closed if safe counting cannot be demonstrated.
+1. use `/v1/chat/completions/input_tokens` when available;
+2. otherwise use retained-runtime `/apply-template`;
+3. tokenize the rendered model input with `/tokenize`;
+4. verify that tool schemas affect the rendered template when tools are present;
+5. add a conservative 32-token legacy margin;
+6. fail closed if counting cannot be demonstrated safely.
 
-The fallback passed the real retained-runtime smoke.
+The legacy-safe path passed both the real smoke and the 12-turn stress.
 
-## Fixed-overhead reduction
+## Pi native compaction
 
-Pi's normal system prompt, project context and tool instructions can consume a material fraction of a 4096-token window even after conversation pruning.
+ForgeLoom cancels Pi automatic `threshold` compaction because the persistent transcript is intentionally retained outside the model-visible window.
 
-Therefore, only while `LOOM_CONTEXT_ENGINE=1`, CE-001 replaces the fully assembled per-turn system prompt with a minimal ForgeLoom prompt. Project state is not injected on every request; the agent is instructed to read `AGENTS.md` / `HANDOFF.md` when relevant. Forge's four provider-visible tool schemas remain available.
+Manual `/compact` remains available. Overflow compaction remains only as an emergency fallback.
 
-This does not modify normal Forge behavior.
+Acceptance requires zero actual Pi threshold/overflow compactions. If Pi overflow recovery is invoked, CE-001 has failed its primary governor objective.
 
-## CE-001 scope
+## Frozen retained product
 
-CE-001 implements only the preventive governor:
+Do not mutate during Context Engine work:
 
-1. separate opt-in LOOM extension;
-2. Pi `context` interception before each LLM call;
-3. conservative message-token estimate for the transform decision;
-4. whole-turn eviction of oldest history while retaining the newest active turn;
-5. deterministic compaction of oversized tool-result text inside the active turn only when whole-turn eviction is insufficient;
-6. minimal ForgeLoom-only system prompt to reduce fixed overhead;
-7. final request token count + output-reserve guard in the existing LOOM gateway;
-8. local JSONL accounting;
-9. dedicated `ForgeLoom` launcher/install path;
-10. frozen multi-turn validation workload.
+- model: `models/loom-deep-30b-unlocked.gguf`
+- model SHA256: `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
+- default profile: UOPT-003 S40 / CPU-MoE / no-mmap / cache RAM 512 / `-ub 4`
+- expert-major sidecar: `models/unlocked-expert-major-v1.bin`
+- sidecar SHA256: `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`
+- patched runtime: `.loom/runtime/loom-uopt002/llama-server`
+- runtime SHA256: `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
+- physical context: `4096`
 
-No second LLM, embeddings, vector DB, new model-facing tools, durable task-state intelligence, BM25/FTS, or semantic retrieval in CE-001.
+Historical retained UOPT-003 baseline:
 
-## Safety model
+- decode `7.557 tok/s`
+- 1,155-token cold prefill `11.306 tok/s`
+- 1,155-token cold TTFT `102.242 s`
+- refusal `0/6`, degeneration `0/6`, benign `8/8`
 
-### Layer A — request-local Context Governor
+## CE-001 files
 
-Runs on Pi's `context` event before every LLM call and returns a bounded message list. It evicts whole old turns first; if the active turn itself is oversized it deterministically compacts large tool outputs/assistant narration without mutating the persistent session.
+- `src/loom-context-engine/core.mjs` — request-local governor
+- `src/loom-context-engine/index.ts` — Pi extension hooks
+- `scripts/install-forge-loom.sh` — isolated installer / `ForgeLoom`
+- `scripts/loom-context-webui-gateway.mjs` — final exact/legacy-safe hard guard
+- `scripts/verify-context-engine.sh` — static/invariant verification
+- `scripts/smoke-context-engine.sh` — one-shot real runtime smoke
+- `scripts/stress-context-engine.sh` — 12-turn single-session synthetic stress
+- `scripts/realistic-context-engine-benchmark.py` — frozen coding benchmark RPC harness
+- `scripts/realistic-context-engine-benchmark.sh` — operator launcher
+- `test/context-engine-core.test.mjs` — governor unit tests
 
-### Layer B — final gateway envelope guard
+## Next gate — frozen realistic coding benchmark
 
-Runs on the final OpenAI-compatible chat payload after Pi/Forge has assembled provider material. It:
+Use LOOM Coding Benchmark 01 v1.0.1 in `agentic` mode. The harness creates an isolated benchmark copy and one stable staging workspace, keeps **one ForgeLoom RPC session** alive for all six tasks, and sends every canonical `prompt.md` unchanged.
 
-- caps/reserves output;
-- counts final model input using the supported exact/legacy-safe tokenizer path;
-- verifies the configured safe-total envelope;
-- refuses the request rather than forwarding an unsafe/unverifiable payload.
+Between tasks the host replaces workspace files with the next frozen fixture while the ForgeLoom session remains alive. Only task-authorized outputs are copied back into the isolated benchmark tree. Out-of-scope edits are detected and fail the harness.
 
-Layer B is a last-resort invariant check, not the normal compaction mechanism. A gateway block during the normal frozen workload is a CE-001 failure even though the physical 4096 invariant was protected.
+The official v1.0.1 runner then produces the objective 0–100 score.
 
-## Pi native compaction interaction
+Operator command:
 
-Pi's stock compaction defaults are designed for much larger context windows and can request automatic threshold compaction independently of CE-001. The LOOM extension cancels **threshold** compaction while active so the full persistent transcript is not replaced by Pi's summary.
+```bash
+git switch research/context-engine-001
+git pull --ff-only origin research/context-engine-001
+bash scripts/realistic-context-engine-benchmark.sh
+```
 
-Manual `/compact` remains available. Overflow compaction remains enabled only as an emergency fallback; if overflow recovery is actually invoked during the frozen workload, CE-001 has failed its primary safety goal.
+Record:
 
-A cancelled `session_before_compact(reason="threshold")` attempt is accounting evidence, not an actual compaction. Actual `session_compact` events are the failure signal for the acceptance gate.
+- objective benchmark score and per-task tests;
+- persistent message count;
+- governor calls/compactions and visible estimates;
+- exact final request input/projected totals;
+- gateway hard-guard blocks;
+- Pi actual compactions / overflow events;
+- out-of-scope edits;
+- sampled llama-server and agent RSS;
+- swap before/after;
+- client-observed first-text latency per task;
+- backend prompt-eval/decode tok/s when present in llama-server logs.
 
-## Next gate — automated multi-turn RPC stress
+CE-001 final GO requires infrastructure safety and session survival with the benchmark completing under the frozen rules. Model-quality mistakes must be reported separately from context-engine failures; they must not be hidden by changing benchmark prompts/tests.
 
-`scripts/stress-context-engine.sh` runs one ForgeLoom process in Pi RPC mode and keeps a single in-memory session alive across multiple turns. Default stress is 12 controlled turns with enough inert payload for the **raw uncompressed session estimate to exceed 4096**, while the model-visible request is repeatedly repacked.
+Do not begin CE-002 archive/task-state/retrieval work until this result is reviewed.
 
-Stress PASS requires:
+## Later phases — not implemented
 
-- all RPC turns complete in the same session;
-- persistent message count continues growing;
-- raw session estimate exceeds 4096;
-- governor performs at least one real request-local compaction and drops old whole turns;
-- post-compaction estimate returns to <=1200 except an explicitly detected oversized active-turn case;
-- every final request remains <=2800 input and <=3600 projected total;
-- hard-guard blocks = 0;
-- actual Pi threshold compactions = 0;
-- Pi overflow compactions = 0;
-- session survives through the final turn.
-
-This test validates the core sliding-window invariant. It does **not** yet validate recovery of facts intentionally evicted from the visible window; that belongs to later archive/task-state/retrieval phases.
-
-## CE-001 final acceptance after stress
-
-After the synthetic stress passes, run a frozen realistic coding workload and record at minimum:
-
-- cumulative session activity;
-- visible messages/estimated tokens before and after governor;
-- number of governor compactions;
-- exact final request input tokens;
-- reserved output and projected safe total;
-- gateway guard rejections;
-- Pi compaction attempts/actual events;
-- session survival;
-- task completion/correctness;
-- RAM/swap;
-- TTFT and decode tok/s.
-
-GO requires:
-
-- every forwarded request satisfies the configured safe-total envelope;
-- no gateway hard-guard blocks during normal operation;
-- zero actual Pi threshold/overflow compactions;
-- zero context-window session termination;
-- task completes correctly;
-- no material RAM/swap or throughput regression.
-
-If CE-001 fails, do not proceed to memory/retrieval phases. Diagnose the governor first.
+CE-002+ may add durable compact task state, external evidence archive, exact recovery and lightweight lexical retrieval. Do not add a second LLM, embeddings, vector DB or new model-facing memory tools unless later evidence demonstrates a need.
 
 ## Historical closure
 
-The previous project closure and UOPT records remain valid for model/runtime optimization. They are historical evidence and rollback references only; they no longer prohibit the explicitly authorized Context Engine work on this branch.
+Previous UOPT/model-runtime closure remains valid as historical evidence and rollback reference. The only explicitly reopened work on this branch is the Context Engine.
