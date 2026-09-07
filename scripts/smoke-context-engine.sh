@@ -11,7 +11,10 @@ info() { echo "CE-001 SMOKE INFO: $*"; }
 command -v ForgeLoom >/dev/null 2>&1 || fail "ForgeLoom is not installed; run: bash scripts/install-forge-loom.sh"
 command -v python3 >/dev/null 2>&1 || fail "python3 not found"
 
-bash scripts/verify-context-engine.sh
+# The currently running gateway may still be the historical non-CE profile.
+# Verify repository/static invariants first; ForgeLoom will then reconfigure the
+# managed LOOM stack if its status endpoint is not the required CE-001 envelope.
+LOOM_CONTEXT_VERIFY_SKIP_LIVE=1 bash scripts/verify-context-engine.sh
 
 STATE="$ROOT/.loom/runtime/loom-deep"
 GATEWAY_ACCOUNTING="$STATE/context-webui-ci/accounting.jsonl"
@@ -44,6 +47,10 @@ if (( status != 0 )); then
   fail "ForgeLoom exited with status $status"
 fi
 pass "ForgeLoom one-shot request completed"
+
+# ForgeLoom has now enforced/restarted the exact CE-001 gateway profile.
+bash scripts/verify-context-engine.sh
+pass "live gateway is in the required CE-001 state"
 
 # Give append-only accounting a moment to flush after the client exits.
 for _ in 1 2 3 4 5; do
