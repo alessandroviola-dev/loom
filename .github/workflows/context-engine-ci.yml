@@ -35,6 +35,7 @@ jobs:
           python3 -m py_compile scripts/live-coding-evidence-retrieval-lite.py
           python3 -m py_compile scripts/recover-live-coding-evidence-retrieval.py
           python3 -m py_compile scripts/diagnose-live-coding-evidence-retrieval.py
+          python3 -m py_compile scripts/diagnose-live-coding-evidence-retrieval-lite.py
           bash -n scripts/install-forge-loom.sh
           bash -n scripts/verify-context-engine.sh
           bash -n scripts/smoke-context-engine.sh
