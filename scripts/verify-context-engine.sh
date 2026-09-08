@@ -49,7 +49,8 @@ checks = {
     "smoke checks exact guard": 'guardChecked' in smoke and 'projectedTotalTokens' in smoke,
     "private ForgeLoom extension root": 'FORGE_LOOM_DIR="$AGENT_DIR/forge-loom"' in installer,
     "legacy global extension migration": 'LEGACY_GLOBAL_DIR="$EXTENSIONS_DIR/loom-context-engine"' in installer and 'backup_existing_dir "$LEGACY_GLOBAL_DIR"' in installer,
-    "explicit ForgeLoom extension load": 'Forge --extension "$CONTEXT_EXTENSION" --model "$MODEL"' in installer,
+    "explicit ForgeLoom extension load": 'Forge --extension "$CONTEXT_EXTENSION" --extension "$HARDENING_EXTENSION" --model "$MODEL"' in installer,
+    "private runtime hardening load": 'HARDENING_TARGET_DIR="$FORGE_LOOM_DIR/runtime-hardening"' in installer,
     "global duplicate runtime guard": 'globally auto-discovered LOOM Context Engine exists' in installer,
 }
 failed = [name for name, ok in checks.items() if not ok]
