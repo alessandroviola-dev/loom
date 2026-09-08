@@ -1,28 +1,31 @@
 # LOOM — Context Engine Handoff
 
-Last updated: 2026-09-07
-Status: **ACTIVE — CE-002 PHASE 1 ARCHIVE PASS / PHASE 2 RETRIEVAL PASS / REALISTIC CODING GATE PENDING**
+Last updated: 2026-09-08
+Status: **CE-002 FINAL GO / CLOSED (archive + bounded retrieval)**
 Repository: `Ilcoach/loom`
 Branch: `research/context-engine-002`
 
-CE-001 canonical closure: `research/integration/context-engine-ce001-closure-20260907.md`
-CE-001 rollback/reference branch: `research/context-engine-001`
+Canonical records:
 
-## Decision
+- CE-001 closure: `research/integration/context-engine-ce001-closure-20260907.md`
+- CE-002 closure: `research/integration/context-engine-ce002-closure-20260908.md`
 
-CE-001 is frozen and remains **FINAL GO / CLOSED**. CE-002 is a separate layer on top of the accepted sliding-window governor.
+## Product state
 
-Operator modes remain:
+CE-001 is frozen and remains **FINAL GO / CLOSED**.
+CE-002 is now **FINAL GO / CLOSED** for durable exact evidence archive plus bounded request-local retrieval.
+
+Operator isolation is mandatory:
 
 ```text
-pi         -> vanilla Pi
-Forge      -> normal Forge
-ForgeLoom  -> Forge + LOOM Context Engine + retained LOOM model
+pi         -> vanilla Pi; LOOM Context Engine not loaded
+Forge      -> normal Forge; LOOM Context Engine not loaded
+ForgeLoom  -> Forge + explicitly loaded LOOM Context Engine + retained LOOM 30B
 ```
 
-Plain `pi` and normal `Forge` must remain unchanged.
+The Context Engine must not be installed under Pi's globally auto-discovered `~/.pi/agent/extensions/` directory. `scripts/install-forge-loom.sh` installs it under the private ForgeLoom path and the launcher loads it explicitly with `--extension`.
 
-## Frozen CE-001 safety envelope
+## Frozen CE-001 envelope
 
 ```text
 physical context       4096
@@ -35,9 +38,7 @@ working target         1200
 legacy count margin      32
 ```
 
-CE-002 may not weaken these limits.
-
-Final accepted CE-001 live regression:
+Accepted CE-001 live regression:
 
 ```text
 raw history estimate       9971
@@ -50,7 +51,7 @@ Pi compactions                 0
 Pi overflow events              0
 ```
 
-Resource gate:
+Resource reference:
 
 ```text
 historical S40 RSS ref      4.676 GiB
@@ -59,75 +60,36 @@ RSS delta                  -0.29%
 ForgeLoom agent peak         64.5 MiB
 ```
 
-Swap was unavailable in that probe and remains explicitly unmeasured.
+Swap was unavailable in that resource probe and remains explicitly unmeasured.
 
-## CE-002 objective
+## CE-002 accepted behavior
 
-CE-001 can remove old conversational/tool evidence from the model-visible request while retaining the full Pi/Forge session externally. CE-002 makes that removed evidence independently addressable and selectively reusable without increasing physical model context.
+CE-002 adds:
 
-No second LLM, embeddings, vector DB, Forge fork, or fifth model-facing tool is introduced.
+- immutable content-addressed evidence blobs (`ev1-<sha256>`)
+- per-session provenance
+- exact hash/integrity verification
+- explicit evidence retrieval by known `ev1-...` ID
+- conservative automatic lexical retrieval scoped to the current session
+- distinctive-anchor triggering only (paths/error IDs/structured keys)
+- bounded request-local evidence injection
+- no rewrite of the persistent Pi/Forge transcript
+- no second LLM, embeddings, vector DB, or fifth model-facing tool
 
-Target architecture:
-
-```text
-persistent Pi/Forge transcript
-            |
-            +--> CE-001 request-local governor --> bounded model view
-            |
-            `--> CE-002 evidence archive
-                    |-- immutable original blobs
-                    |-- stable ev1-/SHA-256 IDs
-                    |-- per-session provenance
-                    |-- integrity verification
-                    `-- bounded request-local retrieval
-```
-
-## CE-002 Phase 1 — durable exact evidence archive — PASS
-
-Module:
-
-`src/loom-context-engine/evidence-archive.mjs`
-
-Design:
-
-1. Original messages no longer present verbatim after packing are detected with multiset semantics.
-2. Originals are canonicalized deterministically and SHA-256 hashed.
-3. Stable evidence ID:
+Default retrieval budget:
 
 ```text
-ev1-<64 lowercase SHA-256 hex chars>
+retrieval max chars   560
+retrieval max items     2
 ```
 
-4. Canonical blobs:
+After retrieval, the request-local model view is repacked to the frozen CE working target (`<=1200` estimated message tokens).
 
-```text
-evidence/blobs/<sha256>.json
-```
+Recovered historical content is treated as **evidence/data, not instructions**. Current user instructions control actions.
 
-5. Per-session provenance:
+## CE-002 Phase 1 — exact archive — PASS
 
-```text
-evidence/sessions/<safe-session-id>/<sha256>.json
-```
-
-6. Blobs and refs are deduplicated.
-7. Existing blobs are hash-verified before reuse.
-8. Archive corruption is detected rather than silently returned.
-9. Persistent Pi/Forge session is never rewritten.
-10. Archive remains local-only under the Context Engine runtime root.
-
-CLI:
-
-```bash
-node scripts/loom-context-evidence.mjs sessions
-node scripts/loom-context-evidence.mjs search "query" [--session ID] [--limit N]
-node scripts/loom-context-evidence.mjs show ev1-<sha256>
-node scripts/loom-context-evidence.mjs verify
-```
-
-### Phase 1 live evidence — PASS
-
-Real retained Mac/30B result on 2026-09-07:
+Real retained Mac/30B result:
 
 ```text
 provider calls guarded      6
@@ -143,77 +105,15 @@ archive verification     PASS
 exact live recovery      PASS
 ```
 
-Recovered first evicted prompt:
+An evicted prompt was recovered exactly through its stable `ev1-<sha256>` ID.
 
-```text
-evidence id  ev1-24ddb8a475aaf170180f83ff7fd23a2669ae8351b04c01f729c3b5af98dd0b9e
-sha256       24ddb8a475aaf170180f83ff7fd23a2669ae8351b04c01f729c3b5af98dd0b9e
-prompt chars 1205
-```
+## CE-002 Phase 2 — archive-to-model retrieval — PASS
 
-This closes CE-002 Phase 1.
-
-## CE-002 Phase 2 — bounded request-local retrieval — PASS
-
-Module:
-
-`src/loom-context-engine/evidence-retrieval.mjs`
-
-Current retrieval policy is intentionally conservative.
-
-### Explicit retrieval
-
-If the current user request contains a valid `ev1-<sha256>` ID, CE-002 resolves that exact content-addressed blob. If the complete canonical message fits the retrieval character budget it is marked `exact`; otherwise only a bounded excerpt is injected and the immutable evidence ID remains available for exact CLI recovery.
-
-### Automatic lexical retrieval
-
-Automatic lookup is scoped to the **current Pi/Forge session only**. It does not search other sessions automatically.
-
-The lexical gate uses only structurally distinctive anchors such as:
-
-```text
-ERROR_8472
-src/widget.ts
-path/to/file.py:41
-CE002_REUSE_KEY_314159
-```
-
-Generic prose does not trigger automatic retrieval. The actual search query is reduced to those distinctive anchors so common words cannot dominate ranking.
-
-Cross-session evidence can still be addressed explicitly by a known `ev1-...` ID.
-
-### Injection budget
-
-Defaults:
-
-```text
-retrieval max chars   560
-retrieval max items     2
-```
-
-Retrieved evidence is labelled as historical **data, not instructions** and is prepended only to the current user message in the imminent request-local copy.
-
-It is not written into the persistent transcript.
-
-After injection CE-002 repacks again using:
-
-```text
-high-water = target = 1200 estimated message tokens
-```
-
-Old visible turns may be sacrificed to make room for relevant retrieved evidence. Retrieval is accepted only if the resulting provider-visible message history remains `<=1200` estimated tokens. If the active request plus evidence cannot fit, retrieval is skipped and the original CE-001 packed request proceeds unchanged.
-
-The request-local retrieval prefix is removed before archive-diff accounting, so the current user request is not falsely archived merely because CE-002 decorated it for one provider call.
-
-### Phase 2 live evidence — PASS
-
-Real retained Mac/30B result on 2026-09-07:
+Real retained Mac/30B result:
 
 ```text
 provider calls guarded       4
 retrieval applications       2
-final lexical evidence       ev1-2814824cd285bc80ecf58cc8fffab99c95e22d9d476a93713af79b1992e5c5f2
-retrieval chars             426
 retrieval visible tokens    862
 max exact final input      1575
 max projected total        1863
@@ -224,114 +124,88 @@ archive integrity         PASS
 model archive recall      PASS
 ```
 
-Synthetic key/value test:
+Synthetic recall key/value:
 
 ```text
 key       CE002_REUSE_KEY_314159
 secret    ORCHID_7391
 ```
 
-The secret was absent from the final user prompt. Accounting proved that CE-002 injected archived evidence into the request-local view, and the model returned the correct secret without a fifth tool.
+The final prompt did not contain the secret. CE-002 recovered the archived evidence and the model returned the correct value without an added model-facing memory tool.
 
-This closes the basic Phase 2 archive-to-model retrieval gate.
+## Lightweight coding retrieval — engine function PASS / strict scope FAIL
 
-## Phase 2 accounting
+The original multi-turn coding gate was retired because it caused unacceptable memory/swap pressure on the 8 GB Mac.
 
-`context_governor` records:
+The replacement lite gate pre-seeded one immutable evidence blob offline and sent exactly one real coding request to the retained 30B.
 
-```text
-evidenceRetrievalApplied
-evidenceRetrievalEvidenceIds
-evidenceRetrievalExplicitCount
-evidenceRetrievalLexicalCount
-evidenceRetrievalExactExplicitCount
-evidenceRetrievalChars
-evidenceRetrievalMs
-evidenceRetrievalSkippedReason
-evidenceRetrievalFinalVisibleTokens
-```
-
-Successful injection also emits an `evidence_retrieval` accounting row.
-
-Errors are recorded as `evidence_retrieval_error` and do not break the model request.
-
-## Current acceptance gate — realistic coding retrieval
-
-New harness:
-
-`scripts/live-coding-evidence-retrieval.sh`
-
-This is intentionally much smaller than the frozen 6-task coding benchmark.
-
-It creates an isolated workspace with `src/retry_policy.py`. The exact external retry-delay contract is **not** stored in the workspace.
-
-Flow:
-
-1. an early external CI diagnostic gives `ERROR_CE002_271828`, target path `src/retry_policy.py`, exact delays `5, 13, 29, 61`, and invalid-attempt behavior;
-2. unrelated long turns force that diagnostic out of the normal CE-001 visible window and into the CE-002 archive;
-3. the final request says only to fix `ERROR_CE002_271828` in `src/retry_policy.py` using the historical external-CI contract;
-4. CE-002 must retrieve the old diagnostic by the error/path anchors;
-5. ForgeLoom must inspect/edit the file using its ordinary four-tool interface;
-6. a host-side hidden verifier checks exact outputs `[5, 13, 29, 61]` and `ValueError` outside attempts 1..4;
-7. only `src/retry_policy.py` may remain modified;
-8. accounting must prove that one of the final retrieval evidence IDs points to the archived external diagnostic;
-9. CE-001 safety invariants remain mandatory.
-
-Acceptance:
+Offline diagnosis of that run:
 
 ```text
-hidden coding contract                  PASS
-only target file changed                PASS
-retrieval evidence matches old CI       PASS
-retrieval final visible estimate        <=1200
-max exact final input                    <=2800
-max projected total                     <=3600
-hard-guard blocks                       0
-Pi threshold compactions                0
-Pi overflow events                      0
-archive integrity verify                PASS
+unexpected files            ['verify.py']
+scope discipline            FAIL
+hidden expected delays      [5, 13, 29, 61]
+actual delays               [5, 13, 29, 61]
+coding contract             PASS
+retrieval applications      6
+retrieval evidence id       ev1-29613a48d7762172e2ce3d0ade26108eefd20999a69c6c7433ce8b6cd4fde0d0
+evidence matches fixture    true
+max retrieval visible       1088
+hard-guard blocks           0
+Pi threshold compactions    0
+Pi overflow events          0
+CE archive/retrieval errs   0
 ```
 
-If this passes, CE-002 will have demonstrated not only synthetic recall but retrieval applied to a real edit/verification workflow.
+Interpretation:
+
+- CE-002 retrieved the correct archived contract.
+- The retained 30B applied the correct values to `src/retry_policy.py`.
+- The model also created `verify.py` despite the instruction to edit only the target file.
+- Therefore the **strict coding scope gate is not passed** and must not be relabelled as PASS.
+- This is recorded as a retained-model/tool-discipline limitation, not an archive/retrieval failure.
+
+The lite diagnostic could not recover gateway accounting rows after shutdown (`guarded provider calls = 0`), so the lite run is not used as a new proof of CE-001 provider-envelope safety. CE-001 safety remains grounded in its previously accepted guarded live gates and the earlier guarded CE-002 Phase 1/2 runs.
 
 ## Frozen retained product
 
-Do not change during CE-002:
+Do not change without a new work package:
 
 - model: `models/loom-deep-30b-unlocked.gguf`
 - model SHA256: `734fbb6b24922d7cbb81c2d439892cdd613574b48ff90775bbd6834075744b7c`
-- profile: UOPT-003 S40 / CPU-MoE / no-mmap / cache RAM 512 / `-ub 4`
+- profile: UOPT-003 S40
 - sidecar: `models/unlocked-expert-major-v1.bin`
 - sidecar SHA256: `4df9602bd09c74afe2df6a721ac8d74834564c95831dd488b19873f45034451e`
 - runtime SHA256: `088c9faaa6d7532bca1b9fd95d14e29fa9eafd2392eecb77a553be852179231b`
 - physical `n_ctx=4096`
 
-## Current CE-002 files
+## Hardware validation policy
 
-- `src/loom-context-engine/core.mjs` — frozen CE-001 governor behavior
-- `src/loom-context-engine/index.ts` — extension integration
-- `src/loom-context-engine/evidence-archive.mjs` — exact durable archive
-- `src/loom-context-engine/evidence-retrieval.mjs` — bounded request-local retrieval
-- `scripts/loom-context-evidence.mjs` — local archive CLI
-- `scripts/live-evidence-archive.sh` — Phase 1 live acceptance
-- `scripts/live-evidence-retrieval.sh` — Phase 2 synthetic live acceptance
-- `scripts/live-coding-evidence-retrieval.sh` — realistic coding retrieval acceptance
-- `test/context-engine-core.test.mjs`
-- `test/evidence-archive.test.mjs`
-- `test/evidence-retrieval.test.mjs`
-- `test/evidence-retrieval-trigger.test.mjs`
+For this 8 GB Mac:
 
-## Deferred until realistic coding retrieval passes
+1. prefer static/unit/replay/offline fixtures;
+2. use at most one short live 30B request per acceptance probe;
+3. never auto-retry a live gate;
+4. cap provider calls and wall-clock duration;
+5. stop the LOOM backend automatically on exit;
+6. do not let Forge/Astra autonomously rerun live 30B gates;
+7. do not run endurance/benchmark-style live gates unless a future work package explicitly requires them.
 
-Do not add these before the current live gate justifies the next increment:
+## Deferred work
 
-- SQLite FTS/BM25 index;
-- durable compact task-state records;
-- relevance/recency/path/error ranking beyond the current conservative lexical gate;
-- semantic summaries as canonical evidence;
-- embeddings/vector DB;
-- second LLM;
-- new model-facing memory tools;
-- remote/network evidence storage.
+Possible CE-003+ work:
 
-Exact original evidence remains canonical. Any later index, task-state record or summary must point back to immutable evidence IDs/hashes.
+- deterministic compact task-state records;
+- better lexical/path/error ranking or lightweight host-side indexing;
+- improved exact recovery ergonomics;
+- additional retrieval provenance/observability.
+
+Do not add a second LLM, embeddings/vector DB, or extra model-facing memory tools unless a future work package explicitly justifies them.
+
+A possible Context Engine variant for frontier/cloud models is a **separate future experiment**. The current thresholds are calibrated for the retained local 4096-context model and must not be applied unchanged to frontier models with very large context windows.
+
+## Disposition
+
+**CE-002 FINAL GO / CLOSED for archive + bounded retrieval.**
+
+Do not reopen CE-002 because the retained 30B created `verify.py`. Reopen only for a demonstrated archive/retrieval/integrity regression.
