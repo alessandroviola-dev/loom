@@ -13,6 +13,7 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { allocateOutputBudget } from "../src/forgeloom-runtime-hardening/output-budget.mjs";
 
 const env = process.env;
 const args = new Map();
@@ -42,10 +43,18 @@ const hardGuardEnabled = enabled(env.LOOM_CONTEXT_WEBUI_HARD_GUARD ?? "0");
 const guardFailClosed = enabled(env.LOOM_CONTEXT_WEBUI_GUARD_FAIL_CLOSED ?? "1");
 const safeTotalTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_SAFE_TOTAL_TOKENS, 3600);
 const safeInputTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS, 2800);
-const maxOutputTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS, 800);
+const minOutputTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_MIN_OUTPUT_TOKENS, 800);
+const maxOutputTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS, 1600);
 const legacyCountMarginTokens = positiveInt(env.LOOM_CONTEXT_WEBUI_LEGACY_COUNT_MARGIN_TOKENS, 32);
-if (safeTotalTokens >= 4096 || safeInputTokens >= safeTotalTokens || maxOutputTokens >= safeTotalTokens || safeInputTokens + maxOutputTokens > safeTotalTokens) {
-  throw new Error("invalid CE-001 token envelope: require safeInput + maxOutput <= safeTotal < 4096");
+if (
+  safeTotalTokens >= 4096 ||
+  safeInputTokens >= safeTotalTokens ||
+  minOutputTokens >= safeTotalTokens ||
+  maxOutputTokens >= safeTotalTokens ||
+  maxOutputTokens < minOutputTokens ||
+  safeInputTokens + minOutputTokens > safeTotalTokens
+) {
+  throw new Error("invalid CE token envelope: require safeInput + minOutput <= safeTotal < 4096 and minOutput <= maxOutput");
 }
 
 const runtimeDir = env.LOOM_CONTEXT_WEBUI_RUNTIME_DIR ?? join(env.PI_CODING_AGENT_DIR ?? join(env.HOME ?? homedir(), ".pi", "agent"), "context-intelligence", "loom-webui");
@@ -214,17 +223,34 @@ function boundedPositiveInt(value, fallback, ceiling) {
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.min(parsed, ceiling);
 }
-function capChatOutput(payload) {
+function requestedChatOutput(payload) {
+  const reserves = [];
+  if (Object.prototype.hasOwnProperty.call(payload, "max_tokens")) {
+    reserves.push(boundedPositiveInt(payload.max_tokens, maxOutputTokens, maxOutputTokens));
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "max_completion_tokens")) {
+    reserves.push(boundedPositiveInt(payload.max_completion_tokens, maxOutputTokens, maxOutputTokens));
+  }
+  return reserves.length > 0 ? Math.max(...reserves) : maxOutputTokens;
+}
+function capChatOutput(payload, ceiling) {
   const next = { ...payload };
   const hasMaxTokens = Object.prototype.hasOwnProperty.call(next, "max_tokens");
   const hasMaxCompletionTokens = Object.prototype.hasOwnProperty.call(next, "max_completion_tokens");
-  const requestedMaxTokens = hasMaxTokens ? boundedPositiveInt(next.max_tokens, maxOutputTokens, maxOutputTokens) : undefined;
-  const requestedMaxCompletionTokens = hasMaxCompletionTokens ? boundedPositiveInt(next.max_completion_tokens, maxOutputTokens, maxOutputTokens) : undefined;
-  if (hasMaxTokens) next.max_tokens = requestedMaxTokens;
-  if (hasMaxCompletionTokens) next.max_completion_tokens = requestedMaxCompletionTokens;
-  if (!hasMaxTokens && !hasMaxCompletionTokens) next.max_tokens = maxOutputTokens;
-  const reserves = [requestedMaxTokens, requestedMaxCompletionTokens].filter((value) => Number.isInteger(value));
-  return { payload: next, outputReserve: reserves.length > 0 ? Math.max(...reserves) : maxOutputTokens };
+  const reserves = [];
+  if (hasMaxTokens) {
+    next.max_tokens = boundedPositiveInt(next.max_tokens, ceiling, ceiling);
+    reserves.push(next.max_tokens);
+  }
+  if (hasMaxCompletionTokens) {
+    next.max_completion_tokens = boundedPositiveInt(next.max_completion_tokens, ceiling, ceiling);
+    reserves.push(next.max_completion_tokens);
+  }
+  if (!hasMaxTokens && !hasMaxCompletionTokens) {
+    next.max_tokens = ceiling;
+    reserves.push(ceiling);
+  }
+  return { payload: next, outputReserve: Math.max(...reserves) };
 }
 
 const server = http.createServer(async (request, response) => {
@@ -236,7 +262,9 @@ const server = http.createServer(async (request, response) => {
       hardGuardEnabled,
       safeTotalTokens,
       safeInputTokens,
+      minOutputTokens,
       maxOutputTokens,
+      adaptiveOutputBudget: true,
       legacyCountMarginTokens,
       physicalContextTokens: 4096,
       forbiddenReserveTokens: 4096 - safeTotalTokens,
@@ -276,17 +304,31 @@ const server = http.createServer(async (request, response) => {
 
   if (hardGuardEnabled && outgoingPayload && isChat(pathname, outgoingPayload)) {
     try {
-      const bounded = capChatOutput(outgoingPayload);
-      outgoingPayload = bounded.payload;
-      const outputReserve = bounded.outputReserve;
-      const requestInputCeiling = Math.min(safeInputTokens, safeTotalTokens - outputReserve);
-      if (requestInputCeiling <= 0) throw new Error("configured output reserve leaves no safe input budget");
-
       const counted = await exactChatInputTokens(outgoingPayload);
       const finalInputTokens = counted.tokens;
       const guardInputTokens = finalInputTokens + counted.guardMarginTokens;
-      const projectedTotalTokens = guardInputTokens + outputReserve;
-      const blocked = guardInputTokens > requestInputCeiling || projectedTotalTokens > safeTotalTokens;
+      const requestedOutputTokens = requestedChatOutput(outgoingPayload);
+      const allocation = allocateOutputBudget({
+        guardInputTokens,
+        safeInputTokens,
+        safeTotalTokens,
+        minOutputTokens,
+        maxOutputTokens,
+        requestedOutputTokens,
+      });
+      const requestInputCeiling = allocation.requestInputCeiling;
+      let outputReserve = 0;
+      let projectedTotalTokens = allocation.projectedTotalTokens;
+      let dynamicOutputCeiling = allocation.dynamicOutputCeiling;
+      const blocked = allocation.blocked;
+
+      if (!blocked) {
+        const bounded = capChatOutput(outgoingPayload, dynamicOutputCeiling);
+        outgoingPayload = bounded.payload;
+        outputReserve = bounded.outputReserve;
+        projectedTotalTokens = guardInputTokens + outputReserve;
+      }
+
       accounting = {
         ...accounting,
         guardChecked: true,
@@ -295,12 +337,15 @@ const server = http.createServer(async (request, response) => {
         tokenCountMargin: counted.guardMarginTokens,
         finalInputTokens,
         guardInputTokens,
+        requestedOutputTokens,
+        minOutputTokens,
+        maxOutputTokens,
+        dynamicOutputCeiling,
         outputReserve,
         projectedTotalTokens,
         requestInputCeiling,
         safeInputTokens,
         safeTotalTokens,
-        maxOutputTokens,
       };
 
       if (blocked) {
@@ -309,7 +354,7 @@ const server = http.createServer(async (request, response) => {
         response.writeHead(413, { "content-type": "application/json" });
         return response.end(JSON.stringify({
           error: {
-            message: `LOOM Context Engine blocked an unsafe request (${finalInputTokens} counted input + ${counted.guardMarginTokens} guard margin + ${outputReserve} reserved output = ${projectedTotalTokens}; safe total ${safeTotalTokens}).`,
+            message: `LOOM Context Engine blocked an unsafe request (${guardInputTokens} guarded input exceeds safe input ceiling ${requestInputCeiling}; minimum output reserve ${minOutputTokens}; safe total ${safeTotalTokens}).`,
             type: "context_guard_error",
           },
         }));
@@ -322,6 +367,7 @@ const server = http.createServer(async (request, response) => {
         guardBlocked: guardFailClosed,
         safeInputTokens,
         safeTotalTokens,
+        minOutputTokens,
         maxOutputTokens,
         guardError: error instanceof Error ? error.message : String(error),
       };
@@ -348,5 +394,5 @@ const server = http.createServer(async (request, response) => {
 
 server.on("clientError", (_error, socket) => socket.end("HTTP/1.1 400 Bad Request\r\n\r\n"));
 server.listen({ host, port, exclusive: true }, () => {
-  console.log(`LOOM Context WebUI gateway listening on http://${host}:${port}; backend=http://${backendHost}:${backendPort}; ci=${coreStatus}; hard-guard=${hardGuardEnabled ? `on/${safeInputTokens}+${maxOutputTokens}<=${safeTotalTokens}` : "off"}`);
+  console.log(`LOOM Context WebUI gateway listening on http://${host}:${port}; backend=http://${backendHost}:${backendPort}; ci=${coreStatus}; hard-guard=${hardGuardEnabled ? `on/input<=${safeInputTokens}, output=${minOutputTokens}-${maxOutputTokens} adaptive, total<=${safeTotalTokens}` : "off"}`);
 });
