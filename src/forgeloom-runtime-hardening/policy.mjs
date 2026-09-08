@@ -1,5 +1,6 @@
 export const OUTPUT_RECOVERY_GUIDANCE = [
   "ForgeLoom has a strict response budget. Tool-call arguments must fit inside it.",
+  "Keep narration before a tool call to one short sentence; reserve response budget for the tool arguments.",
   "Prefer small, targeted edit calls. For large changes, split the work into multiple independent edits instead of replacing a whole file in one call.",
   "Keep each edit/write payload compact. Re-read only the narrow region needed for the next edit.",
   "If a tool call is rejected because the response hit the output-token limit or its arguments were truncated, NEVER retry the same payload. Make the next tool call materially smaller.",
