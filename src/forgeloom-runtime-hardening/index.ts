@@ -6,8 +6,10 @@ import {
   OUTPUT_RECOVERY_GUIDANCE,
   WORKSPACE_GROUNDING_GUIDANCE,
   continuationMessage,
+  inspectPagedMutation,
   nextTruncationState,
   promptExplicitlyAllowsNewFiles,
+  rewritePagedToolGuidance,
 } from "./policy.mjs";
 
 function workspaceInventory(cwd: string): string {
@@ -36,12 +38,21 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   pi.on("before_agent_start", (event, ctx) => {
     allowNewFilesThisTurn = promptExplicitlyAllowsNewFiles(event.prompt);
     const inventory = workspaceInventory(ctx.cwd);
+    const pagedBasePrompt = rewritePagedToolGuidance(event.systemPrompt);
     return {
-      systemPrompt: `${event.systemPrompt}\n${OUTPUT_RECOVERY_GUIDANCE}\n${WORKSPACE_GROUNDING_GUIDANCE}\nVerified top-level workspace entries at turn start: ${inventory}`,
+      systemPrompt: `${pagedBasePrompt}\n${OUTPUT_RECOVERY_GUIDANCE}\n${WORKSPACE_GROUNDING_GUIDANCE}\nVerified top-level workspace entries at turn start: ${inventory}`,
     };
   });
 
   pi.on("tool_call", (event, ctx) => {
+    if (event.toolName === "edit" || event.toolName === "write") {
+      const paged = inspectPagedMutation(event.toolName, event.input);
+      if (!paged.ok) {
+        if (ctx.hasUI) ctx.ui.notify(paged.reason, "warning");
+        return { block: true, reason: paged.reason };
+      }
+    }
+
     if (event.toolName !== "read" && event.toolName !== "write") return undefined;
     const inputPath = typeof event.input?.path === "string" ? event.input.path : "";
     if (!inputPath) return undefined;
@@ -52,20 +63,23 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
       return undefined;
     }
 
-    if (existsSync(absolutePath) || allowNewFilesThisTurn || !probedMissingPaths.has(absolutePath)) {
-      return undefined;
+    // In paged mode, write is reserved for explicitly requested NEW files.
+    // Existing files must be changed through small edit checkpoints so work can
+    // span arbitrarily many provider responses without monolithic rewrites.
+    if (existsSync(absolutePath)) {
+      return {
+        block: true,
+        reason: `ForgeLoom paged-write policy: ${inputPath} already exists. Preserve it and use one small edit replacement per provider response.`,
+      };
     }
 
-    if (ctx.hasUI) {
-      ctx.ui.notify(
-        `Blocked creation of unverified path after ENOENT probe: ${inputPath}. Inspect the workspace before creating it.`,
-        "warning",
-      );
-    }
-    return {
-      block: true,
-      reason: `ForgeLoom path-grounding policy: ${inputPath} was just probed as missing. Inspect the actual workspace and justify a new file instead of inventing a companion module.`,
-    };
+    if (allowNewFilesThisTurn) return undefined;
+
+    const reason = probedMissingPaths.has(absolutePath)
+      ? `ForgeLoom path-grounding policy: ${inputPath} was probed as missing. ENOENT is not permission to create it; inspect the actual workspace and continue with existing files.`
+      : `ForgeLoom path-grounding policy: refusing unrequested new file ${inputPath}. Create new files only when the current user explicitly requests them.`;
+    if (ctx.hasUI) ctx.ui.notify(reason, "warning");
+    return { block: true, reason };
   });
 
   // A successful filesystem mutation is a durable checkpoint. Once progress is
@@ -95,10 +109,9 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
       return;
     }
 
-    // Pi already starts another provider turn after a truncated tool call. Add
-    // a hidden steering message so that the fresh output budget is used to
-    // continue the same file/task from the last successful checkpoint rather
-    // than restarting or repeating the oversized payload.
+    // A truncated tool call is intentionally not executed by Pi. Queue a hidden
+    // steering message for the next provider response so the fresh output budget
+    // continues the same task from the durable filesystem checkpoint.
     pi.sendMessage(
       {
         customType: "forgeloom-output-continuation",
