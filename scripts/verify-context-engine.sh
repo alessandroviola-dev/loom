@@ -62,7 +62,8 @@ checks = {
     "global duplicate runtime guard": 'globally auto-discovered LOOM Context Engine exists' in installer,
     "runtime hardening private": 'HARDENING_TARGET_DIR="$FORGE_LOOM_DIR/runtime-hardening"' in installer,
     "path grounding": 'probedMissingPaths' in hardening and 'Never invent companion modules' in policy,
-    "truncation abort": 'ctx.abort()' in hardening and 'two consecutive output truncations' in hardening,
+    "paged output continuation": 'forgeloom-output-continuation' in hardening and 'deliverAs: "steer"' in hardening and 'last successful filesystem state' in policy,
+    "no-progress runaway guard": 'MAX_NO_PROGRESS_TRUNCATIONS' in hardening and 'ctx.abort()' in hardening,
     "auto stop": 'trap release_client EXIT' in installer and 'ForgeLoomStop' in installer,
 }
 failed = [name for name, ok in checks.items() if not ok]
