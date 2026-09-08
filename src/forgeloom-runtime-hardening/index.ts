@@ -4,12 +4,15 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
   MAX_NO_PROGRESS_TRUNCATIONS,
   OUTPUT_RECOVERY_GUIDANCE,
+  RECOVERY_MESSAGE_TYPE,
   WORKSPACE_GROUNDING_GUIDANCE,
   continuationMessage,
+  detectUserLanguage,
   inspectPagedMutation,
   nextTruncationState,
   promptExplicitlyAllowsNewFiles,
   rewritePagedToolGuidance,
+  sanitizeRecoveryContext,
 } from "./policy.mjs";
 
 function workspaceInventory(cwd: string): string {
@@ -28,20 +31,39 @@ function workspaceInventory(cwd: string): string {
 export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   let noProgressLengthStops = 0;
   let allowNewFilesThisTurn = false;
+  let userLanguage = "en";
+  let recoveryContextActive = false;
   const probedMissingPaths = new Set<string>();
 
   pi.on("agent_start", () => {
-    noProgressLengthStops = 0;
     probedMissingPaths.clear();
   });
 
   pi.on("before_agent_start", (event, ctx) => {
+    // A genuine new user request starts a fresh recovery state. Automatic
+    // continuation pages are injected as custom messages and do not replace
+    // this language choice.
+    noProgressLengthStops = 0;
+    recoveryContextActive = false;
+    userLanguage = detectUserLanguage(event.prompt);
     allowNewFilesThisTurn = promptExplicitlyAllowsNewFiles(event.prompt);
     const inventory = workspaceInventory(ctx.cwd);
     const pagedBasePrompt = rewritePagedToolGuidance(event.systemPrompt);
     return {
       systemPrompt: `${pagedBasePrompt}\n${OUTPUT_RECOVERY_GUIDANCE}\n${WORKSPACE_GROUNDING_GUIDANCE}\nVerified top-level workspace entries at turn start: ${inventory}`,
     };
+  });
+
+  // During automatic recovery, do not feed the truncated assistant page back to
+  // the model. Pi persists it for transcript fidelity, but request-local model
+  // context should contain only the last valid filesystem checkpoint plus the
+  // newest hidden recovery instruction. This is the practical "fresh page"
+  // requested by ForgeLoom paged coding.
+  pi.on("context", (event) => {
+    if (!recoveryContextActive) return undefined;
+    const messages = sanitizeRecoveryContext(event.messages);
+    if (messages.length === event.messages.length) return undefined;
+    return { messages };
   });
 
   pi.on("tool_call", (event, ctx) => {
@@ -63,9 +85,6 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
       return undefined;
     }
 
-    // In paged mode, write is reserved for explicitly requested NEW files.
-    // Existing files must be changed through small edit checkpoints so work can
-    // span arbitrarily many provider responses without monolithic rewrites.
     if (existsSync(absolutePath)) {
       return {
         block: true,
@@ -82,12 +101,11 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
     return { block: true, reason };
   });
 
-  // A successful filesystem mutation is a durable checkpoint. Once progress is
-  // made, later output truncations get a fresh no-progress allowance. This lets
-  // a large coding task span arbitrarily many provider responses while still
-  // stopping a true retry loop that never manages to apply a change.
   pi.on("tool_execution_end", (event) => {
     if (!event.isError && (event.toolName === "edit" || event.toolName === "write")) {
+      // A successful mutation is a durable checkpoint. Keep recovery context
+      // sanitization active for the rest of this task, but reset the runaway
+      // counter so arbitrarily many successful chunks may follow.
       noProgressLengthStops = 0;
     }
   });
@@ -95,6 +113,7 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   pi.on("message_end", (event, ctx) => {
     if (event.message.role !== "assistant" || event.message.stopReason !== "length") return;
 
+    recoveryContextActive = true;
     const state = nextTruncationState(noProgressLengthStops, "length");
     noProgressLengthStops = state.consecutive;
 
@@ -109,15 +128,12 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
       return;
     }
 
-    // A truncated tool call is intentionally not executed by Pi. Queue a hidden
-    // steering message for the next provider response so the fresh output budget
-    // continues the same task from the durable filesystem checkpoint.
     pi.sendMessage(
       {
-        customType: "forgeloom-output-continuation",
-        content: continuationMessage(state.consecutive),
+        customType: RECOVERY_MESSAGE_TYPE,
+        content: continuationMessage(state.consecutive, userLanguage),
         display: false,
-        details: { page: state.consecutive },
+        details: { page: state.consecutive, language: userLanguage },
       },
       { triggerTurn: true, deliverAs: "steer" },
     );
