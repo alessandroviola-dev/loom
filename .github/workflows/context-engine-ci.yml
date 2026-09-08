@@ -32,6 +32,7 @@ jobs:
           python3 -m py_compile scripts/realistic-context-engine-benchmark.py
           python3 -m py_compile scripts/recover-realistic-context-engine-benchmark.py
           python3 -m py_compile scripts/live-coding-evidence-retrieval.py
+          python3 -m py_compile scripts/live-coding-evidence-retrieval-lite.py
           python3 -m py_compile scripts/recover-live-coding-evidence-retrieval.py
           python3 -m py_compile scripts/diagnose-live-coding-evidence-retrieval.py
           bash -n scripts/install-forge-loom.sh
@@ -44,6 +45,7 @@ jobs:
           bash -n scripts/live-evidence-archive.sh
           bash -n scripts/live-evidence-retrieval.sh
           bash -n scripts/live-coding-evidence-retrieval.sh
+          bash -n scripts/live-coding-evidence-retrieval-lite.sh
       - name: Embedded live harness syntax
         run: |
           python3 - <<'PY'
