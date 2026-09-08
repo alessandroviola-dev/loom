@@ -47,6 +47,10 @@ checks = {
     "threshold compaction cancelled": 'event.reason === "threshold"' in ext and 'cancel: true' in ext,
     "one-shot smoke uses ForgeLoom": 'ForgeLoom --no-session -p' in smoke,
     "smoke checks exact guard": 'guardChecked' in smoke and 'projectedTotalTokens' in smoke,
+    "private ForgeLoom extension root": 'FORGE_LOOM_DIR="$AGENT_DIR/forge-loom"' in installer,
+    "legacy global extension migration": 'LEGACY_GLOBAL_DIR="$EXTENSIONS_DIR/loom-context-engine"' in installer and 'backup_existing_dir "$LEGACY_GLOBAL_DIR"' in installer,
+    "explicit ForgeLoom extension load": 'Forge --extension "$CONTEXT_EXTENSION" --model "$MODEL"' in installer,
+    "global duplicate runtime guard": 'globally auto-discovered LOOM Context Engine exists' in installer,
 }
 failed = [name for name, ok in checks.items() if not ok]
 if failed:
@@ -57,6 +61,7 @@ if 2800 + 800 > 3600 or 3600 >= 4096:
 if 1600 + 900 >= 2800:
     raise SystemExit("working high-water leaves insufficient measured fixed-overhead headroom")
 print("CE-001 invariant checks: PASS")
+print("Forge/ForgeLoom extension isolation invariants: PASS")
 PY
 pass "repository invariants"
 
