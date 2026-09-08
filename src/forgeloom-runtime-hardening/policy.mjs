@@ -14,7 +14,7 @@ export const OUTPUT_RECOVERY_GUIDANCE = [
   "Do not use write to rewrite an existing file. For a legitimately new file, write only a small initial skeleton, then extend it incrementally with edit.",
   `Keep a new-file write payload <= ${MAX_WRITE_CHARS} characters.`,
   "Keep narration before a normal tool call to one short sentence; reserve response budget for tool arguments.",
-  "RECOVERY EXCEPTION: after an output truncation, the next recovery page must contain NO narration before the first successful edit/write checkpoint; issue the small complete tool call immediately.",
+  "RECOVERY EXCEPTION: after an output truncation, the task cannot finalize until a successful edit/write checkpoint lands. A narrow read is allowed only when needed to obtain an exact edit anchor.",
   "If output is truncated, NEVER restart analysis, NEVER restart the file, and NEVER repeat the same truncated payload. Resume from the last successful filesystem checkpoint with one smaller complete edit.",
   "Do not create helper verification files unless the user explicitly requests them; use a short bash command for verification instead.",
 ].join("\n");
@@ -107,6 +107,10 @@ export function nextTruncationState(currentCount, stopReason, maxNoProgress = MA
   return { consecutive: 0, shouldContinue: false, shouldAbort: false };
 }
 
+export function shouldForceRecoveryCheckpoint(recoveryNeedsCheckpoint, stopReason) {
+  return Boolean(recoveryNeedsCheckpoint) && stopReason === "stop";
+}
+
 export function continuationMessage(attempt, language = "en") {
   const page = Number.isFinite(attempt) && attempt > 0 ? Math.trunc(attempt) : 1;
   if (language === "it") {
@@ -115,7 +119,8 @@ export function continuationMessage(attempt, language = "en") {
       "La risposta precedente è stata troncata: il relativo tool call NON è stato eseguito.",
       "NESSUNA SPIEGAZIONE in questa pagina di recupero. Non ripetere analisi o piano.",
       `Esegui SUBITO una sola tool call completa sullo STESSO task: edit con una sola sostituzione, oldText <= ${MAX_EDIT_OLD_CHARS} caratteri, newText <= ${MAX_EDIT_NEW_CHARS} caratteri.`,
-      "Usa lo stato attuale del filesystem come checkpoint e non ripetere il payload troncato. Dopo un edit/write riuscito torna a parlare in italiano e continua col chunk successivo.",
+      "Se ti manca l'oldText esatto puoi fare UNA read mirata; quella read NON completa il recovery e il turno successivo deve applicare l'edit.",
+      "Usa lo stato attuale del filesystem come checkpoint e non ripetere il payload troncato. Il task non è concluso finché un edit/write non riesce.",
     ].join("\n");
   }
   return [
@@ -123,7 +128,8 @@ export function continuationMessage(attempt, language = "en") {
     "The previous response was truncated; its tool call was NOT executed.",
     "NO NARRATION on this recovery page. Do not repeat analysis or planning.",
     `Immediately issue exactly one complete tool call for the SAME task: one edit replacement, oldText <= ${MAX_EDIT_OLD_CHARS} chars, newText <= ${MAX_EDIT_NEW_CHARS} chars.`,
-    "Use the current filesystem as the checkpoint and do not repeat the truncated payload. After a successful edit/write, resume the user's language and continue with the next chunk.",
+    "If you need the exact oldText, one narrow read is allowed; that read does NOT complete recovery and the following turn must apply the edit.",
+    "Use the current filesystem as the checkpoint and do not repeat the truncated payload. The task is not complete until an edit/write succeeds.",
   ].join("\n");
 }
 
