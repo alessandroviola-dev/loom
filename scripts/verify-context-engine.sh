@@ -12,6 +12,9 @@ command -v bash >/dev/null 2>&1 || fail "bash not found"
 command -v python3 >/dev/null 2>&1 || fail "python3 not found"
 
 node --check src/loom-context-engine/core.mjs
+node --check src/forgeloom-runtime-hardening/policy.mjs
+node --check src/forgeloom-runtime-hardening/output-budget.mjs
+node --experimental-strip-types --check src/forgeloom-runtime-hardening/index.ts
 node --check scripts/loom-context-webui-gateway.mjs
 bash -n scripts/install-forge-loom.sh
 bash -n scripts/smoke-context-engine.sh
@@ -19,13 +22,17 @@ if [[ -f scripts/stress-context-engine.sh ]]; then bash -n scripts/stress-contex
 pass "static syntax"
 
 node --test test/context-engine-core.test.mjs
-pass "governor unit tests"
+node --test test/forgeloom-runtime-hardening.test.mjs
+pass "governor/runtime unit tests"
 
 python3 - <<'PY'
 from pathlib import Path
 
 core = Path("src/loom-context-engine/core.mjs").read_text()
 ext = Path("src/loom-context-engine/index.ts").read_text()
+hardening = Path("src/forgeloom-runtime-hardening/index.ts").read_text()
+policy = Path("src/forgeloom-runtime-hardening/policy.mjs").read_text()
+output_budget = Path("src/forgeloom-runtime-hardening/output-budget.mjs").read_text()
 installer = Path("scripts/install-forge-loom.sh").read_text()
 gateway = Path("scripts/loom-context-webui-gateway.mjs").read_text()
 smoke = Path("scripts/smoke-context-engine.sh").read_text()
@@ -39,7 +46,9 @@ checks = {
     "working target": '1200' in core and '1200' in ext and '1200' in installer,
     "safe total": '3600' in installer and '3600' in gateway,
     "safe input": '2800' in installer and '2800' in gateway,
-    "max output": '800' in installer and '800' in gateway,
+    "minimum output reserve": 'MIN_OUTPUT="${LOOM_CONTEXT_WEBUI_MIN_OUTPUT_TOKENS:-800}"' in installer and 'minOutputTokens' in gateway,
+    "adaptive output ceiling": 'MAX_OUTPUT="${LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS:-1600}"' in installer and 'adaptiveOutputBudget' in gateway,
+    "adaptive allocator wired": 'allocateOutputBudget' in gateway and 'dynamicOutputCeiling' in gateway and 'safeInputTokens + minOutputTokens' in output_budget,
     "exact token endpoint": '/v1/chat/completions/input_tokens' in gateway,
     "legacy exact fallback": '/apply-template' in gateway and '/tokenize' in gateway,
     "fail closed": 'LOOM_CONTEXT_WEBUI_GUARD_FAIL_CLOSED=1' in installer,
@@ -50,19 +59,25 @@ checks = {
     "private ForgeLoom extension root": 'FORGE_LOOM_DIR="$AGENT_DIR/forge-loom"' in installer,
     "legacy global extension migration": 'LEGACY_GLOBAL_DIR="$EXTENSIONS_DIR/loom-context-engine"' in installer and 'backup_existing_dir "$LEGACY_GLOBAL_DIR"' in installer,
     "explicit ForgeLoom extension load": 'Forge --extension "$CONTEXT_EXTENSION" --extension "$HARDENING_EXTENSION" --model "$MODEL"' in installer,
-    "private runtime hardening load": 'HARDENING_TARGET_DIR="$FORGE_LOOM_DIR/runtime-hardening"' in installer,
     "global duplicate runtime guard": 'globally auto-discovered LOOM Context Engine exists' in installer,
+    "runtime hardening private": 'HARDENING_TARGET_DIR="$FORGE_LOOM_DIR/runtime-hardening"' in installer,
+    "path grounding": 'probedMissingPaths' in hardening and 'Never invent companion modules' in policy,
+    "truncation abort": 'ctx.abort()' in hardening and 'two consecutive output truncations' in hardening,
+    "auto stop": 'trap release_client EXIT' in installer and 'ForgeLoomStop' in installer,
 }
 failed = [name for name, ok in checks.items() if not ok]
 if failed:
     raise SystemExit("invariant check failed: " + ", ".join(failed))
 
 if 2800 + 800 > 3600 or 3600 >= 4096:
-    raise SystemExit("unsafe hard-coded CE-001 envelope")
+    raise SystemExit("unsafe guaranteed CE envelope")
+if 1600 >= 3600 or 1600 < 800:
+    raise SystemExit("invalid adaptive output range")
 if 1600 + 900 >= 2800:
     raise SystemExit("working high-water leaves insufficient measured fixed-overhead headroom")
 print("CE-001 invariant checks: PASS")
 print("Forge/ForgeLoom extension isolation invariants: PASS")
+print("ForgeLoom runtime hardening invariants: PASS")
 PY
 pass "repository invariants"
 
@@ -80,7 +95,9 @@ expected = {
     "hardGuardEnabled": True,
     "safeTotalTokens": 3600,
     "safeInputTokens": 2800,
-    "maxOutputTokens": 800,
+    "minOutputTokens": 800,
+    "maxOutputTokens": 1600,
+    "adaptiveOutputBudget": True,
     "physicalContextTokens": 4096,
     "forbiddenReserveTokens": 496,
     "guardFailClosed": True,
