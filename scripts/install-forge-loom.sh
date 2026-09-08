@@ -51,6 +51,7 @@ pi_version_supported "$PI_VERSION" || fail "CE-001 supports Pi versions: $SUPPOR
 [ -f "$SOURCE_DIR/core.mjs" ] || fail "Missing Context Engine source: $SOURCE_DIR/core.mjs"
 [ -f "$HARDENING_SOURCE_DIR/index.ts" ] || fail "Missing ForgeLoom runtime hardening source: $HARDENING_SOURCE_DIR/index.ts"
 [ -f "$HARDENING_SOURCE_DIR/policy.mjs" ] || fail "Missing ForgeLoom runtime hardening policy: $HARDENING_SOURCE_DIR/policy.mjs"
+[ -f "$HARDENING_SOURCE_DIR/output-budget.mjs" ] || fail "Missing ForgeLoom adaptive output policy: $HARDENING_SOURCE_DIR/output-budget.mjs"
 [ -f "$ROOT/scripts/loom-deep" ] || fail "Missing LOOM lifecycle manager: $ROOT/scripts/loom-deep"
 
 # ForgeLoom-only extensions must never live under Pi's globally auto-discovered
@@ -68,7 +69,6 @@ for launcher in "$LAUNCHER" "$STOP_LAUNCHER"; do
   fi
 done
 
-# Migrate old global CE installs and replace only private ForgeLoom copies.
 backup_existing_dir "$LEGACY_GLOBAL_DIR" "loom-context-engine-global"
 backup_existing_dir "$TARGET_DIR" "loom-context-engine-forgeloom"
 backup_existing_dir "$HARDENING_TARGET_DIR" "forgeloom-runtime-hardening"
@@ -80,7 +80,6 @@ for installed_dir in "$TARGET_DIR" "$HARDENING_TARGET_DIR"; do
 done
 [ ! -e "$LEGACY_GLOBAL_DIR" ] && [ ! -L "$LEGACY_GLOBAL_DIR" ] || fail "Global LOOM Context Engine still exists after migration: $LEGACY_GLOBAL_DIR"
 
-# Validate explicit private loading without a model request.
 pi --extension "$TARGET_DIR/index.ts" --extension "$HARDENING_TARGET_DIR/index.ts" --help >/dev/null 2>&1 \
   || fail "Pi rejected ForgeLoom's explicit private extension paths."
 Forge --extension "$TARGET_DIR/index.ts" --extension "$HARDENING_TARGET_DIR/index.ts" --help >/dev/null 2>&1 \
@@ -100,7 +99,8 @@ HEADER
   cat <<'BODY'
 SAFE_TOTAL="${LOOM_CONTEXT_WEBUI_SAFE_TOTAL_TOKENS:-3600}"
 SAFE_INPUT="${LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS:-2800}"
-MAX_OUTPUT="${LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS:-800}"
+MIN_OUTPUT="${LOOM_CONTEXT_WEBUI_MIN_OUTPUT_TOKENS:-800}"
+MAX_OUTPUT="${LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS:-1600}"
 LEGACY_MARGIN="${LOOM_CONTEXT_WEBUI_LEGACY_COUNT_MARGIN_TOKENS:-32}"
 HIGH_WATER="${LOOM_CONTEXT_HIGH_WATER_TOKENS:-1600}"
 TARGET="${LOOM_CONTEXT_TARGET_TOKENS:-1200}"
@@ -118,15 +118,15 @@ CLIENT_FILE=""
   exit 1
 }
 
-case "$SAFE_TOTAL:$SAFE_INPUT:$MAX_OUTPUT:$LEGACY_MARGIN:$HIGH_WATER:$TARGET" in
+case "$SAFE_TOTAL:$SAFE_INPUT:$MIN_OUTPUT:$MAX_OUTPUT:$LEGACY_MARGIN:$HIGH_WATER:$TARGET" in
   *[!0-9:]*|*::*|:*|*:) echo "ForgeLoom token thresholds must be positive integers." >&2; exit 64 ;;
 esac
 if (( TARGET > HIGH_WATER || HIGH_WATER >= SAFE_INPUT )); then
   echo "ForgeLoom requires TARGET <= HIGH_WATER < SAFE_INPUT." >&2
   exit 64
 fi
-if (( SAFE_INPUT + MAX_OUTPUT > SAFE_TOTAL || SAFE_TOTAL >= 4096 )); then
-  echo "ForgeLoom requires SAFE_INPUT + MAX_OUTPUT <= SAFE_TOTAL < 4096." >&2
+if (( SAFE_INPUT + MIN_OUTPUT > SAFE_TOTAL || MAX_OUTPUT < MIN_OUTPUT || MAX_OUTPUT >= SAFE_TOTAL || SAFE_TOTAL >= 4096 )); then
+  echo "ForgeLoom requires SAFE_INPUT + MIN_OUTPUT <= SAFE_TOTAL < 4096 and MIN_OUTPUT <= MAX_OUTPUT < SAFE_TOTAL." >&2
   exit 64
 fi
 
@@ -171,14 +171,15 @@ release_client() {
 gateway_safe() {
   local status
   status="$(curl -fsS --max-time 2 "$STATUS_URL" 2>/dev/null)" || return 1
-  python3 - "$SAFE_TOTAL" "$SAFE_INPUT" "$MAX_OUTPUT" "$LEGACY_MARGIN" "$status" <<'PY'
+  python3 - "$SAFE_TOTAL" "$SAFE_INPUT" "$MIN_OUTPUT" "$MAX_OUTPUT" "$LEGACY_MARGIN" "$status" <<'PY'
 import json, sys
 safe_total = int(sys.argv[1])
 safe_input = int(sys.argv[2])
-max_output = int(sys.argv[3])
-legacy_margin = int(sys.argv[4])
+min_output = int(sys.argv[3])
+max_output = int(sys.argv[4])
+legacy_margin = int(sys.argv[5])
 try:
-    data = json.loads(sys.argv[5])
+    data = json.loads(sys.argv[6])
 except Exception:
     raise SystemExit(1)
 ok = (
@@ -187,7 +188,9 @@ ok = (
     and data.get("guardFailClosed") is True
     and data.get("safeTotalTokens") == safe_total
     and data.get("safeInputTokens") == safe_input
+    and data.get("minOutputTokens") == min_output
     and data.get("maxOutputTokens") == max_output
+    and data.get("adaptiveOutputBudget") is True
     and data.get("legacyCountMarginTokens") == legacy_margin
     and data.get("physicalContextTokens") == 4096
     and data.get("ciStatus") == "disabled"
@@ -204,6 +207,7 @@ if ! gateway_safe; then
     LOOM_CONTEXT_WEBUI_GUARD_FAIL_CLOSED=1 \
     LOOM_CONTEXT_WEBUI_SAFE_TOTAL_TOKENS="$SAFE_TOTAL" \
     LOOM_CONTEXT_WEBUI_SAFE_INPUT_TOKENS="$SAFE_INPUT" \
+    LOOM_CONTEXT_WEBUI_MIN_OUTPUT_TOKENS="$MIN_OUTPUT" \
     LOOM_CONTEXT_WEBUI_MAX_OUTPUT_TOKENS="$MAX_OUTPUT" \
     LOOM_CONTEXT_WEBUI_LEGACY_COUNT_MARGIN_TOKENS="$LEGACY_MARGIN" \
     "$ROOT/scripts/loom-deep" start
@@ -218,8 +222,6 @@ if enabled "$AUTO_STOP"; then
   trap release_client EXIT
 fi
 
-# Do not exec when auto-stop is enabled: the launcher shell remains as the
-# session lease and releases the 30B backend when the last ForgeLoom exits.
 if enabled "$AUTO_STOP"; then
   set +e
   env \
@@ -268,7 +270,7 @@ echo "Normal pi/Forge global extension path is clean: $LEGACY_GLOBAL_DIR"
 echo "Installed launcher: $LAUNCHER"
 echo "Installed emergency stop: $STOP_LAUNCHER"
 echo "Pi compatibility accepted: $PI_VERSION"
-echo "Default CE-001 envelope unchanged: target 1200; high-water 1600; final input <=2800; output <=800; total <=3600 < 4096"
+echo "ForgeLoom envelope: target 1200; high-water 1600; final input <=2800; guaranteed output >=800 when requested; adaptive output up to 1600; total <=3600 < 4096"
 echo "ForgeLoom now auto-stops the 30B backend when the last ForgeLoom session exits."
 echo "Set LOOM_FORGE_AUTO_STOP=0 only if you intentionally want to keep the backend warm."
 echo "Use: ForgeLoom"
