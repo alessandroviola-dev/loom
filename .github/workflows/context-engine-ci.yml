@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - research/context-engine-002
+      - research/forgeloom-runtime-hardening-001
   pull_request:
     branches:
       - research/context-engine-001
@@ -25,6 +26,8 @@ jobs:
           node --check src/loom-context-engine/core.mjs
           node --check src/loom-context-engine/evidence-archive.mjs
           node --check src/loom-context-engine/evidence-retrieval.mjs
+          node --check src/forgeloom-runtime-hardening/policy.mjs
+          node --experimental-strip-types --check src/forgeloom-runtime-hardening/index.ts
           node --check scripts/loom-context-webui-gateway.mjs
           node --check scripts/replay-context-engine-rpc.mjs
           node --check scripts/loom-context-evidence.mjs
@@ -98,5 +101,7 @@ jobs:
         run: node --test test/evidence-archive.test.mjs
       - name: Evidence retrieval tests
         run: node --test test/evidence-retrieval.test.mjs test/evidence-retrieval-trigger.test.mjs
+      - name: ForgeLoom runtime hardening tests
+        run: node --test test/forgeloom-runtime-hardening.test.mjs
       - name: Repository invariants
         run: bash scripts/verify-context-engine.sh
