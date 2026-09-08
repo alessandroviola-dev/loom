@@ -33,6 +33,8 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   let allowNewFilesThisTurn = false;
   let userLanguage = "en";
   let recoveryContextActive = false;
+  let recoveryNeedsCheckpoint = false;
+  let continuationQueued = false;
   const probedMissingPaths = new Set<string>();
 
   pi.on("agent_start", () => {
@@ -40,13 +42,18 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   });
 
   pi.on("before_agent_start", (event, ctx) => {
-    // A genuine new user request starts a fresh recovery state. Automatic
-    // continuation pages are injected as custom messages and do not replace
-    // this language choice.
-    noProgressLengthStops = 0;
-    recoveryContextActive = false;
-    userLanguage = detectUserLanguage(event.prompt);
-    allowNewFilesThisTurn = promptExplicitlyAllowsNewFiles(event.prompt);
+    // sendMessage(... triggerTurn:true) may start another provider turn. Do not
+    // mistake that internal continuation for a fresh user task: doing so would
+    // clear the recovery state and allow Forge to finalize before any mutation.
+    if (continuationQueued) {
+      continuationQueued = false;
+    } else if (!recoveryNeedsCheckpoint) {
+      noProgressLengthStops = 0;
+      recoveryContextActive = false;
+      userLanguage = detectUserLanguage(event.prompt);
+      allowNewFilesThisTurn = promptExplicitlyAllowsNewFiles(event.prompt);
+    }
+
     const inventory = workspaceInventory(ctx.cwd);
     const pagedBasePrompt = rewritePagedToolGuidance(event.systemPrompt);
     return {
@@ -54,11 +61,9 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
     };
   });
 
-  // During automatic recovery, do not feed the truncated assistant page back to
-  // the model. Pi persists it for transcript fidelity, but request-local model
-  // context should contain only the last valid filesystem checkpoint plus the
-  // newest hidden recovery instruction. This is the practical "fresh page"
-  // requested by ForgeLoom paged coding.
+  // During automatic recovery, do not feed truncated assistant pages back to
+  // the model. Pi keeps them in the persistent transcript; this is request-local
+  // sanitization only, so the new provider response gets a clean working page.
   pi.on("context", (event) => {
     if (!recoveryContextActive) return undefined;
     const messages = sanitizeRecoveryContext(event.messages);
@@ -103,24 +108,24 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
 
   pi.on("tool_execution_end", (event) => {
     if (!event.isError && (event.toolName === "edit" || event.toolName === "write")) {
-      // A successful mutation is a durable checkpoint. Keep recovery context
-      // sanitization active for the rest of this task, but reset the runaway
-      // counter so arbitrarily many successful chunks may follow.
+      // A successful mutation is the durable checkpoint required to leave
+      // recovery mode. From here the task may continue normally and may later
+      // enter another independent paged-recovery cycle.
       noProgressLengthStops = 0;
+      recoveryNeedsCheckpoint = false;
     }
   });
 
-  pi.on("message_end", (event, ctx) => {
-    if (event.message.role !== "assistant" || event.message.stopReason !== "length") return;
-
+  function queueRecovery(ctx: any): void {
     recoveryContextActive = true;
+    recoveryNeedsCheckpoint = true;
     const state = nextTruncationState(noProgressLengthStops, "length");
     noProgressLengthStops = state.consecutive;
 
     if (state.shouldAbort) {
       if (ctx.hasUI) {
         ctx.ui.notify(
-          `ForgeLoom stopped after ${MAX_NO_PROGRESS_TRUNCATIONS} output truncations without a successful edit/write checkpoint.`,
+          `ForgeLoom stopped after ${MAX_NO_PROGRESS_TRUNCATIONS} recovery pages without a successful edit/write checkpoint.`,
           "warning",
         );
       }
@@ -128,6 +133,7 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
       return;
     }
 
+    continuationQueued = true;
     pi.sendMessage(
       {
         customType: RECOVERY_MESSAGE_TYPE,
@@ -137,5 +143,22 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
       },
       { triggerTurn: true, deliverAs: "steer" },
     );
+  }
+
+  pi.on("message_end", (event, ctx) => {
+    if (event.message.role !== "assistant") return;
+
+    if (event.message.stopReason === "length") {
+      queueRecovery(ctx);
+      return;
+    }
+
+    // A recovery page is not allowed to silently become a final answer before
+    // any edit/write has actually landed. Reads and other tool calls are fine;
+    // Pi will naturally continue after toolUse. But a normal stop with no
+    // mutation checkpoint is treated as another no-progress recovery page.
+    if (recoveryNeedsCheckpoint && event.message.stopReason === "stop") {
+      queueRecovery(ctx);
+    }
   });
 }
