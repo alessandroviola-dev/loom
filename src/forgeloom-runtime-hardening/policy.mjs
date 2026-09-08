@@ -3,15 +3,18 @@ export const MAX_EDIT_REPLACEMENTS_PER_CALL = 1;
 export const MAX_EDIT_OLD_CHARS = 500;
 export const MAX_EDIT_NEW_CHARS = 1200;
 export const MAX_WRITE_CHARS = 1200;
+export const RECOVERY_MESSAGE_TYPE = "forgeloom-output-continuation";
 
 export const OUTPUT_RECOVERY_GUIDANCE = [
   "FORGELOOM PAGED-CODING OVERRIDE: one provider response never needs to contain the whole patch or file.",
+  "Keep assistant narration in the language of the current user's request unless code/tool syntax requires otherwise.",
   "For edit, emit EXACTLY ONE edits[] replacement per tool call. This overrides any generic Forge guidance that suggests batching multiple edits in one call.",
   `Keep edits[].oldText <= ${MAX_EDIT_OLD_CHARS} characters and edits[].newText <= ${MAX_EDIT_NEW_CHARS} characters. Make oldText the smallest exact unique anchor that works.`,
   "After a successful edit, let the tool result checkpoint the filesystem, then continue the SAME task in the next model response with another edit chunk.",
   "Do not use write to rewrite an existing file. For a legitimately new file, write only a small initial skeleton, then extend it incrementally with edit.",
   `Keep a new-file write payload <= ${MAX_WRITE_CHARS} characters.`,
-  "Keep narration before a tool call to one short sentence; reserve response budget for tool arguments.",
+  "Keep narration before a normal tool call to one short sentence; reserve response budget for tool arguments.",
+  "RECOVERY EXCEPTION: after an output truncation, the next recovery page must contain NO narration before the first successful edit/write checkpoint; issue the small complete tool call immediately.",
   "If output is truncated, NEVER restart analysis, NEVER restart the file, and NEVER repeat the same truncated payload. Resume from the last successful filesystem checkpoint with one smaller complete edit.",
   "Do not create helper verification files unless the user explicitly requests them; use a short bash command for verification instead.",
 ].join("\n");
@@ -84,6 +87,12 @@ export function promptExplicitlyAllowsNewFiles(prompt = "") {
   return /\b(create|creating|add a new|new file|new module|generate a file|crea|creare|aggiungi|aggiungere|nuovo file|nuovo modulo|genera(?:re)? un file)\b/i.test(String(prompt));
 }
 
+export function detectUserLanguage(prompt = "") {
+  const text = String(prompt).toLowerCase();
+  const matches = text.match(/\b(?:analizza|correggi|mantieni|individua|installa|istalla|modifica|mentre|spiegami|senza|della|delle|degli|questo|questa|perché|perche|quindi|file necessari)\b/g) ?? [];
+  return matches.length >= 2 ? "it" : "en";
+}
+
 export function nextTruncationState(currentCount, stopReason, maxNoProgress = MAX_NO_PROGRESS_TRUNCATIONS) {
   const current = Number.isFinite(currentCount) && currentCount > 0 ? Math.trunc(currentCount) : 0;
   const limit = Number.isFinite(maxNoProgress) && maxNoProgress > 0 ? Math.trunc(maxNoProgress) : MAX_NO_PROGRESS_TRUNCATIONS;
@@ -98,13 +107,44 @@ export function nextTruncationState(currentCount, stopReason, maxNoProgress = MA
   return { consecutive: 0, shouldContinue: false, shouldAbort: false };
 }
 
-export function continuationMessage(attempt) {
+export function continuationMessage(attempt, language = "en") {
   const page = Number.isFinite(attempt) && attempt > 0 ? Math.trunc(attempt) : 1;
+  if (language === "it") {
+    return [
+      `[ForgeLoom recupero pagina ${page}]`,
+      "La risposta precedente è stata troncata: il relativo tool call NON è stato eseguito.",
+      "NESSUNA SPIEGAZIONE in questa pagina di recupero. Non ripetere analisi o piano.",
+      `Esegui SUBITO una sola tool call completa sullo STESSO task: edit con una sola sostituzione, oldText <= ${MAX_EDIT_OLD_CHARS} caratteri, newText <= ${MAX_EDIT_NEW_CHARS} caratteri.`,
+      "Usa lo stato attuale del filesystem come checkpoint e non ripetere il payload troncato. Dopo un edit/write riuscito torna a parlare in italiano e continua col chunk successivo.",
+    ].join("\n");
+  }
   return [
-    `[ForgeLoom continuation page ${page}]`,
-    "The previous model response hit its output-token limit. Continue the SAME current task; do not restart analysis or rewrite the file from the beginning.",
-    "Use the last successful filesystem state as the checkpoint. The truncated tool call was not executed.",
-    `Issue exactly ONE complete edit replacement now: one edits[] entry, oldText <= ${MAX_EDIT_OLD_CHARS} chars, newText <= ${MAX_EDIT_NEW_CHARS} chars.`,
-    "After that edit succeeds, continue the next chunk on the following model response. Spend almost no tokens on narration until the file changes are complete.",
+    `[ForgeLoom recovery page ${page}]`,
+    "The previous response was truncated; its tool call was NOT executed.",
+    "NO NARRATION on this recovery page. Do not repeat analysis or planning.",
+    `Immediately issue exactly one complete tool call for the SAME task: one edit replacement, oldText <= ${MAX_EDIT_OLD_CHARS} chars, newText <= ${MAX_EDIT_NEW_CHARS} chars.`,
+    "Use the current filesystem as the checkpoint and do not repeat the truncated payload. After a successful edit/write, resume the user's language and continue with the next chunk.",
   ].join("\n");
+}
+
+export function sanitizeRecoveryContext(messages = []) {
+  const input = Array.isArray(messages) ? messages : [];
+  const truncatedToolIds = new Set();
+  let lastRecoveryIndex = -1;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const message = input[index];
+    if (message?.customType === RECOVERY_MESSAGE_TYPE) lastRecoveryIndex = index;
+    if (message?.role !== "assistant" || message?.stopReason !== "length" || !Array.isArray(message?.content)) continue;
+    for (const part of message.content) {
+      if (part?.type === "toolCall" && typeof part.id === "string") truncatedToolIds.add(part.id);
+    }
+  }
+
+  return input.filter((message, index) => {
+    if (message?.role === "assistant" && message?.stopReason === "length") return false;
+    if (message?.role === "toolResult" && truncatedToolIds.has(message?.toolCallId)) return false;
+    if (message?.customType === RECOVERY_MESSAGE_TYPE && index !== lastRecoveryIndex) return false;
+    return true;
+  });
 }
