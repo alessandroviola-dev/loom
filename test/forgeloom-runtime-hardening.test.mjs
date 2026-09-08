@@ -15,6 +15,7 @@ import {
   promptExplicitlyAllowsNewFiles,
   rewritePagedToolGuidance,
   sanitizeRecoveryContext,
+  shouldForceRecoveryCheckpoint,
 } from "../src/forgeloom-runtime-hardening/policy.mjs";
 import { allocateOutputBudget } from "../src/forgeloom-runtime-hardening/output-budget.mjs";
 
@@ -31,7 +32,7 @@ test("length stops request fresh continuation pages before aborting", () => {
   });
 });
 
-test("only repeated no-progress truncations trip the runaway guard", () => {
+test("only repeated no-progress recovery pages trip the runaway guard", () => {
   assert.equal(MAX_NO_PROGRESS_TRUNCATIONS, 4);
   assert.deepEqual(nextTruncationState(3, "length"), {
     consecutive: 4,
@@ -40,7 +41,7 @@ test("only repeated no-progress truncations trip the runaway guard", () => {
   });
 });
 
-test("non-length assistant stop clears truncation state", () => {
+test("non-length assistant stop does not itself alter truncation state", () => {
   assert.deepEqual(nextTruncationState(2, "toolUse"), {
     consecutive: 0,
     shouldContinue: false,
@@ -53,17 +54,27 @@ test("non-length assistant stop clears truncation state", () => {
   });
 });
 
-test("continuation message is language-aware and tool-first", () => {
+test("recovery cannot finalize normally before an edit/write checkpoint", () => {
+  assert.equal(shouldForceRecoveryCheckpoint(true, "stop"), true);
+  assert.equal(shouldForceRecoveryCheckpoint(true, "toolUse"), false);
+  assert.equal(shouldForceRecoveryCheckpoint(true, "length"), false);
+  assert.equal(shouldForceRecoveryCheckpoint(false, "stop"), false);
+});
+
+test("continuation message is language-aware, tool-first and permits only a narrow read detour", () => {
   const italian = continuationMessage(2, "it");
   assert.match(italian, /recupero pagina 2/i);
   assert.match(italian, /NESSUNA SPIEGAZIONE/);
   assert.match(italian, /Esegui SUBITO una sola tool call/);
-  assert.match(italian, /torna a parlare in italiano/i);
+  assert.match(italian, /UNA read mirata/);
+  assert.match(italian, /task non è concluso finché un edit\/write non riesce/i);
 
   const english = continuationMessage(2, "en");
   assert.match(english, /recovery page 2/i);
   assert.match(english, /NO NARRATION/);
   assert.match(english, /Immediately issue exactly one complete tool call/);
+  assert.match(english, /one narrow read is allowed/i);
+  assert.match(english, /task is not complete until an edit\/write succeeds/i);
 });
 
 test("user language detection keeps Italian recovery in Italian", () => {
@@ -89,10 +100,7 @@ test("recovery context drops truncated pages, failed truncated tool results and 
     { role: "custom", customType: RECOVERY_MESSAGE_TYPE, content: "latest recovery" },
   ];
   const sanitized = sanitizeRecoveryContext(messages);
-  assert.deepEqual(sanitized, [
-    messages[0],
-    messages[5],
-  ]);
+  assert.deepEqual(sanitized, [messages[0], messages[5]]);
 });
 
 test("Forge generic batch-edit guidance is rewritten for paged mode", () => {
@@ -142,7 +150,7 @@ test("system guidance uses paged coding and forbids invented paths", () => {
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /PAGED-CODING OVERRIDE/i);
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /language of the current user's request/i);
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /EXACTLY ONE edits\[\] replacement/i);
-  assert.match(OUTPUT_RECOVERY_GUIDANCE, /RECOVERY EXCEPTION/i);
+  assert.match(OUTPUT_RECOVERY_GUIDANCE, /cannot finalize until a successful edit\/write checkpoint/i);
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /NEVER restart analysis/i);
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /Do not create helper verification files/);
   assert.match(WORKSPACE_GROUNDING_GUIDANCE, /Never invent companion modules/);
