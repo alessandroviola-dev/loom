@@ -62,7 +62,8 @@ checks = {
     "global duplicate runtime guard": 'globally auto-discovered LOOM Context Engine exists' in installer,
     "runtime hardening private": 'HARDENING_TARGET_DIR="$FORGE_LOOM_DIR/runtime-hardening"' in installer,
     "path grounding": 'probedMissingPaths' in hardening and 'Never invent companion modules' in policy,
-    "paged output continuation": 'forgeloom-output-continuation' in hardening and 'deliverAs: "steer"' in hardening and 'last successful filesystem state' in policy,
+    "paged output continuation": 'RECOVERY_MESSAGE_TYPE' in hardening and 'deliverAs: "steer"' in hardening and 'sanitizeRecoveryContext' in hardening and 'NESSUNA SPIEGAZIONE' in policy,
+    "language-aware recovery": 'detectUserLanguage' in hardening and 'torna a parlare in italiano' in policy,
     "no-progress runaway guard": 'MAX_NO_PROGRESS_TRUNCATIONS' in hardening and 'ctx.abort()' in hardening,
     "auto stop": 'trap release_client EXIT' in installer and 'ForgeLoomStop' in installer,
 }
