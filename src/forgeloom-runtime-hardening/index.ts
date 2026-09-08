@@ -2,8 +2,10 @@ import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
+  MAX_NO_PROGRESS_TRUNCATIONS,
   OUTPUT_RECOVERY_GUIDANCE,
   WORKSPACE_GROUNDING_GUIDANCE,
+  continuationMessage,
   nextTruncationState,
   promptExplicitlyAllowsNewFiles,
 } from "./policy.mjs";
@@ -22,12 +24,12 @@ function workspaceInventory(cwd: string): string {
 }
 
 export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
-  let consecutiveLengthStops = 0;
+  let noProgressLengthStops = 0;
   let allowNewFilesThisTurn = false;
   const probedMissingPaths = new Set<string>();
 
   pi.on("agent_start", () => {
-    consecutiveLengthStops = 0;
+    noProgressLengthStops = 0;
     probedMissingPaths.clear();
   });
 
@@ -66,21 +68,45 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
     };
   });
 
-  pi.on("message_end", (event, ctx) => {
-    if (event.message.role !== "assistant") return;
-
-    const stopReason = event.message.stopReason;
-    const state = nextTruncationState(consecutiveLengthStops, stopReason);
-    consecutiveLengthStops = state.consecutive;
-
-    if (!state.shouldAbort) return;
-
-    if (ctx.hasUI) {
-      ctx.ui.notify(
-        "ForgeLoom stopped after two consecutive output truncations. Continue with smaller edit/write calls; identical retries are blocked by policy.",
-        "warning",
-      );
+  // A successful filesystem mutation is a durable checkpoint. Once progress is
+  // made, later output truncations get a fresh no-progress allowance. This lets
+  // a large coding task span arbitrarily many provider responses while still
+  // stopping a true retry loop that never manages to apply a change.
+  pi.on("tool_execution_end", (event) => {
+    if (!event.isError && (event.toolName === "edit" || event.toolName === "write")) {
+      noProgressLengthStops = 0;
     }
-    ctx.abort();
+  });
+
+  pi.on("message_end", (event, ctx) => {
+    if (event.message.role !== "assistant" || event.message.stopReason !== "length") return;
+
+    const state = nextTruncationState(noProgressLengthStops, "length");
+    noProgressLengthStops = state.consecutive;
+
+    if (state.shouldAbort) {
+      if (ctx.hasUI) {
+        ctx.ui.notify(
+          `ForgeLoom stopped after ${MAX_NO_PROGRESS_TRUNCATIONS} output truncations without a successful edit/write checkpoint.`,
+          "warning",
+        );
+      }
+      ctx.abort();
+      return;
+    }
+
+    // Pi already starts another provider turn after a truncated tool call. Add
+    // a hidden steering message so that the fresh output budget is used to
+    // continue the same file/task from the last successful checkpoint rather
+    // than restarting or repeating the oversized payload.
+    pi.sendMessage(
+      {
+        customType: "forgeloom-output-continuation",
+        content: continuationMessage(state.consecutive),
+        display: false,
+        details: { page: state.consecutive },
+      },
+      { triggerTurn: true, deliverAs: "steer" },
+    );
   });
 }
