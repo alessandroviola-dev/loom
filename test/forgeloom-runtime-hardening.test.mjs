@@ -13,6 +13,7 @@ import {
   inspectPagedMutation,
   nextTruncationState,
   promptExplicitlyAllowsNewFiles,
+  promptRequiresMutation,
   rewritePagedToolGuidance,
   sanitizeRecoveryContext,
   shouldForceRecoveryCheckpoint,
@@ -61,20 +62,29 @@ test("recovery cannot finalize normally before an edit/write checkpoint", () => 
   assert.equal(shouldForceRecoveryCheckpoint(false, "stop"), false);
 });
 
-test("continuation message is language-aware, tool-first and permits only a narrow read detour", () => {
-  const italian = continuationMessage(2, "it");
-  assert.match(italian, /recupero pagina 2/i);
-  assert.match(italian, /NESSUNA SPIEGAZIONE/);
-  assert.match(italian, /Esegui SUBITO una sola tool call/);
-  assert.match(italian, /UNA read mirata/);
-  assert.match(italian, /task non è concluso finché un edit\/write non riesce/i);
+test("mutation requests are detected before any truncation happens", () => {
+  assert.equal(promptRequiresMutation("Analizza wifi_hacker.py e correggilo per macOS. Modifica direttamente il file."), true);
+  assert.equal(promptRequiresMutation("Fix retry_policy.py and update the implementation."), true);
+  assert.equal(promptRequiresMutation("Analizza wifi_hacker.py ma non modificare il file."), false);
+  assert.equal(promptRequiresMutation("Read only: explain what this module does."), false);
+  assert.equal(promptRequiresMutation("Spiegami cosa fa questo file."), false);
+});
 
-  const english = continuationMessage(2, "en");
-  assert.match(english, /recovery page 2/i);
-  assert.match(english, /NO NARRATION/);
-  assert.match(english, /Immediately issue exactly one complete tool call/);
-  assert.match(english, /one narrow read is allowed/i);
-  assert.match(english, /task is not complete until an edit\/write succeeds/i);
+test("continuation message is language-aware for truncation and premature stop", () => {
+  const italianTruncated = continuationMessage(2, "it", "truncation");
+  assert.match(italianTruncated, /continuazione operativa 2/i);
+  assert.match(italianTruncated, /risposta precedente è stata troncata/i);
+  assert.match(italianTruncated, /UNA read mirata/);
+  assert.match(italianTruncated, /edit\/write riesce/i);
+
+  const italianCheckpoint = continuationMessage(1, "it", "checkpoint");
+  assert.match(italianCheckpoint, /richiede una modifica reale/i);
+  assert.match(italianCheckpoint, /senza alcun edit\/write riuscito/i);
+  assert.match(italianCheckpoint, /Non finalizzare/i);
+
+  const english = continuationMessage(2, "en", "checkpoint");
+  assert.match(english, /requires a real file\/code mutation/i);
+  assert.match(english, /Do not finalize/i);
 });
 
 test("user language detection keeps Italian recovery in Italian", () => {
@@ -82,7 +92,7 @@ test("user language detection keeps Italian recovery in Italian", () => {
   assert.equal(detectUserLanguage("Analyze this file and fix the errors"), "en");
 });
 
-test("recovery context drops truncated pages, failed truncated tool results and stale continuation messages", () => {
+test("recovery context drops truncated pages, failed tool results, stale recovery and premature prose stop", () => {
   const messages = [
     { role: "user", content: [{ type: "text", text: "task" }] },
     {
@@ -94,8 +104,8 @@ test("recovery context drops truncated pages, failed truncated tool results and 
     { role: "custom", customType: RECOVERY_MESSAGE_TYPE, content: "old recovery" },
     {
       role: "assistant",
-      stopReason: "length",
-      content: [{ type: "text", text: "repeated narration" }],
+      stopReason: "stop",
+      content: [{ type: "text", text: "Sto analizzando il file." }],
     },
     { role: "custom", customType: RECOVERY_MESSAGE_TYPE, content: "latest recovery" },
   ];
@@ -150,9 +160,9 @@ test("system guidance uses paged coding and forbids invented paths", () => {
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /PAGED-CODING OVERRIDE/i);
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /language of the current user's request/i);
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /EXACTLY ONE edits\[\] replacement/i);
+  assert.match(OUTPUT_RECOVERY_GUIDANCE, /prose-only answer is NOT task completion/i);
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /cannot finalize until a successful edit\/write checkpoint/i);
   assert.match(OUTPUT_RECOVERY_GUIDANCE, /NEVER restart analysis/i);
-  assert.match(OUTPUT_RECOVERY_GUIDANCE, /Do not create helper verification files/);
   assert.match(WORKSPACE_GROUNDING_GUIDANCE, /Never invent companion modules/);
   assert.match(WORKSPACE_GROUNDING_GUIDANCE, /ENOENT.*NOT authorization/i);
 });
