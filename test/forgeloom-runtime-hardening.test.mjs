@@ -4,65 +4,18 @@ import assert from "node:assert/strict";
 import {
   MAX_EDIT_NEW_CHARS,
   MAX_EDIT_OLD_CHARS,
-  MAX_NO_PROGRESS_TRUNCATIONS,
-  OUTPUT_RECOVERY_GUIDANCE,
-  RECOVERY_MESSAGE_TYPE,
-  WORKSPACE_GROUNDING_GUIDANCE,
-  continuationMessage,
+  compactToolRecoveryMessage,
   detectUserLanguage,
   inspectPagedMutation,
-  nextTruncationState,
+  outputLimitToolResult,
   promptExplicitlyAllowsNewFiles,
   promptRequiresMutation,
-  rewritePagedToolGuidance,
-  sanitizeRecoveryContext,
-  shouldForceRecoveryCheckpoint,
+  requireToolChoice,
+  taskSystemGuidance,
 } from "../src/forgeloom-runtime-hardening/policy.mjs";
 import { allocateOutputBudget } from "../src/forgeloom-runtime-hardening/output-budget.mjs";
 
-test("length stops request fresh continuation pages before aborting", () => {
-  assert.deepEqual(nextTruncationState(0, "length"), {
-    consecutive: 1,
-    shouldContinue: true,
-    shouldAbort: false,
-  });
-  assert.deepEqual(nextTruncationState(2, "length"), {
-    consecutive: 3,
-    shouldContinue: true,
-    shouldAbort: false,
-  });
-});
-
-test("only repeated no-progress recovery pages trip the runaway guard", () => {
-  assert.equal(MAX_NO_PROGRESS_TRUNCATIONS, 4);
-  assert.deepEqual(nextTruncationState(3, "length"), {
-    consecutive: 4,
-    shouldContinue: false,
-    shouldAbort: true,
-  });
-});
-
-test("non-length assistant stop does not itself alter truncation state", () => {
-  assert.deepEqual(nextTruncationState(2, "toolUse"), {
-    consecutive: 0,
-    shouldContinue: false,
-    shouldAbort: false,
-  });
-  assert.deepEqual(nextTruncationState(2, "stop"), {
-    consecutive: 0,
-    shouldContinue: false,
-    shouldAbort: false,
-  });
-});
-
-test("recovery cannot finalize normally before an edit/write checkpoint", () => {
-  assert.equal(shouldForceRecoveryCheckpoint(true, "stop"), true);
-  assert.equal(shouldForceRecoveryCheckpoint(true, "toolUse"), false);
-  assert.equal(shouldForceRecoveryCheckpoint(true, "length"), false);
-  assert.equal(shouldForceRecoveryCheckpoint(false, "stop"), false);
-});
-
-test("mutation requests are detected before any truncation happens", () => {
+test("mutation requests are detected without affecting read-only tasks", () => {
   assert.equal(promptRequiresMutation("Analizza wifi_hacker.py e correggilo per macOS. Modifica direttamente il file."), true);
   assert.equal(promptRequiresMutation("Fix retry_policy.py and update the implementation."), true);
   assert.equal(promptRequiresMutation("Analizza wifi_hacker.py ma non modificare il file."), false);
@@ -70,60 +23,21 @@ test("mutation requests are detected before any truncation happens", () => {
   assert.equal(promptRequiresMutation("Spiegami cosa fa questo file."), false);
 });
 
-test("continuation message is language-aware for truncation and premature stop", () => {
-  const italianTruncated = continuationMessage(2, "it", "truncation");
-  assert.match(italianTruncated, /continuazione operativa 2/i);
-  assert.match(italianTruncated, /risposta precedente è stata troncata/i);
-  assert.match(italianTruncated, /UNA read mirata/);
-  assert.match(italianTruncated, /edit\/write riesce/i);
-
-  const italianCheckpoint = continuationMessage(1, "it", "checkpoint");
-  assert.match(italianCheckpoint, /richiede una modifica reale/i);
-  assert.match(italianCheckpoint, /senza alcun edit\/write riuscito/i);
-  assert.match(italianCheckpoint, /Non finalizzare/i);
-
-  const english = continuationMessage(2, "en", "checkpoint");
-  assert.match(english, /requires a real file\/code mutation/i);
-  assert.match(english, /Do not finalize/i);
-});
-
-test("user language detection keeps Italian recovery in Italian", () => {
+test("user language detection keeps recovery guidance in the user language", () => {
   assert.equal(detectUserLanguage("Analizza questo file, correggi gli errori e spiegami cosa fai mentre lavori"), "it");
   assert.equal(detectUserLanguage("Analyze this file and fix the errors"), "en");
 });
 
-test("recovery context drops truncated pages, failed tool results, stale recovery and premature prose stop", () => {
-  const messages = [
-    { role: "user", content: [{ type: "text", text: "task" }] },
-    {
-      role: "assistant",
-      stopReason: "length",
-      content: [{ type: "toolCall", id: "tc1", name: "edit", arguments: {} }],
-    },
-    { role: "toolResult", toolCallId: "tc1", content: [{ type: "text", text: "not executed" }] },
-    { role: "custom", customType: RECOVERY_MESSAGE_TYPE, content: "old recovery" },
-    {
-      role: "assistant",
-      stopReason: "stop",
-      content: [{ type: "text", text: "Sto analizzando il file." }],
-    },
-    { role: "custom", customType: RECOVERY_MESSAGE_TYPE, content: "latest recovery" },
-  ];
-  const sanitized = sanitizeRecoveryContext(messages);
-  assert.deepEqual(sanitized, [messages[0], messages[5]]);
-});
+test("native paged coding guidance requires real work for mutation tasks", () => {
+  const mutation = taskSystemGuidance(true);
+  assert.match(mutation, /NATIVE PAGED CODING/i);
+  assert.match(mutation, /Pi automatically continues after tool results/i);
+  assert.match(mutation, /prose-only response is not completion/i);
+  assert.match(mutation, /at least one edit\/write must succeed/i);
+  assert.match(mutation, /exactly one small edits\[\] replacement/i);
 
-test("Forge generic batch-edit guidance is rewritten for paged mode", () => {
-  const source = [
-    "Make precise file edits with exact text replacement, including multiple disjoint edits in one call",
-    "When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls",
-    "Use write only for new files or complete rewrites.",
-  ].join("\n");
-  const rewritten = rewritePagedToolGuidance(source);
-  assert.doesNotMatch(rewritten, /multiple entries in edits\[\] instead of multiple edit calls/);
-  assert.doesNotMatch(rewritten, /complete rewrites/);
-  assert.match(rewritten, /multiple sequential edit calls/);
-  assert.match(rewritten, /small new-file skeleton/);
+  const readOnly = taskSystemGuidance(false);
+  assert.doesNotMatch(readOnly, /CURRENT TASK REQUIRES A REAL FILE\/CODE CHANGE/i);
 });
 
 test("paged mutation policy allows one small edit and blocks batching", () => {
@@ -142,29 +56,18 @@ test("paged mutation policy allows one small edit and blocks batching", () => {
 });
 
 test("paged mutation policy blocks oversized edit and write payloads", () => {
-  const largeEdit = inspectPagedMutation("edit", {
+  const largeOld = inspectPagedMutation("edit", {
     edits: [{ oldText: "x".repeat(MAX_EDIT_OLD_CHARS + 1), newText: "y" }],
   });
-  assert.equal(largeEdit.ok, false);
+  assert.equal(largeOld.ok, false);
 
-  const largeNewText = inspectPagedMutation("edit", {
+  const largeNew = inspectPagedMutation("edit", {
     edits: [{ oldText: "x", newText: "y".repeat(MAX_EDIT_NEW_CHARS + 1) }],
   });
-  assert.equal(largeNewText.ok, false);
+  assert.equal(largeNew.ok, false);
 
   const largeWrite = inspectPagedMutation("write", { content: "z".repeat(1201) });
   assert.equal(largeWrite.ok, false);
-});
-
-test("system guidance uses paged coding and forbids invented paths", () => {
-  assert.match(OUTPUT_RECOVERY_GUIDANCE, /PAGED-CODING OVERRIDE/i);
-  assert.match(OUTPUT_RECOVERY_GUIDANCE, /language of the current user's request/i);
-  assert.match(OUTPUT_RECOVERY_GUIDANCE, /EXACTLY ONE edits\[\] replacement/i);
-  assert.match(OUTPUT_RECOVERY_GUIDANCE, /prose-only answer is NOT task completion/i);
-  assert.match(OUTPUT_RECOVERY_GUIDANCE, /cannot finalize until a successful edit\/write checkpoint/i);
-  assert.match(OUTPUT_RECOVERY_GUIDANCE, /NEVER restart analysis/i);
-  assert.match(WORKSPACE_GROUNDING_GUIDANCE, /Never invent companion modules/);
-  assert.match(WORKSPACE_GROUNDING_GUIDANCE, /ENOENT.*NOT authorization/i);
 });
 
 test("new-file permission is explicit rather than inferred from generic repair prompts", () => {
@@ -173,7 +76,47 @@ test("new-file permission is explicit rather than inferred from generic repair p
   assert.equal(promptExplicitlyAllowsNewFiles("Create a new module for parsing"), true);
 });
 
-test("adaptive output budget keeps original 800-token floor while using spare headroom", () => {
+test("required tool choice is applied structurally without mutating the original payload", () => {
+  const original = {
+    messages: [{ role: "user", content: "fix it" }],
+    tools: [{ type: "function", function: { name: "read" } }],
+    tool_choice: "auto",
+    parallel_tool_calls: true,
+  };
+  const result = requireToolChoice(original, true);
+  assert.equal(result.changed, true);
+  assert.equal(result.payload.tool_choice, "required");
+  assert.equal(result.payload.parallel_tool_calls, false);
+  assert.equal(original.tool_choice, "auto");
+  assert.equal(original.parallel_tool_calls, true);
+
+  assert.deepEqual(requireToolChoice(original, false), { payload: original, changed: false });
+  const noTools = { messages: [{ role: "user", content: "fix it" }] };
+  assert.deepEqual(requireToolChoice(noTools, true), { payload: noTools, changed: false });
+});
+
+test("Pi output-limit tool errors are detected and rewritten into one small next-step instruction", () => {
+  const piError = [{
+    type: "text",
+    text: 'Tool call "edit" was not executed: the response hit the output token limit, so its arguments may be truncated. Re-issue the tool call with complete arguments.',
+  }];
+  assert.equal(outputLimitToolResult(piError), true);
+  assert.equal(outputLimitToolResult([{ type: "text", text: "ENOENT: file missing" }]), false);
+
+  const italian = compactToolRecoveryMessage("edit", "it");
+  assert.match(italian, /Pi sta già continuando/i);
+  assert.match(italian, /nuova chiamata/i);
+  assert.match(italian, /UNA tool call/i);
+  assert.match(italian, /oldText <= 500/i);
+  assert.match(italian, /newText <= 1200/i);
+
+  const english = compactToolRecoveryMessage("edit", "en");
+  assert.match(english, /Pi is already continuing/i);
+  assert.match(english, /fresh provider call/i);
+  assert.match(english, /ONE smaller complete tool call/i);
+});
+
+test("adaptive output budget keeps 4096 envelope while using spare headroom", () => {
   assert.deepEqual(
     allocateOutputBudget({ guardInputTokens: 1200, requestedOutputTokens: 1600 }),
     {
