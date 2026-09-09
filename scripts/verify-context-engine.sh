@@ -61,12 +61,12 @@ checks = {
     "explicit ForgeLoom extension load": 'Forge --extension "$CONTEXT_EXTENSION" --extension "$HARDENING_EXTENSION" --model "$MODEL"' in installer,
     "global duplicate runtime guard": 'globally auto-discovered LOOM Context Engine exists' in installer,
     "runtime hardening private": 'HARDENING_TARGET_DIR="$FORGE_LOOM_DIR/runtime-hardening"' in installer,
-    "path grounding": 'probedMissingPaths' in hardening and 'Never invent companion modules' in policy,
-    "paged output continuation": 'RECOVERY_MESSAGE_TYPE' in hardening and 'deliverAs: "steer"' in hardening and 'sanitizeRecoveryContext' in hardening and 'continuazione operativa' in policy,
-    "language-aware recovery": 'detectUserLanguage' in hardening and 'richiede una modifica reale' in policy,
-    "recovery checkpoint persistence": 'recoveryNeedsCheckpoint' in hardening and 'shouldForceRecoveryCheckpoint' in hardening and 'edit/write riesce' in policy,
-    "initial mutation completion guard": 'taskRequiresMutation' in hardening and 'taskMutationSeen' in hardening and 'promptRequiresMutation' in hardening and 'prose-only answer is NOT task completion' in policy,
-    "no-progress runaway guard": 'MAX_NO_PROGRESS_TRUNCATIONS' in hardening and 'ctx.abort()' in hardening,
+    "path grounding": 'probedMissingPaths' in hardening and 'ENOENT is not permission to create it' in hardening,
+    "native Pi paging": 'sendMessage(' not in hardening and 'continuationQueued' not in hardening and 'MAX_NO_PROGRESS_TRUNCATIONS' not in hardening,
+    "required tool choice": 'before_provider_request' in hardening and 'requireToolChoice' in hardening and 'tool_choice: "required"' in policy,
+    "single edit chunk": 'MAX_EDIT_REPLACEMENTS_PER_CALL = 1' in policy and 'MAX_EDIT_OLD_CHARS = 500' in policy and 'MAX_EDIT_NEW_CHARS = 1200' in policy,
+    "native truncation recovery": 'outputLimitToolResult' in hardening and 'compactToolRecoveryMessage' in hardening and 'Pi is already continuing' in policy,
+    "mutation task detection": 'promptRequiresMutation' in hardening and 'taskRequiresMutation' in hardening and 'taskMutationSeen' in hardening,
     "auto stop": 'trap release_client EXIT' in installer and 'ForgeLoomStop' in installer,
 }
 failed = [name for name, ok in checks.items() if not ok]
@@ -81,7 +81,7 @@ if 1600 + 900 >= 2800:
     raise SystemExit("working high-water leaves insufficient measured fixed-overhead headroom")
 print("CE-001 invariant checks: PASS")
 print("Forge/ForgeLoom extension isolation invariants: PASS")
-print("ForgeLoom runtime hardening invariants: PASS")
+print("ForgeLoom native paging/runtime invariants: PASS")
 PY
 pass "repository invariants"
 
