@@ -11,6 +11,7 @@ import {
   inspectPagedMutation,
   nextTruncationState,
   promptExplicitlyAllowsNewFiles,
+  promptRequiresMutation,
   rewritePagedToolGuidance,
   sanitizeRecoveryContext,
   shouldForceRecoveryCheckpoint,
@@ -36,6 +37,8 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   let recoveryContextActive = false;
   let recoveryNeedsCheckpoint = false;
   let continuationQueued = false;
+  let taskRequiresMutation = false;
+  let taskMutationSeen = false;
   const probedMissingPaths = new Set<string>();
 
   pi.on("agent_start", () => {
@@ -43,15 +46,18 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   });
 
   pi.on("before_agent_start", (event, ctx) => {
-    // An internally queued recovery turn is not a new task. Preserve the
-    // recovery state and user language until a real filesystem mutation lands.
+    // Internally queued continuations are part of the same task. Any other
+    // before_agent_start is a genuine new user request and starts fresh state.
     if (continuationQueued) {
       continuationQueued = false;
-    } else if (!recoveryNeedsCheckpoint) {
+    } else {
       noProgressLengthStops = 0;
       recoveryContextActive = false;
       userLanguage = detectUserLanguage(event.prompt);
       allowNewFilesThisTurn = promptExplicitlyAllowsNewFiles(event.prompt);
+      taskRequiresMutation = promptRequiresMutation(event.prompt);
+      taskMutationSeen = false;
+      recoveryNeedsCheckpoint = taskRequiresMutation;
     }
 
     const inventory = workspaceInventory(ctx.cwd);
@@ -62,7 +68,7 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   });
 
   // Persistent transcript fidelity is untouched. Recovery only removes failed
-  // truncated pages from the request-local model view.
+  // or premature pages from the request-local model view.
   pi.on("context", (event) => {
     if (!recoveryContextActive) return undefined;
     const messages = sanitizeRecoveryContext(event.messages);
@@ -108,11 +114,12 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   pi.on("tool_execution_end", (event) => {
     if (!event.isError && (event.toolName === "edit" || event.toolName === "write")) {
       noProgressLengthStops = 0;
+      taskMutationSeen = true;
       recoveryNeedsCheckpoint = false;
     }
   });
 
-  function queueRecovery(ctx: any): void {
+  function queueRecovery(ctx: any, reason: "truncation" | "checkpoint"): void {
     recoveryContextActive = true;
     recoveryNeedsCheckpoint = true;
     const state = nextTruncationState(noProgressLengthStops, "length");
@@ -121,7 +128,7 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
     if (state.shouldAbort) {
       if (ctx.hasUI) {
         ctx.ui.notify(
-          `ForgeLoom stopped after ${MAX_NO_PROGRESS_TRUNCATIONS} recovery pages without a successful edit/write checkpoint.`,
+          `ForgeLoom stopped after ${MAX_NO_PROGRESS_TRUNCATIONS} no-progress continuation pages without a successful edit/write checkpoint.`,
           "warning",
         );
       }
@@ -133,9 +140,9 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
     pi.sendMessage(
       {
         customType: RECOVERY_MESSAGE_TYPE,
-        content: continuationMessage(state.consecutive, userLanguage),
+        content: continuationMessage(state.consecutive, userLanguage, reason),
         display: false,
-        details: { page: state.consecutive, language: userLanguage },
+        details: { page: state.consecutive, language: userLanguage, reason },
       },
       { triggerTurn: true, deliverAs: "steer" },
     );
@@ -145,15 +152,16 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
     if (event.message.role !== "assistant") return;
 
     if (event.message.stopReason === "length") {
-      queueRecovery(ctx);
+      queueRecovery(ctx, "truncation");
       return;
     }
 
-    // Reads/toolUse may legitimately precede the mutation. What is forbidden is
-    // a normal assistant stop that would make Forge finalize while the recovery
-    // cycle still has no successful edit/write checkpoint.
-    if (shouldForceRecoveryCheckpoint(recoveryNeedsCheckpoint, event.message.stopReason)) {
-      queueRecovery(ctx);
+    // A coding/modification task cannot terminate as prose before any actual
+    // mutation checkpoint. Reads/toolUse may precede the mutation; a normal stop
+    // before edit/write is automatically converted into another working page.
+    const mutationStillRequired = taskRequiresMutation && !taskMutationSeen;
+    if (shouldForceRecoveryCheckpoint(recoveryNeedsCheckpoint || mutationStillRequired, event.message.stopReason)) {
+      queueRecovery(ctx, "checkpoint");
     }
   });
 }
