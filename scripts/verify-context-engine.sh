@@ -64,9 +64,10 @@ checks = {
     "path grounding": 'probedMissingPaths' in hardening and 'ENOENT is not permission to create it' in hardening,
     "native Pi paging": 'sendMessage(' not in hardening and 'continuationQueued' not in hardening and 'MAX_NO_PROGRESS_TRUNCATIONS' not in hardening,
     "required tool choice": 'before_provider_request' in hardening and 'requireToolChoice' in hardening and 'tool_choice: "required"' in policy,
-    "single edit chunk": 'MAX_EDIT_REPLACEMENTS_PER_CALL = 1' in policy and 'MAX_EDIT_OLD_CHARS = 500' in policy and 'MAX_EDIT_NEW_CHARS = 1200' in policy,
+    "provider edit schema paging": 'constrainPagedEditTool' in hardening and 'maxItems: MAX_EDIT_REPLACEMENTS_PER_CALL' in policy and 'maxLength: MAX_EDIT_OLD_CHARS' in policy and 'maxLength: MAX_EDIT_NEW_CHARS' in policy,
+    "single edit backstop": 'MAX_EDIT_REPLACEMENTS_PER_CALL = 1' in policy and 'MAX_EDIT_OLD_CHARS = 500' in policy and 'MAX_EDIT_NEW_CHARS = 1200' in policy,
     "native truncation recovery": 'outputLimitToolResult' in hardening and 'compactToolRecoveryMessage' in hardening and 'Pi is already continuing' in policy,
-    "mutation task detection": 'promptRequiresMutation' in hardening and 'taskRequiresMutation' in hardening and 'taskMutationSeen' in hardening,
+    "mutation task detection": 'promptRequiresMutation' in hardening and 'taskRequiresMutation' in hardening and 'taskMutationSeen' in hardening and 'explicitReadOnly' in policy,
     "auto stop": 'trap release_client EXIT' in installer and 'ForgeLoomStop' in installer,
 }
 failed = [name for name, ok in checks.items() if not ok]
