@@ -14,6 +14,7 @@ export const OUTPUT_RECOVERY_GUIDANCE = [
   "Do not use write to rewrite an existing file. For a legitimately new file, write only a small initial skeleton, then extend it incrementally with edit.",
   `Keep a new-file write payload <= ${MAX_WRITE_CHARS} characters.`,
   "Keep narration before a normal tool call to one short sentence; reserve response budget for tool arguments.",
+  "When the user's task explicitly requires modifying code/files, a prose-only answer is NOT task completion. Continue until at least one successful edit/write checkpoint exists.",
   "RECOVERY EXCEPTION: after an output truncation, the task cannot finalize until a successful edit/write checkpoint lands. A narrow read is allowed only when needed to obtain an exact edit anchor.",
   "If output is truncated, NEVER restart analysis, NEVER restart the file, and NEVER repeat the same truncated payload. Resume from the last successful filesystem checkpoint with one smaller complete edit.",
   "Do not create helper verification files unless the user explicitly requests them; use a short bash command for verification instead.",
@@ -87,6 +88,14 @@ export function promptExplicitlyAllowsNewFiles(prompt = "") {
   return /\b(create|creating|add a new|new file|new module|generate a file|crea|creare|aggiungi|aggiungere|nuovo file|nuovo modulo|genera(?:re)? un file)\b/i.test(String(prompt));
 }
 
+export function promptRequiresMutation(prompt = "") {
+  const text = String(prompt);
+  if (/\b(?:non\s+(?:modificare|cambiare|scrivere|toccare)|solo\s+lettura|read\s*only|do\s+not\s+(?:edit|modify|write|change))\b/i.test(text)) {
+    return false;
+  }
+  return /\b(?:correggi|correggere|modifica|modificare|aggiorna|aggiornare|implementa|implementare|sistema|sistemare|rifattorizza|refactor|fix|repair|edit|modify|update|implement|rewrite|change)\b/i.test(text);
+}
+
 export function detectUserLanguage(prompt = "") {
   const text = String(prompt).toLowerCase();
   const matches = text.match(/\b(?:analizza|correggi|mantieni|individua|installa|istalla|modifica|mentre|spiegami|senza|della|delle|degli|questo|questa|perché|perche|quindi|file necessari)\b/g) ?? [];
@@ -111,25 +120,28 @@ export function shouldForceRecoveryCheckpoint(recoveryNeedsCheckpoint, stopReaso
   return Boolean(recoveryNeedsCheckpoint) && stopReason === "stop";
 }
 
-export function continuationMessage(attempt, language = "en") {
+export function continuationMessage(attempt, language = "en", reason = "truncation") {
   const page = Number.isFinite(attempt) && attempt > 0 ? Math.trunc(attempt) : 1;
+  const truncated = reason === "truncation";
   if (language === "it") {
     return [
-      `[ForgeLoom recupero pagina ${page}]`,
-      "La risposta precedente è stata troncata: il relativo tool call NON è stato eseguito.",
-      "NESSUNA SPIEGAZIONE in questa pagina di recupero. Non ripetere analisi o piano.",
-      `Esegui SUBITO una sola tool call completa sullo STESSO task: edit con una sola sostituzione, oldText <= ${MAX_EDIT_OLD_CHARS} caratteri, newText <= ${MAX_EDIT_NEW_CHARS} caratteri.`,
-      "Se ti manca l'oldText esatto puoi fare UNA read mirata; quella read NON completa il recovery e il turno successivo deve applicare l'edit.",
-      "Usa lo stato attuale del filesystem come checkpoint e non ripetere il payload troncato. Il task non è concluso finché un edit/write non riesce.",
+      `[ForgeLoom continuazione operativa ${page}]`,
+      truncated
+        ? "La risposta precedente è stata troncata: l'eventuale tool call incompleta NON è stata eseguita."
+        : "Il task corrente richiede una modifica reale, ma la risposta precedente si è fermata senza alcun edit/write riuscito.",
+      "Non finalizzare e non ripetere il piano.",
+      `Se non hai ancora il testo esatto da modificare fai UNA read mirata; altrimenti esegui SUBITO un solo edit completo con una sostituzione, oldText <= ${MAX_EDIT_OLD_CHARS} caratteri e newText <= ${MAX_EDIT_NEW_CHARS} caratteri.`,
+      "Una read non completa il task. Continua automaticamente finché almeno un edit/write riesce; poi prosegui normalmente con gli altri chunk necessari.",
     ].join("\n");
   }
   return [
-    `[ForgeLoom recovery page ${page}]`,
-    "The previous response was truncated; its tool call was NOT executed.",
-    "NO NARRATION on this recovery page. Do not repeat analysis or planning.",
-    `Immediately issue exactly one complete tool call for the SAME task: one edit replacement, oldText <= ${MAX_EDIT_OLD_CHARS} chars, newText <= ${MAX_EDIT_NEW_CHARS} chars.`,
-    "If you need the exact oldText, one narrow read is allowed; that read does NOT complete recovery and the following turn must apply the edit.",
-    "Use the current filesystem as the checkpoint and do not repeat the truncated payload. The task is not complete until an edit/write succeeds.",
+    `[ForgeLoom operational continuation ${page}]`,
+    truncated
+      ? "The previous response was truncated; any incomplete tool call was NOT executed."
+      : "The current task requires a real file/code mutation, but the previous response stopped without any successful edit/write.",
+    "Do not finalize and do not repeat the plan.",
+    `If you do not yet have the exact text to change, perform ONE narrow read; otherwise immediately issue one complete edit with one replacement, oldText <= ${MAX_EDIT_OLD_CHARS} chars and newText <= ${MAX_EDIT_NEW_CHARS} chars.`,
+    "A read does not complete the task. Continue automatically until at least one edit/write succeeds, then proceed normally with any remaining chunks.",
   ].join("\n");
 }
 
@@ -147,10 +159,23 @@ export function sanitizeRecoveryContext(messages = []) {
     }
   }
 
+  let prematureStopIndex = -1;
+  if (lastRecoveryIndex > 0) {
+    for (let index = lastRecoveryIndex - 1; index >= 0; index -= 1) {
+      const message = input[index];
+      if (message?.role === "user") break;
+      if (message?.role === "assistant" && message?.stopReason === "stop") {
+        prematureStopIndex = index;
+        break;
+      }
+    }
+  }
+
   return input.filter((message, index) => {
     if (message?.role === "assistant" && message?.stopReason === "length") return false;
     if (message?.role === "toolResult" && truncatedToolIds.has(message?.toolCallId)) return false;
     if (message?.customType === RECOVERY_MESSAGE_TYPE && index !== lastRecoveryIndex) return false;
+    if (index === prematureStopIndex) return false;
     return true;
   });
 }
