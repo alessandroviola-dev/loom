@@ -2,19 +2,14 @@ import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
-  MAX_NO_PROGRESS_TRUNCATIONS,
-  OUTPUT_RECOVERY_GUIDANCE,
-  RECOVERY_MESSAGE_TYPE,
-  WORKSPACE_GROUNDING_GUIDANCE,
-  continuationMessage,
+  compactToolRecoveryMessage,
   detectUserLanguage,
   inspectPagedMutation,
-  nextTruncationState,
+  outputLimitToolResult,
   promptExplicitlyAllowsNewFiles,
   promptRequiresMutation,
-  rewritePagedToolGuidance,
-  sanitizeRecoveryContext,
-  shouldForceRecoveryCheckpoint,
+  requireToolChoice,
+  taskSystemGuidance,
 } from "./policy.mjs";
 
 function workspaceInventory(cwd: string): string {
@@ -26,19 +21,29 @@ function workspaceInventory(cwd: string): string {
       .map((entry) => `${entry.name}${entry.isDirectory() ? "/" : ""}`);
     return entries.length > 0 ? entries.join(", ") : "(empty)";
   } catch {
-    return "(inventory unavailable; inspect with bash before creating files)";
+    return "(inventory unavailable)";
   }
 }
 
+function rewriteTruncatedToolResult(message: any, language: string): any {
+  if (message?.role !== "toolResult" || !message?.isError || !outputLimitToolResult(message.content)) return message;
+  return {
+    ...message,
+    content: [
+      {
+        type: "text",
+        text: compactToolRecoveryMessage(message.toolName ?? "tool", language),
+      },
+    ],
+  };
+}
+
 export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
-  let noProgressLengthStops = 0;
   let allowNewFilesThisTurn = false;
   let userLanguage = "en";
-  let recoveryContextActive = false;
-  let recoveryNeedsCheckpoint = false;
-  let continuationQueued = false;
   let taskRequiresMutation = false;
   let taskMutationSeen = false;
+  let requiredToolChoiceApplied = false;
   const probedMissingPaths = new Set<string>();
 
   pi.on("agent_start", () => {
@@ -46,34 +51,41 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
   });
 
   pi.on("before_agent_start", (event, ctx) => {
-    // Internally queued continuations are part of the same task. Any other
-    // before_agent_start is a genuine new user request and starts fresh state.
-    if (continuationQueued) {
-      continuationQueued = false;
-    } else {
-      noProgressLengthStops = 0;
-      recoveryContextActive = false;
-      userLanguage = detectUserLanguage(event.prompt);
-      allowNewFilesThisTurn = promptExplicitlyAllowsNewFiles(event.prompt);
-      taskRequiresMutation = promptRequiresMutation(event.prompt);
-      taskMutationSeen = false;
-      recoveryNeedsCheckpoint = taskRequiresMutation;
-    }
+    userLanguage = detectUserLanguage(event.prompt);
+    allowNewFilesThisTurn = promptExplicitlyAllowsNewFiles(event.prompt);
+    taskRequiresMutation = promptRequiresMutation(event.prompt);
+    taskMutationSeen = false;
+    requiredToolChoiceApplied = false;
 
     const inventory = workspaceInventory(ctx.cwd);
-    const pagedBasePrompt = rewritePagedToolGuidance(event.systemPrompt);
     return {
-      systemPrompt: `${pagedBasePrompt}\n${OUTPUT_RECOVERY_GUIDANCE}\n${WORKSPACE_GROUNDING_GUIDANCE}\nVerified top-level workspace entries at turn start: ${inventory}`,
+      systemPrompt: `${event.systemPrompt}\n${taskSystemGuidance(taskRequiresMutation)}\nVerified top-level workspace entries: ${inventory}`,
     };
   });
 
-  // Persistent transcript fidelity is untouched. Recovery only removes failed
-  // or premature pages from the request-local model view.
+  // Structural start-of-work guard: for a task that explicitly requires a
+  // mutation, force the OpenAI-compatible backend to choose a tool until the
+  // first real edit/write checkpoint lands. This avoids prose-only "work" turns
+  // and uses Pi's own native tool loop instead of injecting synthetic turns.
+  pi.on("before_provider_request", (event) => {
+    const required = taskRequiresMutation && !taskMutationSeen;
+    const result = requireToolChoice(event.payload as any, required);
+    if (result.changed) requiredToolChoiceApplied = true;
+    return result.changed ? result.payload : undefined;
+  });
+
+  // Pi already continues automatically after tool results, including failed
+  // tool calls from length-truncated responses. Replace only that short error in
+  // the request-local view with precise chunking guidance; never create another
+  // synthetic continuation loop.
   pi.on("context", (event) => {
-    if (!recoveryContextActive) return undefined;
-    const messages = sanitizeRecoveryContext(event.messages);
-    if (messages.length === event.messages.length) return undefined;
-    return { messages };
+    let changed = false;
+    const messages = event.messages.map((message: any) => {
+      const next = rewriteTruncatedToolResult(message, userLanguage);
+      changed ||= next !== message;
+      return next;
+    });
+    return changed ? { messages } : undefined;
   });
 
   pi.on("tool_call", (event, ctx) => {
@@ -98,7 +110,7 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
     if (existsSync(absolutePath)) {
       return {
         block: true,
-        reason: `ForgeLoom paged-write policy: ${inputPath} already exists. Preserve it and use one small edit replacement per provider response.`,
+        reason: `ForgeLoom paged-write policy: ${inputPath} already exists. Preserve it and use edit instead of rewriting the whole file.`,
       };
     }
 
@@ -113,55 +125,26 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
 
   pi.on("tool_execution_end", (event) => {
     if (!event.isError && (event.toolName === "edit" || event.toolName === "write")) {
-      noProgressLengthStops = 0;
       taskMutationSeen = true;
-      recoveryNeedsCheckpoint = false;
     }
   });
 
-  function queueRecovery(ctx: any, reason: "truncation" | "checkpoint"): void {
-    recoveryContextActive = true;
-    recoveryNeedsCheckpoint = true;
-    const state = nextTruncationState(noProgressLengthStops, "length");
-    noProgressLengthStops = state.consecutive;
-
-    if (state.shouldAbort) {
-      if (ctx.hasUI) {
-        ctx.ui.notify(
-          `ForgeLoom stopped after ${MAX_NO_PROGRESS_TRUNCATIONS} no-progress continuation pages without a successful edit/write checkpoint.`,
-          "warning",
-        );
-      }
-      ctx.abort();
-      return;
-    }
-
-    continuationQueued = true;
-    pi.sendMessage(
-      {
-        customType: RECOVERY_MESSAGE_TYPE,
-        content: continuationMessage(state.consecutive, userLanguage, reason),
-        display: false,
-        details: { page: state.consecutive, language: userLanguage, reason },
-      },
-      { triggerTurn: true, deliverAs: "steer" },
-    );
-  }
-
+  // Do not manufacture retries here. If the backend ever returns a normal
+  // prose-only stop despite tool_choice=required, surface the real incompatibility
+  // once instead of hiding it behind another continuation loop.
   pi.on("message_end", (event, ctx) => {
-    if (event.message.role !== "assistant") return;
-
-    if (event.message.stopReason === "length") {
-      queueRecovery(ctx, "truncation");
-      return;
-    }
-
-    // A coding/modification task cannot terminate as prose before any actual
-    // mutation checkpoint. Reads/toolUse may precede the mutation; a normal stop
-    // before edit/write is automatically converted into another working page.
-    const mutationStillRequired = taskRequiresMutation && !taskMutationSeen;
-    if (shouldForceRecoveryCheckpoint(recoveryNeedsCheckpoint || mutationStillRequired, event.message.stopReason)) {
-      queueRecovery(ctx, "checkpoint");
+    if (
+      event.message.role === "assistant" &&
+      event.message.stopReason === "stop" &&
+      taskRequiresMutation &&
+      !taskMutationSeen &&
+      requiredToolChoiceApplied &&
+      ctx.hasUI
+    ) {
+      ctx.ui.notify(
+        "ForgeLoom backend returned a prose-only stop despite tool_choice=required; no edit/write was executed. Stopping without synthetic retries so the provider/tool-call incompatibility is visible.",
+        "warning",
+      );
     }
   });
 }
