@@ -62,9 +62,10 @@ checks = {
     "global duplicate runtime guard": 'globally auto-discovered LOOM Context Engine exists' in installer,
     "runtime hardening private": 'HARDENING_TARGET_DIR="$FORGE_LOOM_DIR/runtime-hardening"' in installer,
     "path grounding": 'probedMissingPaths' in hardening and 'Never invent companion modules' in policy,
-    "paged output continuation": 'RECOVERY_MESSAGE_TYPE' in hardening and 'deliverAs: "steer"' in hardening and 'sanitizeRecoveryContext' in hardening and 'NESSUNA SPIEGAZIONE' in policy,
-    "language-aware recovery": 'detectUserLanguage' in hardening and 'recupero pagina' in policy,
-    "recovery checkpoint persistence": 'recoveryNeedsCheckpoint' in hardening and 'shouldForceRecoveryCheckpoint' in hardening and 'task non è concluso finché un edit/write non riesce' in policy,
+    "paged output continuation": 'RECOVERY_MESSAGE_TYPE' in hardening and 'deliverAs: "steer"' in hardening and 'sanitizeRecoveryContext' in hardening and 'continuazione operativa' in policy,
+    "language-aware recovery": 'detectUserLanguage' in hardening and 'richiede una modifica reale' in policy,
+    "recovery checkpoint persistence": 'recoveryNeedsCheckpoint' in hardening and 'shouldForceRecoveryCheckpoint' in hardening and 'edit/write riesce' in policy,
+    "initial mutation completion guard": 'taskRequiresMutation' in hardening and 'taskMutationSeen' in hardening and 'promptRequiresMutation' in hardening and 'prose-only answer is NOT task completion' in policy,
     "no-progress runaway guard": 'MAX_NO_PROGRESS_TRUNCATIONS' in hardening and 'ctx.abort()' in hardening,
     "auto stop": 'trap release_client EXIT' in installer and 'ForgeLoomStop' in installer,
 }
