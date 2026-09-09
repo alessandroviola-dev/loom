@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
   compactToolRecoveryMessage,
+  constrainPagedEditTool,
   detectUserLanguage,
   inspectPagedMutation,
   outputLimitToolResult,
@@ -63,15 +64,19 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
     };
   });
 
-  // Structural start-of-work guard: for a task that explicitly requires a
-  // mutation, force the OpenAI-compatible backend to choose a tool until the
-  // first real edit/write checkpoint lands. This avoids prose-only "work" turns
-  // and uses Pi's own native tool loop instead of injecting synthetic turns.
+  // Constrain the edit schema before generation, not only after the model has
+  // already emitted an oversized/batched call. llama.cpp's tool grammar can then
+  // generate at most one small replacement in each provider response.
+  // For mutation tasks, also require some tool until the first real filesystem
+  // mutation checkpoint lands.
   pi.on("before_provider_request", (event) => {
+    const constrained = constrainPagedEditTool(event.payload as any);
     const required = taskRequiresMutation && !taskMutationSeen;
-    const result = requireToolChoice(event.payload as any, required);
-    if (result.changed) requiredToolChoiceApplied = true;
-    return result.changed ? result.payload : undefined;
+    const result = requireToolChoice(constrained.payload as any, required);
+    if (required && Array.isArray((result.payload as any)?.tools) && (result.payload as any).tools.length > 0) {
+      requiredToolChoiceApplied = true;
+    }
+    return constrained.changed || result.changed ? result.payload : undefined;
   });
 
   // Pi already continues automatically after tool results, including failed
@@ -88,6 +93,9 @@ export default function forgeLoomRuntimeHardening(pi: ExtensionAPI): void {
     return changed ? { messages } : undefined;
   });
 
+  // Keep a runtime backstop even though the provider schema now expresses the
+  // same paging limits. If a backend ignores the JSON-schema constraints, the
+  // unsafe/batched mutation still cannot execute.
   pi.on("tool_call", (event, ctx) => {
     if (event.toolName === "edit" || event.toolName === "write") {
       const paged = inspectPagedMutation(event.toolName, event.input);
