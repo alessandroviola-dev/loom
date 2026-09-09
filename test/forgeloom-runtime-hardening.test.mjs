@@ -5,6 +5,7 @@ import {
   MAX_EDIT_NEW_CHARS,
   MAX_EDIT_OLD_CHARS,
   compactToolRecoveryMessage,
+  constrainPagedEditTool,
   detectUserLanguage,
   inspectPagedMutation,
   outputLimitToolResult,
@@ -23,6 +24,17 @@ test("mutation requests are detected without affecting read-only tasks", () => {
   assert.equal(promptRequiresMutation("Spiegami cosa fa questo file."), false);
 });
 
+test("scoped do-not-modify constraints do not disable a mutation task", () => {
+  assert.equal(
+    promptRequiresMutation("Modifica A, B e C. Non modificare le righe di X. Non creare file."),
+    true,
+  );
+  assert.equal(
+    promptRequiresMutation("Correggi wifi_hacker.py ma non modificare i commenti esistenti."),
+    true,
+  );
+});
+
 test("user language detection keeps recovery guidance in the user language", () => {
   assert.equal(detectUserLanguage("Analizza questo file, correggi gli errori e spiegami cosa fai mentre lavori"), "it");
   assert.equal(detectUserLanguage("Analyze this file and fix the errors"), "en");
@@ -34,13 +46,54 @@ test("native paged coding guidance requires real work for mutation tasks", () =>
   assert.match(mutation, /Pi automatically continues after tool results/i);
   assert.match(mutation, /prose-only response is not completion/i);
   assert.match(mutation, /at least one edit\/write must succeed/i);
-  assert.match(mutation, /exactly one small edits\[\] replacement/i);
+  assert.match(mutation, /provider schema for edit is constrained/i);
 
   const readOnly = taskSystemGuidance(false);
   assert.doesNotMatch(readOnly, /CURRENT TASK REQUIRES A REAL FILE\/CODE CHANGE/i);
 });
 
-test("paged mutation policy allows one small edit and blocks batching", () => {
+test("provider edit schema enforces one small replacement before generation", () => {
+  const original = {
+    messages: [{ role: "user", content: "change three places" }],
+    tools: [
+      {
+        type: "function",
+        function: {
+          name: "edit",
+          description: "old description",
+          parameters: {
+            type: "object",
+            properties: {
+              path: { type: "string" },
+              edits: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    oldText: { type: "string" },
+                    newText: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      { type: "function", function: { name: "read", parameters: { type: "object" } } },
+    ],
+  };
+  const result = constrainPagedEditTool(original);
+  assert.equal(result.changed, true);
+  const edit = result.payload.tools[0].function;
+  assert.equal(edit.parameters.properties.edits.minItems, 1);
+  assert.equal(edit.parameters.properties.edits.maxItems, 1);
+  assert.equal(edit.parameters.properties.edits.items.properties.oldText.maxLength, MAX_EDIT_OLD_CHARS);
+  assert.equal(edit.parameters.properties.edits.items.properties.newText.maxLength, MAX_EDIT_NEW_CHARS);
+  assert.equal(original.tools[0].function.parameters.properties.edits.maxItems, undefined);
+  assert.deepEqual(result.payload.tools[1], original.tools[1]);
+});
+
+test("paged mutation backstop allows one small edit and blocks batching", () => {
   assert.deepEqual(
     inspectPagedMutation("edit", { edits: [{ oldText: "a", newText: "b" }] }),
     { ok: true },
