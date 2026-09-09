@@ -70,10 +70,14 @@ test("paged mutation policy blocks oversized edit and write payloads", () => {
   assert.equal(largeWrite.ok, false);
 });
 
-test("new-file permission is explicit rather than inferred from generic repair prompts", () => {
+test("new-file permission is explicit and explicit prohibitions win", () => {
   assert.equal(promptExplicitlyAllowsNewFiles("Correggi wifi_hacker.py e installa le dipendenze necessarie"), false);
   assert.equal(promptExplicitlyAllowsNewFiles("Crea un nuovo file helper.py"), true);
   assert.equal(promptExplicitlyAllowsNewFiles("Create a new module for parsing"), true);
+  assert.equal(promptExplicitlyAllowsNewFiles("Non creare file."), false);
+  assert.equal(promptExplicitlyAllowsNewFiles("Non creare nuovi file o moduli."), false);
+  assert.equal(promptExplicitlyAllowsNewFiles("Do not create new files."), false);
+  assert.equal(promptExplicitlyAllowsNewFiles("Without creating new files, modify the existing module."), false);
 });
 
 test("required tool choice is applied structurally without mutating the original payload", () => {
