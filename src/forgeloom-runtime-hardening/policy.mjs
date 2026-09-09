@@ -4,7 +4,16 @@ export const MAX_EDIT_NEW_CHARS = 1200;
 export const MAX_WRITE_CHARS = 1200;
 
 export function promptExplicitlyAllowsNewFiles(prompt = "") {
-  return /\b(create|creating|add a new|new file|new module|generate a file|crea|creare|aggiungi|aggiungere|nuovo file|nuovo modulo|genera(?:re)? un file)\b/i.test(String(prompt));
+  const text = String(prompt);
+  // Explicit prohibitions always win over generic create/add wording. This
+  // prevents phrases such as "non creare file" from being misclassified as
+  // permission merely because they contain the verb "creare".
+  if (
+    /\b(?:non\s+(?:creare|crea|aggiungere|aggiungi|generare|genera)(?:\s+(?:nuov[oi]\s+)?(?:file|modul[oi]))?|senza\s+creare\s+(?:nuov[oi]\s+)?(?:file|modul[oi])|do\s+not\s+(?:create|add|generate)(?:\s+(?:new\s+)?(?:files?|modules?))?|don't\s+(?:create|add|generate)(?:\s+(?:new\s+)?(?:files?|modules?))?|without\s+creating\s+(?:new\s+)?(?:files?|modules?))\b/i.test(text)
+  ) {
+    return false;
+  }
+  return /\b(create|creating|add a new|new file|new module|generate a file|crea|creare|aggiungi|aggiungere|nuovo file|nuovo modulo|genera(?:re)? un file)\b/i.test(text);
 }
 
 export function promptRequiresMutation(prompt = "") {
