@@ -1,0 +1,41 @@
+name: LoomChat Continuity
+
+on:
+  push:
+    branches:
+      - research/loom-chat-continuity-001
+  pull_request:
+    branches:
+      - research/loom-chat-continuity-001
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax
+        run: |
+          node --check src/loom-chat-continuity/core.mjs
+          node --check scripts/loom-chat-proxy.mjs
+          bash -n scripts/loom-chat
+          bash -n scripts/install-loom-chat.sh
+      - name: Continuity tests
+        run: node --test test/loom-chat-continuity.test.mjs
+      - name: Existing CE tests
+        run: |
+          node --test test/context-engine-core.test.mjs
+          node --test test/evidence-archive.test.mjs
+          node --test test/evidence-retrieval.test.mjs test/evidence-retrieval-trigger.test.mjs
+      - name: Isolation invariants
+        run: |
+          grep -F 'payload.tools.length === 0' scripts/loom-chat-proxy.mjs
+          grep -F 'LOOM_CONTEXT_WEBUI_HARD_GUARD=1' scripts/loom-chat
+          grep -F 'LOOM_CHAT_TARGET_TOKENS:-1400' scripts/loom-chat
+          grep -F 'LOOM_CHAT_HIGH_WATER_TOKENS:-1800' scripts/loom-chat
