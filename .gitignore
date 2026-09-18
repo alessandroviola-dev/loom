@@ -8,3 +8,18 @@ results-local/
 models/
 *.gguf
 *.safetensors
+# Local model/runtime outputs and external-archive material.
+artifacts/
+bf16-cache/
+cache/
+*.partial
+*.tmp
+*.log
+.env.*
+.npmrc
+.netrc
+.pypirc
+*.pem
+*.p12
+*.pfx
+*.mobileprovision

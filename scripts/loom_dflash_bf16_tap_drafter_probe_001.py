@@ -16,8 +16,9 @@ import loom_dflash_greedy_e2e_001 as dflash
 ROOT = Path(__file__).resolve().parents[1]
 CONTROL = ROOT / "results-local/research/dflash-unquantized-target-p1t01-range-control-001/20260824T212818Z"
 LOCAL_DENSE = ROOT / "results-local/research/dflash-unquantized-target-p1t01-range-control-001/20260824T173131Z/control-cache/dense"
-CACHE = Path("<external-archive>/bf16-cache/Qwen3-30B-A3B/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39")
-ARTIFACTS = Path("<external-archive>/artifacts/dflash-bf16-tap-drafter-probe-001")
+EXTERNAL_ARCHIVE = Path(os.environ["LOOM_EXTERNAL_ARCHIVE"])
+CACHE = EXTERNAL_ARCHIVE / "bf16-cache/Qwen3-30B-A3B/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
+ARTIFACTS = EXTERNAL_ARCHIVE / "artifacts/dflash-bf16-tap-drafter-probe-001"
 OUTROOT = ROOT / "results-local/research/dflash-bf16-tap-drafter-probe-001"
 RUN_ID = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 TAPS = (1, 12, 23, 34, 45)
@@ -40,7 +41,7 @@ def top_ids(logits, k): return np.argsort(np.asarray(logits))[-k:][::-1].astype(
 
 
 def storage_gate():
-    mount = Path("external archive")
+    mount = EXTERNAL_ARCHIVE
     if not mount.is_dir() or not CACHE.parent.parent.parent.exists() or not os.access(CACHE.parent.parent.parent, os.W_OK):
         raise RuntimeError("EXTERNAL_RESEARCH_STORAGE_UNAVAILABLE")
     stat = shutil.disk_usage(mount)

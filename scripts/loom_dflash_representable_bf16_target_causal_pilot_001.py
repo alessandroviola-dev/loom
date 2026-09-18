@@ -28,13 +28,13 @@ PREFLIGHT = ROOT / "results-local/research/dflash-representable-bf16-target-cont
 CORPUS = ROOT / "results-local/research/dflash-masked-reference-parity-001/20260824T142830Z/corpus.json"
 FREEZE = ROOT / "results-local/research/dflash-target-continuation-freeze-001/20260824T145202Z/target-continuation-reference.json"
 TRACE = ROOT / "results-local/moe/routing-cache-trace-001/20260824T090555Z/generations.json"
-EXTERNAL = Path("<external-archive>")
+EXTERNAL = Path(os.environ["LOOM_EXTERNAL_ARCHIVE"])
 CACHE = EXTERNAL / "bf16-cache/Qwen3-30B-A3B/ad44e777bcd18fa416d9da3bd8f70d33ebb85d39"
 CAP_BYTES, CAP_REQUESTS = 8 * 1024**3, 1024
 TAPS = (1, 12, 23, 34, 45)
 SOURCE_HASHES = {
     "scripts/loom_dflash_unquantized_target_p1t01_range_control_001.py": "dc0bdb6af282805cdfb623404bcfc778922c28a7b21df750cee08340b365a376",
-    "scripts/loom_dflash_bf16_tap_drafter_probe_001.py": "7a6119f01c99eb5d0833ff5bc5b6a7e47c540161ac5414aae246adc62bec479f",
+    "scripts/loom_dflash_bf16_tap_drafter_probe_001.py": "c3d7d12c462b61cde8347bb6d231868cc0b9e5c36476e6cbf8d809c76d79f7b8",
     "scripts/test_loom_dflash_bf16_network_cap_guard_001.py": "7b6577076bffd73733f7766ca87638004618a7c4a121ae4f5fc6a5a318e776ae",
 }
 # Fixed execution order. Do not derive or sort this list.
