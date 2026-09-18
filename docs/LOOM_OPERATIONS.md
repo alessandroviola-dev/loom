@@ -54,7 +54,7 @@ LOOM_CONTEXT_WEBUI_GATEWAY=0 scripts/loom-deep start
 LOOM_CONTEXT_WEBUI_CI=0 scripts/loom-deep start
 ```
 
-Both modes remain loopback-only. The gateway has no `external archive` dependency; its optional redacted recovery artifacts and accounting live under `.loom/runtime/loom-deep/context-webui-ci/`.
+Both modes remain loopback-only. The gateway has no external-archive dependency; its optional redacted recovery artifacts and accounting live under `.loom/runtime/loom-deep/context-webui-ci/`.
 
 ## Pi and Context Intelligence
 
@@ -74,11 +74,7 @@ The local Pi model entry pins deterministic `max_tokens=256`, `temperature=0`, a
 
 ## FAST archive
 
-FAST is not available in the local `models/` directory and cannot be selected with `scripts/loom-deep`. Its verified archival copy is:
-
-```text
-<external-archive>/archived-models/loom-deep-30b-fast.gguf
-```
+FAST is not available in the local `models/` directory and cannot be selected with `scripts/loom-deep`. Its verified archival copy is stored on the owner's external archive and is intentionally not tracked in Git.
 
 Its SHA256 is `c5d08e67dc535b9c00aa8c27535239b89cb18026e7f10d4184b65adfe8036251`. The external archive is not a runtime dependency; restoring FAST would require a deliberate, verified restoration decision.
 
