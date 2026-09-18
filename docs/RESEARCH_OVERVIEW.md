@@ -90,7 +90,7 @@ The project therefore retained the larger, lossless profile rather than promotin
 
 ### 4.4 Storage location can dominate apparent model performance
 
-A diagnostic experiment showed that placing a temporary sidecar on the external external archive volume created an artificial bottleneck.
+A diagnostic experiment showed that placing a temporary sidecar on an external archive volume created an artificial bottleneck.
 
 Moving only the sidecar to internal storage changed:
 
