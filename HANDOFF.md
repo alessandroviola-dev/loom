@@ -78,9 +78,9 @@ No UOPT-006 phase 2 was justified.
 
 ## Storage / archive
 
-The external external archive volume is archive/staging only and is not required for normal inference. FAST remains externally archived and unavailable as a local profile.
+The external archive volume is staging/archive only and is not required for normal inference. FAST remains externally archived and unavailable as a local profile.
 
-Local experiment evidence under `results-local/`, `.loom/` runtimes, model files, caches, and external-drive artifacts remain intentionally outside Git.
+Local experiment evidence under `results-local/`, `.loom/` runtimes, model files, caches, and external-archive artifacts remain intentionally outside Git.
 
 ## Closure rule
 
