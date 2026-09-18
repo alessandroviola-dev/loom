@@ -34,7 +34,7 @@ The final product remains loopback-only and recoverable through the documented `
 2. **Residency tuning was high leverage.** UOPT-003 S40 improved both decode and cold TTFT without altering weights.
 3. **Lower-bit routed-expert quantization crossed the quality boundary.** UOPT-004 and UOPT-005 reduced footprint but repeatedly failed the frozen functional arithmetic reference.
 4. **Selective IQ3 refinement was exhaustively informative at practical granularity.** Layer and tensor frontiers converged to outputs `400` or `414`, never the required `410`; going expert-by-expert would require a new multi-day format/runtime research branch with unproven value.
-5. **Storage placement matters critically.** A temporary external archive sidecar made Candidate A appear pathologically slow; moving only the sidecar internal changed decode `0.69 -> 9.63 tok/s` and TTFT `148.277 -> 5.605 s`, isolating external storage as the bottleneck.
+5. **Storage placement matters critically.** A temporary external-archive sidecar made Candidate A appear pathologically slow; moving only the sidecar internal changed decode `0.69 -> 9.63 tok/s` and TTFT `148.277 -> 5.605 s`, isolating external storage as the bottleneck.
 6. **Draftless speculative decoding did not engage.** UOPT-006 `ngram-simple` and `ngram-mod` both produced `0 drafted / 0 accepted` tokens and no meaningful speedup.
 7. **The final stopping criterion was product capability, not lack of additional optimization ideas.** Further runtime research was intentionally discontinued because it would not address the model's practical intelligence ceiling.
 
@@ -50,7 +50,7 @@ The following remain intentionally outside Git:
 - expert sidecars
 - temporary candidates
 - caches/temp files
-- external external archive staging/archive data
+- external archive/staging data
 - unrelated untracked scripts
 
 ## Future reopen
