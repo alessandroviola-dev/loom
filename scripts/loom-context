@@ -101,6 +101,7 @@ def ensure_db() -> sqlite3.Connection:
 
 
 def artifact(text: str, suffix: str = "txt") -> tuple[str, str, str]:
+    ARTIFACTS.mkdir(mode=0o700, parents=True, exist_ok=True)
     clean, privacy = redact(text)
     digest = hashlib.sha256(clean.encode()).hexdigest()
     target = ARTIFACTS / f"{digest}.{suffix}"
