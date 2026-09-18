@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-06
 Status: **PROJECT CLOSED / ARCHIVED**
-Repository: `Ilcoach/loom`
+Repository: `alessandroviola-dev/loom`
 Final research branch: `research/unlocked-speed-001`
 
 ## Final decision
