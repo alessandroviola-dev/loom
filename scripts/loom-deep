@@ -2,8 +2,21 @@
 # Unified local-only LOOM DEEP UOPT-003 lifecycle manager.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONFIG="$ROOT/config/loom-deep-profiles.env"
+[[ -f "$CONFIG" ]] || { echo "missing standalone configuration" >&2; exit 1; }
+# Trusted shell configuration, never a downloaded or user-submitted payload.
 # shellcheck source=/dev/null
-source "$ROOT/config/loom-deep-profiles.env"
+source "$CONFIG"
+for name in LOOM_DEEP_HOST LOOM_DEEP_PORT LOOM_DEEP_BACKEND_PORT LOOM_CONTEXT_WEBUI_GATEWAY LOOM_CONTEXT_WEBUI_CI LOOM_CONTEXT_WEBUI_ACCOUNTING LOOM_CONTEXT_WEBUI_GATEWAY_SCRIPT LOOM_DEEP_CTX LOOM_DEEP_BATCH LOOM_DEEP_8K_CTX LOOM_DEEP_8K_BATCH LOOM_DEEP_8K_K_CACHE LOOM_DEEP_8K_V_CACHE LOOM_DEEP_8K_FLASH_ATTN LOOM_DEEP_PARALLEL LOOM_DEEP_UNLOCKED_SLOTS LOOM_DEEP_UNLOCKED_S32_SLOTS LOOM_DEEP_MOE_LAYERS LOOM_DEEP_CACHE_RAM LOOM_DEEP_UNLOCKED_UBATCH LOOM_DEEP_UNLOCKED_MODEL LOOM_DEEP_UNLOCKED_ALIAS LOOM_DEEP_UNLOCKED_BIN LOOM_DEEP_UNLOCKED_RUNTIME_LIB_DIR LOOM_DEEP_UNLOCKED_SIDECAR; do
+  [[ -n "${!name:-}" ]] || { echo "missing configuration value: $name" >&2; exit 1; }
+done
+[[ "$LOOM_DEEP_HOST" == 127.0.0.1 ]] || { echo "standalone requires loopback host 127.0.0.1" >&2; exit 1; }
+for name in LOOM_DEEP_PORT LOOM_DEEP_BACKEND_PORT LOOM_DEEP_CTX LOOM_DEEP_BATCH LOOM_DEEP_8K_CTX LOOM_DEEP_8K_BATCH LOOM_DEEP_PARALLEL LOOM_DEEP_UNLOCKED_SLOTS LOOM_DEEP_UNLOCKED_S32_SLOTS LOOM_DEEP_MOE_LAYERS LOOM_DEEP_CACHE_RAM LOOM_DEEP_UNLOCKED_UBATCH; do
+  value="${!name}"
+  [[ "$value" =~ ^[1-9][0-9]*$ && ${#value} -le 8 ]] || { echo "invalid numeric configuration: $name" >&2; exit 1; }
+done
+[[ "$LOOM_DEEP_PORT" -le 65535 && "$LOOM_DEEP_BACKEND_PORT" -le 65535 && "$LOOM_DEEP_PORT" != "$LOOM_DEEP_BACKEND_PORT" ]] || { echo "invalid standalone ports" >&2; exit 1; }
+REQUESTED_GATEWAY="$LOOM_CONTEXT_WEBUI_GATEWAY"
 STATE="$ROOT/.loom/runtime/loom-deep"
 PROFILE_FILE="$ROOT/.loom/loom-deep-profile"
 PID_FILE="$STATE/llama-server.pid"
@@ -20,18 +33,47 @@ enabled() { [[ ! "${1:-1}" =~ ^(0|false|off|no)$ ]]; }
 selected_profile() {
   local profile="unlocked"
   [[ -s "$PROFILE_FILE" ]] && profile="$(<"$PROFILE_FILE")"
-  case "$profile" in unlocked|unlocked-s32) printf '%s\n' "$profile";; *) echo "only unlocked or unlocked-s32 is available; FAST is archived" >&2; exit 64;; esac
+  case "$profile" in unlocked|unlocked-s32|unlocked-8k) printf '%s\n' "$profile";; *) echo "only unlocked, unlocked-s32 or unlocked-8k is available; FAST is archived" >&2; exit 64;; esac
 }
 profile_values() {
   PROFILE="$(selected_profile)"
   MODEL="$LOOM_DEEP_UNLOCKED_MODEL"; ALIAS="$LOOM_DEEP_UNLOCKED_ALIAS"; UBATCH="$LOOM_DEEP_UNLOCKED_UBATCH"
   BIN="$LOOM_DEEP_UNLOCKED_BIN"; SIDECAR="$LOOM_DEEP_UNLOCKED_SIDECAR"; RUNTIME_LIB_DIR="$LOOM_DEEP_UNLOCKED_RUNTIME_LIB_DIR"
+  CTX="$LOOM_DEEP_CTX"; BATCH="$LOOM_DEEP_BATCH"
+  KV_K="runtime-default"; KV_V="runtime-default"; FLASH_ATTN="runtime-default"
+  EXTRA_ARGS=()
+  LOOM_CONTEXT_WEBUI_GATEWAY="$REQUESTED_GATEWAY"
+  BACKEND_URL="http://${LOOM_DEEP_HOST}:${LOOM_DEEP_BACKEND_PORT}"
   case "$PROFILE" in
     unlocked) SLOTS="$LOOM_DEEP_UNLOCKED_SLOTS";;
     unlocked-s32) SLOTS="$LOOM_DEEP_UNLOCKED_S32_SLOTS";;
+    unlocked-8k)
+      SLOTS="$LOOM_DEEP_UNLOCKED_SLOTS"
+      CTX="$LOOM_DEEP_8K_CTX"; BATCH="$LOOM_DEEP_8K_BATCH"
+      KV_K="$LOOM_DEEP_8K_K_CACHE"; KV_V="$LOOM_DEEP_8K_V_CACHE"; FLASH_ATTN="$LOOM_DEEP_8K_FLASH_ATTN"
+      EXTRA_ARGS=(--cache-type-k "$KV_K" --cache-type-v "$KV_V" --flash-attn "$FLASH_ATTN")
+      LOOM_CONTEXT_WEBUI_GATEWAY=0
+      BACKEND_URL="$URL"
+      ;;
   esac
 }
 pid_running() { [[ -s "$1" ]] && kill -0 "$(<"$1")" 2>/dev/null; }
+# Fail closed on stale/reused or malformed PID files; never signal by PID alone.
+assert_pid_owner() {
+  local file="$1" expected="$2" role="$3" pid command
+  [[ -e "$file" ]] || return 0
+  pid="$(<"$file")"
+  [[ "$pid" =~ ^[1-9][0-9]*$ && ${#pid} -le 10 && "$pid" -gt 1 ]] || { echo "invalid managed PID; refusing lifecycle" >&2; return 1; }
+  kill -0 "$pid" 2>/dev/null || return 0
+  command="$(ps -p "$pid" -o command=)" || { echo "cannot verify managed PID ownership" >&2; return 1; }
+  if [[ "$role" == gateway ]]; then
+    case "$command" in "node $expected"|"node $expected "*|*/"node $expected"|*/"node $expected "*) return 0;; esac
+  else
+    case "$command" in "$expected"|"$expected "*) return 0;; esac
+  fi
+  echo "managed PID is not the expected standalone process; refusing lifecycle" >&2
+  return 1
+}
 running() { pid_running "$PID_FILE"; }
 backend_running() { pid_running "$BACKEND_PID_FILE"; }
 launch_uses_gateway() { [[ -s "$RUN_GATEWAY_FILE" && "$(<"$RUN_GATEWAY_FILE")" == "1" ]]; }
@@ -54,14 +96,19 @@ wait_for_exit() {
 }
 stop_managed() {
   local failed=0
+  verify_owners || return 1
   if launch_uses_gateway && running; then kill "$(<"$PID_FILE")" 2>/dev/null || true; wait_for_exit "$PID_FILE" || failed=1; fi
   if backend_running; then kill "$(<"$BACKEND_PID_FILE")" 2>/dev/null || true; wait_for_exit "$BACKEND_PID_FILE" || failed=1; fi
   if ! launch_uses_gateway && running; then kill "$(<"$PID_FILE")" 2>/dev/null || true; wait_for_exit "$PID_FILE" || failed=1; fi
   remove_stale_state
   [[ "$failed" == 0 ]] || return 1
 }
-# Compatibility helper may have been used before WP4; it has no FAST lifecycle.
-stop_legacy() { "$ROOT/scripts/loom-deep-r2-abliterated-q3ks-server" stop >/dev/null 2>&1 || true; }
+verify_owners() {
+  local expected="$ROOT/$BIN" role=backend
+  if launch_uses_gateway; then expected="$ROOT/$LOOM_CONTEXT_WEBUI_GATEWAY_SCRIPT"; role=gateway; fi
+  assert_pid_owner "$PID_FILE" "$expected" "$role" && assert_pid_owner "$BACKEND_PID_FILE" "$ROOT/$BIN" backend
+}
+require_command() { command -v "$1" >/dev/null 2>&1 || { echo "missing standalone dependency: $1" >&2; return 1; }; }
 port_free() {
   local port="$1"
   if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
@@ -73,7 +120,7 @@ port_free() {
 wait_for_health() {
   local url="$1"
   for _ in $(seq 1 180); do
-    curl -fsS "$url/health" >/dev/null 2>&1 && return 0
+    curl -fsS --max-time 2 "$url/health" >/dev/null 2>&1 && return 0
     sleep 1
   done
   return 1
@@ -82,10 +129,10 @@ start_backend() {
   (
     exec env DYLD_LIBRARY_PATH="$ROOT/$RUNTIME_LIB_DIR${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}" \
       LOOM_EXPERT_MAJOR_SIDECAR="$ROOT/$SIDECAR" "$ROOT/$BIN" --offline --host "$LOOM_DEEP_HOST" --port "$1" --alias "$ALIAS" \
-      --ctx-size "$LOOM_DEEP_CTX" --parallel "$LOOM_DEEP_PARALLEL" \
+      --ctx-size "$CTX" --parallel "$LOOM_DEEP_PARALLEL" \
       --moe-n-slots "$SLOTS" --moe-n-layers "$LOOM_DEEP_MOE_LAYERS" \
-      --no-mmap --no-warmup --cpu-moe -b "$LOOM_DEEP_CTX" -ub "$UBATCH" --cache-ram "$LOOM_DEEP_CACHE_RAM" --no-ui-mcp-proxy \
-      --model "$ROOT/$MODEL" --log-file "$BACKEND_LOG_FILE"
+      --no-mmap --no-warmup --cpu-moe -b "$BATCH" -ub "$UBATCH" --cache-ram "$LOOM_DEEP_CACHE_RAM" --no-ui-mcp-proxy \
+      ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} --model "$ROOT/$MODEL" --log-file "$BACKEND_LOG_FILE"
   ) >>"$BACKEND_LOG_FILE" 2>&1 &
   echo $! > "$BACKEND_PID_FILE"
 }
@@ -99,24 +146,49 @@ start_gateway() {
   ) >>"$GATEWAY_LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
 }
+# Serialize lifecycle mutations; never start a second model concurrently.
+case "${1:-}" in
+  use|start|stop)
+    LOCK="$STATE/lifecycle.lock"
+    mkdir "$LOCK" 2>/dev/null || { echo "another lifecycle operation is active; refusing" >&2; exit 1; }
+    trap 'rmdir "$LOCK"' EXIT
+    ;;
+esac
 profile_values
+require_command ps
+verify_owners || exit 1
 case "${1:-}" in
   use)
-    [[ $# -eq 2 && ( "$2" == unlocked || "$2" == unlocked-s32 ) ]] || { echo "usage: $0 use {unlocked|unlocked-s32} (FAST is archived)" >&2; exit 64; }
-    stop_managed || exit 1; stop_legacy
+    [[ $# -eq 2 && ( "$2" == unlocked || "$2" == unlocked-s32 || "$2" == unlocked-8k ) ]] || { echo "usage: $0 use {unlocked|unlocked-s32|unlocked-8k} (FAST is archived)" >&2; exit 64; }
     printf '%s\n' "$2" > "$PROFILE_FILE"
     profile_values
-    echo "selected: $PROFILE ($ALIAS); server stopped"
+    echo "selected: $PROFILE ($ALIAS); running service unchanged (explicit stop/start required)"
     ;;
   start)
-    if all_running; then echo "already running: $(<"$PID_FILE") $URL ($(<"$RUN_PROFILE_FILE"))"; exit 0; fi
-    stop_managed || exit 1; stop_legacy; remove_stale_state
+    for dependency in curl lsof pgrep python3; do require_command "$dependency" || exit 1; done
+    if all_running; then
+      [[ -s "$RUN_PROFILE_FILE" ]] || { echo "missing running profile; refusing start" >&2; exit 1; }
+      if [[ "$(<"$RUN_PROFILE_FILE")" != "$PROFILE" ]]; then
+        echo "running profile differs from selected $PROFILE; run stop then start explicitly" >&2; exit 1
+      fi
+      echo "already running: $(<"$PID_FILE") $URL ($(<"$RUN_PROFILE_FILE"))"; exit 0
+    fi
+    if running || backend_running; then
+      echo "partial service still active; run stop explicitly before start" >&2; exit 1
+    fi
+    if pgrep -x llama-server >/dev/null || pgrep -x llama-cli >/dev/null || pgrep -x ollama >/dev/null; then
+      echo "another model process is active; refusing to load a second model" >&2; exit 1
+    fi
+    remove_stale_state
     [[ -f "$ROOT/$MODEL" ]] || { echo "missing model: $MODEL" >&2; exit 1; }
     [[ -f "$ROOT/$SIDECAR" ]] || { echo "missing UOPT-002 sidecar: $SIDECAR" >&2; exit 1; }
     SIDECAR_REAL="$(python3 -c 'import pathlib, sys; print(pathlib.Path(sys.argv[1]).resolve())' "$ROOT/$SIDECAR")"
     [[ "$SIDECAR_REAL" != /Volumes/* ]] || { echo "refusing external-volume sidecar" >&2; exit 1; }
     [[ -d "$ROOT/$RUNTIME_LIB_DIR" ]] || { echo "missing UOPT-002 runtime libraries: $RUNTIME_LIB_DIR" >&2; exit 1; }
+    [[ -x "$ROOT/$BIN" ]] || { echo "missing executable UOPT-002 runtime: $BIN" >&2; exit 1; }
     if enabled "$LOOM_CONTEXT_WEBUI_GATEWAY"; then
+      require_command node || exit 1
+      [[ -f "$ROOT/$LOOM_CONTEXT_WEBUI_GATEWAY_SCRIPT" ]] || { echo "missing Context WebUI gateway" >&2; exit 1; }
       port_free "$LOOM_DEEP_PORT"; port_free "$LOOM_DEEP_BACKEND_PORT"
       start_backend "$LOOM_DEEP_BACKEND_PORT"
       wait_for_health "$BACKEND_URL" || { echo "backend did not become healthy; inspect $BACKEND_LOG_FILE" >&2; stop_managed || true; exit 1; }
@@ -137,12 +209,18 @@ case "${1:-}" in
     stop_managed; echo "stopped"
     ;;
   status|health)
-    if all_running; then echo "running: $(<"$PID_FILE") $URL ($(<"$RUN_PROFILE_FILE"); gateway=$(<"$RUN_GATEWAY_FILE"))"; curl -fsS "$URL/health" || true
+    if all_running; then
+      [[ -s "$RUN_PROFILE_FILE" && -s "$RUN_GATEWAY_FILE" ]] || { echo "missing running metadata" >&2; exit 1; }
+      echo "running: $(<"$PID_FILE") $URL ($(<"$RUN_PROFILE_FILE"); gateway=$(<"$RUN_GATEWAY_FILE"))"
+      require_command curl || exit 1
+      curl -fsS --max-time 2 "$URL/health"
     else remove_stale_state; echo "not running; selected: $PROFILE ($ALIAS)"; exit 1; fi
     ;;
   current)
     printf 'selected: %s (%s)\nendpoint: %s\nmodel: %s\nruntime: %s\nmoe-slots: %s\ncontext-webui-gateway: %s\nbackend: %s\n' "$PROFILE" "$ALIAS" "$URL" "$MODEL" "$BIN" "$SLOTS" "$LOOM_CONTEXT_WEBUI_GATEWAY" "$BACKEND_URL"
     printf 'expert-major-sidecar: %s\n' "$SIDECAR"
+    printf 'context: %s\nbatch: %s\nubatch: %s\nmoe-layers: %s\ncache-ram: %s\nkv-k: %s\nkv-v: %s\nflash-attention: %s\nparallel: %s\n' "$CTX" "$BATCH" "$UBATCH" "$LOOM_DEEP_MOE_LAYERS" "$LOOM_DEEP_CACHE_RAM" "$KV_K" "$KV_V" "$FLASH_ATTN" "$LOOM_DEEP_PARALLEL"
+    if all_running; then printf 'running-profile: %s\n' "$(<"$RUN_PROFILE_FILE")"; else echo 'running-profile: none'; fi
     ;;
-  *) echo "usage: $0 {use unlocked|unlocked-s32|start|stop|status|health|current}" >&2; exit 64;;
+  *) echo "usage: $0 {use unlocked|unlocked-s32|unlocked-8k|start|stop|status|health|current}" >&2; exit 64;;
 esac
